@@ -20,6 +20,8 @@ export function exportImageNames(markdown: string) {
 
 const plain = (value: string) =>
   value.replace(/&/g, '&amp;').replace(/[\\`*_{}\[\]<>#|!]/g, '\\$&');
+const titleSuffix = (title: string | null | undefined) =>
+  title ? ` "${title.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` : '';
 
 // Render Markdown from parsed nodes so a password or code example can never be
 // mistaken for an image destination. Reference images become portable inline images.
@@ -53,10 +55,12 @@ export function portableMarkdown(markdown: string, imagePrefix: string) {
       codespan: ({ raw }) => raw,
       br: () => '  \n',
       hr: () => '\n---\n\n',
-      html: ({ text }) =>
-        /^<br\s*\/?\s*>$/i.test(text.trim())
-          ? '<br>'
-          : text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+      html: ({ text }) => {
+        if (/^<br\s*\/?\s*>$/i.test(text.trim())) return '<br>';
+        throw new Error(
+          'Markdown 导出无法安全保留原始 HTML，请将其放入代码块，或仅选择 Word／PDF。',
+        );
+      },
       blockquote({ tokens }) {
         return (
           this.parser
@@ -71,7 +75,9 @@ export function portableMarkdown(markdown: string, imagePrefix: string) {
         return (
           token.items
             .map((item, i) => {
-              const marker = token.ordered ? `${Number(token.start || 1) + i}. ` : '- ';
+              const marker = token.ordered
+                ? `${Number(token.start === '' ? 1 : token.start) + i}. `
+                : '- ';
               const body = item.tokens
                 .map((part) => this.parser.parse([part]) + (part.type === 'text' ? '\n' : ''))
                 .join('')
@@ -109,12 +115,12 @@ export function portableMarkdown(markdown: string, imagePrefix: string) {
       },
       link({ href, title, tokens }) {
         const label = this.parser.parseInline(tokens);
-        return `[${label}](<${href.replace(/</g, '%3C').replace(/>/g, '%3E')}>${title ? ' ' + JSON.stringify(title) : ''})`;
+        return `[${label}](<${href.replace(/</g, '%3C').replace(/>/g, '%3E')}>${titleSuffix(title)})`;
       },
       image({ href, title, text }) {
         const name = localImage(href);
         return name
-          ? `![${plain(decodeHTML(text))}](${imagePrefix}${name}${title ? ' ' + JSON.stringify(title) : ''})`
+          ? `![${plain(decodeHTML(text))}](${imagePrefix}${name}${titleSuffix(title)})`
           : plain(`外部图片：${decodeHTML(text)} ${href}`);
       },
     },

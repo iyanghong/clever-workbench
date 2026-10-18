@@ -217,7 +217,7 @@ export async function renderDocx(markdown: string, images: ExportImages) {
                 ? '☑ '
                 : '☐ '
               : list.ordered
-                ? `${Number(list.start || 1) + index}. `
+                ? `${Number(list.start === '' ? 1 : list.start) + index}. `
                 : '• ';
             result.push(...blocks(item.tokens, depth + 1, marker));
           });

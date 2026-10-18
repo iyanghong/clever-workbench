@@ -73,3 +73,15 @@ test('便携 Markdown 保留代码、引用、嵌套清单和表格的阅读语�
     new Set(),
   );
 });
+
+test('零起点步骤与跨行链接标题保持原值，无法保留的 HTML 明确拒绝', async () => {
+  const markdown = '0. 预检\n1. 执行\n\n[平台](https://example.test "第一行\n第二行")';
+  expect(marked.parse(portableMarkdown(markdown, '图片/'))).toBe(marked.parse(markdown));
+  const xml = (await entries(await renderDocx(markdown, new Map())))
+    .get('word/document.xml')!
+    .toString();
+  expect(xml).toContain('>0. </w:t>');
+  expect(() => portableMarkdown('<details><summary>说明</summary>内容</details>', '图片/')).toThrow(
+    '原始 HTML',
+  );
+});
