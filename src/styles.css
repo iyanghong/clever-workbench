@@ -1804,3 +1804,19 @@ h3 {
 .related-links { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 .related-links button { display: flex; gap: 8px; align-items: center; padding: 7px 0; text-align: left; font-size: 12px; }
 @media (max-width: 1050px) { .documents-layout { grid-template-columns: 230px minmax(0,1fr); } .document-editor { padding: 28px 24px; } }
+
+.vault-control { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 9px; border-radius: 8px; font-size: 11px; color: var(--secondary); }
+.vault-control:hover { background: var(--hover); }
+.vault-control small { margin-left: auto; font-size: 10px; color: var(--accent); }
+.secrets { margin-top: 20px; padding: 16px 0 6px; border-top: 1px solid var(--line); }
+.secrets .record-subheading > span { font-size: 10px; color: var(--muted); }
+.secret-row { display: flex; align-items: center; gap: 10px; min-height: 43px; border-bottom: 1px solid var(--line); font-size: 12px; }
+.secret-row > span:first-child { width: 55px; color: var(--secondary); }
+.secret-mask, .secret-empty { flex: 1; color: var(--muted); }
+.secret-mask { letter-spacing: 3px; }
+.secret-empty { font-size: 11px; }
+.secret-row textarea { flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 7px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; resize: vertical; }
+.secret-input { width: 100%; min-height: 140px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.masked-secret { -webkit-text-security: disc; }
+.modal > .secret-show { flex-direction: row; align-items: center; }
+.modal > .secret-show input { width: auto; }

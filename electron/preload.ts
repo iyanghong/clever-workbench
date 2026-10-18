@@ -3,6 +3,18 @@ import type { DesktopAPI } from '../src/types';
 const call = (channel: string, ...args: unknown[]) => ipcRenderer.invoke(channel, ...args);
 const api: DesktopAPI = {
   platform: process.platform,
+  vaultStatus: () => call('vault-status'),
+  initializeVault: (password) => call('vault-initialize', password),
+  unlockVault: (password) => call('vault-unlock', password),
+  lockVault: () => call('vault-lock'),
+  readSecret: (accountId, kind) => call('secret-read', accountId, kind),
+  saveSecret: (accountId, kind, value) => call('secret-save', accountId, kind, value),
+  removeSecret: (accountId, kind) => call('secret-remove', accountId, kind),
+  onVaultStatus(handler) {
+    const listener = (_: unknown, status: Parameters<typeof handler>[0]) => handler(status);
+    ipcRenderer.on('vault-status', listener);
+    return () => ipcRenderer.removeListener('vault-status', listener);
+  },
   snapshot: () => call('snapshot'),
   document: (id) => call('document', id),
   searchDocuments: (query) => call('search-documents', query),

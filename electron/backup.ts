@@ -16,6 +16,7 @@ import {
   schemaVersion,
   schemaTables,
 } from './store';
+import { validateVault } from './vault';
 import { Ledger, validateLedger } from './ledger';
 import { validateTimes } from '../src/domain';
 import type { DocumentRecord } from '../src/document-types';
@@ -359,6 +360,7 @@ function validateDatabase(directory: string, manifest: Manifest) {
     )
       throw new Error('备份数据库结构不兼容。');
     validateLedger(db);
+    validateVault(db);
     const ledger = new Ledger(db);
     for (const row of db.prepare('SELECT key,value FROM preferences').all()) {
       const value = JSON.parse(row.value as string);

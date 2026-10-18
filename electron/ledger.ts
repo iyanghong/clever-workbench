@@ -88,7 +88,14 @@ export class Ledger {
     return {
       accounts: this.db
         .prepare('SELECT * FROM accounts ORDER BY createdAt,rowid')
-        .all() as unknown as AccountRecord[],
+        .all()
+        .map((row) => ({
+          ...row,
+          secretKinds: this.db
+            .prepare('SELECT kind FROM secrets WHERE accountId=? ORDER BY kind')
+            .all(row.id)
+            .map((secret) => secret.kind),
+        })) as unknown as AccountRecord[],
       resources: this.db
         .prepare('SELECT * FROM resources ORDER BY createdAt,rowid')
         .all()

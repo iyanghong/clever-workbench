@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SquaresFourIcon, XIcon } from '@phosphor-icons/react';
+import { VaultControl } from './features/vault/VaultProvider';
 import { modules, type Route } from './app/modules';
 
 export function App() {
@@ -58,6 +59,7 @@ export function App() {
         <div className="workspace-label">工作空间</div>
         {navigation('workspace')}
         <div className="sidebar-bottom">
+          <VaultControl />
           <div className="local-badge">
             <span className="status-dot saved" />
             <span>本地工作空间</span>

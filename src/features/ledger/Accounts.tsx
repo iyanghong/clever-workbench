@@ -4,6 +4,7 @@ import type { Snapshot } from '../../types';
 import type { AccountRecord, EnvironmentRecord } from '../../ledger-types';
 import type { EditorHost } from './Environments';
 import { useAutosave } from '../../shared/useAutosave';
+import { Secrets } from '../vault/Secrets';
 import { CopyValue } from '../../shared/CopyValue';
 import { Dialog } from '../../shared/Dialog';
 
@@ -250,6 +251,7 @@ function AccountEditor({
           </div>
         </label>
       </div>
+      <Secrets account={account} onSnapshot={host.onSnapshot} onError={host.onError} />
       <details className="compact-details">
         <summary>账号说明</summary>
         <p className="field-hint">普通说明。密码、Token 和私钥使用专门的秘密字段。</p>

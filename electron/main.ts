@@ -16,6 +16,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { Store, assetName, text } from './store';
+import { Vault } from './vault';
 import { Backups } from './backup';
 
 protocol.registerSchemesAsPrivileged([
@@ -29,6 +30,7 @@ if (process.env.CLEVER_WORKBENCH_DATA_DIR)
 let window: BrowserWindow | null = null,
   store: Store,
   backups: Backups,
+  vault: Vault,
   restoring = false,
   allowClose = false,
   closePending = false,
@@ -122,6 +124,7 @@ function createWindow() {
       try {
         if (backups.busy || restoring) throw new Error('备份或恢复正在进行，请完成后再关闭窗口。');
         await flushRenderer();
+        vault?.lock();
         allowClose = true;
         if (quitting) app.quit();
         else window?.close();
@@ -153,6 +156,7 @@ app
   .then(() => {
     store = new Store(path.join(app.getPath('userData'), 'data'));
     backups = new Backups(store);
+    vault = new Vault(store, (status) => window?.webContents.send('vault-status', status));
     applyTheme();
     protocol.handle('workbench-asset', (request) => {
       const url = new URL(request.url),
@@ -160,6 +164,30 @@ app
       if (url.hostname !== 'image' || !assetName.test(filename))
         return new Response('Not found', { status: 404 });
       return net.fetch(pathToFileURL(path.join(store.directory, 'assets', filename)).href);
+    });
+    secureHandler('vault-status', () => vault.status());
+    secureHandler('vault-initialize', async (password) => {
+      writable();
+      await vault.initialize(password);
+    });
+    secureHandler('vault-unlock', async (password) => {
+      writable();
+      await vault.unlock(password);
+    });
+    secureHandler('vault-lock', () => vault.lock());
+    secureHandler('secret-read', (accountId, kind) => {
+      writable();
+      return vault.read(accountId, kind);
+    });
+    secureHandler('secret-save', (accountId, kind, value) => {
+      writable();
+      vault.save(accountId, kind, value);
+      return store.snapshot();
+    });
+    secureHandler('secret-remove', (accountId, kind) => {
+      writable();
+      vault.remove(accountId, kind);
+      return store.snapshot();
     });
     secureHandler('snapshot', () => store.snapshot());
     secureHandler('document', (id) => store.document(id));
@@ -219,6 +247,7 @@ app
     });
     secureHandler('discard-backup', (token) => backups.discard(text(token)));
     secureHandler('restore-backup', async (token) => {
+      vault.lock();
       text(token);
       await flushRenderer();
       writable();
@@ -334,5 +363,6 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 app.on('will-quit', () => {
+  vault?.lock();
   store?.close();
 });

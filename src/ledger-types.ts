@@ -1,3 +1,4 @@
+import type { SecretKind } from './vault-types';
 export type ObjectContext = {
   systemId: string | null;
   environmentId: string | null;
@@ -50,6 +51,7 @@ export type ResourceRecord = {
   updatedAt: number;
 };
 export type AccountRecord = {
+  secretKinds: SecretKind[];
   id: string;
   environmentId: string;
   resourceId: string | null;

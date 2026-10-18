@@ -14,10 +14,11 @@ import type {
   TaskSummary,
 } from '../src/types';
 import { minute, validateTimes } from '../src/domain';
+import { initializeVault } from './vault';
 import { Documents, initializeDocuments } from './documents';
 import { Ledger, initializeLedger } from './ledger';
 
-export const schemaVersion = 6;
+export const schemaVersion = 7;
 export const schemaTables = [
   'projects',
   'tasks',
@@ -30,6 +31,7 @@ export const schemaTables = [
   'resources',
   'accounts',
   'documents',
+  'secrets',
 ];
 
 export function atomicWrite(filename: string, bytes: string | Uint8Array) {
@@ -153,6 +155,7 @@ export class Store {
    `);
     initializeLedger(db);
     initializeDocuments(db);
+    initializeVault(db);
     db.exec(`PRAGMA user_version=${schemaVersion}`);
     this.ledger = new Ledger(db);
     this.documents = new Documents(db, this.ledger, (value) => this.validateDraft(value));

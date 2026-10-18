@@ -1,3 +1,4 @@
+import type { SecretKind, VaultStatus } from './vault-types';
 import type { DocumentCommand, DocumentRecord, DocumentSummary } from './document-types';
 import type { JSONContent } from '@tiptap/react';
 import type {
@@ -98,6 +99,14 @@ export type BackupInfo = {
 };
 export interface DesktopAPI {
   platform: string;
+  vaultStatus(): Promise<VaultStatus>;
+  initializeVault(password: string): Promise<void>;
+  unlockVault(password: string): Promise<void>;
+  lockVault(): Promise<void>;
+  readSecret(accountId: string, kind: SecretKind): Promise<string>;
+  saveSecret(accountId: string, kind: SecretKind, value: string): Promise<Snapshot>;
+  removeSecret(accountId: string, kind: SecretKind): Promise<Snapshot>;
+  onVaultStatus(handler: (status: VaultStatus) => void): () => void;
   snapshot(): Promise<Snapshot>;
   document(id: string): Promise<DocumentRecord>;
   searchDocuments(query: string): Promise<string[]>;
