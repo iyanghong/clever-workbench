@@ -36,6 +36,7 @@ jobs:
         run: |
           mkdir -p release/installed
           ditto -x -k 'release/Clever Workbench-0.1.0-arm64-mac.zip' release/installed
+          codesign --verify --deep --strict 'release/installed/Clever Workbench.app'
           echo "CWB_TEST_EXECUTABLE=$GITHUB_WORKSPACE/release/installed/Clever Workbench.app/Contents/MacOS/Clever Workbench" >> "$GITHUB_ENV"
       - name: Package Windows x64
         if: runner.os == 'Windows'
