@@ -1,0 +1,59 @@
+import { BrowserWindow, nativeImage, session } from 'electron';
+import { randomUUID } from 'node:crypto';
+import { assetReferences } from './store';
+import { renderDocx, renderHtml, type ExportImages } from './export-documents';
+import type { DocumentRenderer } from './system-export';
+
+export const exportScheme = 'workbench-export';
+
+export const renderExportDocument: DocumentRenderer = async (format, markdown, assets) => {
+  const images: ExportImages = new Map();
+  for (const name of assetReferences(markdown)) {
+    const bytes = assets.get(name);
+    if (!bytes) throw new Error('正文图片缺失，无法导出。');
+    const image = nativeImage.createFromBuffer(bytes);
+    if (image.isEmpty()) throw new Error('正文图片无法解码，请检查图片。');
+    const size = image.getSize();
+    images.set(`workbench-asset://image/${name}`, { bytes: image.toPNG(), ...size });
+  }
+  if (format === 'docx') return renderDocx(markdown, images);
+  const html = renderHtml(markdown, images);
+  const printSession = session.fromPartition(`workbench-export-${randomUUID()}`, { cache: false });
+  const url = `${exportScheme}://document/index.html`;
+  printSession.webRequest.onBeforeRequest((details, callback) =>
+    callback({ cancel: details.url !== url && !details.url.startsWith('data:image/') }),
+  );
+  printSession.protocol.handle(exportScheme, (request) =>
+    request.url === url
+      ? new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+      : new Response('', { status: 404 }),
+  );
+  const window = new BrowserWindow({
+    show: false,
+    webPreferences: {
+      session: printSession,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      javascript: false,
+      webSecurity: true,
+    },
+  });
+  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  window.webContents.on('will-navigate', (event, destination) => {
+    if (destination !== url) event.preventDefault();
+  });
+  try {
+    await window.loadURL(url);
+    return await window.webContents.printToPDF({
+      printBackground: true,
+      preferCSSPageSize: true,
+      generateDocumentOutline: true,
+      generateTaggedPDF: true,
+    });
+  } finally {
+    window.destroy();
+    printSession.protocol.unhandle(exportScheme);
+    await printSession.clearStorageData();
+  }
+};

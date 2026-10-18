@@ -127,6 +127,15 @@ export class Vault {
     this.lastActivity = Date.now();
     return this.key;
   }
+  authorizeSecretOperation() {
+    this.requireKey();
+    const generation = this.generation;
+    return () => {
+      this.checkIdle();
+      if (!this.key || generation !== this.generation)
+        throw new Error('秘密操作已取消，请重新解锁。');
+    };
+  }
   private account(accountId: unknown, kind: unknown): asserts kind is SecretKind {
     if (
       typeof accountId !== 'string' ||

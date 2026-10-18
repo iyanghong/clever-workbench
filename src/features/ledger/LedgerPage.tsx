@@ -16,6 +16,7 @@ import { useAutosave } from '../../shared/useAutosave';
 import { useSaveGroup } from '../../shared/useSaveGroup';
 import { Environments } from './Environments';
 import { SystemAssets } from './SystemAssets';
+import { SystemExportDialog } from './SystemExportDialog';
 
 export function LedgerPage({ route, navigate, registerFlush, setContext }: ModuleProps) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -223,6 +224,7 @@ function SystemPanel({
   onError: (message: string) => void;
 }) {
   const focusedAccount = snapshot.accounts.find((a) => a.id === focusId);
+  const [exportOpen, setExportOpen] = useState(false);
   const [section, setSection] = useState<'access' | 'server' | 'environments'>(
     snapshot.accessEntries.some((e) => e.id === (focusedAccount?.accessId ?? focusId))
       ? 'access'
@@ -247,6 +249,22 @@ function SystemPanel({
     <section className="system-detail">
       <div className="system-detail-heading">
         <span className="eyebrow">长期系统</span>
+        <button
+          className="text-button"
+          aria-label="导出系统资料"
+          onClick={() =>
+            void (async () => {
+              try {
+                await flushAll();
+                setExportOpen(true);
+              } catch (cause) {
+                onError(String(cause));
+              }
+            })()
+          }
+        >
+          导出资料
+        </button>
         <FavoriteButton
           item={{ kind: 'system', id: system.id }}
           snapshot={snapshot}
@@ -261,6 +279,13 @@ function SystemPanel({
           {form.status}
         </button>
       </div>
+      {exportOpen && (
+        <SystemExportDialog
+          systemId={system.id}
+          snapshot={snapshot}
+          onClose={() => setExportOpen(false)}
+        />
+      )}
       <input
         className="system-title-input"
         aria-label="系统名称"

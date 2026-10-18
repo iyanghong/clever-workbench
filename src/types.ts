@@ -1,4 +1,5 @@
 import type { Favorite, FavoriteCommand } from './home-types';
+import type { SystemExportOptions, SystemExportResult } from './export-types';
 import type { SearchHit } from './search-types';
 import type {
   SecretKind,
@@ -128,6 +129,7 @@ export type BackupInfo = {
   secrets: number;
 };
 export interface DesktopAPI {
+  exportSystem(options: SystemExportOptions): Promise<SystemExportResult | null>;
   captureLedger(input: LedgerCapture): Promise<MutationResult>;
   copyAccessWithSecrets(id: string, target: AccessCopyTarget): Promise<MutationResult>;
   platform: string;

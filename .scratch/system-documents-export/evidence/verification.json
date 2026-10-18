@@ -1,0 +1,36 @@
+{
+  "fictionalData": true,
+  "generatedAt": "2026-10-18T17:02:33.045Z",
+  "systemPackageSha256": "9f02a2e343cdf9c5d9bcee92bafe49f8450666a1ca1a8ac0c7e1f2468a3b1cb6",
+  "files": 14,
+  "formats": [
+    "markdown",
+    "docx",
+    "pdf"
+  ],
+  "renderedFiles": 8,
+  "reviewedPages": 22,
+  "wordPages": [
+    1,
+    1,
+    4,
+    5
+  ],
+  "pdfPages": [
+    1,
+    1,
+    4,
+    5
+  ],
+  "checks": [
+    "Chinese and mixed-language text",
+    "32-row table with repeated header",
+    "embedded full-size screenshot and following paragraph",
+    "code, nested list, checked/unchecked items",
+    "separate duplicate titles with Windows-safe filenames",
+    "project history, deployment, access addresses, server hardware and fictional passwords"
+  ],
+  "wordRenderer": "Bundled LibreOffice via render_docx.py; FONTCONFIG_FILE uses bundled LibreOffice Resources/fontconfig/fonts.conf",
+  "pdfRenderer": "Actual isolated Electron printToPDF; PNG inspection with bundled Poppler",
+  "result": "pass"
+}

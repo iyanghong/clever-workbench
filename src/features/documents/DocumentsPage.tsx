@@ -24,10 +24,19 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
     [query, setQuery] = useState(''),
     [matches, setMatches] = useState<string[] | null>(null),
     [trash, setTrash] = useState(Boolean(route.trash)),
+    [scope, setScope] = useState('all'),
     [error, setError] = useState(''),
     [loading, setLoading] = useState(true);
   const saves = useSaveGroup(registerFlush),
     busy = useRef(false);
+  const selectedSummary = snapshot?.documents.find((item) => item.id === document?.id);
+  const visibleScope =
+    selectedSummary &&
+    scope !== 'all' &&
+    selectedSummary.systemId !== (scope === 'common' ? null : scope)
+      ? 'all'
+      : scope;
+  useEffect(() => setScope(visibleScope), [visibleScope]);
   useEffect(() => {
     void window.desktop
       .snapshot()
@@ -65,8 +74,11 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
   }, [query, trash, snapshot]);
   useEffect(() => {
     if (!loading && !document)
-      setContext({ projectId: route.project && route.project !== 'all' ? route.project : null });
-  }, [loading, document?.id, route.project]);
+      setContext({
+        systemId: visibleScope === 'all' || visibleScope === 'common' ? null : visibleScope,
+        projectId: route.project && route.project !== 'all' ? route.project : undefined,
+      });
+  }, [loading, document?.id, route.project, visibleScope]);
   async function select(id: string) {
     try {
       await saves.flush();
@@ -83,6 +95,9 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
       await saves.flush();
       const result = await window.desktop.mutate({
         type: 'document.create',
+        context: {
+          systemId: visibleScope === 'all' || visibleScope === 'common' ? null : visibleScope,
+        },
         projectId: route.project && route.project !== 'all' ? route.project : undefined,
       });
       setSnapshot(result.snapshot);
@@ -100,7 +115,18 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
       await saves.flush();
       setTrash(next);
       setDocument(null);
+      setScope('all');
       setQuery('');
+      setError('');
+    } catch (cause) {
+      setError(String(cause));
+    }
+  }
+  async function changeScope(next: string) {
+    try {
+      await saves.flush();
+      setDocument(null);
+      setScope(next);
       setError('');
     } catch (cause) {
       setError(String(cause));
@@ -110,6 +136,8 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
     snapshot?.documents.filter(
       (item) =>
         (item.deletedAt !== null) === trash &&
+        (visibleScope === 'all' ||
+          item.systemId === (visibleScope === 'common' ? null : visibleScope)) &&
         (!route.project || route.project === 'all' || item.projectId === route.project) &&
         (trash
           ? !query || item.title.toLowerCase().includes(query.toLowerCase())
@@ -151,6 +179,22 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
               回收站
             </button>
           </div>
+          <label className="document-scope-filter">
+            归属
+            <select
+              aria-label="文档范围"
+              value={visibleScope}
+              onChange={(event) => void changeScope(event.target.value)}
+            >
+              <option value="all">全部文档</option>
+              <option value="common">通用文档</option>
+              {snapshot?.systems.map((system) => (
+                <option key={system.id} value={system.id}>
+                  {system.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="document-search">
             <MagnifyingGlassIcon size={16} />
             <input
@@ -169,7 +213,7 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
                 onClick={() => void select(item.id)}
               >
                 <strong>{item.title || '未命名文档'}</strong>
-                <span>{contextLabel(snapshot!, item) || '未分类'}</span>
+                <span>{contextLabel(snapshot!, item) || '通用文档'}</span>
                 <small>
                   {dateLabel(item.updatedAt)} ·{' '}
                   {snapshot?.projects.find((project) => project.id === item.projectId)?.name ??
@@ -315,8 +359,16 @@ function DocumentEditor({
         onChange={(event) => form.change({ ...form.value, title: event.target.value })}
       />
       <div className="document-context">
+        <ContextPicker
+          mode="system"
+          unassignedSystemLabel="通用文档"
+          snapshot={snapshot}
+          value={form.value}
+          disabled={deleted}
+          onChange={(context) => form.change({ ...form.value, ...context })}
+        />
         <label>
-          项目
+          项目（可选）
           <select
             aria-label="文档所属项目"
             value={form.value.projectId ?? ''}
@@ -353,6 +405,7 @@ function DocumentEditor({
       <details className="compact-details">
         <summary>关联背景</summary>
         <ContextPicker
+          mode="details"
           snapshot={snapshot}
           value={form.value}
           disabled={deleted}

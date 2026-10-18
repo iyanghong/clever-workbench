@@ -148,13 +148,14 @@ export function Detail({
       </header>
       <div className="detail-content">
         <div className="detail-meta">
+          <span>项目（可选）</span>
           <select
             disabled={deleted}
             aria-label="所属项目"
             value={value.projectId ?? ''}
             onChange={(e) => change({ ...value, projectId: e.target.value || null })}
           >
-            <option value="">未分类</option>
+            <option value="">不关联项目</option>
             {projects
               .filter((p) => p.archivedAt === null || p.id === value.projectId)
               .map((p) => (
@@ -167,9 +168,17 @@ export function Detail({
           <span className="dot" style={{ background: currentProject?.color ?? '#9c9ca3' }} />
           {currentProject?.archivedAt && <span className="tag">已归档</span>}
         </div>
+        <ContextPicker
+          mode="system"
+          snapshot={snapshot}
+          value={value}
+          disabled={deleted}
+          onChange={(context) => change({ ...value, ...context })}
+        />
         <details className="compact-details task-context">
-          <summary>关联背景{value.systemId ? ` · ${contextLabel(snapshot, value)}` : ''}</summary>
+          <summary>环境与资源{value.systemId ? ` · ${contextLabel(snapshot, value)}` : ''}</summary>
           <ContextPicker
+            mode="details"
             snapshot={snapshot}
             value={value}
             disabled={deleted}

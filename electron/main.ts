@@ -21,8 +21,11 @@ import { checkEncryptedArchive } from './encrypted-archive';
 import { SecretClipboard } from './secret-clipboard';
 import { Vault } from './vault';
 import { Backups } from './backup';
+import { SystemExports } from './system-export';
+import { exportScheme, renderExportDocument } from './export-native';
 
 protocol.registerSchemesAsPrivileged([
+  { scheme: exportScheme, privileges: { standard: true, secure: true } },
   {
     scheme: 'workbench-asset',
     privileges: { standard: true, secure: true, supportFetchAPI: true },
@@ -33,6 +36,7 @@ if (process.env.CLEVER_WORKBENCH_DATA_DIR)
 let window: BrowserWindow | null = null,
   store: Store,
   backups: Backups,
+  systemExports: SystemExports,
   vault: Vault,
   secretClipboard: SecretClipboard,
   restoring = false,
@@ -187,6 +191,7 @@ function createWindow() {
           throw new Error('资料保护操作正在进行，请完成后再关闭窗口。');
         await backups.whenIdle();
         vault?.lock();
+        await systemExports.whenIdle();
         allowClose = true;
         if (quitting) app.quit();
         else window?.close();
@@ -231,6 +236,7 @@ app
       window?.webContents.send('vault-status', status);
     });
     secretClipboard = new SecretClipboard(vault, clipboard);
+    systemExports = new SystemExports(store, vault, renderExportDocument);
     powerMonitor.on('lock-screen', () => vault.lock());
     powerMonitor.on('suspend', () => vault.lock());
     setInterval(() => vault.checkIdle(), 10_000).unref();
@@ -292,6 +298,27 @@ app
       return store.snapshot();
     });
     secureHandler('snapshot', () => store.snapshot());
+    secureHandler('system-export', async (options) => {
+      const generation = store.generation;
+      writable(generation);
+      systemExports.validate(options);
+      await flushRenderer();
+      writable(generation);
+      if (closePending) throw new Error('窗口正在关闭，导出已取消。');
+      const system = store.ledger.system(options.systemId);
+      const name = Array.from(system.name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_'))
+        .slice(0, 40)
+        .join('');
+      const selection = await dialog.showSaveDialog(window!, {
+        title: '导出系统资料',
+        defaultPath: `${name}-系统资料.zip`,
+        filters: [{ name: '系统资料包', extensions: ['zip'] }],
+      });
+      if (selection.canceled || !selection.filePath) return null;
+      writable(generation);
+      if (closePending) throw new Error('窗口正在关闭，导出已取消。');
+      return systemExports.write(options, selection.filePath);
+    });
     secureHandler('ledger-capture', (input) => {
       writable();
       return vault.capture(input);

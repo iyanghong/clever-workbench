@@ -1,0 +1,13 @@
+{
+  "platform": "darwin",
+  "arch": "arm64",
+  "os": "Darwin Kernel Version 27.0.0: Tue Aug 11 21:02:57 PDT 2026; root:xnu-13432.1.9~1/RELEASE_ARM64_T8132",
+  "startedAt": 1792339150950,
+  "lockedAt": 1792339862698,
+  "elapsedMs": 711748,
+  "nativeLocks": [
+    1792339862698
+  ],
+  "idleVerified": false,
+  "ordinaryMetadataReadable": true
+}

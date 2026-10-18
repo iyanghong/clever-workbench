@@ -1,72 +1,71 @@
 {
   "version": "0.1.0",
-  "sourceCommit": "3b84b41d0204c1af9462ffeae2169bbe45eab045",
-  "createdAt": "2026-10-18T14:55:00.348Z",
+  "sourceCommit": "1d87213a3436a03643e31fabeccce6fcc8854d9d",
+  "fixtureCommit": "aac697a",
+  "createdAt": "2026-10-18T16:00:17.554Z",
   "artifacts": [
     {
       "name": "Clever Workbench-0.1.0-arm64.dmg",
-      "bytes": 128677982,
-      "sha256": "941abdbf3b96ae06bc77e016ec633b70ea9720c2c964f93c11c65fc9fc2e336e"
+      "bytes": 128720347,
+      "sha256": "d1d8e6a456e46d9e091e08a51d66988a6fc81f42f2ef625a25e722decdd63f03"
     },
     {
       "name": "Clever Workbench-0.1.0-arm64-mac.zip",
-      "bytes": 128041935,
-      "sha256": "7c8ac64faad9b2eaa88061ee1792765d053aa2d7051b3f9ed43d67898d89f2b8"
+      "bytes": 128056781,
+      "sha256": "de7896085afd6ea2edc227ffe8cd7872f4bedcf0e8b301ca58b9a1fedac5f208"
     },
     {
       "name": "Clever Workbench Setup 0.1.0.exe",
-      "bytes": 112035715,
-      "sha256": "045a7f544ead6cdc70a9c598f79ce46b0b1a1518e2638637dc718ee7d8364668"
+      "bytes": 112046861,
+      "sha256": "5d7e8699b9683cdde4cf7aeeb2aa2d68c75792abb6d970febee93b13c965e3df"
     }
   ],
   "packages": [
     {
-      "archive": "release/installed-3b84b41/Clever Workbench.app/Contents/Resources/app.asar",
-      "sha256": "742c9b239d030e36b9ed58ccebae7eaa18b2c9a94c67d4cc76e0ef14e76fc8b4",
+      "archive": "release/installed-1d87213/Clever Workbench.app/Contents/Resources/app.asar",
+      "sha256": "003293274f12b3f506bfafef1354dfbd6c79c498f366afbeae1055f9f3c069c1",
       "files": [
         "/dist-electron/main.cjs",
         "/dist-electron/main.cjs.map",
         "/dist-electron/preload.cjs",
-        "/dist/assets/CaretRight.es-r_cDHoO9.js",
-        "/dist/assets/CheckCircle.es-CT-xa5xA.js",
-        "/dist/assets/DocumentsPage-BWITP8oS.js",
-        "/dist/assets/Editor-D2_GjLmI.js",
-        "/dist/assets/LedgerPage-UoGzswXm.js",
-        "/dist/assets/SettingsPage--MW88j0N.js",
-        "/dist/assets/TaskWorkspace-B2FvlhEx.js",
-        "/dist/assets/code-highlighting-MfV_Bks1.js",
-        "/dist/assets/domain-Cel9E-GC.js",
+        "/dist/assets/CaretRight.es-BWafd2d7.js",
+        "/dist/assets/CheckCircle.es-Cd_KRYGC.js",
+        "/dist/assets/DocumentsPage-g_LoddBh.js",
+        "/dist/assets/Editor-BuBRFZf6.js",
+        "/dist/assets/LedgerPage-D1nRbBjf.js",
+        "/dist/assets/SettingsPage-iyvB10V7.js",
+        "/dist/assets/TaskWorkspace-D-IBQUr_.js",
+        "/dist/assets/code-highlighting-B2T_SesD.js",
         "/dist/assets/editor-model--1ETbRp-.js",
-        "/dist/assets/index-BUJDVfNZ.js",
-        "/dist/assets/index-C8hSNodZ.css",
-        "/dist/index.html",
-        "/package.json"
+        "/dist/assets/index-BoGJRoj7.css",
+        "/dist/assets/index-bYCOQkkG.js",
+        "/dist/index.html"
       ],
-      "buildFilesMatch": true
+      "buildFilesMatch": true,
+      "manifestIdentityMatches": true
     },
     {
       "archive": "release/win-unpacked/resources/app.asar",
-      "sha256": "742c9b239d030e36b9ed58ccebae7eaa18b2c9a94c67d4cc76e0ef14e76fc8b4",
+      "sha256": "003293274f12b3f506bfafef1354dfbd6c79c498f366afbeae1055f9f3c069c1",
       "files": [
         "/dist-electron/main.cjs",
         "/dist-electron/main.cjs.map",
         "/dist-electron/preload.cjs",
-        "/dist/assets/CaretRight.es-r_cDHoO9.js",
-        "/dist/assets/CheckCircle.es-CT-xa5xA.js",
-        "/dist/assets/DocumentsPage-BWITP8oS.js",
-        "/dist/assets/Editor-D2_GjLmI.js",
-        "/dist/assets/LedgerPage-UoGzswXm.js",
-        "/dist/assets/SettingsPage--MW88j0N.js",
-        "/dist/assets/TaskWorkspace-B2FvlhEx.js",
-        "/dist/assets/code-highlighting-MfV_Bks1.js",
-        "/dist/assets/domain-Cel9E-GC.js",
+        "/dist/assets/CaretRight.es-BWafd2d7.js",
+        "/dist/assets/CheckCircle.es-Cd_KRYGC.js",
+        "/dist/assets/DocumentsPage-g_LoddBh.js",
+        "/dist/assets/Editor-BuBRFZf6.js",
+        "/dist/assets/LedgerPage-D1nRbBjf.js",
+        "/dist/assets/SettingsPage-iyvB10V7.js",
+        "/dist/assets/TaskWorkspace-D-IBQUr_.js",
+        "/dist/assets/code-highlighting-B2T_SesD.js",
         "/dist/assets/editor-model--1ETbRp-.js",
-        "/dist/assets/index-BUJDVfNZ.js",
-        "/dist/assets/index-C8hSNodZ.css",
-        "/dist/index.html",
-        "/package.json"
+        "/dist/assets/index-BoGJRoj7.css",
+        "/dist/assets/index-bYCOQkkG.js",
+        "/dist/index.html"
       ],
-      "buildFilesMatch": true
+      "buildFilesMatch": true,
+      "manifestIdentityMatches": true
     }
   ],
   "macSignature": {
@@ -76,13 +75,13 @@
     "notarized": false
   },
   "unitTests": {
-    "files": 14,
-    "passed": 56
+    "files": 16,
+    "passed": 64
   },
   "installedMacE2E": {
-    "passed": 27,
+    "passed": 33,
     "failed": 0,
-    "durationSeconds": 126,
+    "durationSecondsApprox": 144,
     "os": "macOS 27.0.1 (26A434)",
     "arch": "arm64"
   }
