@@ -175,6 +175,57 @@ export class Vault {
       }
     });
   }
+  async rotate(currentPassword: unknown, nextPassword: unknown) {
+    return this.exclusive(async (assertCurrent) => {
+      const current = this.config();
+      const wrapping = await derive(currentPassword, current.kdf);
+      let oldKey: Buffer | undefined, nextKey: Buffer | undefined;
+      try {
+        try {
+          oldKey = unseal(current.key, wrapping, keyAad(current), 32);
+        } catch {
+          throw new Error('当前主密码错误或保护材料损坏。');
+        }
+        if (oldKey.length !== 32) throw new Error('主密码保护材料无效。');
+        assertCurrent();
+        nextKey = randomBytes(32);
+        const next = await newProtection(nextPassword, nextKey);
+        assertCurrent();
+        this.store.db.exec('BEGIN IMMEDIATE');
+        try {
+          for (const row of this.store.db.prepare('SELECT accountId,kind FROM secrets').all()) {
+            const accountId = String(row.accountId),
+              kind = row.kind;
+            this.account(accountId, kind);
+            const bytes = this.decrypt(accountId, kind, oldKey);
+            try {
+              this.store.db
+                .prepare('UPDATE secrets SET value=? WHERE accountId=? AND kind=?')
+                .run(
+                  JSON.stringify(seal(bytes, nextKey, secretAad(accountId, kind))),
+                  accountId,
+                  kind,
+                );
+            } finally {
+              bytes.fill(0);
+            }
+          }
+          this.store.set('vaultConfig', next);
+          this.store.markChanged();
+          this.store.db.exec('COMMIT');
+        } catch (cause) {
+          this.store.db.exec('ROLLBACK');
+          throw cause;
+        }
+        this.initialized = true;
+        this.lock();
+      } finally {
+        wrapping.fill(0);
+        oldKey?.fill(0);
+        nextKey?.fill(0);
+      }
+    });
+  }
   save(accountId: string, kind: SecretKind, value: unknown) {
     const key = this.requireKey();
     this.account(accountId, kind);

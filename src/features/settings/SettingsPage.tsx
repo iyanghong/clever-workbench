@@ -15,6 +15,7 @@ import type { BackupInfo, BackupSelection, Command, Snapshot } from '../../types
 import { dateLabel } from '../../domain';
 import { useVault } from '../vault/VaultProvider';
 import { Dialog } from '../../shared/Dialog';
+import { PasswordChange } from './PasswordChange';
 const message = (cause: unknown) =>
   String(cause).replace(/^Error: Error invoking remote method '[^']+': Error: /, '');
 export function SettingsPage({ setContext }: ModuleProps) {
@@ -22,6 +23,7 @@ export function SettingsPage({ setContext }: ModuleProps) {
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
     [busy, setBusy] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
   const [selection, setSelection] = useState<BackupSelection | null>(null),
     [password, setPassword] = useState(''),
     [preview, setPreview] = useState<BackupInfo | null>(null),
@@ -215,6 +217,25 @@ export function SettingsPage({ setContext }: ModuleProps) {
                     : '设置主密码'}
               </button>
             </div>
+            {vault.status.initialized && (
+              <div className="setting-row">
+                <div>
+                  <strong>更改主密码</strong>
+                  <p>当前资料使用新密码，已有备份保留原密码。</p>
+                </div>
+                <button
+                  className="secondary-button"
+                  disabled={Boolean(busy)}
+                  onClick={() => {
+                    setNotice('');
+                    setError('');
+                    setChangingPassword(true);
+                  }}
+                >
+                  更改主密码
+                </button>
+              </div>
+            )}
             <h3>备份与迁移</h3>
             <div className="setting-row">
               <div>
@@ -317,6 +338,15 @@ export function SettingsPage({ setContext }: ModuleProps) {
           </>
         )}
       </section>
+      {changingPassword && (
+        <PasswordChange
+          onClose={() => setChangingPassword(false)}
+          onSuccess={() => {
+            setChangingPassword(false);
+            setNotice('主密码已更改，秘密已锁定。已有备份仍使用原密码。');
+          }}
+        />
+      )}
       {selection && (
         <Dialog title="输入备份密码" onClose={() => void cancelBackup()} error={dialogError}>
           <p>{selection.name}</p>

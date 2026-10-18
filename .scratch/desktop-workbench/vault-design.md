@@ -8,7 +8,7 @@
 
 主密码变更时生成新资料密钥和新备份密钥对，重新加密当前秘密，事务提交全部新材料。既有备份保留自己的旧保护材料。这个选择避免旧密码恢复得到的资料密钥继续读取变更后的秘密，也避免旧备份私钥解密新备份。
 
-会话只保留秘密资料密钥，锁定清除 Buffer 并撤销访问。异步初始化／解锁使用操作代次；操作期间发生锁定时，不允许迟到结果重新解锁。UI 在锁定事件中清除已显示的秘密。剪贴板策略在下一项任务接入可信侧，不通过普通复制接口读出秘密。
+会话只保留秘密资料密钥，锁定清除 Buffer 并撤销访问。异步初始化／解锁使用操作代次；操作期间发生锁定时，不允许迟到结果重新解锁。UI 在锁定事件中清除已显示的秘密。剪贴板由可信主进程中的顺序队列管理，不通过普通复制接口读出秘密。
 
 采用 Node 24.22 自带密码原语，不实现密码算法。参考：[Node scrypt](https://nodejs.org/docs/latest-v24.x/api/crypto.html#cryptoscryptpassword-salt-keylen-options-callback)、[AES-GCM API](https://nodejs.org/docs/latest-v24.x/api/crypto.html#cryptocreatecipherivalgorithm-key-iv-options)、[RSA OAEP API](https://nodejs.org/docs/latest-v24.x/api/crypto.html#cryptopublicencryptkey-buffer)。系统锁屏事件参考 [Electron powerMonitor](https://www.electronjs.org/docs/latest/api/power-monitor)。
 
@@ -25,3 +25,7 @@
 Electron 44 的剪贴板读写返回 Promise。秘密复制、普通复制和到期清理共用顺序队列；锁定递增操作代次，复制写入迟到时再次检查代次并清除仍属于该次复制的值。普通复制会撤销秘密清理计时。默认 30 秒只清理仍等于本次秘密的内容，不清理后来复制的其他文字。
 
 带秘密的账号或资源副本通过独立接口创建，要求有效解锁。复制元数据、解密源秘密、按目标身份重新加密及保存均在同一数据库事务中；任一步失败回滚全部新身份。普通复制路径仍只复制明确列出的非秘密字段。
+
+## 已验证的主密码轮换
+
+变更时先验证当前主密码，生成全新资料密钥和备份 RSA 密钥对。密文与保护配置在一个 SQLite 事务中替换，成功后撤销会话；发生写入失败时保留全部旧材料。测试实际解包旧／新资料密钥并验证它们不同，旧资料密钥不能解当前秘密；旧包继续由旧密码恢复，新包拒绝旧密码。旧包恢复后可再次轮换。桌面入口在开始前协调保存，变更期间禁止其他写操作、备份或恢复；系统锁定取消尚未提交的变更。

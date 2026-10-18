@@ -22,6 +22,7 @@ const api: DesktopAPI = {
   copyResourceWithSecrets: (id, target) => call('resource-copy-secrets', id, target),
   initializeVault: (password) => call('vault-initialize', password),
   unlockVault: (password) => call('vault-unlock', password),
+  rotateVault: (current, next) => call('vault-rotate', current, next),
   lockVault: () => call('vault-lock'),
   readSecret: (accountId, kind) => call('secret-read', accountId, kind),
   saveSecret: (accountId, kind, value) => call('secret-save', accountId, kind, value),

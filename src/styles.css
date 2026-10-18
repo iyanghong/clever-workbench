@@ -2235,7 +2235,8 @@ h3 {
 .account-editor {
   padding: 8px 0;
 }
-.modal > label {
+.modal > label,
+.modal > form > label {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2244,7 +2245,9 @@ h3 {
   color: var(--secondary);
 }
 .modal > label input,
-.modal > label select {
+.modal > label select,
+.modal > form > label input,
+.modal > form > label select {
   padding: 10px 12px;
   border-radius: 8px;
   background: var(--panel);
