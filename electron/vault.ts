@@ -410,28 +410,13 @@ export class Vault {
       return created;
     });
   }
-  private copyOwnerSecrets(
-    owner: 'resourceId' | 'accessId',
-    source: string,
-    target: string,
-    key: Buffer,
-  ) {
-    const accounts = this.store.db
-      .prepare(
-        `SELECT a.id source,b.id target FROM accounts a JOIN accounts b ON b.name=a.name AND b.${owner}=? WHERE a.${owner}=?`,
-      )
-      .all(target, source);
-    for (const account of accounts) {
+  private copyOwnerSecrets(accounts: Map<string, string>, key: Buffer) {
+    for (const [source, target] of accounts) {
       for (const secret of this.store.db
         .prepare('SELECT kind FROM secrets WHERE accountId=?')
-        .all(account.source)) {
-        this.account(account.source, secret.kind);
-        this.cloneSecret(
-          String(account.source),
-          String(account.target),
-          secret.kind as SecretKind,
-          key,
-        );
+        .all(source)) {
+        this.account(source, secret.kind);
+        this.cloneSecret(source, target, secret.kind as SecretKind, key);
       }
     }
   }
@@ -444,8 +429,8 @@ export class Vault {
         { ...options, type: 'resource.copy', id },
         Date.now(),
       );
-      this.copyOwnerSecrets('resourceId', id, target, key);
-      return target;
+      this.copyOwnerSecrets(target.accounts, key);
+      return target.id;
     });
   }
   copyAccess(id: string, options: AccessCopyTarget) {
@@ -457,8 +442,8 @@ export class Vault {
         { ...options, type: 'access.copy', id },
         Date.now(),
       );
-      this.copyOwnerSecrets('accessId', id, target, key);
-      return target;
+      this.copyOwnerSecrets(target.accounts, key);
+      return target.id;
     });
   }
   remove(accountId: string, kind: SecretKind) {

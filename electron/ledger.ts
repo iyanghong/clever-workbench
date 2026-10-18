@@ -424,7 +424,7 @@ export class Ledger {
       },
       now,
     );
-    return id;
+    return { id, accounts };
   }
   private copyOwnedAccounts(
     owner: 'resourceId' | 'accessId',
@@ -550,8 +550,8 @@ export class Ledger {
       },
       now,
     );
-    this.copyOwnedAccounts('resourceId', source.id, id, environmentId, now);
-    return id;
+    const accounts = this.copyOwnedAccounts('resourceId', source.id, id, environmentId, now);
+    return { id, accounts };
   }
   deleteResource(id: string) {
     this.resource(id);
@@ -582,15 +582,10 @@ export function validateLedger(db: DatabaseSync) {
   const ledger = new Ledger(db);
   ledger.accessEntries.validate();
   for (const row of db.prepare('SELECT * FROM accounts').all()) {
-    ledger.accountTarget(
+    const owner = ledger.accountTarget(
       row.environmentId === null ? null : field(row.environmentId, 100),
       row.resourceId === null ? null : field(row.resourceId, 100),
       row.accessId === null ? null : field(row.accessId, 100),
-    );
-    const owner = ledger.accountTarget(
-      row.environmentId === null ? null : String(row.environmentId),
-      row.resourceId === null ? null : String(row.resourceId),
-      row.accessId === null ? null : String(row.accessId),
     );
     if (field(row.systemId, 100) !== owner.systemId) throw new Error('备份账号系统归属无效。');
     if (!field(row.name, 1000).trim()) throw new Error('备份账号用途无效。');

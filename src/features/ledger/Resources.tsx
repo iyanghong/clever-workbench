@@ -177,6 +177,7 @@ export function Resources({
 export function ResourceEditor({
   resource,
   environment,
+  serverView = false,
   snapshot,
   flushAll,
   onOpen,
@@ -184,6 +185,7 @@ export function ResourceEditor({
 }: EditorHost & {
   resource: ResourceRecord;
   environment: EnvironmentRecord | null;
+  serverView?: boolean;
   snapshot: Snapshot;
   flushAll: () => Promise<void>;
   onOpen: (id: string) => void;
@@ -283,22 +285,24 @@ export function ResourceEditor({
             onChange={(event) => form.change({ ...form.value, name: event.target.value })}
           />
         </label>
-        <label>
-          类型
-          <select
-            aria-label="资源类型"
-            value={form.value.kind}
-            onChange={(event) =>
-              form.change({ ...form.value, kind: event.target.value as ResourceKind })
-            }
-          >
-            {Object.entries(kinds).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {!serverView && (
+          <label>
+            类型
+            <select
+              aria-label="资源类型"
+              value={form.value.kind}
+              onChange={(event) =>
+                form.change({ ...form.value, kind: event.target.value as ResourceKind })
+              }
+            >
+              {Object.entries(kinds).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
       {resource.kind === 'server' && (
         <div className="record-fields">
@@ -316,25 +320,27 @@ export function ResourceEditor({
               }
             />
           </label>
-          <label>
-            环境
-            <select
-              aria-label="服务器所属环境"
-              value={form.value.environmentId ?? ''}
-              onChange={(event) =>
-                form.change({ ...form.value, environmentId: event.target.value || null })
-              }
-            >
-              <option value="">系统通用</option>
-              {snapshot.environments
-                .filter((e) => e.systemId === resource.systemId)
-                .map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.name}
-                  </option>
-                ))}
-            </select>
-          </label>
+          {serverView && (
+            <label>
+              环境
+              <select
+                aria-label="服务器所属环境"
+                value={form.value.environmentId ?? ''}
+                onChange={(event) =>
+                  form.change({ ...form.value, environmentId: event.target.value || null })
+                }
+              >
+                <option value="">系统通用</option>
+                {snapshot.environments
+                  .filter((e) => e.systemId === resource.systemId)
+                  .map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          )}
         </div>
       )}
       <div className="record-fields deployment-fields">

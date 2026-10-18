@@ -9,6 +9,9 @@ import { Dialog } from '../../shared/Dialog';
 import { LedgerCaptureForm } from './LedgerCaptureForm';
 import { AccessEntryEditor } from './AccessEntryEditor';
 
+const inScope = (environmentId: string | null, scope: string) =>
+  scope === 'all' || environmentId === null || environmentId === scope;
+
 export function SystemAssets({
   kind,
   systemId,
@@ -24,23 +27,26 @@ export function SystemAssets({
   focusId?: string;
 }) {
   const focusedAccount = snapshot.accounts.find((a) => a.id === focusId);
-  const [selected, setSelected] = useState(
-    focusedAccount?.accessId ?? focusedAccount?.resourceId ?? focusId,
-  );
-  const [filter, setFilter] = useState('all'),
-    [creating, setCreating] = useState(false);
-  const items = (
+  const allItems = (
     kind === 'access'
       ? snapshot.accessEntries
       : snapshot.resources.filter((r) => r.kind === 'server')
-  )
-    .filter(
-      (item) =>
-        item.systemId === systemId &&
-        (filter === 'all' || item.environmentId === null || item.environmentId === filter),
-    )
-    .filter((item) => filter !== 'common' || item.environmentId === null);
-  const item = items.find((item) => item.id === selected) ?? items[0];
+  ).filter((item) => item.systemId === systemId);
+  const [selected, setSelected] = useState<string | undefined>(
+    focusedAccount?.accessId ?? focusedAccount?.resourceId ?? focusId ?? allItems[0]?.id,
+  );
+  const [filter, setFilter] = useState('all'),
+    [creating, setCreating] = useState(false);
+  const selectedItem = allItems.find((item) => item.id === selected);
+  // Changing an open record's scope must not unmount its pending account edits.
+  const visibleFilter =
+    selectedItem && !inScope(selectedItem.environmentId, filter) ? 'all' : filter;
+  const items = allItems.filter((item) => inScope(item.environmentId, visibleFilter));
+  const item = selectedItem ?? items[0];
+  useEffect(() => {
+    setSelected(item?.id);
+    setFilter(visibleFilter);
+  }, [item?.id, visibleFilter]);
   const environment = snapshot.environments.find((e) => e.id === item?.environmentId) ?? null;
   const label = kind === 'access' ? '访问入口' : '服务器';
   useEffect(() => {
@@ -71,10 +77,13 @@ export function SystemAssets({
           范围
           <select
             aria-label={`${label}环境筛选`}
-            value={filter}
+            value={visibleFilter}
             onChange={(event) => {
               const value = event.target.value;
-              void change(() => setFilter(value));
+              void change(() => {
+                setSelected(undefined);
+                setFilter(value);
+              });
             }}
           >
             <option value="all">全部环境与通用</option>
@@ -127,6 +136,7 @@ export function SystemAssets({
           ) : (
             <ResourceEditor
               key={item.id}
+              serverView
               resource={snapshot.resources.find((r) => r.id === item.id)!}
               environment={environment}
               snapshot={snapshot}
@@ -136,7 +146,7 @@ export function SystemAssets({
             />
           )}
           <Accounts
-            key={`${item.id}:${item.environmentId}`}
+            key={item.id}
             systemId={systemId}
             environment={environment}
             resourceId={kind === 'server' ? item.id : null}

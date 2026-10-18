@@ -4,6 +4,89 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
+for (const kind of ['access', 'server'] as const) {
+  for (const scope of ['all', 'common']) {
+    test(`${kind} 在 ${scope} 筛选下修改环境后继续编辑账号，不丢失待保存输入`, async () => {
+      const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-account-scope-'));
+      const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+      delete env.ELECTRON_RUN_AS_NODE;
+      const app = await electron.launch({ args: ['.'], env });
+      try {
+        const page = await app.firstWindow();
+        const production = await page.evaluate(async (kind) => {
+          const api = window.desktop;
+          const systemId = (await api.mutate({ type: 'system.save', name: '订单平台' })).createdId!;
+          const production = (
+            await api.mutate({ type: 'environment.save', systemId, name: '生产' })
+          ).createdId!;
+          await api.captureLedger({
+            kind,
+            systemId,
+            environmentId: null,
+            name: '待调整记录',
+            username: 'before',
+          });
+          await api.captureLedger({
+            kind,
+            systemId,
+            environmentId: null,
+            name: '其他通用记录',
+            username: 'fallback',
+          });
+          return production;
+        }, kind);
+        await page.getByRole('button', { name: '台账', exact: true }).click();
+        const label = kind === 'access' ? '访问入口' : '服务器';
+        await page.getByRole('tab', { name: label, exact: true }).click();
+        await page.getByLabel(`${label}环境筛选`, { exact: true }).selectOption(scope);
+        await page.getByRole('button', { name: `${label} 待调整记录`, exact: true }).click();
+        await page
+          .getByLabel(kind === 'access' ? '入口所属环境' : '服务器所属环境', { exact: true })
+          .selectOption(production);
+        await page.getByLabel('账号用户名', { exact: true }).fill('after-unsaved');
+        await expect
+          .poll(async () => {
+            const snapshot = await page.evaluate(() => window.desktop.snapshot());
+            return snapshot.accounts
+              .filter((a) => a.username !== 'fallback')
+              .map((a) => ({
+                environmentId: a.environmentId,
+                username: a.username,
+              }));
+          })
+          .toEqual([{ environmentId: production, username: 'after-unsaved' }]);
+        await expect(page.getByLabel('账号用户名', { exact: true })).toHaveValue('after-unsaved');
+        await page.getByRole('button', { name: '工作台', exact: true }).click();
+        await page.getByRole('button', { name: '台账', exact: true }).click();
+        await page.getByRole('tab', { name: label, exact: true }).click();
+        await page.getByRole('button', { name: `${label} 待调整记录`, exact: true }).click();
+        await expect(page.getByLabel('账号用户名', { exact: true })).toHaveValue('after-unsaved');
+        const environment = page.getByLabel(kind === 'access' ? '入口所属环境' : '服务器所属环境', {
+          exact: true,
+        });
+        await environment.selectOption('');
+        await expect
+          .poll(
+            async () =>
+              (await page.evaluate(() => window.desktop.snapshot())).accounts.find(
+                (a) => a.username === 'after-unsaved',
+              )?.environmentId,
+          )
+          .toBeNull();
+        await environment.selectOption(production);
+        await page.getByLabel(`${label}环境筛选`, { exact: true }).selectOption('common');
+        await expect(page.getByLabel('账号用户名', { exact: true })).toHaveValue('fallback');
+        await expect(page.getByLabel(`${label}环境筛选`, { exact: true })).toHaveValue('common');
+        if (kind === 'server')
+          await expect(page.getByLabel('资源类型', { exact: true })).toHaveCount(0);
+      } finally {
+        await app.close();
+        await fs.rm(directory, { recursive: true, force: true });
+      }
+    });
+  }
+}
+
 test('系统通用入口同屏录入地址与密码，服务器不建环境也可记录用途和多账号', async ({}, testInfo) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-system-ledger-ui-'));
   const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };

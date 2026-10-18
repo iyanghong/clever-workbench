@@ -293,7 +293,7 @@ export class Store {
           break;
         }
         case 'access.copy': {
-          createdId = this.ledger.copyAccess(command, now);
+          createdId = this.ledger.copyAccess(command, now).id;
           break;
         }
         case 'favorite.set':
@@ -348,7 +348,7 @@ export class Store {
           break;
         }
         case 'resource.copy': {
-          createdId = this.ledger.copyResource(command, now);
+          createdId = this.ledger.copyResource(command, now).id;
           break;
         }
         case 'resource.delete': {
