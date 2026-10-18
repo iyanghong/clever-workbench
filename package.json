@@ -1,0 +1,89 @@
+{
+  "name": "clever-workbench",
+  "version": "0.1.0",
+  "private": true,
+  "description": "个人技术台账、工作任务与方案工作台",
+  "type": "module",
+  "main": "dist-electron/main.cjs",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "tsc --noEmit && vite build && node scripts/build-electron.mjs",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "dist:mac": "npm run build && electron-builder --mac --arm64",
+    "dist:win": "npm run build && electron-builder --win --x64",
+    "setup:electron": "install-electron --no",
+    "format": "prettier --write src electron tests scripts *.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "build": {
+    "appId": "com.cleverworkbench.desktop",
+    "productName": "Clever Workbench",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json",
+      "!node_modules/**/*"
+    ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "minimumSystemVersion": "13.0",
+      "identity": null,
+      "icon": "build/icon.icns"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "npmRebuild": false
+  },
+  "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
+    "@tiptap/extension-code-block-lowlight": "^3.32.0",
+    "@tiptap/extension-image": "^3.32.0",
+    "@tiptap/extension-placeholder": "^3.32.0",
+    "@tiptap/extension-task-item": "^3.32.0",
+    "@tiptap/extension-task-list": "^3.32.0",
+    "@tiptap/markdown": "^3.32.0",
+    "@tiptap/react": "^3.32.0",
+    "@tiptap/starter-kit": "^3.32.0",
+    "lowlight": "^3.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "yauzl": "^3.4.0",
+    "yazl": "^3.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/yauzl": "^3.4.0",
+    "@types/yazl": "^3.3.1",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "44.9.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "prettier": "^3.9.10",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^4.1.12"
+  },
+  "author": "Axelton",
+  "engines": {
+    "node": ">=24.15.0"
+  }
+}
