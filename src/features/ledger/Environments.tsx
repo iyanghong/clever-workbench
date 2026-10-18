@@ -4,10 +4,11 @@ import type { Snapshot } from '../../types';
 import type { EnvironmentRecord, ServiceRecord, DeploymentRecord } from '../../ledger-types';
 import type { ModuleProps } from '../../app/modules';
 import { Accounts, type AccountTarget } from './Accounts';
+import { RelatedWork, type RelatedHost } from './RelatedWork';
 import { Resources } from './Resources';
 import { useAutosave } from '../../shared/useAutosave';
 
-export type EditorHost = {
+export type EditorHost = RelatedHost & {
   onSnapshot: (value: Snapshot) => void;
   registerFlush: ModuleProps['registerFlush'];
   onError: (message: string) => void;
@@ -17,17 +18,39 @@ export function Environments({
   systemId,
   snapshot,
   flushAll,
+  focusId,
   ...host
-}: EditorHost & { systemId: string; snapshot: Snapshot; flushAll: () => Promise<void> }) {
+}: EditorHost & {
+  systemId: string;
+  snapshot: Snapshot;
+  flushAll: () => Promise<void>;
+  focusId?: string;
+}) {
   const environments = snapshot.environments.filter((item) => item.systemId === systemId);
   const services = snapshot.services.filter((item) => item.systemId === systemId);
-  const [environmentId, setEnvironmentId] = useState<string | null>(null),
-    [serviceId, setServiceId] = useState<string | null>(null);
+  const focusedAccount = snapshot.accounts.find((item) => item.id === focusId),
+    focusedResource = snapshot.resources.find(
+      (item) => item.id === (focusedAccount?.resourceId ?? focusId),
+    );
+  const focusedEnvironment = environments.find(
+    (item) =>
+      item.id === (focusedResource?.environmentId ?? focusedAccount?.environmentId ?? focusId),
+  );
+  const [environmentId, setEnvironmentId] = useState<string | null>(focusedEnvironment?.id ?? null),
+    [serviceId, setServiceId] = useState<string | null>(
+      services.find((item) => item.id === focusId)?.id ?? null,
+    );
   const [environmentName, setEnvironmentName] = useState(''),
     [serviceName, setServiceName] = useState('');
-  const [tab, setTab] = useState<'resources' | 'services' | 'accounts'>('resources');
-  const [focusResource, setFocusResource] = useState<string | null>(null),
-    [focusAccount, setFocusAccount] = useState<string | null>(null);
+  const [tab, setTab] = useState<'resources' | 'services' | 'accounts'>(
+    focusedAccount && !focusedAccount.resourceId
+      ? 'accounts'
+      : services.some((item) => item.id === focusId)
+        ? 'services'
+        : 'resources',
+  );
+  const [focusResource, setFocusResource] = useState<string | null>(focusedResource?.id ?? null),
+    [focusAccount, setFocusAccount] = useState<string | null>(focusedAccount?.id ?? null);
   function openAccount(target: AccountTarget) {
     setEnvironmentId(target.environmentId);
     setFocusResource(target.resourceId);
@@ -236,6 +259,13 @@ export function Environments({
             />
           )}
         </>
+      )}
+      {environment && (
+        <RelatedWork
+          context={{ systemId, environmentId: environment.id }}
+          snapshot={snapshot}
+          {...host}
+        />
       )}
     </section>
   );

@@ -12,6 +12,7 @@ import type { ResourceKind, ResourceRecord, EnvironmentRecord } from '../../ledg
 import { useAutosave } from '../../shared/useAutosave';
 import { CopyValue } from '../../shared/CopyValue';
 import { Dialog } from '../../shared/Dialog';
+import { RelatedWork } from './RelatedWork';
 import { Accounts, type AccountNavigation } from './Accounts';
 import type { EditorHost } from './Environments';
 
@@ -141,6 +142,15 @@ export function Resources({
             flushAll={flushAll}
             focusAccount={focusAccount}
             onOpenAccount={onOpenAccount}
+            {...host}
+          />
+          <RelatedWork
+            context={{
+              systemId: environment.systemId,
+              environmentId: environment.id,
+              resourceId: resource.id,
+            }}
+            snapshot={snapshot}
             {...host}
           />
         </>

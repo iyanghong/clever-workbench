@@ -4,6 +4,8 @@ const call = (channel: string, ...args: unknown[]) => ipcRenderer.invoke(channel
 const api: DesktopAPI = {
   platform: process.platform,
   snapshot: () => call('snapshot'),
+  document: (id) => call('document', id),
+  searchDocuments: (query) => call('search-documents', query),
   task: (id) => call('task', id),
   search: (q) => call('search', q),
   mutate: (c) => call('mutate', c),

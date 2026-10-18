@@ -1768,3 +1768,39 @@ h3 {
 .tiptap table th { background: var(--hover); font-weight: 600; }
 .tiptap table td p, .tiptap table th p { margin: 0; }
 .tiptap table .selectedCell::after { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--accent) 14%, transparent); pointer-events: none; }
+
+.documents-layout { display: grid; grid-template-columns: 290px minmax(0,1fr); flex: 1; min-height: 0; }
+.documents-index { padding: 28px 18px; border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; background: color-mix(in srgb,var(--panel) 45%,transparent); }
+.document-scopes { display: flex; gap: 8px; margin-bottom: 16px; }
+.document-scopes button { display: flex; gap: 5px; align-items: center; padding: 7px 9px; border-radius: 7px; color: var(--secondary); font-size: 11px; }
+.document-scopes button[aria-pressed="true"] { color: var(--accent); background: var(--selected); }
+.document-search { display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); padding: 9px; color: var(--muted); margin-bottom: 16px; }
+.document-search input { border: 0; outline: 0; background: transparent; width: 100%; min-width: 0; font-size: 12px; }
+.documents-index nav { display: flex; flex-direction: column; gap: 6px; overflow: auto; }
+.document-list-row { text-align: left; display: flex; flex-direction: column; gap: 7px; padding: 14px 12px; border-radius: 10px; }
+.document-list-row:hover { background: var(--hover); }
+.document-list-row.selected { background: var(--selected); }
+.document-list-row strong { font-size: 13px; font-weight: 550; }
+.document-list-row span { font-size: 11px; color: var(--secondary); }
+.document-list-row small { font-size: 10px; color: var(--muted); }
+.document-list-row strong,.document-list-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.document-editor { overflow: auto; padding: 32px clamp(24px,4vw,60px); }
+.document-title { font-size: 29px; font-weight: 650; letter-spacing: -.6px; background: transparent; border: 0; width: 100%; margin: 23px 0; }
+.document-context { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; font-size: 11px; color: var(--secondary); }
+.document-context label { display: flex; align-items: center; gap: 7px; }
+.document-context select { border: 0; padding: 7px; border-radius: 7px; background: var(--hover); font-size: 12px; }
+.context-fields { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.context-fields label { display: flex; flex-direction: column; gap: 7px; font-size: 11px; color: var(--secondary); flex: 1; min-width: 110px; }
+.context-fields select { min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); font-size: 12px; }
+.task-context { margin: 8px 0 20px; }
+.document-footer { display: flex; align-items: center; gap: 12px; padding: 20px 0; margin-top: 24px; border-top: 1px solid var(--line); }
+.document-footer > span { color: var(--muted); font-size: 11px; }
+.related-work { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 20px; }
+.related-work .section-heading { margin-bottom: 10px; }
+.related-work .section-heading h3 { font-size: 12px; color: var(--secondary); }
+.related-work .section-heading .text-button { font-size: 11px; }
+.related-work .quick-add { padding: 9px 11px; }
+.related-work .quick-add input { font-size: 12px; }
+.related-links { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.related-links button { display: flex; gap: 8px; align-items: center; padding: 7px 0; text-align: left; font-size: 12px; }
+@media (max-width: 1050px) { .documents-layout { grid-template-columns: 230px minmax(0,1fr); } .document-editor { padding: 28px 24px; } }

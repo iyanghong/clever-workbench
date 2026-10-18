@@ -1,3 +1,8 @@
+export type ObjectContext = {
+  systemId: string | null;
+  environmentId: string | null;
+  resourceId: string | null;
+};
 export type SystemRecord = {
   id: string;
   name: string;

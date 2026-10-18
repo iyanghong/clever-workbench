@@ -8,7 +8,8 @@ import {
 } from '@phosphor-icons/react';
 import type { ModuleProps } from '../../app/modules';
 import type { Snapshot } from '../../types';
-import type { SystemRecord } from '../../ledger-types';
+import { RelatedWork, type RelatedHost } from './RelatedWork';
+import type { SystemRecord, ObjectContext } from '../../ledger-types';
 import { emptyContent, dateLabel } from '../../domain';
 import { useAutosave } from '../../shared/useAutosave';
 import { useSaveGroup } from '../../shared/useSaveGroup';
@@ -27,7 +28,18 @@ export function LedgerPage({ route, navigate, registerFlush }: ModuleProps) {
       .snapshot()
       .then((next) => {
         setSnapshot(next);
-        setSelected(route.objectId ?? next.systems[0]?.id ?? null);
+        const target = route.objectId;
+        const account = next.accounts.find((item) => item.id === target),
+          resource = next.resources.find((item) => item.id === (account?.resourceId ?? target));
+        const environment = next.environments.find(
+          (item) => item.id === (resource?.environmentId ?? account?.environmentId ?? target),
+        );
+        const service = next.services.find((item) => item.id === target);
+        const system = next.systems.find(
+          (item) => item.id === (environment?.systemId ?? service?.systemId ?? target),
+        );
+        if (target && !system) setError('关联对象已不存在，请重新选择。');
+        setSelected(system?.id ?? next.systems[0]?.id ?? null);
       })
       .catch((cause) => setError(cause.message));
   }, []);
@@ -63,10 +75,10 @@ export function LedgerPage({ route, navigate, registerFlush }: ModuleProps) {
       creating.current = false;
     }
   }
-  async function createTask(systemId: string, title: string) {
+  async function createTask(context: Partial<ObjectContext>, title: string) {
     await saves.flush();
     const fresh = await window.desktop.snapshot();
-    const system = fresh.systems.find((item) => item.id === systemId);
+    const system = fresh.systems.find((item) => item.id === context.systemId);
     if (!system) throw new Error('系统不存在。');
     const result = await window.desktop.mutate({
       type: 'task.create',
@@ -75,10 +87,15 @@ export function LedgerPage({ route, navigate, registerFlush }: ModuleProps) {
         content: emptyContent(),
         markdown: '',
         projectId: system.currentProjectId,
-        systemId,
+        ...context,
       },
     });
     await navigate({ module: 'tasks', objectId: result.createdId });
+  }
+  async function createDocument(context: Partial<ObjectContext>) {
+    await saves.flush();
+    const result = await window.desktop.mutate({ type: 'document.create', context });
+    await navigate({ module: 'documents', objectId: result.createdId });
   }
   const system = snapshot?.systems.find((item) => item.id === selected);
   return (
@@ -153,6 +170,9 @@ export function LedgerPage({ route, navigate, registerFlush }: ModuleProps) {
             flushAll={saves.flush}
             onError={setError}
             createTask={createTask}
+            createDocument={createDocument}
+            navigate={navigate}
+            focusId={route.objectId}
           />
         ) : (
           <section className="ledger-empty">
@@ -182,14 +202,17 @@ function SystemPanel({
   flushAll,
   onError,
   createTask,
-}: {
+  createDocument,
+  navigate,
+  focusId,
+}: RelatedHost & {
+  focusId?: string;
   system: SystemRecord;
   snapshot: Snapshot;
   onSnapshot: (snapshot: Snapshot) => void;
   registerFlush: ModuleProps['registerFlush'];
   flushAll: () => Promise<void>;
   onError: (message: string) => void;
-  createTask: (systemId: string, title: string) => Promise<void>;
 }) {
   const form = useAutosave(
     { name: system.name, notes: system.notes, url: system.url, projectId: system.currentProjectId },
@@ -200,8 +223,6 @@ function SystemPanel({
     onError,
   );
   useEffect(() => registerFlush(form.flush), [registerFlush, form.flush]);
-  const [taskTitle, setTaskTitle] = useState(''),
-    [busy, setBusy] = useState(false);
   const commit = () => void form.flush().catch((cause) => onError(String(cause)));
   const links = snapshot.systemProjects.filter((link) => link.systemId === system.id);
   return (
@@ -291,6 +312,10 @@ function SystemPanel({
         registerFlush={registerFlush}
         flushAll={flushAll}
         onError={onError}
+        createTask={createTask}
+        createDocument={createDocument}
+        navigate={navigate}
+        focusId={focusId}
       />
       <section className="system-section" aria-label="项目沿革">
         <div className="section-heading">
@@ -326,36 +351,14 @@ function SystemPanel({
           <p className="secondary-copy">关联项目后，在这里保留每个阶段。</p>
         )}
       </section>
-      <section className="system-section">
-        <div className="section-heading">
-          <h3>相关工作</h3>
-          <span>自动关联这个系统与当前项目</span>
-        </div>
-        <form
-          className="quick-add system-task-add"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (busy || !taskTitle.trim()) return;
-            setBusy(true);
-            void createTask(system.id, taskTitle)
-              .catch((cause) => onError(String(cause)))
-              .finally(() => setBusy(false));
-          }}
-        >
-          <PlusIcon size={19} />
-          <input
-            aria-label="为当前系统新增任务"
-            placeholder="为这个系统记一件事…"
-            value={taskTitle}
-            disabled={busy}
-            onChange={(event) => setTaskTitle(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && event.nativeEvent.isComposing) event.preventDefault();
-            }}
-          />
-          <kbd>↵</kbd>
-        </form>
-      </section>
+      <RelatedWork
+        context={{ systemId: system.id }}
+        snapshot={snapshot}
+        createTask={createTask}
+        createDocument={createDocument}
+        navigate={navigate}
+        onError={onError}
+      />
     </section>
   );
 }

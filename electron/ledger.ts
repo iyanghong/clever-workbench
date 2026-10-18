@@ -9,6 +9,7 @@ import type {
   DeploymentRecord,
   ResourceRecord,
   AccountRecord,
+  ObjectContext,
 } from '../src/ledger-types';
 
 function field(value: unknown, max: number) {
@@ -227,6 +228,23 @@ export class Ledger {
         field(command.notes ?? previous?.notes ?? '', 100_000),
       );
     return id;
+  }
+  resolveContext(input: Partial<ObjectContext>): ObjectContext {
+    const resourceId = input.resourceId ?? null;
+    const resource = resourceId ? this.resource(resourceId) : null;
+    if (
+      resource &&
+      input.environmentId !== undefined &&
+      input.environmentId !== resource.environmentId
+    )
+      throw new Error('资源与背景环境不一致。');
+    const environmentId = resource?.environmentId ?? input.environmentId ?? null;
+    const environment = environmentId ? this.environment(environmentId) : null;
+    if (environment && input.systemId !== undefined && input.systemId !== environment.systemId)
+      throw new Error('环境与背景系统不一致。');
+    const systemId = environment?.systemId ?? input.systemId ?? null;
+    if (systemId) this.system(systemId);
+    return { systemId, environmentId, resourceId };
   }
   account(id: string): AccountRecord {
     const row = this.db.prepare('SELECT * FROM accounts WHERE id=?').get(field(id, 100));

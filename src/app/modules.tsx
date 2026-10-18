@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import {
   TrayIcon,
+  NotePencilIcon,
   ChartBarHorizontalIcon,
   ArchiveIcon,
   TrashIcon,
@@ -9,6 +10,7 @@ import {
   type Icon,
 } from '@phosphor-icons/react';
 import { TaskWorkspace, type TaskView } from '../features/tasks/TaskWorkspace';
+import { DocumentsPage } from '../features/documents/DocumentsPage';
 import { LedgerPage } from '../features/ledger/LedgerPage';
 
 export type Route = { module: string; project?: string; objectId?: string };
@@ -29,6 +31,7 @@ export type WorkbenchModule = {
 function TaskModule({ route, navigate, registerFlush }: ModuleProps) {
   return (
     <TaskWorkspace
+      onOpenContext={(id) => navigate({ module: 'ledger', objectId: id })}
       initialView={route.module as TaskView}
       initialProject={route.project}
       initialTaskId={route.objectId}
@@ -39,6 +42,13 @@ function TaskModule({ route, navigate, registerFlush }: ModuleProps) {
 }
 
 export const modules: WorkbenchModule[] = [
+  {
+    id: 'documents',
+    title: '文档',
+    icon: NotePencilIcon,
+    section: 'workspace',
+    Page: DocumentsPage,
+  },
   { id: 'ledger', title: '台账', icon: StackIcon, section: 'workspace', Page: LedgerPage },
   {
     id: 'tasks',

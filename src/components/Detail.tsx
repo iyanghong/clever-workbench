@@ -8,16 +8,18 @@ import {
   CheckIcon,
   ArrowCounterClockwiseIcon,
   TrashIcon,
+  ArrowUpRightIcon,
 } from '@phosphor-icons/react';
 import type { Draft, Snapshot, Task, Command } from '../types';
 import { dateLabel, localInput, minute, validateTimes } from '../domain';
+import { ContextPicker, contextLabel } from '../shared/ContextPicker';
 import { useAutosave } from '../shared/useAutosave';
 import { Editor } from './Editor';
 export function Detail({
   task,
   draft,
-  projects,
-  systems,
+  snapshot,
+  onOpenContext,
   onClose,
   onDiscard,
   onSnapshot,
@@ -29,8 +31,8 @@ export function Detail({
 }: {
   task: Task | null;
   draft: Draft;
-  projects: Snapshot['projects'];
-  systems: Snapshot['systems'];
+  snapshot: Snapshot;
+  onOpenContext: (id: string) => Promise<void>;
   onClose: () => void;
   onDiscard: () => void;
   onSnapshot: (s: Snapshot) => void;
@@ -40,6 +42,7 @@ export function Detail({
   flushRef: React.MutableRefObject<() => Promise<void>>;
   onCommand: (c: Command) => Promise<boolean | undefined>;
 }) {
+  const projects = snapshot.projects;
   const pendingImports = useRef<Promise<void>>(Promise.resolve());
   const form = useAutosave<Draft>(
     task
@@ -49,6 +52,8 @@ export function Detail({
           markdown: task.markdown,
           projectId: task.projectId,
           systemId: task.systemId,
+          environmentId: task.environmentId,
+          resourceId: task.resourceId,
         }
       : draft,
     async (payload) => {
@@ -149,23 +154,29 @@ export function Detail({
               ))}
           </select>
           <span className="dot" style={{ background: currentProject?.color ?? '#9c9ca3' }} />
-          {systems.length > 0 && (
-            <select
-              aria-label="关联系统"
-              disabled={deleted}
-              value={value.systemId ?? ''}
-              onChange={(event) => change({ ...value, systemId: event.target.value || null })}
-            >
-              <option value="">无系统关联</option>
-              {systems.map((system) => (
-                <option key={system.id} value={system.id}>
-                  {system.name}
-                </option>
-              ))}
-            </select>
-          )}
           {currentProject?.archivedAt && <span className="tag">已归档</span>}
         </div>
+        <details className="compact-details task-context">
+          <summary>关联背景{value.systemId ? ` · ${contextLabel(snapshot, value)}` : ''}</summary>
+          <ContextPicker
+            snapshot={snapshot}
+            value={value}
+            disabled={deleted}
+            onChange={(context) => change({ ...value, ...context })}
+          />
+          {value.systemId && (
+            <button
+              className="text-button"
+              aria-label="回到关联对象"
+              onClick={() =>
+                void onOpenContext(value.resourceId ?? value.environmentId ?? value.systemId!)
+              }
+            >
+              <ArrowUpRightIcon size={14} />
+              回到台账
+            </button>
+          )}
+        </details>
         <textarea
           disabled={deleted}
           className="detail-title"

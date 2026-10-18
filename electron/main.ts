@@ -162,6 +162,8 @@ app
       return net.fetch(pathToFileURL(path.join(store.directory, 'assets', filename)).href);
     });
     secureHandler('snapshot', () => store.snapshot());
+    secureHandler('document', (id) => store.document(id));
+    secureHandler('search-documents', (query) => store.searchDocuments(query));
     secureHandler('task', (id) => store.task(id));
     secureHandler('search', (query) => store.search(query));
     secureHandler('mutate', (command) => {

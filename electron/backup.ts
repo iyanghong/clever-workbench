@@ -16,8 +16,9 @@ import {
   schemaVersion,
   schemaTables,
 } from './store';
-import { validateLedger } from './ledger';
+import { Ledger, validateLedger } from './ledger';
 import { validateTimes } from '../src/domain';
+import type { DocumentRecord } from '../src/document-types';
 import type { Task, Draft, BackupInfo } from '../src/types';
 
 type Manifest = {
@@ -26,6 +27,7 @@ type Manifest = {
   createdAt: string;
   tasks: number;
   projects: number;
+  documents: number;
   files: Record<string, { size: number; sha256: string }>;
 };
 async function hashFile(filename: string) {
@@ -71,16 +73,19 @@ export class Backups {
       const database = path.join(staging, 'database.sqlite');
       await backup(this.store.db, database);
       const snapshot = new DatabaseSync(database, { readOnly: true });
-      let names: string[], tasks: number, projects: number;
+      let names: string[], tasks: number, projects: number, documents: number;
       try {
         const contents = snapshot
-          .prepare('SELECT content,markdown FROM tasks')
+          .prepare(
+            'SELECT content,markdown FROM tasks UNION ALL SELECT content,markdown FROM documents',
+          )
           .all()
           .flatMap((r) => [JSON.parse(r.content as string), r.markdown]);
         const draft = snapshot.prepare("SELECT value FROM preferences WHERE key='draft'").get();
         if (draft) contents.push(JSON.parse(draft.value as string));
         names = [...new Set(contents.flatMap(assetReferences))];
         tasks = Number(snapshot.prepare('SELECT count(*) n FROM tasks').get()!.n);
+        documents = Number(snapshot.prepare('SELECT count(*) n FROM documents').get()!.n);
         projects = Number(snapshot.prepare('SELECT count(*) n FROM projects').get()!.n);
       } finally {
         snapshot.close();
@@ -103,6 +108,7 @@ export class Backups {
         createdAt: new Date().toISOString(),
         tasks,
         projects,
+        documents,
         files,
       };
       await fsp.mkdir(path.dirname(filename), { recursive: true });
@@ -235,6 +241,7 @@ export class Backups {
         createdAt: manifest.createdAt,
         tasks: manifest.tasks,
         projects: manifest.projects,
+        documents: manifest.documents,
         images: Object.keys(manifest.files).filter((n) => n.startsWith('assets/')).length,
       };
     } catch (e) {
@@ -352,6 +359,7 @@ function validateDatabase(directory: string, manifest: Manifest) {
     )
       throw new Error('备份数据库结构不兼容。');
     validateLedger(db);
+    const ledger = new Ledger(db);
     for (const row of db.prepare('SELECT key,value FROM preferences').all()) {
       const value = JSON.parse(row.value as string);
       if (
@@ -381,6 +389,7 @@ function validateDatabase(directory: string, manifest: Manifest) {
     for (const row of rows) {
       const task = row as unknown as Task;
       validateTimes(task.startedAt, task.completedAt);
+      ledger.resolveContext(task);
       if (
         !task.title?.trim() ||
         task.title.length > 1000 ||
@@ -413,10 +422,33 @@ function validateDatabase(directory: string, manifest: Manifest) {
         )
           throw new Error('草稿无效。');
         validateContent(draft.content);
+        ledger.resolveContext(draft);
         for (const name of assetReferences([draft.content, draft.markdown]))
           if (!manifest.files[`assets/${name}`]) throw new Error('草稿图片缺失。');
       }
     }
+    const documents = db.prepare('SELECT * FROM documents').all();
+    for (const row of documents) {
+      const document = row as unknown as DocumentRecord;
+      if (
+        typeof document.title !== 'string' ||
+        document.title.length > 1000 ||
+        typeof document.markdown !== 'string' ||
+        document.markdown.length > 10_000_000 ||
+        !Number.isSafeInteger(document.createdAt) ||
+        !Number.isSafeInteger(document.updatedAt) ||
+        (document.deletedAt !== null && !Number.isSafeInteger(document.deletedAt))
+      )
+        throw new Error('文档记录无效。');
+      ledger.resolveContext(document);
+      if (document.projectId !== null && !projectMap.has(document.projectId))
+        throw new Error('文档项目丢失。');
+      const content = JSON.parse(row.content as string);
+      validateContent(content);
+      for (const name of assetReferences([content, document.markdown]))
+        if (!manifest.files[`assets/${name}`]) throw new Error('文档图片缺失。');
+    }
+    if (documents.length !== manifest.documents) throw new Error('备份文档数量不一致。');
     if (rows.length !== manifest.tasks || projects.length !== manifest.projects)
       throw new Error('备份记录数量不一致。');
   } finally {

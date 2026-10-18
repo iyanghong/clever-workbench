@@ -1,3 +1,4 @@
+import type { DocumentCommand, DocumentRecord, DocumentSummary } from './document-types';
 import type { JSONContent } from '@tiptap/react';
 import type {
   LedgerCommand,
@@ -15,6 +16,8 @@ export type TaskSummary = {
   title: string;
   projectId: string | null;
   systemId?: string | null;
+  environmentId?: string | null;
+  resourceId?: string | null;
   createdAt: number;
   startedAt: number;
   completedAt: number | null;
@@ -25,6 +28,8 @@ export type Draft = {
   title: string;
   projectId: string | null;
   systemId?: string | null;
+  environmentId?: string | null;
+  resourceId?: string | null;
   content: JSONContent;
   markdown: string;
   startedAt?: number;
@@ -37,6 +42,7 @@ export type Settings = {
   lastBackupError: string | null;
 };
 export type Snapshot = {
+  documents: DocumentSummary[];
   resources: ResourceRecord[];
   accounts: AccountRecord[];
   environments: EnvironmentRecord[];
@@ -50,6 +56,7 @@ export type Snapshot = {
   settings: Settings;
 };
 export type Command =
+  | DocumentCommand
   | LedgerCommand
   | { type: 'task.create'; draft: Draft }
   | {
@@ -60,6 +67,8 @@ export type Command =
       markdown: string;
       projectId: string | null;
       systemId?: string | null;
+      environmentId?: string | null;
+      resourceId?: string | null;
     }
   | {
       type: 'task.complete';
@@ -85,10 +94,13 @@ export type BackupInfo = {
   tasks: number;
   projects: number;
   images: number;
+  documents: number;
 };
 export interface DesktopAPI {
   platform: string;
   snapshot(): Promise<Snapshot>;
+  document(id: string): Promise<DocumentRecord>;
+  searchDocuments(query: string): Promise<string[]>;
   task(id: string): Promise<Task>;
   search(query: string): Promise<string[]>;
   mutate(command: Command): Promise<MutationResult>;

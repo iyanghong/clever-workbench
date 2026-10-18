@@ -65,12 +65,14 @@ export function TaskWorkspace({
   initialTaskId,
   registerFlush,
   onNavigate,
+  onOpenContext,
 }: {
   initialView?: TaskView;
   initialProject?: string;
   initialTaskId?: string;
   registerFlush: (save: () => Promise<void>) => () => void;
   onNavigate: (view: TaskView, project?: string) => Promise<void>;
+  onOpenContext: (id: string) => Promise<void>;
 }) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
     [view, setView] = useState<TaskView>(initialView),
@@ -1014,8 +1016,8 @@ export function TaskWorkspace({
               key={selected}
               task={selected === 'new' ? null : task}
               draft={draft}
-              projects={projects}
-              systems={snapshot.systems}
+              snapshot={snapshot}
+              onOpenContext={onOpenContext}
               onClose={() => void closeDetail()}
               onDiscard={() => void discardDraft()}
               onSnapshot={applySnapshot}

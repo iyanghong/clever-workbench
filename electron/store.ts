@@ -14,9 +14,10 @@ import type {
   TaskSummary,
 } from '../src/types';
 import { minute, validateTimes } from '../src/domain';
+import { Documents, initializeDocuments } from './documents';
 import { Ledger, initializeLedger } from './ledger';
 
-export const schemaVersion = 5;
+export const schemaVersion = 6;
 export const schemaTables = [
   'projects',
   'tasks',
@@ -28,6 +29,7 @@ export const schemaTables = [
   'deployments',
   'resources',
   'accounts',
+  'documents',
 ];
 
 export function atomicWrite(filename: string, bytes: string | Uint8Array) {
@@ -117,6 +119,7 @@ export function validateContent(content: any) {
 }
 export class Store {
   ledger!: Ledger;
+  documents!: Documents;
   db: DatabaseSync;
   generation: string;
   directory: string;
@@ -149,8 +152,10 @@ export class Store {
    CREATE TABLE IF NOT EXISTS preferences(key TEXT PRIMARY KEY, value TEXT NOT NULL);
    `);
     initializeLedger(db);
+    initializeDocuments(db);
     db.exec(`PRAGMA user_version=${schemaVersion}`);
     this.ledger = new Ledger(db);
+    this.documents = new Documents(db, this.ledger, (value) => this.validateDraft(value));
     return db;
   }
   get<T>(key: string, fallback: T): T {
@@ -176,9 +181,10 @@ export class Store {
   snapshot(): Snapshot {
     return {
       ...this.ledger.snapshot(),
+      documents: this.documents.snapshot(),
       tasks: this.db
         .prepare(
-          'SELECT id,title,projectId,systemId,createdAt,startedAt,completedAt,deletedAt FROM tasks',
+          'SELECT id,title,projectId,systemId,environmentId,resourceId,createdAt,startedAt,completedAt,deletedAt FROM tasks',
         )
         .all() as unknown as TaskSummary[],
       projects: this.db
@@ -192,6 +198,12 @@ export class Store {
     const row = this.db.prepare('SELECT * FROM tasks WHERE id=?').get(text(id));
     if (!row) throw new Error('任务不存在。');
     return { ...row, content: JSON.parse(row.content as string) } as unknown as Task;
+  }
+  document(id: string) {
+    return this.documents.get(id);
+  }
+  searchDocuments(query: string) {
+    return this.documents.search(query);
   }
   project(id: string): Project {
     const row = this.db.prepare('SELECT * FROM projects WHERE id=?').get(text(id));
@@ -216,7 +228,7 @@ export class Store {
     this.checkAssets(draft.content);
     this.checkAssets(draft.markdown);
     if (draft.projectId !== null) this.project(draft.projectId);
-    if (draft.systemId != null) this.ledger.system(draft.systemId);
+    this.ledger.resolveContext(draft);
   }
   markChanged() {
     this.set('revision', this.get('revision', 0) + 1);
@@ -242,6 +254,14 @@ export class Store {
     try {
       const now = minute();
       switch (command.type) {
+        case 'document.create':
+        case 'document.edit':
+        case 'document.delete':
+        case 'document.restore':
+        case 'document.purge': {
+          createdId = this.documents.mutate(command, now);
+          break;
+        }
         case 'account.save': {
           createdId = this.ledger.saveAccount(command, now);
           break;
@@ -289,13 +309,14 @@ export class Store {
         case 'task.create': {
           const d = command.draft;
           this.validateDraft(d);
+          const context = this.ledger.resolveContext(d);
           this.activeProject(d.projectId);
           const start = d.startedAt ?? now;
           validateTimes(start, null);
           createdId = randomUUID();
           this.db
             .prepare(
-              'INSERT INTO tasks(id,title,content,markdown,projectId,createdAt,startedAt,completedAt,deletedAt,systemId) VALUES(?,?,?,?,?,?,?,?,?,?)',
+              'INSERT INTO tasks(id,title,content,markdown,projectId,createdAt,startedAt,completedAt,deletedAt,systemId,environmentId,resourceId) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
             )
             .run(
               createdId,
@@ -307,7 +328,9 @@ export class Store {
               start,
               null,
               null,
-              d.systemId ?? null,
+              context.systemId,
+              context.environmentId,
+              context.resourceId,
             );
           this.set('draft', null);
           break;
@@ -327,10 +350,15 @@ export class Store {
               command.projectId,
               command.id,
             );
-          if (command.systemId !== undefined)
-            this.db
-              .prepare('UPDATE tasks SET systemId=? WHERE id=?')
-              .run(command.systemId, command.id);
+          const context = this.ledger.resolveContext({
+            systemId: command.systemId === undefined ? old.systemId : command.systemId,
+            environmentId:
+              command.environmentId === undefined ? old.environmentId : command.environmentId,
+            resourceId: command.resourceId === undefined ? old.resourceId : command.resourceId,
+          });
+          this.db
+            .prepare('UPDATE tasks SET systemId=?,environmentId=?,resourceId=? WHERE id=?')
+            .run(context.systemId, context.environmentId, context.resourceId, command.id);
           break;
         }
         case 'task.complete': {
@@ -450,6 +478,8 @@ export class Store {
             ) > 0
           )
             throw new Error('项目仍有关联任务（包括回收站），请使用归档。');
+          if (this.db.prepare('SELECT 1 FROM documents WHERE projectId=?').get(command.id))
+            throw new Error('项目仍有关联文档（包括回收站），请使用归档。');
           const draft = this.get<Draft | null>('draft', null);
           if (draft?.projectId === command.id) this.set('draft', { ...draft, projectId: null });
           this.db.prepare('DELETE FROM projects WHERE id=?').run(command.id);
