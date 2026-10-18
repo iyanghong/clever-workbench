@@ -74,9 +74,9 @@ export class Backups {
       let names: string[], tasks: number, projects: number;
       try {
         const contents = snapshot
-          .prepare('SELECT content FROM tasks')
+          .prepare('SELECT content,markdown FROM tasks')
           .all()
-          .map((r) => JSON.parse(r.content as string));
+          .flatMap((r) => [JSON.parse(r.content as string), r.markdown]);
         const draft = snapshot.prepare("SELECT value FROM preferences WHERE key='draft'").get();
         if (draft) contents.push(JSON.parse(draft.value as string));
         names = [...new Set(contents.flatMap(assetReferences))];
@@ -391,7 +391,7 @@ function validateDatabase(directory: string, manifest: Manifest) {
         throw new Error('任务记录无效。');
       const content = JSON.parse(row.content as string);
       validateContent(content);
-      for (const name of assetReferences(content))
+      for (const name of assetReferences([content, task.markdown]))
         if (!manifest.files[`assets/${name}`]) throw new Error('备份缺少正文图片。');
       if (task.projectId !== null && !projectMap.has(task.projectId))
         throw new Error('任务项目丢失。');
@@ -413,7 +413,7 @@ function validateDatabase(directory: string, manifest: Manifest) {
         )
           throw new Error('草稿无效。');
         validateContent(draft.content);
-        for (const name of assetReferences(draft.content))
+        for (const name of assetReferences([draft.content, draft.markdown]))
           if (!manifest.files[`assets/${name}`]) throw new Error('草稿图片缺失。');
       }
     }

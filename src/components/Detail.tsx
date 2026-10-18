@@ -11,6 +11,7 @@ import {
 } from '@phosphor-icons/react';
 import type { Draft, Snapshot, Task, Command } from '../types';
 import { dateLabel, localInput, minute, validateTimes } from '../domain';
+import { useAutosave } from '../shared/useAutosave';
 import { Editor } from './Editor';
 export function Detail({
   task,
@@ -39,7 +40,8 @@ export function Detail({
   flushRef: React.MutableRefObject<() => Promise<void>>;
   onCommand: (c: Command) => Promise<boolean | undefined>;
 }) {
-  const [value, setValue] = useState<Draft>(
+  const pendingImports = useRef<Promise<void>>(Promise.resolve());
+  const form = useAutosave<Draft>(
     task
       ? {
           title: task.title,
@@ -49,68 +51,35 @@ export function Detail({
           systemId: task.systemId,
         }
       : draft,
+    async (payload) => {
+      if (task) {
+        const result = await window.desktop.mutate({ type: 'task.edit', id: task.id, ...payload });
+        onSnapshot(result.snapshot);
+      } else {
+        await window.desktop.saveDraft(payload);
+        onDraft(payload);
+      }
+    },
+    onError,
+    pendingImports,
   );
-  const pendingImports = useRef<Promise<void>>(Promise.resolve());
-  const latest = useRef(value),
-    dirty = useRef(false),
-    timer = useRef<ReturnType<typeof setTimeout> | null>(null),
-    queue = useRef(Promise.resolve());
-  const [status, setStatus] = useState('已保存'),
-    [expanded, setExpanded] = useState(false),
+  const { value, status, flush: save } = form;
+  const latest = useRef(value);
+  const [expanded, setExpanded] = useState(false),
     [dates, setDates] = useState(false),
     [start, setStart] = useState(localInput(task?.startedAt ?? draft.startedAt ?? minute())),
     [end, setEnd] = useState(task?.completedAt ? localInput(task.completedAt) : ''),
     [busy, setBusy] = useState(false);
-  const taskRef = useRef(task);
-  taskRef.current = task;
-  async function save() {
-    if (timer.current) clearTimeout(timer.current);
-    const next = async () => {
-      await pendingImports.current;
-      if (!dirty.current) return;
-      const payload = latest.current;
-      setStatus('保存中');
-      try {
-        if (task) {
-          const result = await window.desktop.mutate({
-            type: 'task.edit',
-            id: task.id,
-            title: payload.title,
-            content: payload.content,
-            markdown: payload.markdown,
-            projectId: payload.projectId,
-            systemId: payload.systemId,
-          });
-          onSnapshot(result.snapshot);
-        } else {
-          await window.desktop.saveDraft(payload);
-          onDraft(payload);
-        }
-        if (latest.current === payload) dirty.current = false;
-        setStatus('已保存');
-      } catch (e) {
-        setStatus('保存失败 · 点击重试');
-        throw e;
-      }
-    };
-    queue.current = queue.current.catch(() => {}).then(next);
-    return queue.current;
-  }
   useEffect(() => {
     flushRef.current = save;
     return () => {
-      if (timer.current) clearTimeout(timer.current);
       flushRef.current = async () => {};
     };
-  }, []);
+  }, [save]);
   function change(next: Draft) {
     latest.current = next;
-    dirty.current = true;
-    setValue(next);
+    form.change(next);
     if (!task) onDraft(next);
-    setStatus('保存中');
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => void save().catch((e) => onError(e.message)), 600);
   }
   async function create() {
     if (busy) return;
@@ -273,7 +242,7 @@ export function Detail({
         <Editor
           pendingRef={pendingImports}
           readOnly={deleted}
-          content={value.content}
+          markdown={value.markdown}
           onChange={(content, markdown) => change({ ...latest.current, content, markdown })}
           onError={onError}
         />

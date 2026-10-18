@@ -1754,3 +1754,17 @@ h3 {
 .account-editor { padding: 8px 0; }
 .modal > label { display: flex; flex-direction: column; gap: 8px; margin: 15px 0; font-size: 12px; color: var(--secondary); }
 .modal > label input, .modal > label select { padding: 10px 12px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); font-size: 13px; }
+
+.editor-mode { display: flex; gap: 4px; margin: 20px 0 8px; align-items: center; }
+.editor-mode button { padding: 6px 11px; border-radius: 7px; font-size: 11px; color: var(--secondary); }
+.editor-mode button[aria-pressed="true"] { background: var(--selected); color: var(--accent); }
+.editor-notice { padding: 11px 13px; margin: 10px 0; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px; font-size: 12px; line-height: 1.7; color: var(--secondary); background: var(--panel); }
+.markdown-source { width: 100%; min-height: 380px; resize: vertical; padding: 16px 2px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; line-height: 1.8; border: 0; background: transparent; tab-size: 2; color: var(--text); }
+.table-tools { display: flex; flex-wrap: wrap; gap: 8px; padding: 7px 0; font-size: 11px; color: var(--secondary); }
+.table-tools button { padding: 5px 7px; background: var(--hover); border-radius: 5px; }
+.tiptap .tableWrapper { overflow-x: auto; margin: 16px 0; }
+.tiptap table { border-collapse: collapse; table-layout: fixed; width: 100%; margin: 16px 0; }
+.tiptap table th, .tiptap table td { border: 1px solid var(--line); padding: 8px 10px; min-width: 65px; vertical-align: top; position: relative; }
+.tiptap table th { background: var(--hover); font-weight: 600; }
+.tiptap table td p, .tiptap table th p { margin: 0; }
+.tiptap table .selectedCell::after { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--accent) 14%, transparent); pointer-events: none; }

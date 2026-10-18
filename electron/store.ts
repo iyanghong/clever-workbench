@@ -81,6 +81,10 @@ export function validateContent(content: any) {
     'horizontalRule',
     'hardBreak',
     'image',
+    'table',
+    'tableRow',
+    'tableCell',
+    'tableHeader',
   ]);
   function visit(node: any, depth: number) {
     if (++count > 100000 || depth > 64 || !node || !allowed.has(node.type))
@@ -210,6 +214,7 @@ export class Store {
     text(draft.markdown, 10_000_000);
     validateContent(draft.content);
     this.checkAssets(draft.content);
+    this.checkAssets(draft.markdown);
     if (draft.projectId !== null) this.project(draft.projectId);
     if (draft.systemId != null) this.ledger.system(draft.systemId);
   }
