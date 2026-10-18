@@ -113,7 +113,7 @@ export type LedgerCommand =
   | {
       type: 'account.save';
       id?: string;
-      environmentId: string | null;
+      environmentId?: string | null;
       resourceId?: string | null;
       accessId?: string | null;
       name: string;

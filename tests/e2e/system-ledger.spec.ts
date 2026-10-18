@@ -44,6 +44,11 @@ for (const kind of ['access', 'server'] as const) {
           .getByLabel(kind === 'access' ? '入口所属环境' : '服务器所属环境', { exact: true })
           .selectOption(production);
         await page.getByLabel('账号用户名', { exact: true }).fill('after-unsaved');
+        // A busy renderer can let both autosave timers run before the first IPC reply renders.
+        await page.evaluate(() => {
+          const until = performance.now() + 800;
+          while (performance.now() < until) {}
+        });
         await expect
           .poll(async () => {
             const snapshot = await page.evaluate(() => window.desktop.snapshot());

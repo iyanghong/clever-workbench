@@ -172,9 +172,6 @@ function AccountEditor({
           await window.desktop.mutate({
             type: 'account.save',
             id: account.id,
-            environmentId: account.environmentId,
-            resourceId: account.resourceId,
-            accessId: account.accessId,
             ...value,
           })
         ).snapshot,

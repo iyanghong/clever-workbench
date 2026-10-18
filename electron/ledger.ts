@@ -291,7 +291,11 @@ export class Ledger {
       command.resourceId === undefined ? (previous?.resourceId ?? null) : command.resourceId;
     const accessId =
       command.accessId === undefined ? (previous?.accessId ?? null) : command.accessId;
-    const environment = this.accountTarget(command.environmentId, resourceId, accessId);
+    const environmentId =
+      command.environmentId === undefined
+        ? (previous?.environmentId ?? null)
+        : command.environmentId;
+    const environment = this.accountTarget(environmentId, resourceId, accessId);
     if (previous && previous.systemId !== environment.systemId)
       throw new Error('账号的归属必须在同一系统内调整。');
     const name = field(command.name, 1000).trim();
