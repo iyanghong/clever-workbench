@@ -125,12 +125,12 @@ function applyWindowMaterial() {
 }
 let checkingAutomatic = false;
 async function checkAutomaticBackup(flush: boolean) {
-  if (checkingAutomatic || restoring || rotatingProtection || backups.busy) return;
+  if (checkingAutomatic || closePending || restoring || rotatingProtection || backups.busy) return;
   checkingAutomatic = true;
   const generation = store.generation;
   try {
     if (flush) await flushRenderer();
-    if (restoring || rotatingProtection || generation !== store.generation) return;
+    if (closePending || restoring || rotatingProtection || generation !== store.generation) return;
     await backups.automatic();
   } catch (cause) {
     if (!restoring && generation === store.generation)
@@ -179,9 +179,13 @@ function createWindow() {
     closePending = true;
     void (async () => {
       try {
-        if (backups.busy || restoring || rotatingProtection)
+        if (restoring || rotatingProtection)
           throw new Error('资料保护操作正在进行，请完成后再关闭窗口。');
+        await backups.whenIdle();
         await flushRenderer();
+        if (restoring || rotatingProtection)
+          throw new Error('资料保护操作正在进行，请完成后再关闭窗口。');
+        await backups.whenIdle();
         vault?.lock();
         allowClose = true;
         if (quitting) app.quit();

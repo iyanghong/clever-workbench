@@ -72,9 +72,19 @@ function backupFailure(cause: unknown) {
 }
 export class Backups {
   busy = false;
+  private idleWaiters = new Set<() => void>();
   prepared = new Map<string, { directory: string; manifest: Manifest; protection: VaultConfig }>();
   constructor(public store: Store) {
     fs.rmSync(path.join(store.root, 'restore-staging'), { recursive: true, force: true });
+  }
+  whenIdle() {
+    if (!this.busy) return Promise.resolve();
+    return new Promise<void>((resolve) => this.idleWaiters.add(resolve));
+  }
+  private finish() {
+    this.busy = false;
+    for (const resolve of this.idleWaiters) resolve();
+    this.idleWaiters.clear();
   }
   async discard(token: string) {
     const prepared = this.prepared.get(token);
@@ -91,7 +101,7 @@ export class Backups {
     } catch (cause) {
       throw backupFailure(cause);
     } finally {
-      this.busy = false;
+      this.finish();
     }
   }
   private async writeArchive(filename: string, fallbackProtection?: VaultConfig) {
@@ -323,7 +333,7 @@ export class Backups {
       await fsp.rm(directory, { recursive: true, force: true });
       throw e;
     } finally {
-      this.busy = false;
+      this.finish();
     }
   }
   async restore(token: string) {
@@ -380,7 +390,7 @@ export class Backups {
       this.prepared.delete(token);
       return this.store.snapshot();
     } finally {
-      this.busy = false;
+      this.finish();
     }
   }
   async automatic(force = false) {
@@ -434,7 +444,7 @@ export class Backups {
     } catch (e) {
       this.store.set('lastBackupError', backupFailure(e).message);
     } finally {
-      this.busy = false;
+      this.finish();
     }
   }
   private automaticOwner() {

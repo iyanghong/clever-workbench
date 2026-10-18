@@ -5,6 +5,55 @@ import os from 'node:os';
 import path from 'node:path';
 import { Store } from '../../electron/store';
 import { emptyContent } from '../../src/domain';
+
+test('备份正在写入时关闭会等候完成，不弹出阻止退出的确认框', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-close-backup-'));
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env });
+  try {
+    const page = await app.firstWindow();
+    await page.evaluate(() => window.desktop.initializeVault('fictional-close-backup-password'));
+    await app.evaluate(({ dialog, BrowserWindow }) => {
+      const files = process.getBuiltinModule('fs/promises') as typeof import('node:fs/promises');
+      const rename = files.rename;
+      (globalThis as any).closeMessages = [];
+      dialog.showMessageBox = (async (_window: unknown, options: any) => {
+        (globalThis as any).closeMessages.push(options.message);
+        return { response: 0, checkboxChecked: false };
+      }) as typeof dialog.showMessageBox;
+      files.rename = async (source, destination) => {
+        if (String(destination).endsWith('.cwb')) {
+          await new Promise<void>((resolve) => {
+            (globalThis as any).releaseBackup = resolve;
+          });
+        }
+        return rename(source, destination);
+      };
+      BrowserWindow.getAllWindows()[0].on('close', () => {
+        (globalThis as any).closeRequested = true;
+      });
+    });
+    const backup = page.evaluate(() => window.desktop.retryBackup()).catch(() => {});
+    await expect
+      .poll(() => app.evaluate(() => Boolean((globalThis as any).releaseBackup)))
+      .toBe(true);
+    await app.evaluate(({ app }) => app.quit());
+    await expect
+      .poll(() => app.evaluate(() => Boolean((globalThis as any).closeRequested)))
+      .toBe(true);
+    const messages = await app.evaluate(() => (globalThis as any).closeMessages);
+    await app.evaluate(() => (globalThis as any).releaseBackup());
+    await backup;
+    await app.close();
+    expect(messages).toEqual([]);
+  } finally {
+    await app.evaluate(() => (globalThis as any).releaseBackup?.()).catch(() => {});
+    await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('设置目录与自动策略持久化，失败重试保留已有副本，重启检查有变更的跨日备份', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-automatic-ui-')),
     folder = path.join(directory, 'chosen-backups');
