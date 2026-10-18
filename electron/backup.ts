@@ -12,14 +12,14 @@ import {
   assetName,
   assetReferences,
   atomicWrite,
-  validateContent,
+  validateDraftFields,
   schemaVersion,
   schemaTables,
 } from './store';
 import { encryptArchive, decryptArchive, checkEncryptedArchive } from './encrypted-archive';
 import { validateConfig, type VaultConfig } from './vault-crypto';
 import { validateFavorites } from './favorites';
-import { validateVault } from './vault';
+import { verifyVaultIntegrity } from './vault';
 import { Ledger, validateLedger } from './ledger';
 import { validateTimes } from '../src/domain';
 import type { DocumentRecord } from '../src/document-types';
@@ -60,11 +60,12 @@ function safeEntry(name: string) {
 }
 function backupFailure(cause: unknown) {
   const code = (cause as NodeJS.ErrnoException)?.code;
-  if (code === 'ENOSPC') return new Error('磁盘空间不足，请释放空间或更改备份目录后重试。');
+  if (code === 'ENOSPC')
+    return new Error('磁盘空间不足，请释放空间或更改备份目录后重试。', { cause });
   if (code === 'EACCES' || code === 'EPERM')
-    return new Error('无法写入备份目录，请检查权限或更改目录后重试。');
+    return new Error('无法写入备份目录，请检查权限或更改目录后重试。', { cause });
   if (['ENOENT', 'EEXIST', 'ENOTDIR'].includes(code ?? ''))
-    return new Error('备份目录无法使用，请重新选择目录后重试。');
+    return new Error('备份目录无法使用，请重新选择目录后重试。', { cause });
   return cause instanceof Error ? cause : new Error(String(cause));
 }
 export class Backups {
@@ -176,7 +177,8 @@ export class Backups {
       for (const item of sources) archive.addFile(item.file, item.name);
       archive.end();
       await writing;
-      const handle = await fsp.open(temporary, 'r');
+      // Windows FlushFileBuffers requires a handle opened for writing.
+      const handle = await fsp.open(temporary, 'r+');
       try {
         await handle.sync();
       } finally {
@@ -296,7 +298,7 @@ export class Backups {
       if (!manifest || Object.keys(manifest.files).some((name) => !received.has(name)))
         throw new Error('备份缺少必要文件。');
       await fsp.rm(payload, { force: true });
-      validateDatabase(directory, manifest);
+      await validateDatabase(directory, manifest, password, protection);
       const token = randomUUID();
       this.prepared.set(token, { directory, manifest, protection });
       return {
@@ -439,7 +441,12 @@ export class Backups {
     return owner;
   }
 }
-function validateDatabase(directory: string, manifest: Manifest) {
+async function validateDatabase(
+  directory: string,
+  manifest: Manifest,
+  password: unknown,
+  protection: VaultConfig,
+) {
   const db = new DatabaseSync(path.join(directory, 'database.sqlite'), { readOnly: true });
   try {
     if (
@@ -457,7 +464,7 @@ function validateDatabase(directory: string, manifest: Manifest) {
     )
       throw new Error('备份数据库结构不兼容。');
     validateLedger(db);
-    validateVault(db);
+    await verifyVaultIntegrity(db, password, protection);
     const ledger = new Ledger(db);
     for (const row of db.prepare('SELECT key,value FROM preferences').all()) {
       const value = JSON.parse(row.value as string);
@@ -502,7 +509,7 @@ function validateDatabase(directory: string, manifest: Manifest) {
       )
         throw new Error('任务记录无效。');
       const content = JSON.parse(row.content as string);
-      validateContent(content);
+      validateDraftFields({ ...task, content });
       for (const name of assetReferences([content, task.markdown]))
         if (!manifest.files[`assets/${name}`]) throw new Error('备份缺少正文图片。');
       if (task.projectId !== null && !projectMap.has(task.projectId))
@@ -517,14 +524,10 @@ function validateDatabase(directory: string, manifest: Manifest) {
     const draftRow = db.prepare("SELECT value FROM preferences WHERE key='draft'").get();
     if (draftRow) {
       const draft = JSON.parse(draftRow.value as string) as Draft | null;
-      if (draft) {
-        if (
-          typeof draft.title !== 'string' ||
-          typeof draft.markdown !== 'string' ||
-          (draft.projectId !== null && !projectMap.has(draft.projectId))
-        )
+      if (draft !== null) {
+        validateDraftFields(draft);
+        if (draft.projectId !== null && !projectMap.has(draft.projectId))
           throw new Error('草稿无效。');
-        validateContent(draft.content);
         ledger.resolveContext(draft);
         for (const name of assetReferences([draft.content, draft.markdown]))
           if (!manifest.files[`assets/${name}`]) throw new Error('草稿图片缺失。');
@@ -547,7 +550,7 @@ function validateDatabase(directory: string, manifest: Manifest) {
       if (document.projectId !== null && !projectMap.has(document.projectId))
         throw new Error('文档项目丢失。');
       const content = JSON.parse(row.content as string);
-      validateContent(content);
+      validateDraftFields({ ...document, content });
       for (const name of assetReferences([content, document.markdown]))
         if (!manifest.files[`assets/${name}`]) throw new Error('文档图片缺失。');
     }

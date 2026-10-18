@@ -121,6 +121,13 @@ export function validateContent(content: any) {
   }
   visit(content, 0);
 }
+export function validateDraftFields(draft: Draft) {
+  if (!draft || typeof draft !== 'object') throw new Error('草稿格式无效。');
+  text(draft.title, 1000);
+  if (draft.startedAt !== undefined) validateTimes(draft.startedAt, null);
+  text(draft.markdown, 10_000_000);
+  validateContent(draft.content);
+}
 export class Store {
   ledger!: Ledger;
   documents!: Documents;
@@ -241,11 +248,7 @@ export class Store {
         throw new Error('正文图片文件缺失。');
   }
   validateDraft(draft: Draft) {
-    if (!draft || typeof draft !== 'object') throw new Error('草稿格式无效。');
-    text(draft.title, 1000);
-    if (draft.startedAt !== undefined) validateTimes(draft.startedAt, null);
-    text(draft.markdown, 10_000_000);
-    validateContent(draft.content);
+    validateDraftFields(draft);
     this.checkAssets(draft.content);
     this.checkAssets(draft.markdown);
     if (draft.projectId !== null) this.project(draft.projectId);

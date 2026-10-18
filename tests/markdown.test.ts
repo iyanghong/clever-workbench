@@ -51,3 +51,40 @@ test.each([
   expect(loaded.reason).toBeTruthy();
   expect(JSON.stringify(loaded.content)).not.toContain('javascript:');
 });
+
+test.each(
+  [
+    [
+      {
+        type: 'codeBlock',
+        attrs: { language: 'sql' },
+        content: [{ type: 'text', text: 'select 1;' }],
+      },
+    ],
+    [
+      { type: 'paragraph', content: [{ type: 'text', text: '第一段' }] },
+      { type: 'paragraph', content: [{ type: 'text', text: '第二段' }] },
+    ],
+    [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: '第一行' },
+          { type: 'hardBreak' },
+          { type: 'text', text: '第二行' },
+        ],
+      },
+    ],
+  ].map((blocks) => ({ blocks })),
+)('富文本表格中无法无损表示的块或换行被拒绝，不序列化成丢失格式的正文', ({ blocks }) => {
+  const content = {
+    type: 'doc',
+    content: [
+      {
+        type: 'table',
+        content: [{ type: 'tableRow', content: [{ type: 'tableCell', content: blocks }] }],
+      },
+    ],
+  };
+  expect(() => writeMarkdown(content)).toThrow('表格');
+});

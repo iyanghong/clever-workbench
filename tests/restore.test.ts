@@ -228,10 +228,16 @@ test('恢复切换后撤销原解锁会话，密码派生中的迟到解锁也�
   expect(source.vault.status().unlocked).toBe(false);
   expect(() => source.vault.save(source.accountId, 'password', 'should not save')).toThrow('解锁');
   const next = await source.backups.inspect(source.filename, password);
-  const unlocking = source.vault.unlock(password);
-  const outcome = expect(unlocking).rejects.toThrow('取消');
+  const previousGeneration = source.store.generation;
+  const unlocking = source.vault.unlock(password).then(
+    () => ({ ok: true as const, generation: source.store.generation }),
+    (cause) => ({ ok: false as const, message: String(cause) }),
+  );
   await source.backups.restore(next.token);
-  await outcome;
+  const outcome = await unlocking;
+  // A fast derivation may finish before the recovery copy. Only late success is invalid.
+  if (outcome.ok) expect(outcome.generation).toBe(previousGeneration);
+  else expect(outcome.message).toContain('取消');
   expect(source.vault.status().unlocked).toBe(false);
   await source.vault.unlock(password);
   expect(source.vault.read(source.accountId, 'password')).toBe('fictional-resource-secret');

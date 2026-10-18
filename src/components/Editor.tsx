@@ -1,5 +1,7 @@
 import { useEditor, EditorContent, type JSONContent } from '@tiptap/react';
 import { Markdown } from '@tiptap/markdown';
+import { Extension } from '@tiptap/core';
+import { Plugin } from '@tiptap/pm/state';
 import Placeholder from '@tiptap/extension-placeholder';
 import {
   TextBIcon,
@@ -13,7 +15,12 @@ import {
   TableIcon,
 } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
-import { loadMarkdown, markdownExtensions, writeMarkdown } from '../shared/markdown';
+import {
+  loadMarkdown,
+  markdownExtensions,
+  writeMarkdown,
+  supportsMarkdownTables,
+} from '../shared/markdown';
 import { emptyContent } from '../domain';
 import type { Asset } from '../types';
 
@@ -59,6 +66,21 @@ export function Editor({
   const editor = useEditor({
     extensions: [
       ...markdownExtensions(),
+      Extension.create({
+        name: 'markdownTableGuard',
+        addProseMirrorPlugins: () => [
+          new Plugin({
+            filterTransaction(transaction) {
+              if (!transaction.docChanged || supportsMarkdownTables(transaction.doc.toJSON()))
+                return true;
+              setNotice(
+                '表格单元格支持单段文字和行内格式；用 Tab 移动到下一格，代码块、列表和多段内容请放在表格外。',
+              );
+              return false;
+            },
+          }),
+        ],
+      }),
       Markdown,
       Placeholder.configure({
         placeholder: '写下过程、结论，或直接粘贴截图…\n支持 Markdown、表格和勾选清单。',
@@ -274,7 +296,9 @@ export function Editor({
               title={item.name}
               aria-label={item.name}
               aria-pressed={item.active}
-              disabled={readOnly}
+              disabled={
+                readOnly || (editor.isActive('table') && !['加粗', '斜体'].includes(item.name))
+              }
               onClick={item.action}
             >
               <item.icon size={17} />

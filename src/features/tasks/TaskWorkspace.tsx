@@ -94,6 +94,7 @@ export function TaskWorkspace({
     flushRef = useRef<() => Promise<void>>(async () => {}),
     quickTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
     quickPending = useRef<Promise<void>>(Promise.resolve()),
+    quickDirty = useRef(false),
     searchRef = useRef<HTMLInputElement>(null),
     dialogRef = useRef<HTMLDialogElement>(null),
     projectDialogRef = useRef<HTMLDialogElement>(null),
@@ -177,11 +178,15 @@ export function TaskWorkspace({
     if (quickTimer.current) {
       clearTimeout(quickTimer.current);
       quickTimer.current = null;
-      const d = draftRef.current;
-      quickPending.current = quickPending.current
-        .catch(() => {})
-        .then(() => window.desktop.saveDraft(d));
     }
+    quickPending.current = quickPending.current
+      .catch(() => {})
+      .then(async () => {
+        if (!quickDirty.current) return;
+        const next = draftRef.current;
+        await window.desktop.saveDraft(next);
+        if (draftRef.current === next) quickDirty.current = false;
+      });
     await quickPending.current;
   }
   async function flush() {
@@ -257,13 +262,10 @@ export function TaskWorkspace({
   function quickChange(value: string) {
     const current = { ...draftRef.current, title: value };
     updateDraft(current);
+    quickDirty.current = true;
     if (quickTimer.current) clearTimeout(quickTimer.current);
     quickTimer.current = setTimeout(() => {
-      quickTimer.current = null;
-      quickPending.current = quickPending.current
-        .catch(() => {})
-        .then(() => window.desktop.saveDraft(current));
-      void quickPending.current.catch((e) => notifyError(e.message));
+      void flushQuick().catch((e) => notifyError(e.message));
     }, 500);
   }
   async function discardDraft() {

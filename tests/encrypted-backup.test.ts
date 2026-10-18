@@ -152,3 +152,108 @@ test('未认证头部的长度和 KDF 参数先受限，不对损坏输入启动
   await expect(backups.inspect(filename, password)).rejects.toThrow('参数');
   expect(fs.readdirSync(path.join(store.root, 'restore-staging'))).toHaveLength(0);
 });
+
+test('外层加密有效但秘密本身已损坏时，预检拒绝且不产生可恢复令牌', async () => {
+  const { store, vault, backups } = await setup();
+  const systemId = store.mutate({ type: 'system.save', name: '损坏验证' }).createdId!;
+  const environmentId = store.mutate({
+    type: 'environment.save',
+    systemId,
+    name: '生产',
+  }).createdId!;
+  const accountId = store.mutate({ type: 'account.save', environmentId, name: '账号' }).createdId!;
+  vault.save(accountId, 'password', 'fictional-before-corruption');
+  vault.lock();
+  const original = String(
+    store.db.prepare('SELECT value FROM secrets WHERE accountId=?').get(accountId)!.value,
+  );
+  const corrupt = JSON.parse(original),
+    tag = Buffer.from(corrupt.tag, 'base64');
+  tag[0] ^= 1;
+  corrupt.tag = tag.toString('base64');
+  store.db
+    .prepare('UPDATE secrets SET value=? WHERE accountId=?')
+    .run(JSON.stringify(corrupt), accountId);
+  const filename = path.join(store.root, 'broken-secret.cwb');
+  await backups.create(filename);
+  const before = store.snapshot();
+  await expect(backups.inspect(filename, password)).rejects.toThrow('校验');
+  expect(backups.prepared.size).toBe(0);
+  expect(store.snapshot()).toEqual(before);
+  expect(vault.status().unlocked).toBe(false);
+  expect(fs.readdirSync(path.join(store.root, 'restore-staging'))).toHaveLength(0);
+});
+
+test('预检拒绝已损坏的资料密钥，以及正常写入不接受的草稿开始时间', async () => {
+  const { store, vault, backups } = await setup();
+  vault.lock();
+  const original = vault.config();
+  const changed = structuredClone(original),
+    tag = Buffer.from(changed.key.tag, 'base64');
+  tag[0] ^= 1;
+  changed.key.tag = tag.toString('base64');
+  store.set('vaultConfig', changed);
+  const filename = path.join(store.root, 'bad-material.cwb');
+  await backups.create(filename);
+  await expect(backups.inspect(filename, password)).rejects.toThrow('校验');
+  store.set('vaultConfig', original);
+  const draft = {
+    title: '损坏的草稿',
+    markdown: '',
+    content: emptyContent(),
+    projectId: null,
+    startedAt: -1,
+  };
+  expect(() => store.saveDraft(draft)).toThrow('开始时间');
+  store.set('draft', draft);
+  await backups.create(filename);
+  await expect(backups.inspect(filename, password)).rejects.toThrow('开始时间');
+  expect(backups.prepared.size).toBe(0);
+});
+
+test('即使外层认证成功，内外保护材料不一致也不能获得恢复令牌', async () => {
+  const { store, vault, backups } = await setup(),
+    outer = vault.config();
+  await vault.rotate(password, password);
+  const current = vault.config();
+  const { backup } = await import('node:sqlite'),
+    { createHash } = await import('node:crypto'),
+    yazl = await import('yazl'),
+    { encryptArchive } = await import('../electron/encrypted-archive');
+  const database = path.join(store.root, 'mixed.sqlite');
+  await backup(store.db, database);
+  const bytes = fs.readFileSync(database);
+  const manifest = {
+    format: 'clever-workbench',
+    version: 1,
+    createdAt: new Date().toISOString(),
+    tasks: 0,
+    projects: 0,
+    documents: 0,
+    systems: 0,
+    resources: 0,
+    accounts: 0,
+    secrets: 0,
+    files: {
+      'database.sqlite': {
+        size: bytes.length,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+      },
+    },
+  };
+  const archive = new yazl.ZipFile(),
+    filename = path.join(store.root, 'mixed.cwb');
+  const writing = encryptArchive(
+    archive.outputStream as import('node:stream').Readable,
+    filename,
+    outer,
+  );
+  archive.addBuffer(Buffer.from(JSON.stringify(manifest)), 'manifest.json');
+  archive.addBuffer(bytes, 'database.sqlite');
+  archive.end();
+  await writing;
+  await expect(backups.inspect(filename, password)).rejects.toThrow('保护材料不一致');
+  expect(backups.prepared.size).toBe(0);
+  expect(vault.config()).toEqual(current);
+  expect(vault.status().unlocked).toBe(false);
+});

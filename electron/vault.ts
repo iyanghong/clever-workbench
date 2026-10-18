@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Store } from './store';
 import type {
@@ -42,6 +43,37 @@ export function validateVault(db: DatabaseSync) {
 }
 const secretAad = (accountId: string, kind: SecretKind) =>
   `clever-workbench/secret/1/${accountId}/${kind}`;
+export async function verifyVaultIntegrity(
+  db: DatabaseSync,
+  password: unknown,
+  expected: VaultConfig,
+) {
+  validateVault(db);
+  const row = db.prepare("SELECT value FROM preferences WHERE key='vaultConfig'").get();
+  if (!row) return; // A recovery copy of an uninitialized workspace has no secrets.
+  const config = JSON.parse(String(row.value)) as VaultConfig;
+  if (!isDeepStrictEqual(config, expected)) throw new Error('备份内外的秘密保护材料不一致。');
+  const wrapping = await derive(password, config.kdf);
+  let key: Buffer | undefined;
+  try {
+    key = unseal(config.key, wrapping, keyAad(config), 32);
+    if (key.length !== 32) throw new Error();
+    for (const secret of db.prepare('SELECT accountId,kind,value FROM secrets').iterate()) {
+      const bytes = unseal(
+        JSON.parse(String(secret.value)),
+        key,
+        secretAad(String(secret.accountId), secret.kind as SecretKind),
+        256_000,
+      );
+      bytes.fill(0);
+    }
+  } catch {
+    throw new Error('备份中的秘密保护材料或密文校验失败，当前资料未修改。');
+  } finally {
+    wrapping.fill(0);
+    key?.fill(0);
+  }
+}
 export class Vault {
   private key: Buffer | null = null;
   private dataGeneration: string | null = null;

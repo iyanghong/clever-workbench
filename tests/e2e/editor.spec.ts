@@ -185,3 +185,79 @@ test('保存失败时留在编辑页并保留最新内容，重试成功后再�
     await fs.rm(directory, { recursive: true, force: true });
   }
 });
+
+test('任务快录的定时保存失败后，不改文字即可重试导航并恢复同一草稿', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-quick-retry-')),
+    env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env });
+  const { DatabaseSync } = await import('node:sqlite');
+  let database: InstanceType<typeof DatabaseSync> | undefined;
+  let passed = false;
+  try {
+    const page = await app.firstWindow();
+    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    const generation = (await fs.readFile(path.join(directory, 'data', 'CURRENT'), 'utf8')).trim();
+    database = new DatabaseSync(
+      path.join(directory, 'data', 'vaults', generation, 'database.sqlite'),
+    );
+    database.exec(
+      "CREATE TRIGGER test_draft_failure BEFORE INSERT ON preferences WHEN NEW.key='draft' BEGIN SELECT RAISE(ABORT,'模拟草稿保存失败'); END",
+    );
+    await page.getByLabel('快速新增任务').fill('原样重试的任务');
+    await expect(page.getByRole('alert')).toContainText('模拟草稿保存失败');
+    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await expect(page.getByRole('button', { name: '工作任务', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    database.exec('DROP TRIGGER test_draft_failure');
+    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await expect(page.getByRole('heading', { name: '我的工作台', exact: true })).toBeVisible();
+    await expect(page.getByLabel('快速新增任务')).toHaveValue('原样重试的任务');
+    passed = true;
+  } finally {
+    if (database) {
+      database.exec('DROP TRIGGER IF EXISTS test_draft_failure');
+      database.close();
+    }
+    if (passed) await app.close();
+    else app.process().kill('SIGTERM');
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('表格内不可逆格式不可执行，拒绝换行后仍能保存并重新打开原有内容', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-table-guard-')),
+    env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env });
+  try {
+    const page = await app.firstWindow();
+    await page.getByRole('button', { name: '写一份方案', exact: true }).click();
+    await page.getByLabel('文档标题').fill('单元格格式保护');
+    await page.getByRole('button', { name: 'Markdown 源码', exact: true }).click();
+    await page
+      .getByLabel('Markdown 源码内容', { exact: true })
+      .fill('| 项目 | 结果 |\n| --- | --- |\n| 连接 | 正常 |');
+    await page.getByRole('button', { name: '即时排版', exact: true }).click();
+    const editor = page.getByRole('textbox', { name: '工作内容' });
+    await editor.locator('td').first().click();
+    await expect(page.getByRole('button', { name: '代码块', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: '标题', exact: true })).toBeDisabled();
+    await page.keyboard.press('End');
+    await page.keyboard.press('Shift+Enter');
+    await expect(page.getByRole('status').filter({ hasText: '单段文字' })).toBeVisible();
+    await expect(editor.locator('td').first()).toHaveText('连接');
+    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('button', { name: '打开文档 单元格格式保护', exact: true }).click();
+    await expect(editor.locator('td').first()).toHaveText('连接');
+    await expect(page.getByRole('button', { name: '即时排版', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  } finally {
+    await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});

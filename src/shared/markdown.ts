@@ -81,7 +81,22 @@ function meaning(markdown: string) {
 }
 export function writeMarkdown(content: JSONContent) {
   schema.nodeFromJSON(content).check();
+  if (!supportsMarkdownTables(content))
+    throw new Error('表格单元格仅支持单段文字和行内格式，请把代码块、列表和多段内容放在表格外。');
   return manager.serialize(content);
+}
+export function supportsMarkdownTables(content: JSONContent): boolean {
+  if (content.type === 'tableCell' || content.type === 'tableHeader') {
+    if ((content.attrs?.colspan ?? 1) !== 1 || (content.attrs?.rowspan ?? 1) !== 1) return false;
+    if (content.content?.length !== 1 || content.content[0].type !== 'paragraph') return false;
+    if (
+      content.content[0].content?.some(
+        (node) => node.type !== 'text' || /[\r\n]/.test(node.text ?? ''),
+      )
+    )
+      return false;
+  }
+  return (content.content ?? []).every(supportsMarkdownTables);
 }
 export function loadMarkdown(markdown: string): MarkdownBody {
   const fallback = (reason: string): MarkdownBody => ({
