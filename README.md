@@ -10,4 +10,14 @@
 - [问题分流标签](docs/agents/triage-labels.md)：使用五种默认状态。
 - [领域文档](docs/agents/domain.md)：使用根目录的 `CONTEXT.md` 和 `docs/adr/`，在术语或决策明确后按需创建。
 
-项目目前仅包含仓库和协作配置，尚未引入应用框架或构建、测试命令。
+当前仓库包含协作配置和已确认的需求设计文档，应用尚未实现。
+
+## 需求与设计
+
+首版方案与 23 项任务已确认，用户已授权进入实现：
+
+- [正式需求规格](.scratch/desktop-workbench/spec.md)（已确认并授权实施）
+- [技术方案](.scratch/desktop-workbench/technical-plan.md)
+- [正式开发任务](.scratch/desktop-workbench/ticket-plan.md)与[规格覆盖表](.scratch/desktop-workbench/ticket-coverage.md)（23 项，拆分已确认并发布）
+- [领域词汇](CONTEXT.md)
+- [访谈记录](.scratch/desktop-workbench/interview.md)与[调查依据](.scratch/desktop-workbench/research.md)
