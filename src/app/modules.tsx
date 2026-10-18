@@ -13,7 +13,7 @@ import { TaskWorkspace, type TaskView } from '../features/tasks/TaskWorkspace';
 import { DocumentsPage } from '../features/documents/DocumentsPage';
 import { LedgerPage } from '../features/ledger/LedgerPage';
 
-export type Route = { module: string; project?: string; objectId?: string };
+export type Route = { module: string; project?: string; objectId?: string; trash?: boolean };
 export type ModuleProps = {
   route: Route;
   navigate: (route: Route) => Promise<void>;
@@ -31,6 +31,7 @@ export type WorkbenchModule = {
 function TaskModule({ route, navigate, registerFlush }: ModuleProps) {
   return (
     <TaskWorkspace
+      onOpenDocuments={(project, trash) => navigate({ module: 'documents', project, trash })}
       onOpenContext={(id) => navigate({ module: 'ledger', objectId: id })}
       initialView={route.module as TaskView}
       initialProject={route.project}

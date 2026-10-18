@@ -182,3 +182,51 @@ test('备份保留源码文档和回收站引用的附件，恢复后仍能读�
     true,
   );
 });
+
+test('项目归档清除当前标记但保留历史，账号与旧项目文档继续维护', () => {
+  const store = open();
+  const projectId = store.mutate({
+    type: 'project.create',
+    name: '阶段项目',
+    color: '#007aff',
+  }).createdId!;
+  const systemId = store.mutate({ type: 'system.save', name: '长期系统', projectId }).createdId!;
+  const environmentId = store.mutate({
+    type: 'environment.save',
+    systemId,
+    name: '生产',
+  }).createdId!;
+  const accountId = store.mutate({ type: 'account.save', environmentId, name: '超管' }).createdId!;
+  const documentId = store.mutate({ type: 'document.create', context: { systemId } }).createdId!;
+  const taskId = store.mutate({
+    type: 'task.create',
+    draft: { title: '阶段收尾', markdown: '', content: emptyContent(), projectId, systemId },
+  }).createdId!;
+  expect(() => store.mutate({ type: 'project.archive', id: projectId, archived: true })).toThrow(
+    '未完成',
+  );
+  expect(store.snapshot().systems[0].currentProjectId).toBe(projectId);
+  store.mutate({ type: 'task.complete', id: taskId, complete: true });
+  store.mutate({ type: 'project.archive', id: projectId, archived: true });
+  expect(store.snapshot().systems[0].currentProjectId).toBeNull();
+  expect(store.snapshot().systemProjects).toContainEqual(
+    expect.objectContaining({ systemId, projectId }),
+  );
+  store.mutate({
+    type: 'account.save',
+    id: accountId,
+    environmentId,
+    name: '运维超管',
+    username: 'ops',
+  });
+  const document = store.document(documentId);
+  store.mutate({ ...document, type: 'document.edit', markdown: '归档后补充复盘' });
+  expect(store.document(documentId)).toMatchObject({ projectId, markdown: '归档后补充复盘' });
+  expect(() => store.mutate({ type: 'task.complete', id: taskId, complete: false })).toThrow(
+    '恢复项目',
+  );
+  store.mutate({ type: 'task.complete', id: taskId, complete: false, restoreProject: true });
+  expect(store.snapshot().projects[0].archivedAt).toBeNull();
+  expect(store.task(taskId).completedAt).toBeNull();
+  expect(store.snapshot().systems[0].currentProjectId).toBeNull();
+});

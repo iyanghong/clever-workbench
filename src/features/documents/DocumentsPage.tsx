@@ -23,7 +23,7 @@ export function DocumentsPage({ route, navigate, registerFlush }: ModuleProps) {
     [document, setDocument] = useState<DocumentRecord | null>(null),
     [query, setQuery] = useState(''),
     [matches, setMatches] = useState<string[] | null>(null),
-    [trash, setTrash] = useState(false),
+    [trash, setTrash] = useState(Boolean(route.trash)),
     [error, setError] = useState('');
   const saves = useSaveGroup(registerFlush),
     busy = useRef(false);
@@ -121,7 +121,11 @@ export function DocumentsPage({ route, navigate, registerFlush }: ModuleProps) {
       <header className="window-toolbar">
         <div className="breadcrumb">
           <NotePencilIcon size={18} />
-          <span>问题与方案</span>
+          <span>
+            {route.project
+              ? `${snapshot?.projects.find((item) => item.id === route.project)?.name ?? '项目'} / 文档`
+              : '问题与方案'}
+          </span>
         </div>
         <div className="spacer" />
         <button className="toolbar-new" onClick={() => void create()}>

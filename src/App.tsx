@@ -67,7 +67,7 @@ export function App() {
         </div>
       </aside>
       <Page
-        key={`${route.module}:${route.project ?? ''}:${route.objectId ?? ''}`}
+        key={`${route.module}:${route.project ?? ''}:${route.objectId ?? ''}:${Boolean(route.trash)}`}
         route={route}
         navigate={navigate}
         registerFlush={registerFlush}

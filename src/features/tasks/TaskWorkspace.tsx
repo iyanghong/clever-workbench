@@ -66,6 +66,7 @@ export function TaskWorkspace({
   registerFlush,
   onNavigate,
   onOpenContext,
+  onOpenDocuments,
 }: {
   initialView?: TaskView;
   initialProject?: string;
@@ -73,6 +74,7 @@ export function TaskWorkspace({
   registerFlush: (save: () => Promise<void>) => () => void;
   onNavigate: (view: TaskView, project?: string) => Promise<void>;
   onOpenContext: (id: string) => Promise<void>;
+  onOpenDocuments: (project?: string, trash?: boolean) => Promise<void>;
 }) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
     [view, setView] = useState<TaskView>(initialView),
@@ -120,6 +122,8 @@ export function TaskWorkspace({
       .then((s) => {
         setSnapshot(s);
         updateDraft(s.draft);
+        if (s.projects.some((item) => item.id === initialProject && item.archivedAt !== null))
+          setFilter('all');
       })
       .catch((e) => notifyError(e.message));
   }, []);
@@ -499,9 +503,13 @@ export function TaskWorkspace({
           (view === 'trash' ? t.deletedAt !== null : t.deletedAt === null) &&
           (project === 'all' ||
             (project === 'none' ? t.projectId === null : t.projectId === project)) &&
+          (view === 'trash' ||
+            project !== 'all' ||
+            matches !== null ||
+            !projects.some((p) => p.id === t.projectId && p.archivedAt !== null)) &&
           (!matches || matches.has(t.id)),
       ),
-    [all, view, project, matches],
+    [all, projects, view, project, matches],
   );
   const visible = useMemo(
     () =>
@@ -582,6 +590,15 @@ export function TaskWorkspace({
                 <PlusIcon size={16} />
               </button>
             </div>
+          )}
+          {view === 'trash' && (
+            <button
+              className="text-button"
+              aria-label="文档回收站"
+              onClick={() => void onOpenDocuments(undefined, true)}
+            >
+              文档回收站
+            </button>
           )}
           {view === 'tasks' && (
             <label className="search-field">
@@ -747,6 +764,18 @@ export function TaskWorkspace({
                           {all.filter((t) => t.projectId === p.id && t.deletedAt === null).length}{' '}
                           条记录 · {dateLabel(p.archivedAt)}归档
                         </small>
+                      </button>
+                      <button
+                        className="text-button"
+                        aria-label={`查看项目文档 ${p.name}`}
+                        onClick={() => void onOpenDocuments(p.id)}
+                      >
+                        文档{' '}
+                        {
+                          snapshot.documents.filter(
+                            (item) => item.projectId === p.id && item.deletedAt === null,
+                          ).length
+                        }
                       </button>
                       <button
                         className="secondary-button"
