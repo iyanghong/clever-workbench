@@ -93,6 +93,7 @@ export type Command =
   | { type: 'settings'; theme?: Settings['theme']; autoBackup?: boolean };
 export type MutationResult = { snapshot: Snapshot; createdId?: string };
 export type Asset = { src: string; name: string };
+export type BackupSelection = { token: string; name: string };
 export type BackupInfo = {
   token: string;
   createdAt: string;
@@ -100,6 +101,10 @@ export type BackupInfo = {
   projects: number;
   images: number;
   documents: number;
+  systems: number;
+  resources: number;
+  accounts: number;
+  secrets: number;
 };
 export interface DesktopAPI {
   platform: string;
@@ -118,6 +123,7 @@ export interface DesktopAPI {
   readSecret(accountId: string, kind: SecretKind): Promise<string>;
   saveSecret(accountId: string, kind: SecretKind, value: string): Promise<Snapshot>;
   removeSecret(accountId: string, kind: SecretKind): Promise<Snapshot>;
+  onSettingsChange(handler: (settings: Settings) => void): () => void;
   onVaultStatus(handler: (status: VaultStatus) => void): () => void;
   snapshot(): Promise<Snapshot>;
   document(id: string): Promise<DocumentRecord>;
@@ -130,7 +136,8 @@ export interface DesktopAPI {
   importImage(bytes: Uint8Array, name: string): Promise<Asset>;
   chooseImages(): Promise<{ assets: Asset[]; errors: string[] }>;
   backup(): Promise<string | null>;
-  inspectBackup(): Promise<BackupInfo | null>;
+  chooseBackup(): Promise<BackupSelection | null>;
+  inspectBackup(token: string, password: string): Promise<BackupInfo>;
   discardBackup(token: string): Promise<void>;
   restoreBackup(token: string): Promise<Snapshot>;
   retryBackup(): Promise<Snapshot>;

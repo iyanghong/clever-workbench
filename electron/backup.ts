@@ -4,7 +4,7 @@ import path from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import { DatabaseSync, backup } from 'node:sqlite';
 import { pipeline } from 'node:stream/promises';
-import { Transform, Writable } from 'node:stream';
+import { Transform, Writable, Readable } from 'node:stream';
 import * as yazl from 'yazl';
 import * as yauzl from 'yauzl';
 import {
@@ -16,6 +16,8 @@ import {
   schemaVersion,
   schemaTables,
 } from './store';
+import { encryptArchive, decryptArchive } from './encrypted-archive';
+import { validateConfig, type VaultConfig } from './vault-crypto';
 import { validateFavorites } from './favorites';
 import { validateVault } from './vault';
 import { Ledger, validateLedger } from './ledger';
@@ -30,6 +32,10 @@ type Manifest = {
   tasks: number;
   projects: number;
   documents: number;
+  systems: number;
+  resources: number;
+  accounts: number;
+  secrets: number;
   files: Record<string, { size: number; sha256: string }>;
 };
 async function hashFile(filename: string) {
@@ -54,7 +60,7 @@ function safeEntry(name: string) {
 }
 export class Backups {
   busy = false;
-  prepared = new Map<string, { directory: string; manifest: Manifest }>();
+  prepared = new Map<string, { directory: string; manifest: Manifest; protection: VaultConfig }>();
   constructor(public store: Store) {
     fs.rmSync(path.join(store.root, 'restore-staging'), { recursive: true, force: true });
   }
@@ -65,7 +71,7 @@ export class Backups {
       this.prepared.delete(token);
     }
   }
-  async create(filename: string) {
+  async create(filename: string, fallbackProtection?: VaultConfig) {
     if (this.busy) throw new Error('另一项备份或恢复正在进行，请稍后再试。');
     this.busy = true;
     const staging = path.join(this.store.root, `backup-${randomUUID()}`),
@@ -75,8 +81,25 @@ export class Backups {
       const database = path.join(staging, 'database.sqlite');
       await backup(this.store.db, database);
       const snapshot = new DatabaseSync(database, { readOnly: true });
-      let names: string[], tasks: number, projects: number, documents: number;
+      let names: string[],
+        tasks: number,
+        projects: number,
+        documents: number,
+        systems: number,
+        resources: number,
+        accounts: number,
+        secrets: number,
+        protection: VaultConfig;
       try {
+        const row = snapshot.prepare("SELECT value FROM preferences WHERE key='vaultConfig'").get();
+        const value = row ? JSON.parse(String(row.value)) : fallbackProtection;
+        if (!value) throw new Error('请先设置主密码，再启用完整加密备份。');
+        validateConfig(value);
+        protection = value;
+        systems = Number(snapshot.prepare('SELECT count(*) n FROM systems').get()!.n);
+        resources = Number(snapshot.prepare('SELECT count(*) n FROM resources').get()!.n);
+        accounts = Number(snapshot.prepare('SELECT count(*) n FROM accounts').get()!.n);
+        secrets = Number(snapshot.prepare('SELECT count(*) n FROM secrets').get()!.n);
         const contents = snapshot
           .prepare(
             'SELECT content,markdown FROM tasks UNION ALL SELECT content,markdown FROM documents',
@@ -100,8 +123,16 @@ export class Backups {
           file: path.join(this.store.directory, 'assets', name),
         })),
       ];
+      let totalSize = 0;
+      if (sources.length > 100000) throw new Error('备份文件数量超过容量。');
       for (const item of sources) {
         const stat = await fsp.stat(item.file);
+        if (
+          !stat.isFile() ||
+          stat.size > (item.name === 'database.sqlite' ? 512 * 1024 ** 2 : 2 * 1024 ** 3) ||
+          (totalSize += stat.size) > 10 * 1024 ** 3
+        )
+          throw new Error('备份资料超过恢复容量。');
         files[item.name] = { size: stat.size, sha256: await hashFile(item.file) };
       }
       const manifest: Manifest = {
@@ -111,12 +142,18 @@ export class Backups {
         tasks,
         projects,
         documents,
+        systems,
+        resources,
+        accounts,
+        secrets,
         files,
       };
       await fsp.mkdir(path.dirname(filename), { recursive: true });
       const archive = new yazl.ZipFile();
-      const output = fs.createWriteStream(temporary, { mode: 0o600 });
-      const writing = pipeline(archive.outputStream, output);
+      const zipStream = archive.outputStream as Readable;
+      archive.on('error', (error) => zipStream.destroy(error));
+      const writing = encryptArchive(zipStream, temporary, protection);
+      void writing.catch(() => zipStream.destroy());
       archive.addBuffer(Buffer.from(JSON.stringify(manifest)), 'manifest.json');
       for (const item of sources) archive.addFile(item.file, item.name);
       archive.end();
@@ -130,23 +167,32 @@ export class Backups {
       await fsp.rename(temporary, filename);
       return manifest;
     } finally {
-      this.busy = false;
-      await fsp.rm(staging, { recursive: true, force: true });
-      await fsp.rm(temporary, { force: true });
+      try {
+        const cleanup = await Promise.allSettled([
+          fsp.rm(staging, { recursive: true, force: true }),
+          fsp.rm(temporary, { force: true }),
+        ]);
+        const failure = cleanup.find((result) => result.status === 'rejected');
+        if (failure?.status === 'rejected') throw failure.reason;
+      } finally {
+        this.busy = false;
+      }
     }
   }
-  async inspect(filename: string): Promise<BackupInfo> {
+  async inspect(filename: string, password: unknown): Promise<BackupInfo> {
     if (this.busy) throw new Error('请等待正在进行的备份完成。');
     this.busy = true;
-    for (const token of this.prepared.keys()) await this.discard(token);
     const directory = path.join(this.store.root, 'restore-staging', randomUUID());
-    await fsp.mkdir(path.join(directory, 'assets'), { recursive: true });
     try {
+      for (const token of this.prepared.keys()) await this.discard(token);
+      await fsp.mkdir(path.join(directory, 'assets'), { recursive: true });
+      const payload = path.join(directory, 'payload.zip');
+      const protection = await decryptArchive(filename, payload, password);
       let manifest: Manifest | undefined;
       let total = 0;
       const received = new Set<string>();
       const archive = await new Promise<yauzl.ZipFile>((resolve, reject) =>
-        yauzl.open(filename, { lazyEntries: true, validateEntrySizes: true }, (err, zip) =>
+        yauzl.open(payload, { lazyEntries: true, validateEntrySizes: true }, (err, zip) =>
           err ? reject(err) : resolve(zip!),
         ),
       );
@@ -235,15 +281,20 @@ export class Backups {
       });
       if (!manifest || Object.keys(manifest.files).some((name) => !received.has(name)))
         throw new Error('备份缺少必要文件。');
+      await fsp.rm(payload, { force: true });
       validateDatabase(directory, manifest);
       const token = randomUUID();
-      this.prepared.set(token, { directory, manifest });
+      this.prepared.set(token, { directory, manifest, protection });
       return {
         token,
         createdAt: manifest.createdAt,
         tasks: manifest.tasks,
         projects: manifest.projects,
         documents: manifest.documents,
+        systems: manifest.systems,
+        resources: manifest.resources,
+        accounts: manifest.accounts,
+        secrets: manifest.secrets,
         images: Object.keys(manifest.files).filter((n) => n.startsWith('assets/')).length,
       };
     } catch (e) {
@@ -256,12 +307,8 @@ export class Backups {
   async restore(token: string) {
     const prepared = this.prepared.get(token);
     if (!prepared) throw new Error('请重新选择并校验备份。');
-    const recovery = path.join(
-      this.store.root,
-      'recovery',
-      `before-restore-${Date.now()}.cleverplan.zip`,
-    );
-    await this.create(recovery);
+    const recovery = path.join(this.store.root, 'recovery', `before-restore-${Date.now()}.cwb`);
+    await this.create(recovery, prepared.protection);
     this.busy = true;
     const oldDirectory = this.store.directory,
       oldGeneration = this.store.generation,
@@ -311,6 +358,7 @@ export class Backups {
   }
   async automatic(force = false) {
     const settings = this.store.settings();
+    if (this.store.get('vaultConfig', null) === null) return;
     const now = new Date();
     const last = settings.lastBackupAt ? new Date(settings.lastBackupAt) : null;
     if (
@@ -327,14 +375,14 @@ export class Backups {
     try {
       const filename = path.join(
         settings.backupDir,
-        `auto-${now.toISOString().replace(/[:.]/g, '-')}.cleverplan.zip`,
+        `auto-${now.toISOString().replace(/[:.]/g, '-')}.cwb`,
       );
       await this.create(filename);
       this.store.set('lastBackupAt', Date.now());
       this.store.set('lastBackupRevision', revision);
       this.store.set('lastBackupError', null);
       const files = (await fsp.readdir(settings.backupDir))
-        .filter((n) => /^auto-.*\.cleverplan\.zip$/.test(n))
+        .filter((n) => /^auto-.*\.cwb$/.test(n))
         .sort()
         .reverse();
       for (const name of files.slice(7)) await fsp.unlink(path.join(settings.backupDir, name));
@@ -452,6 +500,9 @@ function validateDatabase(directory: string, manifest: Manifest) {
       for (const name of assetReferences([content, document.markdown]))
         if (!manifest.files[`assets/${name}`]) throw new Error('文档图片缺失。');
     }
+    for (const table of ['systems', 'resources', 'accounts', 'secrets'] as const)
+      if (Number(db.prepare(`SELECT count(*) n FROM ${table}`).get()!.n) !== manifest[table])
+        throw new Error('备份台账数量不一致。');
     if (documents.length !== manifest.documents) throw new Error('备份文档数量不一致。');
     if (rows.length !== manifest.tasks || projects.length !== manifest.projects)
       throw new Error('备份记录数量不一致。');

@@ -4,9 +4,19 @@ import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { Store } from '../electron/store';
+import { Vault } from '../electron/vault';
 import { Backups } from '../electron/backup';
 import { emptyContent, minute, intersectsMonth, completedInMonth } from '../src/domain';
 import type { Draft } from '../src/types';
+const backupPassword = 'fictional-test-backup-password';
+async function createBackup(backups: Backups, file: string) {
+  if (!backups.store.get('vaultConfig', null)) {
+    const vault = new Vault(backups.store);
+    await vault.initialize(backupPassword);
+    vault.lock();
+  }
+  return backups.create(file);
+}
 const roots: string[] = [],
   stores: Store[] = [];
 function setup() {
@@ -126,10 +136,10 @@ describe('complete backups', () => {
     s.saveDraft({ ...d, title: '未提交草稿' });
     const original = s.task(id);
     const file = path.join(s.root, 'export.zip');
-    await b.create(file);
+    await createBackup(b, file);
     s.mutate({ type: 'task.purge' });
     s.saveDraft(null);
-    const info = await b.inspect(file);
+    const info = await b.inspect(file, backupPassword);
     expect(info.images).toBe(1);
     expect(info.tasks).toBe(1);
     await b.restore(info.token);
@@ -142,10 +152,10 @@ describe('complete backups', () => {
       b = new Backups(s);
     const id = s.mutate({ type: 'task.create', draft: draft() }).createdId!;
     const file = path.join(s.root, 'broken.zip');
-    await b.create(file);
+    await createBackup(b, file);
     const bytes = await fsp.readFile(file);
     await fsp.writeFile(file, bytes.subarray(0, bytes.length / 2));
-    await expect(b.inspect(file)).rejects.toThrow();
+    await expect(b.inspect(file, backupPassword)).rejects.toThrow();
     expect(s.task(id).title).toBe('修复登录错误');
   });
   test('failed CURRENT swap reopens original database', async () => {
@@ -153,8 +163,8 @@ describe('complete backups', () => {
       b = new Backups(s);
     const id = s.mutate({ type: 'task.create', draft: draft('原记录') }).createdId!;
     const file = path.join(s.root, 'valid.zip');
-    await b.create(file);
-    const info = await b.inspect(file);
+    await createBackup(b, file);
+    const info = await b.inspect(file, backupPassword);
     s.mutate({ type: 'task.create', draft: draft('恢复前新增') });
     const original = fs.renameSync;
     vi.spyOn(fs, 'renameSync').mockImplementation((from, to) => {

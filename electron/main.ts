@@ -17,6 +17,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { Store, assetName, text } from './store';
+import { checkEncryptedArchive } from './encrypted-archive';
 import { SecretClipboard } from './secret-clipboard';
 import { Vault } from './vault';
 import { Backups } from './backup';
@@ -38,6 +39,7 @@ let window: BrowserWindow | null = null,
   allowClose = false,
   closePending = false,
   quitting = false;
+const backupSelections = new Map<string, { filename: string; expires: number }>();
 const pendingFlush = new Map<string, { resolve: () => void; reject: (e: Error) => void }>();
 function flushRenderer() {
   return new Promise<void>((resolve, reject) => {
@@ -144,6 +146,8 @@ function createWindow() {
     })();
   });
   window.on('closed', () => {
+    backupSelections.clear();
+    for (const token of backups.prepared.keys()) void backups.discard(token).catch(() => {});
     window = null;
     allowClose = false;
   });
@@ -222,6 +226,8 @@ app
       writable();
       const result = store.mutate(command);
       applyTheme();
+      if (command.type === 'settings')
+        window?.webContents.send('settings-changed', result.snapshot.settings);
       return result;
     });
     secureHandler('draft', (draft) => {
@@ -254,22 +260,44 @@ app
     secureHandler('backup', async () => {
       await flushRenderer();
       const selection = await dialog.showSaveDialog(window!, {
-        defaultPath: `Clever-Plan-${new Date().toISOString().slice(0, 10)}.cleverplan.zip`,
-        filters: [{ name: 'Clever Workbench 备份', extensions: ['zip'] }],
+        defaultPath: `Clever-Workbench-${new Date().toISOString().slice(0, 10)}.cwb`,
+        filters: [{ name: 'Clever Workbench 备份', extensions: ['cwb'] }],
       });
       if (selection.canceled || !selection.filePath) return null;
       await backups.create(selection.filePath);
       return selection.filePath;
     });
-    secureHandler('inspect-backup', async () => {
+    secureHandler('choose-backup', async () => {
+      writable();
+      if (backups.busy) throw new Error('请等待正在进行的备份操作。');
       const selection = await dialog.showOpenDialog(window!, {
         properties: ['openFile'],
-        filters: [{ name: 'Clever Workbench 备份', extensions: ['zip'] }],
+        filters: [{ name: 'Clever Workbench 加密备份', extensions: ['cwb'] }],
       });
-      if (selection.canceled) return null;
-      return backups.inspect(selection.filePaths[0]);
+      if (selection.canceled || !selection.filePaths[0]) return null;
+      await checkEncryptedArchive(selection.filePaths[0]);
+      backupSelections.clear();
+      const token = randomUUID();
+      backupSelections.set(token, {
+        filename: selection.filePaths[0],
+        expires: Date.now() + 10 * 60_000,
+      });
+      return { token, name: path.basename(selection.filePaths[0]) };
     });
-    secureHandler('discard-backup', (token) => backups.discard(text(token)));
+    secureHandler('inspect-backup', async (token, password) => {
+      const selected = backupSelections.get(text(token, 100));
+      if (!selected || Date.now() > selected.expires) {
+        backupSelections.delete(token);
+        throw new Error('文件选择已过期，请重新选择备份。');
+      }
+      const result = await backups.inspect(selected.filename, password);
+      backupSelections.delete(token);
+      return result;
+    });
+    secureHandler('discard-backup', async (token) => {
+      backupSelections.delete(text(token, 100));
+      await backups.discard(token);
+    });
     secureHandler('restore-backup', async (token) => {
       vault.lock();
       text(token);
@@ -281,6 +309,8 @@ app
       } finally {
         restoring = false;
         applyTheme();
+        window?.webContents.send('settings-changed', store.settings());
+        window?.webContents.send('vault-status', vault.status());
       }
     });
     secureHandler('retry-backup', async () => {

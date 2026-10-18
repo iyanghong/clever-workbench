@@ -1,3 +1,4 @@
+import { SettingsPage } from '../features/settings/SettingsPage';
 import type { CreationContext, QuickAction } from './actions';
 import { HomePage } from '../features/home/HomePage';
 import { QuickTask } from '../features/tasks/QuickTask';
@@ -168,7 +169,7 @@ export const modules: WorkbenchModule[] = [
   },
   { id: 'archive', title: '归档项目', icon: ArchiveIcon, section: 'utility', Page: TaskModule },
   { id: 'trash', title: '回收站', icon: TrashIcon, section: 'utility', Page: TaskModule },
-  { id: 'settings', title: '设置', icon: GearSixIcon, section: 'utility', Page: TaskModule },
+  { id: 'settings', title: '设置', icon: GearSixIcon, section: 'utility', Page: SettingsPage },
 ];
 
 export function routeForHit(hit: Pick<SearchHit, 'kind' | 'id'>): Route {

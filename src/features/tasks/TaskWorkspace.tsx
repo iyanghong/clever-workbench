@@ -16,11 +16,6 @@ import {
   CaretRightIcon,
   FolderSimpleIcon,
   ArrowUpRightIcon,
-  DownloadSimpleIcon,
-  UploadSimpleIcon,
-  SunIcon,
-  MoonIcon,
-  DesktopIcon,
   ArrowRightIcon,
   CheckCircleIcon,
 } from '@phosphor-icons/react';
@@ -35,12 +30,12 @@ const freshDraft = (projectId: string | null = null): Draft => ({
   markdown: '',
   projectId,
 });
-export type TaskView = 'tasks' | 'review' | 'archive' | 'trash' | 'settings';
+export type TaskView = 'tasks' | 'review' | 'archive' | 'trash';
 function savedNavigation() {
   try {
     const n = JSON.parse(localStorage.getItem('clever-workbench-navigation') ?? '{}');
     return {
-      view: (['tasks', 'review', 'archive', 'trash', 'settings'].includes(n.view)
+      view: (['tasks', 'review', 'archive', 'trash'].includes(n.view)
         ? n.view
         : 'tasks') as TaskView,
       project: typeof n.project === 'string' ? n.project : 'all',
@@ -147,21 +142,6 @@ export function TaskWorkspace({
     };
   }, [selected, snapshot?.tasks]);
   useEffect(() => {
-    if (!snapshot) return;
-    const media = matchMedia('(prefers-color-scheme: dark)');
-    const update = () => {
-      document.documentElement.dataset.theme =
-        snapshot.settings.theme === 'system'
-          ? media.matches
-            ? 'dark'
-            : 'light'
-          : snapshot.settings.theme;
-    };
-    update();
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, [snapshot?.settings.theme]);
-  useEffect(() => {
     if (!query.trim()) {
       setMatches(null);
       return;
@@ -227,7 +207,6 @@ export function TaskWorkspace({
       setQuery('');
       setMatches(null);
       if (next === 'tasks') setFilter('pending');
-      if (next === 'settings') setSnapshot(await window.desktop.snapshot());
     } catch (e) {
       notifyError(String(e));
     }
@@ -443,47 +422,6 @@ export function TaskWorkspace({
       notifyError(String(e));
     }
   }
-  async function performBackup() {
-    try {
-      await flush();
-      setBusy('正在创建完整备份…');
-      const file = await window.desktop.backup();
-      if (file) setNotice({ text: `备份已保存：${file}` });
-    } catch (e) {
-      notifyError(String(e));
-    } finally {
-      setBusy('');
-    }
-  }
-  async function restore() {
-    try {
-      await flush();
-      setBusy('正在校验备份…');
-      const info = await window.desktop.inspectBackup();
-      setBusy('');
-      if (!info) return;
-      if (
-        !(await ask(
-          '使用这份备份恢复？',
-          `${new Date(info.createdAt).toLocaleString('zh-CN')}\n${info.tasks} 条任务 · ${info.projects} 个项目 · ${info.images} 张图片\n将替换当前记录、草稿和回收站；替换前会自动保留当前数据副本。`,
-          '恢复备份',
-        ))
-      ) {
-        await window.desktop.discardBackup(info.token);
-        return;
-      }
-      setBusy('正在安全恢复…');
-      const restored = await window.desktop.restoreBackup(info.token);
-      setSelected(null);
-      updateDraft(restored.draft);
-      setSnapshot(restored);
-      setNotice({ text: '恢复完成，记录和图片都已就位。' });
-    } catch (e) {
-      notifyError(String(e));
-    } finally {
-      setBusy('');
-    }
-  }
   const all = snapshot?.tasks ?? [],
     projects = snapshot?.projects ?? [],
     currentProject = projects.find((p) => p.id === project);
@@ -553,13 +491,7 @@ export function TaskWorkspace({
             <span>工作空间</span>
             <CaretRightIcon size={11} />
             <span>
-              {view === 'review'
-                ? '工作回顾'
-                : view === 'settings'
-                  ? '设置'
-                  : view === 'archive'
-                    ? '归档项目'
-                    : listTitle}
+              {view === 'review' ? '工作回顾' : view === 'archive' ? '归档项目' : listTitle}
             </span>
           </div>
           <div className="spacer" />
@@ -619,123 +551,6 @@ export function TaskWorkspace({
         <div className="workspace-content">
           {view === 'review' ? (
             <Timeline tasks={all} projects={projects} onSelect={(id) => void select(id)} />
-          ) : view === 'settings' ? (
-            <section className="settings-page">
-              <span className="eyebrow">MAKE IT YOURS</span>
-              <h1>你的工作空间</h1>
-              <p className="page-description">数据在你手中，习惯由你决定。</p>
-              <h3>外观</h3>
-              <div className="setting-row">
-                <div>
-                  <strong>界面主题</strong>
-                  <p>适合每一个工作时刻</p>
-                </div>
-                <div className="segmented">
-                  {(
-                    [
-                      { id: 'light', name: '浅色', Icon: SunIcon },
-                      { id: 'dark', name: '深色', Icon: MoonIcon },
-                      { id: 'system', name: '系统', Icon: DesktopIcon },
-                    ] as const
-                  ).map((t) => (
-                    <button
-                      key={t.id}
-                      className={snapshot.settings.theme === t.id ? 'active' : ''}
-                      onClick={() => void run({ type: 'settings', theme: t.id })}
-                    >
-                      <t.Icon size={16} />
-                      {t.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <h3>备份与迁移</h3>
-              <div className="setting-row">
-                <div>
-                  <strong>自动备份</strong>
-                  <p>每天有变化时备份一次，保留最近 7 份</p>
-                </div>
-                <input
-                  role="switch"
-                  aria-label="自动备份"
-                  type="checkbox"
-                  checked={snapshot.settings.autoBackup}
-                  onChange={(e) => void run({ type: 'settings', autoBackup: e.target.checked })}
-                />
-              </div>
-              <div className="setting-row">
-                <div>
-                  <strong>备份位置</strong>
-                  <p className="path-text">{snapshot.settings.backupDir}</p>
-                </div>
-                <button
-                  className="secondary-button"
-                  onClick={async () => {
-                    try {
-                      const s = await window.desktop.backupDirectory();
-                      if (s) setSnapshot(s);
-                    } catch (e) {
-                      notifyError(String(e));
-                    }
-                  }}
-                >
-                  更改目录
-                </button>
-              </div>
-              <div className="setting-row">
-                <div>
-                  <strong>最近自动备份</strong>
-                  <p>
-                    {snapshot.settings.lastBackupAt
-                      ? dateLabel(snapshot.settings.lastBackupAt, true)
-                      : '尚未生成，应用运行时会自动检查'}
-                  </p>
-                  {snapshot.settings.lastBackupError && (
-                    <>
-                      <p className="error-text">{snapshot.settings.lastBackupError}</p>
-                      <button
-                        className="small-button"
-                        onClick={async () => {
-                          setBusy('正在重试自动备份…');
-                          try {
-                            setSnapshot(await window.desktop.retryBackup());
-                          } catch (e) {
-                            notifyError(String(e));
-                          } finally {
-                            setBusy('');
-                          }
-                        }}
-                      >
-                        立即重试
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="backup-actions">
-                <button className="primary-button" onClick={performBackup}>
-                  <DownloadSimpleIcon size={17} />
-                  导出完整备份
-                </button>
-                <button className="secondary-button" onClick={restore}>
-                  <UploadSimpleIcon size={17} />
-                  从备份恢复
-                </button>
-              </div>
-              <div className="backup-note">
-                任务、项目、草稿和图片一并打包。换一台电脑，也能接着记录。
-              </div>
-              <h3>关于</h3>
-              <div className="about-row">
-                <div className="app-mark">
-                  <CheckIcon weight="bold" size={25} />
-                </div>
-                <div>
-                  <strong>Clever Workbench</strong>
-                  <p>版本 0.1.0 · 本地优先的工作记录</p>
-                </div>
-              </div>
-            </section>
           ) : view === 'archive' ? (
             <section className="archive-page">
               <span className="eyebrow">A LITTLE ROOM FOR WHAT’S NEXT</span>

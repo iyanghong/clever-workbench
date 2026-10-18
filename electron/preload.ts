@@ -14,6 +14,11 @@ const api: DesktopAPI = {
   readSecret: (accountId, kind) => call('secret-read', accountId, kind),
   saveSecret: (accountId, kind, value) => call('secret-save', accountId, kind, value),
   removeSecret: (accountId, kind) => call('secret-remove', accountId, kind),
+  onSettingsChange(handler) {
+    const listener = (_: unknown, settings: Parameters<typeof handler>[0]) => handler(settings);
+    ipcRenderer.on('settings-changed', listener);
+    return () => ipcRenderer.removeListener('settings-changed', listener);
+  },
   onVaultStatus(handler) {
     const listener = (_: unknown, status: Parameters<typeof handler>[0]) => handler(status);
     ipcRenderer.on('vault-status', listener);
@@ -30,7 +35,8 @@ const api: DesktopAPI = {
   importImage: (b, n) => call('import-image', b, n),
   chooseImages: () => call('choose-images'),
   backup: () => call('backup'),
-  inspectBackup: () => call('inspect-backup'),
+  chooseBackup: () => call('choose-backup'),
+  inspectBackup: (token, password) => call('inspect-backup', token, password),
   restoreBackup: (t) => call('restore-backup', t),
   discardBackup: (t) => call('discard-backup', t),
   retryBackup: () => call('retry-backup'),

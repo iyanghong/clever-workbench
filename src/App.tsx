@@ -2,11 +2,13 @@ import type { CreationContext } from './app/actions';
 import { QuickCreate } from './app/QuickCreate';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SquaresFourIcon, XIcon } from '@phosphor-icons/react';
+import { useAppearance } from './shared/useAppearance';
 import { GlobalSearch } from './features/search/GlobalSearch';
 import { VaultControl } from './features/vault/VaultProvider';
 import { modules, type Route } from './app/modules';
 
 export function App() {
+  useAppearance();
   const [route, setRoute] = useState<Route>({ module: 'home' });
   const [error, setError] = useState('');
   const [context, setContext] = useState<CreationContext>({});
