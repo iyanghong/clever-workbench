@@ -4,6 +4,10 @@ const call = (channel: string, ...args: unknown[]) => ipcRenderer.invoke(channel
 const api: DesktopAPI = {
   platform: process.platform,
   vaultStatus: () => call('vault-status'),
+  vaultActivity: () => call('vault-activity'),
+  copySecret: (id, kind) => call('secret-copy', id, kind),
+  copyAccountWithSecrets: (id, target, kinds) => call('account-copy-secrets', id, target, kinds),
+  copyResourceWithSecrets: (id, target) => call('resource-copy-secrets', id, target),
   initializeVault: (password) => call('vault-initialize', password),
   unlockVault: (password) => call('vault-unlock', password),
   lockVault: () => call('vault-lock'),

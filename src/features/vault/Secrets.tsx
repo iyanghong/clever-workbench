@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   EyeIcon,
+  CopyIcon,
+  CheckIcon,
   EyeSlashIcon,
   PencilSimpleIcon,
   PlusIcon,
@@ -27,6 +29,7 @@ export function Secrets({
     [showInput, setShowInput] = useState(false),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState<SecretKind | null>(null);
   const generation = useRef(0);
   useEffect(() => {
     const unsubscribe = window.desktop.onVaultStatus((status) => {
@@ -56,6 +59,16 @@ export function Secrets({
         result = await window.desktop.readSecret(account.id, kind);
       if (request === generation.current)
         setVisible((previous) => ({ ...previous, [kind]: result }));
+    } catch (cause) {
+      onError(String(cause));
+    }
+  }
+  async function copy(kind: SecretKind) {
+    try {
+      if (!(await vault.ensureUnlocked())) return;
+      const request = generation.current;
+      await window.desktop.copySecret(account.id, kind);
+      if (request === generation.current) setCopied(kind);
     } catch (cause) {
       onError(String(cause));
     }
@@ -127,6 +140,14 @@ export function Secrets({
                 onClick={() => void reveal(kind)}
               >
                 {visible[kind] === undefined ? <EyeIcon size={16} /> : <EyeSlashIcon size={16} />}
+              </button>
+              <button
+                className="icon-button"
+                aria-label={`复制${secretLabels[kind]}`}
+                title={copied === kind ? '已复制 · 30 秒后清理' : '复制秘密'}
+                onClick={() => void copy(kind)}
+              >
+                {copied === kind ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
               </button>
               <button
                 className="icon-button"

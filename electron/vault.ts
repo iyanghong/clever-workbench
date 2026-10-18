@@ -1,7 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Store } from './store';
-import type { SecretKind, VaultStatus } from '../src/vault-types';
+import type {
+  SecretKind,
+  VaultStatus,
+  AccountCopyTarget,
+  ResourceCopyTarget,
+} from '../src/vault-types';
 import {
   derive,
   keyAad,
@@ -42,6 +47,7 @@ export class Vault {
   private generation = 0;
   private busy = false;
   private initialized = false;
+  private lastActivity = Date.now();
   constructor(
     private store: Store,
     private onStatus: (status: VaultStatus) => void = () => {},
@@ -49,6 +55,7 @@ export class Vault {
     this.initialized = store.get('vaultConfig', null) !== null;
   }
   status(): VaultStatus {
+    this.checkIdle();
     this.initialized = this.store.get('vaultConfig', null) !== null;
     return { initialized: this.initialized, unlocked: this.key !== null };
   }
@@ -63,8 +70,17 @@ export class Vault {
     this.key = null;
     this.onStatus({ initialized: this.initialized, unlocked: false });
   }
+  checkIdle() {
+    if (this.key && Date.now() - this.lastActivity >= 15 * 60_000) this.lock();
+  }
+  touch() {
+    this.checkIdle();
+    if (this.key) this.lastActivity = Date.now();
+  }
   private requireKey() {
+    this.checkIdle();
     if (!this.key) throw new Error('请先解锁秘密。');
+    this.lastActivity = Date.now();
     return this.key;
   }
   private account(accountId: unknown, kind: unknown): asserts kind is SecretKind {
@@ -89,6 +105,8 @@ export class Vault {
   async initialize(password: unknown) {
     return this.exclusive(async (generation) => {
       if (this.status().initialized) throw new Error('主密码已设置，请解锁。');
+      if (this.store.db.prepare('SELECT 1 FROM secrets LIMIT 1').get())
+        throw new Error('秘密缺少保护材料，请从完整备份恢复。');
       const key = randomBytes(32);
       try {
         const config = await newProtection(password, key);
@@ -103,6 +121,7 @@ export class Vault {
           throw cause;
         }
         this.key = Buffer.from(key);
+        this.lastActivity = Date.now();
         this.onStatus(this.status());
       } finally {
         key.fill(0);
@@ -124,6 +143,7 @@ export class Vault {
         if (generation !== this.generation) throw new Error('操作已取消，请重新解锁。');
         this.key?.fill(0);
         this.key = Buffer.from(key);
+        this.lastActivity = Date.now();
         this.onStatus(this.status());
       } finally {
         wrapping.fill(0);
@@ -159,6 +179,14 @@ export class Vault {
   read(accountId: string, kind: SecretKind): string {
     const key = this.requireKey();
     this.account(accountId, kind);
+    const bytes = this.decrypt(accountId, kind, key);
+    try {
+      return bytes.toString('utf8');
+    } finally {
+      bytes.fill(0);
+    }
+  }
+  private decrypt(accountId: string, kind: SecretKind, key: Buffer) {
     const row = this.store.db
       .prepare('SELECT value FROM secrets WHERE accountId=? AND kind=?')
       .get(accountId, kind);
@@ -170,12 +198,88 @@ export class Vault {
     } catch {
       throw new Error('秘密记录校验失败。');
     }
-    const bytes = unseal(value, key, secretAad(accountId, kind), 256_000);
+    return unseal(value, key, secretAad(accountId, kind), 256_000);
+  }
+  private cloneSecret(source: string, target: string, kind: SecretKind, key: Buffer) {
+    const bytes = this.decrypt(source, kind, key);
     try {
-      return bytes.toString('utf8');
+      this.store.db
+        .prepare('INSERT INTO secrets VALUES(?,?,?,?)')
+        .run(target, kind, JSON.stringify(seal(bytes, key, secretAad(target, kind))), Date.now());
     } finally {
       bytes.fill(0);
     }
+  }
+  private copyTransaction(operation: () => string) {
+    this.store.db.exec('BEGIN IMMEDIATE');
+    let createdId: string;
+    try {
+      createdId = operation();
+      this.store.markChanged();
+      this.store.db.exec('COMMIT');
+    } catch (cause) {
+      this.store.db.exec('ROLLBACK');
+      throw cause;
+    }
+    return { createdId, snapshot: this.store.snapshot() };
+  }
+  copyAccount(id: string, options: AccountCopyTarget, kinds: SecretKind[]) {
+    const key = this.requireKey();
+    if (
+      !options ||
+      typeof options !== 'object' ||
+      Array.isArray(options) ||
+      !Array.isArray(kinds) ||
+      !kinds.length ||
+      kinds.length > 3 ||
+      new Set(kinds).size !== kinds.length
+    )
+      throw new Error('请选择需要复制的秘密。');
+    for (const kind of kinds) this.account(id, kind);
+    return this.copyTransaction(() => {
+      const created = this.store.ledger.copyAccount(
+        { ...options, type: 'account.copy', id },
+        Date.now(),
+      );
+      for (const kind of kinds) this.cloneSecret(id, created, kind, key);
+      return created;
+    });
+  }
+  copyResource(id: string, options: ResourceCopyTarget) {
+    const key = this.requireKey();
+    if (!options || typeof options !== 'object' || Array.isArray(options))
+      throw new Error('资源复制目标无效。');
+    const source = this.store.ledger.resource(id);
+    const accounts = this.store.db
+      .prepare('SELECT id,name FROM accounts WHERE resourceId=?')
+      .all(source.id);
+    return this.copyTransaction(() => {
+      const resourceId = this.store.ledger.copyResource(
+        { ...options, type: 'resource.copy', id },
+        Date.now(),
+      );
+      const environmentId = this.store.ledger.resource(resourceId).environmentId;
+      for (const account of accounts) {
+        const accountId = this.store.ledger.copyAccount(
+          {
+            type: 'account.copy',
+            id: String(account.id),
+            environmentId,
+            resourceId,
+            name: String(account.name),
+          },
+          Date.now(),
+        );
+        const secrets = this.store.db
+          .prepare('SELECT kind FROM secrets WHERE accountId=?')
+          .all(account.id);
+        for (const secret of secrets) {
+          this.account(account.id, secret.kind);
+          this.cloneSecret(String(account.id), accountId, secret.kind, key);
+        }
+      }
+      return resourceId;
+    });
   }
   remove(accountId: string, kind: SecretKind) {
     this.requireKey();

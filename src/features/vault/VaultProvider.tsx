@@ -47,6 +47,20 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       }
     });
   }, []);
+  useEffect(() => {
+    let last = 0;
+    const activity = () => {
+      if (Date.now() - last < 10_000) return;
+      last = Date.now();
+      void window.desktop.vaultActivity().catch(() => {});
+    };
+    for (const event of ['pointerdown', 'keydown', 'wheel', 'focus'])
+      window.addEventListener(event, activity, { passive: true });
+    return () => {
+      for (const event of ['pointerdown', 'keydown', 'wheel', 'focus'])
+        window.removeEventListener(event, activity);
+    };
+  }, []);
   async function ensureUnlocked() {
     const current = await window.desktop.vaultStatus();
     setStatus(current);

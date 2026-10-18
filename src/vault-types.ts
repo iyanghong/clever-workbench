@@ -5,3 +5,9 @@ export const secretLabels: Record<SecretKind, string> = {
   token: 'Token',
   privateKey: '私钥',
 };
+export type AccountCopyTarget = {
+  environmentId?: string;
+  resourceId?: string | null;
+  name?: string;
+};
+export type ResourceCopyTarget = { environmentId?: string; name?: string };

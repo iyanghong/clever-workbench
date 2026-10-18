@@ -74,3 +74,130 @@ test('首次保存秘密设置主密码，手动锁定及重启后按需解锁�
     await fs.rm(directory, { recursive: true, force: true });
   }
 });
+
+test('秘密在可信侧复制，30 秒清理及锁屏事件撤销访问，取消解锁不改剪贴板', async () => {
+  test.setTimeout(90_000);
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-secret-copy-ui-'));
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env });
+  try {
+    const page = await app.firstWindow();
+    const accountId = await page.evaluate(async () => {
+      const systemId = (await window.desktop.mutate({ type: 'system.save', name: '订单平台' }))
+        .createdId!;
+      const environmentId = (
+        await window.desktop.mutate({ type: 'environment.save', systemId, name: '生产' })
+      ).createdId!;
+      const account = (
+        await window.desktop.mutate({ type: 'account.save', environmentId, name: '超管' })
+      ).createdId!;
+      await window.desktop.initializeVault('fictional-master-password');
+      await window.desktop.saveSecret(account, 'password', 'fictional-clipboard-secret');
+      return account;
+    });
+    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('tab', { name: '账号', exact: true }).click();
+    await page.getByRole('button', { name: '复制密码', exact: true }).click({ timeout: 3000 });
+    await expect
+      .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
+      .toBe('fictional-clipboard-secret');
+    await expect
+      .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()), {
+        timeout: 35_000,
+        intervals: [1000],
+      })
+      .toBe('');
+    await page.getByRole('button', { name: '复制密码', exact: true }).click();
+    await page.getByRole('button', { name: '查看密码', exact: true }).click();
+    await expect(page.getByLabel('已显示的密码')).toBeVisible();
+    await app.evaluate(async ({ clipboard, powerMonitor }) => {
+      await clipboard.writeText('later ordinary text');
+      powerMonitor.emit('lock-screen');
+    });
+    await expect(page.getByLabel('已显示的密码')).toHaveCount(0);
+    expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe('later ordinary text');
+    expect(
+      await page.evaluate(async (id) => {
+        try {
+          await window.desktop.copySecret(id, 'password');
+          return 'unexpected';
+        } catch (error) {
+          return String(error);
+        }
+      }, accountId),
+    ).toContain('解锁');
+    await page.getByRole('button', { name: '复制密码', exact: true }).click();
+    await page.getByRole('button', { name: '取消', exact: true }).click();
+    expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe('later ordinary text');
+  } finally {
+    await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('账号和资源的秘密复制必须明确勾选，取消解锁不创建副本', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-secret-clone-ui-'));
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env });
+  try {
+    const page = await app.firstWindow();
+    await page.evaluate(async () => {
+      const systemId = (await window.desktop.mutate({ type: 'system.save', name: '订单平台' }))
+        .createdId!;
+      const environmentId = (
+        await window.desktop.mutate({ type: 'environment.save', systemId, name: '生产' })
+      ).createdId!;
+      const resourceId = (
+        await window.desktop.mutate({
+          type: 'resource.save',
+          environmentId,
+          kind: 'redis',
+          name: '生产缓存',
+        })
+      ).createdId!;
+      const account = (
+        await window.desktop.mutate({
+          type: 'account.save',
+          environmentId,
+          resourceId,
+          name: '连接账号',
+        })
+      ).createdId!;
+      await window.desktop.initializeVault('fictional-master-password');
+      await window.desktop.saveSecret(account, 'password', 'fictional-clone-secret');
+      await window.desktop.lockVault();
+    });
+    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('button', { name: '复制账号', exact: true }).click();
+    await expect(page.getByLabel('同时复制账号秘密')).not.toBeChecked();
+    await page.getByLabel('同时复制账号秘密').check();
+    await page.getByRole('button', { name: '创建副本', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: '解锁秘密' })
+      .getByRole('button', { name: '取消', exact: true })
+      .click();
+    expect(await page.evaluate(async () => (await window.desktop.snapshot()).accounts.length)).toBe(
+      1,
+    );
+    await page.getByRole('button', { name: '创建副本', exact: true }).click();
+    await page.getByLabel('主密码', { exact: true }).fill('fictional-master-password');
+    await page.getByRole('button', { name: '解锁', exact: true }).click();
+    await expect(page.getByLabel('账号用途', { exact: true })).toHaveValue('连接账号 副本');
+    await page.getByRole('button', { name: '查看密码', exact: true }).click();
+    await expect(page.getByLabel('已显示的密码')).toHaveValue('fictional-clone-secret');
+    await page.getByRole('button', { name: '复制资源', exact: true }).click();
+    await expect(page.getByLabel('同时复制资源账号和秘密')).not.toBeChecked();
+    await page.getByLabel('同时复制资源账号和秘密').check();
+    await page.getByRole('button', { name: '创建副本', exact: true }).click();
+    await expect(page.getByLabel('资源名称', { exact: true })).toHaveValue('生产缓存 副本');
+    const snapshot = await page.evaluate(() => window.desktop.snapshot());
+    expect(snapshot.resources).toHaveLength(2);
+    expect(snapshot.accounts).toHaveLength(4);
+    expect(snapshot.accounts.every((item) => item.secretKinds.includes('password'))).toBe(true);
+  } finally {
+    await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});

@@ -1,4 +1,4 @@
-import type { SecretKind, VaultStatus } from './vault-types';
+import type { SecretKind, VaultStatus, AccountCopyTarget, ResourceCopyTarget } from './vault-types';
 import type { DocumentCommand, DocumentRecord, DocumentSummary } from './document-types';
 import type { JSONContent } from '@tiptap/react';
 import type {
@@ -100,6 +100,14 @@ export type BackupInfo = {
 export interface DesktopAPI {
   platform: string;
   vaultStatus(): Promise<VaultStatus>;
+  vaultActivity(): Promise<void>;
+  copySecret(accountId: string, kind: SecretKind): Promise<void>;
+  copyAccountWithSecrets(
+    id: string,
+    target: AccountCopyTarget,
+    kinds: SecretKind[],
+  ): Promise<MutationResult>;
+  copyResourceWithSecrets(id: string, target: ResourceCopyTarget): Promise<MutationResult>;
   initializeVault(password: string): Promise<void>;
   unlockVault(password: string): Promise<void>;
   lockVault(): Promise<void>;

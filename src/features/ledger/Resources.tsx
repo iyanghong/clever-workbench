@@ -12,6 +12,7 @@ import type { ResourceKind, ResourceRecord, EnvironmentRecord } from '../../ledg
 import { useAutosave } from '../../shared/useAutosave';
 import { CopyValue } from '../../shared/CopyValue';
 import { Dialog } from '../../shared/Dialog';
+import { useVault } from '../vault/VaultProvider';
 import { RelatedWork } from './RelatedWork';
 import { Accounts, type AccountNavigation } from './Accounts';
 import type { EditorHost } from './Environments';
@@ -206,22 +207,34 @@ function ResourceEditor({
     [fieldValue, setFieldValue] = useState(''),
     [busy, setBusy] = useState(false);
   const [dialogError, setDialogError] = useState('');
+  const vault = useVault();
+  const [includeSecrets, setIncludeSecrets] = useState(false);
+  const secretCount = snapshot.accounts
+    .filter((item) => item.resourceId === resource.id)
+    .reduce((count, item) => count + item.secretKinds.length, 0);
   async function confirm() {
     if (busy) return;
     setBusy(true);
     setDialogError('');
     try {
       await flushAll();
-      const result = await window.desktop.mutate(
-        modal === 'copy'
-          ? {
-              type: 'resource.copy',
-              id: resource.id,
+      if (modal === 'copy' && includeSecrets && !(await vault.ensureUnlocked())) return;
+      const result =
+        modal === 'copy' && includeSecrets
+          ? await window.desktop.copyResourceWithSecrets(resource.id, {
               name: copyName,
               environmentId: copyEnvironment,
-            }
-          : { type: 'resource.delete', id: resource.id },
-      );
+            })
+          : await window.desktop.mutate(
+              modal === 'copy'
+                ? {
+                    type: 'resource.copy',
+                    id: resource.id,
+                    name: copyName,
+                    environmentId: copyEnvironment,
+                  }
+                : { type: 'resource.delete', id: resource.id },
+            );
       host.onSnapshot(result.snapshot);
       setModal(null);
       if (result.createdId) onOpen(copyEnvironment, result.createdId);
@@ -392,6 +405,7 @@ function ResourceEditor({
         <button
           onClick={() => {
             setDialogError('');
+            setIncludeSecrets(false);
             setCopyName(`${form.value.name} 副本`);
             setModal('copy');
           }}
@@ -418,7 +432,7 @@ function ResourceEditor({
         >
           {modal === 'copy' ? (
             <>
-              <p>创建独立的资源，复制普通信息。账号与秘密不会一起复制。</p>
+              <p>创建独立的资源，默认只复制普通信息。</p>
               <label>
                 名称
                 <input
@@ -446,6 +460,17 @@ function ResourceEditor({
             </>
           ) : (
             <p>删除“{resource.name}”？有关联账号或资料的资源需要先处理引用。</p>
+          )}
+          {modal === 'copy' && secretCount > 0 && (
+            <label className="secret-show">
+              <input
+                type="checkbox"
+                aria-label="同时复制资源账号和秘密"
+                checked={includeSecrets}
+                onChange={(event) => setIncludeSecrets(event.target.checked)}
+              />
+              同时复制账号及 {secretCount} 项秘密（需要解锁）
+            </label>
           )}
           <div className="modal-actions">
             <button disabled={busy} onClick={() => setModal(null)}>

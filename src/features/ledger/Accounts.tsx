@@ -4,6 +4,7 @@ import type { Snapshot } from '../../types';
 import type { AccountRecord, EnvironmentRecord } from '../../ledger-types';
 import type { EditorHost } from './Environments';
 import { useAutosave } from '../../shared/useAutosave';
+import { useVault } from '../vault/VaultProvider';
 import { Secrets } from '../vault/Secrets';
 import { CopyValue } from '../../shared/CopyValue';
 import { Dialog } from '../../shared/Dialog';
@@ -165,8 +166,11 @@ function AccountEditor({
     [targetResource, setTargetResource] = useState(account.resourceId ?? ''),
     [targetName, setTargetName] = useState('');
   const [dialogError, setDialogError] = useState('');
+  const vault = useVault();
+  const [includeSecrets, setIncludeSecrets] = useState(false);
   function open(mode: 'copy' | 'move' | 'delete') {
     setDialogError('');
+    setIncludeSecrets(false);
     setTargetEnvironment(environment.id);
     setTargetResource(account.resourceId ?? '');
     setTargetName(mode === 'copy' ? `${form.value.name} 副本` : form.value.name);
@@ -178,25 +182,37 @@ function AccountEditor({
     setDialogError('');
     try {
       await flushAll();
-      const result = await window.desktop.mutate(
-        modal === 'copy'
-          ? {
-              type: 'account.copy',
-              id: account.id,
-              name: targetName,
-              environmentId: targetEnvironment,
-              resourceId: targetResource || null,
-            }
-          : modal === 'move'
-            ? {
-                type: 'account.save',
-                id: account.id,
-                name: form.value.name,
+      if (modal === 'copy' && includeSecrets && !(await vault.ensureUnlocked())) return;
+      const result =
+        modal === 'copy' && includeSecrets
+          ? await window.desktop.copyAccountWithSecrets(
+              account.id,
+              {
+                name: targetName,
                 environmentId: targetEnvironment,
                 resourceId: targetResource || null,
-              }
-            : { type: 'account.delete', id: account.id },
-      );
+              },
+              account.secretKinds,
+            )
+          : await window.desktop.mutate(
+              modal === 'copy'
+                ? {
+                    type: 'account.copy',
+                    id: account.id,
+                    name: targetName,
+                    environmentId: targetEnvironment,
+                    resourceId: targetResource || null,
+                  }
+                : modal === 'move'
+                  ? {
+                      type: 'account.save',
+                      id: account.id,
+                      name: form.value.name,
+                      environmentId: targetEnvironment,
+                      resourceId: targetResource || null,
+                    }
+                  : { type: 'account.delete', id: account.id },
+            );
       host.onSnapshot(result.snapshot);
       setModal(null);
       if (modal !== 'delete')
@@ -338,6 +354,17 @@ function AccountEditor({
                 </select>
               </label>
             </>
+          )}
+          {modal === 'copy' && account.secretKinds.length > 0 && (
+            <label className="secret-show">
+              <input
+                type="checkbox"
+                aria-label="同时复制账号秘密"
+                checked={includeSecrets}
+                onChange={(event) => setIncludeSecrets(event.target.checked)}
+              />
+              同时复制 {account.secretKinds.length} 项秘密（需要解锁）
+            </label>
           )}
           <div className="modal-actions">
             <button className="secondary-button" disabled={busy} onClick={() => setModal(null)}>

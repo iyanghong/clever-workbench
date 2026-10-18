@@ -10,12 +10,14 @@ import {
   nativeTheme,
   nativeImage,
   clipboard,
+  powerMonitor,
 } from 'electron';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { Store, assetName, text } from './store';
+import { SecretClipboard } from './secret-clipboard';
 import { Vault } from './vault';
 import { Backups } from './backup';
 
@@ -31,6 +33,7 @@ let window: BrowserWindow | null = null,
   store: Store,
   backups: Backups,
   vault: Vault,
+  secretClipboard: SecretClipboard,
   restoring = false,
   allowClose = false,
   closePending = false,
@@ -156,7 +159,14 @@ app
   .then(() => {
     store = new Store(path.join(app.getPath('userData'), 'data'));
     backups = new Backups(store);
-    vault = new Vault(store, (status) => window?.webContents.send('vault-status', status));
+    vault = new Vault(store, (status) => {
+      if (!status.unlocked) void secretClipboard?.clearOwned();
+      window?.webContents.send('vault-status', status);
+    });
+    secretClipboard = new SecretClipboard(vault, clipboard);
+    powerMonitor.on('lock-screen', () => vault.lock());
+    powerMonitor.on('suspend', () => vault.lock());
+    setInterval(() => vault.checkIdle(), 10_000).unref();
     applyTheme();
     protocol.handle('workbench-asset', (request) => {
       const url = new URL(request.url),
@@ -164,6 +174,19 @@ app
       if (url.hostname !== 'image' || !assetName.test(filename))
         return new Response('Not found', { status: 404 });
       return net.fetch(pathToFileURL(path.join(store.directory, 'assets', filename)).href);
+    });
+    secureHandler('vault-activity', () => vault.touch());
+    secureHandler('secret-copy', (id, kind) => {
+      writable();
+      return secretClipboard.copy(id, kind);
+    });
+    secureHandler('account-copy-secrets', (id, target, kinds) => {
+      writable();
+      return vault.copyAccount(id, target, kinds);
+    });
+    secureHandler('resource-copy-secrets', (id, target) => {
+      writable();
+      return vault.copyResource(id, target);
     });
     secureHandler('vault-status', () => vault.status());
     secureHandler('vault-initialize', async (password) => {
@@ -274,9 +297,7 @@ app
       store.set('backupDir', directory);
       return store.snapshot();
     });
-    secureHandler('copy-text', (value) => {
-      clipboard.writeText(text(value, 200_000));
-    });
+    secureHandler('copy-text', (value) => secretClipboard.copyText(text(value, 200_000)));
     secureHandler('open-external', async (value) => {
       const url = new URL(text(value, 8192));
       if (!['http:', 'https:'].includes(url.protocol))
