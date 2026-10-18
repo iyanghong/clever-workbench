@@ -1,61 +1,53 @@
 # 首版交付验证
 
-版本：0.1.0。功能任务 01–20 已完成；任务 21–23 正在执行，尚未标记首版交付完成。
+版本：0.1.0。功能任务 01–20 及访问入口、服务器配置扩展已完成。用户最新追加的文档归属、系统任务与三种格式导出已实现，最终 Mac 安装包已通过复验；Windows 11 验收保持未完成。
 
-当前实际环境为 macOS 27.0.1（26A434）、Apple Silicon arm64。应用使用 Electron 44.9.0，运行时 Node.js 24.22.0；桌面测试使用独立的虚构资料目录。
+实际本机：macOS 27.0.1（26A434）、Apple Silicon arm64；Electron 44.9.0，运行时 Node.js 24.22.0。所有测试使用独立的虚构资料目录。
 
-## 验证状态
+## 当前证据
 
-| 范围 | 当前证据 | 状态 |
+| 范围 | 证据 | 结果 |
 | --- | --- | --- |
-| 功能级存储与桌面流程 | 见各任务 Answer 和 implementation-state.md | 已完成各项针对性检查 |
-| 最终完整单元测试 | 16 个测试文件、64 项全部通过（2026-10-18） | 通过 |
-| Mac arm64 DMG／ZIP | 1d87213 的 ad-hoc 签名产物从 DMG 安装，签名完整性检查及 33 项桌面流程全部通过 | 核心运行通过，原生锁屏待实测 |
-| Windows x64 安装包 | 新版已在 Mac 交叉构建成功；上一版在 Windows Server 2025 安装运行通过，新版 CI 执行中 | 构建通过，补充运行复验中 |
-| Windows 11 x64 运行 | 用户已确认目前没有可用环境 | 未验收 |
-| 双向备份迁移 | Mac → Windows Server 2025 → Mac 的真实恢复、继续编辑和重导出已通过，含 6 项秘密和图片 | 补充双平台迁移通过，Windows 11 待验收 |
-| code-review 两轴审查 | 主规格与补充规格两轮审查完成；详见各自报告，所有实现发现已修复并复核 | 实现审查通过，平台缺口保留 |
+| 新功能完整单元检查 | 18 个文件、72 项（2026-10-19） | 全部通过 |
+| 新功能完整桌面检查 | 开发构建、37 项真实 Electron 流程 | 全部通过 |
+| Word／PDF 阅读检查 | 8 份文件、22 页，中文、32 行表格、代码、复选框与图片 | 全部通过，见补充规格证据 |
+| 最终双平台 CI | 758f87a，Mac 与 Windows Server 2025，各 72 项单元和 37 项安装包流程 | 全部通过，包含本轮导出 |
+| 最终 Mac／Windows 安装包 | 758f87a 的 DMG／ZIP 与 NSIS 已生成；Mac 从 DMG 安装并通过严格签名检查，双平台安装运行通过 | 通过，Windows 11 仍未验收 |
+| Windows 11 x64 | 用户确认目前没有可用环境 | 未验收 |
+| 双向加密备份迁移 | Mac → Windows Server 2025 → Mac，含继续编辑和再次备份 | 通过；Windows 11 待验收 |
+| 原生闲置与锁屏 | 909468 ms 真正闲置锁定；另一次观察到真实系统锁屏后立即锁定 | 通过，原生休眠仅有事件边界验证 |
+| 两轴审查 | 原规格、台账扩展、文档／导出三轮发现均已修复并复核 | 已通过 |
 
-Mac 功能测试包含真实 Electron 窗口与剪贴板；系统锁屏／休眠和可访问性事件以隔离进程中的原生事件边界模拟，不能据此声称已实际锁定用户电脑。Windows 交叉构建和其他 Windows 版本的 CI 结果也不能替代 Windows 11 实机验收。
+CI 链接：[758f87a / run 39148983022](https://github.com/iyanghong/clever-workbench/actions/runs/39148983022)。Windows runner 实际为 Windows Server 2025 Datacenter x64（10.0.26100），不能替代 Windows 11。
 
-真实闲置验证已通过：909468 ms 后锁定，普通资料仍可读，秘密读取被拒绝，期间无原生锁屏事件。另一次运行在 711748 ms 收到真实系统锁屏事件并立即撤销秘密访问，两份证据分别见 `evidence/real-idle.json` 和 `evidence/native-lock.json`。这些证据来自 1d87213 的隔离安装包，验证实际锁定机制，不替代后续新功能的最终产物回归。当前代码、产物校验值及安装包内文件比对见 `evidence/release-artifacts.json`；代表性界面见 `evidence/mac-installed/`。
+## 导出与页面验收
 
-## 依赖检查
+本轮功能与边界见[补充规格](../system-documents-export/spec.md)，三种格式的虚构样例、页面和渲染证据见 [verification.json](../system-documents-export/evidence/verification.json)。每份文档和任务单独成文件，系统总览包含项目历史、部署、服务器硬件、多地址入口和用户选择的秘密。包内密码全部为虚构值。
 
-2026-10-18，`npm audit --omit=dev` 为 0 项漏洞。完整审计报告 8 项 moderate，均来自 electron-builder 构建依赖中的 `sprintf-js` 精度参数 DoS 链；应用运行时不包含该构建依赖。当前审计建议回退旧版 electron-builder，不作为可直接采用的兼容修复。保留当前构建版本并在平台构建中验证。
+DOCX 由应用生成 OOXML，再以随环境提供的 LibreOffice 渲染；指定其字体配置后中文正常。PDF 由应用的禁用脚本、隔离网络的隐藏窗口生成。逐页检查期间发现的 Word 任务复选框重复标记已经修复，修复后的文档重新渲染检查通过。
 
-## 外观与性能
+## 备份与锁定
 
-浅色、深色和可访问性截图见 [evidence](evidence/)。模块按需加载后，首页初始脚本约 331 kB，编辑器引擎、代码高亮和业务页面分别加载，构建无大块警告。实际包大小和启动结果以产物检查为准。
+迁移样例 `evidence/migration/mac-seed.cwb` 包含 2 个项目、服务双环境部署、6 项秘密、多地址 GitLab、服务器硬件、任务、文档、草稿、回收站和图片。`windows-return` 与 `mac-return` 保存原往返恢复结果；`final-windows-return` 与 `final-mac-return` 对应758f87a最终Windows CI返回及Mac继续编辑后再次备份，仍逐项核对6项秘密和图片。旧版 7 样例独立保留，升级及恢复测试通过。
 
-## 打包阶段发现与修复
+真实闲置与锁屏证据分别见 `evidence/real-idle.json` 和 `evidence/native-lock.json`，来自 1d87213 的隔离安装包。普通资料始终可读，锁定后的秘密读取被拒绝。未替用户物理锁定电脑；原生休眠仍只通过事件边界验证。
 
-手动拆分 Tiptap 导致循环依赖初始化错误，实际安装包任务页无法打开；改为只独立拆分 ProseMirror 模型及纯代码高亮依赖，归档和编辑器 4 项真实流程通过。
+## 集成问题及修复
 
-按需页面在快速离开再返回时保留旧首页状态，且页面尚未确定对象时可误用空新建背景。现在每次导航重建页面，确定上下文后才启用全局新建；首页两条流程及重复点击当前入口回归通过。最终产物须重新构建，不能沿用含问题的早期包。
+已修复任务编辑器的分包循环依赖、快速导航后的旧页面状态和新建背景、备份写入在 Windows 的读写句柄要求，以及繁忙渲染时账号元数据携带过时环境的问题。最近 CI 还发现启动自动备份与退出竞争；5fa301b 让退出等待落盘，并在保存后再次检查关闭与资料保护状态。对应真实流程和两轴复核均已通过。
 
-当前虚构资料样例 `evidence/migration/mac-seed.cwb` 与对应断言 JSON 由实际打包程序导出，包含 2 个阶段项目、服务双环境部署、多角色账号、多地址入口、通用服务器及配置、6 项秘密、3 条任务、2 份文档、草稿、回收站和图片。旧版 7 样例另存为 `legacy-v7`，升级恢复已通过公开接口测试。双平台结果以本报告验证状态为准。
+## 安装包与依赖
 
-## 审查后的补充修复
+最终产物与源提交、SHA-256、ASAR 内容比对、签名和安装结果统一记录在 `evidence/release-artifacts.json`。当前源提交为 758f87a，包含新导出及审查修复。Mac 与 Windows 的应用 ASAR 完全一致，15 份包内构建文件逐一匹配本地生产构建。Mac 为 ad-hoc 签名，无 Developer ID 和公证；Windows 无发布者签名，属于个人使用版本。
 
-详见 [code-review.md](code-review.md)。恢复预检增加真实秘密认证，常规写入与预检共用草稿校验，任务快录保存失败可原样重试，富文本表格拒绝不可逆的单元格格式。新增针对性测试先复现失败，再验证修复。
-
-首轮 CI（run 39136181047）在单元阶段发现两个环境问题：Windows 备份写入返回权限错误，已将最终 fsync 的文件句柄改为读写打开；Windows 的 FlushFileBuffers 要求写权限（[Microsoft 文档](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-flushfilebuffers)）。Mac runner 揭示一条测试错误地假定解锁派生必定晚于恢复完成；测试现同时允许恢复前成功及恢复后的取消，并继续禁止迟到成功和恢复后沿用旧会话。新 CI 尚待验证，不能据此标记 Windows 运行通过。
-
-## 访问入口和服务器配置扩展
-
-补充规格及审查见 [ledger-access-entries](../ledger-access-entries/spec.md)。实现提交为 `1d87213`；`aac697a` 更新打包程序生成的虚构迁移样例，包含多地址 GitLab、系统通用服务器、操作系统／CPU／内存／硬盘及 6 项秘密。旧版 7 的样例单独保留，64 项单元测试包括其升级和恢复。
-
-Mac、Windows 新包的应用归档完全一致，并逐个比对打包归档中的构建文件与本地构建；应用名称、版本和入口清单一致。安装包 SHA-256 见 `evidence/release-artifacts.json`。新版 hosted CI 为 [run 39142956475](https://github.com/iyanghong/clever-workbench/actions/runs/39142956475)，仍以 Windows Server 2025 为补充平台。
+2026-10-19，`npm audit --omit=dev` 为 0 项漏洞。8 项 moderate 均来自 electron-builder 构建依赖中的 sprintf-js 链，不进入应用运行时；当前审计建议降级 builder，未直接采用。首页初始脚本约 331 kB，编辑器和各业务模块按需加载。
 
 ## 仍需目标设备补验
 
-Windows 11 x64 需要安装同版本 NSIS 产物，使用独立虚构资料完成启动、中文输入、原生窗口与快捷键、账号和图片操作、备份恢复；可用 `CWB_TEST_EXECUTABLE` 指向安装后的程序运行同一套桌面流程。Windows Server 2025 的运行和双向迁移只能作为补充证据。
+Windows 11 x64：安装同版本 NSIS，验证启动／退出、中文输入、原生窗口与快捷键、账号和图片、备份恢复及锁屏／休眠。可用 `CWB_TEST_EXECUTABLE` 指向安装后的程序执行相同桌面流程。用户已确认没有可用设备，不重复请求环境，也不把 Server 2025 结果写成 Windows 11 通过。
 
-Mac 的真实锁屏事件已被记录并验证；原生休眠及 Windows 11 锁屏／休眠仍需在目标设备人工执行：先解锁一项虚构秘密，锁定操作系统并返回应用，确认普通台账仍可查、读取或复制秘密重新要求主密码；休眠唤醒重复此过程。未完成的情形目前仅有原生事件边界验证，未替用户物理锁定电脑。
+Mac 原生休眠仍需实际执行：先解锁一项虚构秘密，休眠后唤醒，确认普通台账可读、秘密要求重新解锁。当前仅有原生事件边界验证。
 
-## CI 保存竞争与新需求衔接
+最新两轴报告见 [system-documents-export/code-review.md](../system-documents-export/code-review.md)。零起点步骤、跨行标题和原始 HTML 的明确失败也已补充测试并经复核。
 
-run 39142956475：Windows Server 2025 的 64 项单元测试、33 项安装包流程及 Mac 备份导入／Windows 导出通过；Mac 的 33 项流程中 3 项在繁忙渲染时序失败。通过本机 800 ms 渲染阻塞稳定复现，确认账号元数据保存携带了过时环境。4481265 已使元数据编辑不再提交归属，并经两轴复核；后续 CI 为 [run 39144256040](https://github.com/iyanghong/clever-workbench/actions/runs/39144256040)。
-
-用户随后追加通用／系统文档、系统任务及可阅读资料导出，正在按 [新规格](../system-documents-export/spec.md)实现。现有 release 产物仍对应 1d87213，不作为包含最新修复和新导出的最终交付包；完成后需重新生成。
+Windows CI 实际生成的 PDF 总览两页均已渲染检查，中文正常，Microsoft YaHei 与 Consolas 字体已嵌入；样例和记录见补充规格的 `evidence/windows-verification.json`。

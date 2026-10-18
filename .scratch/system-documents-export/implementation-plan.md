@@ -1,6 +1,6 @@
 # 实现计划
 
-Status: claimed
+Status: resolved
 
 起点：`5fa301bcebbb8ed323a53606317f02efd705d874`。需求与用户对密码、独立文档的选择见 [spec.md](spec.md)。
 
@@ -19,8 +19,8 @@ Status: claimed
 
 ## 已验证
 
-文档范围及任务入口各有一条真实桌面测试，均先在旧界面失败后通过；包含密码的系统导出也已通过真实 Electron 窗口和三种文件格式验证。68 项单元测试全部通过，覆盖系统边界、同名与特殊字符文件名、密码／Token／私钥选择、图片、锁定取消、恢复取消、原文件保留、写入失败与临时文件清理。
+文档范围及任务入口各有一条真实桌面测试，均先在旧界面失败后通过；包含密码的系统导出也已通过真实 Electron 窗口和三种文件格式验证。72 项单元测试全部通过，覆盖系统边界、同名与特殊字符文件名、密码／Token／私钥选择、图片、锁定取消、恢复取消、原文件保留、写入失败与临时文件清理。
 
 实际虚构资料包包含系统总览、2 份同名文档、1 项任务及图片，三种格式共 14 个文件。8 份 Word／PDF 共 22 页均已渲染检查，中文、32 行跨页表格、代码、嵌套列表、任务复选框及图片可读；复选框重复标记已先复现再修复。证据见 [evidence/verification.json](evidence/verification.json)，复验脚本为 [verify-export.mjs](verify-export.mjs)。
 
-Word 验收使用随环境提供的 LibreOffice 和中文字体配置，不修改用户的 Office 配置；PDF 由应用的隔离打印窗口实际生成。完整桌面流程、两轴审查及最终安装包正在收尾。
+Word 验收使用随环境提供的 LibreOffice 和中文字体配置，不修改用户的 Office 配置；PDF 由应用的隔离打印窗口实际生成。完整开发构建和最终 Mac DMG 安装版各 37 项桌面流程通过；两轴审查发现已修复并复核，见 [code-review.md](code-review.md)。758f87a 的 Mac arm64 DMG／ZIP 与 Windows x64 安装包已生成，包内构建文件逐个匹配且双平台应用归档完全一致；Mac 严格签名完整性检查通过。最终 CI 在 Mac 与 Windows Server 2025 各通过 72 项单元及 37 项安装版流程；Windows PDF 中文与字体嵌入也已实际检查。Windows 11 继续保持未验收。

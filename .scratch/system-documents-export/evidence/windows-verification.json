@@ -1,0 +1,16 @@
+{
+  "sourceCommit": "758f87a91ec0ece061ef447e78961b7296b23cab",
+  "ciRun": "https://github.com/iyanghong/clever-workbench/actions/runs/39148983022",
+  "platform": "Windows Server 2025 x64",
+  "systemPackageSha256": "60eb785b0e7779aaa9c1ac4fe3b0ea9c86ea20206ee1fab699693635fb9c767f",
+  "pdfOverviewReviewedPages": 2,
+  "embeddedFonts": [
+    "MicrosoftYaHei-Bold",
+    "MicrosoftYaHei",
+    "Consolas"
+  ],
+  "ChineseReadable": true,
+  "unitPassed": 72,
+  "installedE2EPassed": 37,
+  "fictionalData": true
+}

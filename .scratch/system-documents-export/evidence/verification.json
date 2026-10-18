@@ -1,7 +1,7 @@
 {
   "fictionalData": true,
-  "generatedAt": "2026-10-18T17:02:33.045Z",
-  "systemPackageSha256": "9f02a2e343cdf9c5d9bcee92bafe49f8450666a1ca1a8ac0c7e1f2468a3b1cb6",
+  "generatedAt": "2026-10-18T17:14:57.325Z",
+  "systemPackageSha256": "6fe892d1f4a9cac69a313427474f9f4bc42b1cdd0ed13e3e3b5cc42c86b9978d",
   "files": 14,
   "formats": [
     "markdown",
@@ -28,9 +28,13 @@
     "embedded full-size screenshot and following paragraph",
     "code, nested list, checked/unchecked items",
     "separate duplicate titles with Windows-safe filenames",
-    "project history, deployment, access addresses, server hardware and fictional passwords"
+    "project history, deployment, access addresses, server hardware and fictional passwords",
+    "literal HTML entities inside inline code",
+    "only real image nodes collected; password/code URI regression verified by automated tests"
   ],
   "wordRenderer": "Bundled LibreOffice via render_docx.py; FONTCONFIG_FILE uses bundled LibreOffice Resources/fontconfig/fonts.conf",
   "pdfRenderer": "Actual isolated Electron printToPDF; PNG inspection with bundled Poppler",
-  "result": "pass"
+  "result": "pass",
+  "sourceCommit": "6da1698",
+  "windowsSupplement": "windows-verification.json"
 }
