@@ -1,0 +1,89 @@
+{
+  "version": "0.1.0",
+  "sourceCommit": "3b84b41d0204c1af9462ffeae2169bbe45eab045",
+  "createdAt": "2026-10-18T14:55:00.348Z",
+  "artifacts": [
+    {
+      "name": "Clever Workbench-0.1.0-arm64.dmg",
+      "bytes": 128677982,
+      "sha256": "941abdbf3b96ae06bc77e016ec633b70ea9720c2c964f93c11c65fc9fc2e336e"
+    },
+    {
+      "name": "Clever Workbench-0.1.0-arm64-mac.zip",
+      "bytes": 128041935,
+      "sha256": "7c8ac64faad9b2eaa88061ee1792765d053aa2d7051b3f9ed43d67898d89f2b8"
+    },
+    {
+      "name": "Clever Workbench Setup 0.1.0.exe",
+      "bytes": 112035715,
+      "sha256": "045a7f544ead6cdc70a9c598f79ce46b0b1a1518e2638637dc718ee7d8364668"
+    }
+  ],
+  "packages": [
+    {
+      "archive": "release/installed-3b84b41/Clever Workbench.app/Contents/Resources/app.asar",
+      "sha256": "742c9b239d030e36b9ed58ccebae7eaa18b2c9a94c67d4cc76e0ef14e76fc8b4",
+      "files": [
+        "/dist-electron/main.cjs",
+        "/dist-electron/main.cjs.map",
+        "/dist-electron/preload.cjs",
+        "/dist/assets/CaretRight.es-r_cDHoO9.js",
+        "/dist/assets/CheckCircle.es-CT-xa5xA.js",
+        "/dist/assets/DocumentsPage-BWITP8oS.js",
+        "/dist/assets/Editor-D2_GjLmI.js",
+        "/dist/assets/LedgerPage-UoGzswXm.js",
+        "/dist/assets/SettingsPage--MW88j0N.js",
+        "/dist/assets/TaskWorkspace-B2FvlhEx.js",
+        "/dist/assets/code-highlighting-MfV_Bks1.js",
+        "/dist/assets/domain-Cel9E-GC.js",
+        "/dist/assets/editor-model--1ETbRp-.js",
+        "/dist/assets/index-BUJDVfNZ.js",
+        "/dist/assets/index-C8hSNodZ.css",
+        "/dist/index.html",
+        "/package.json"
+      ],
+      "buildFilesMatch": true
+    },
+    {
+      "archive": "release/win-unpacked/resources/app.asar",
+      "sha256": "742c9b239d030e36b9ed58ccebae7eaa18b2c9a94c67d4cc76e0ef14e76fc8b4",
+      "files": [
+        "/dist-electron/main.cjs",
+        "/dist-electron/main.cjs.map",
+        "/dist-electron/preload.cjs",
+        "/dist/assets/CaretRight.es-r_cDHoO9.js",
+        "/dist/assets/CheckCircle.es-CT-xa5xA.js",
+        "/dist/assets/DocumentsPage-BWITP8oS.js",
+        "/dist/assets/Editor-D2_GjLmI.js",
+        "/dist/assets/LedgerPage-UoGzswXm.js",
+        "/dist/assets/SettingsPage--MW88j0N.js",
+        "/dist/assets/TaskWorkspace-B2FvlhEx.js",
+        "/dist/assets/code-highlighting-MfV_Bks1.js",
+        "/dist/assets/domain-Cel9E-GC.js",
+        "/dist/assets/editor-model--1ETbRp-.js",
+        "/dist/assets/index-BUJDVfNZ.js",
+        "/dist/assets/index-C8hSNodZ.css",
+        "/dist/index.html",
+        "/package.json"
+      ],
+      "buildFilesMatch": true
+    }
+  ],
+  "macSignature": {
+    "adHoc": true,
+    "deepStrictVerify": true,
+    "developerId": false,
+    "notarized": false
+  },
+  "unitTests": {
+    "files": 14,
+    "passed": 56
+  },
+  "installedMacE2E": {
+    "passed": 27,
+    "failed": 0,
+    "durationSeconds": 126,
+    "os": "macOS 27.0.1 (26A434)",
+    "arch": "arm64"
+  }
+}

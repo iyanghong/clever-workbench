@@ -7,11 +7,11 @@
 - 已完成功能任务 01 至 20；下一步为 21–23 的打包、平台与迁移验收。
 - 新应用已复制并隔离可复用基础，产品名 Clever Workbench、资料变量 CLEVER_WORKBENCH_DATA_DIR、附件协议 workbench-asset、备份格式 clever-workbench。
 - 入口由模块登记组合；任务功能迁入独立模块，旧 App 不再充当所有功能的入口。
-- 已验证：持久化新用例 1 项、原存储测试 9 项、桌面生命周期场景 1 项；类型检查与生产构建通过。完整测试套件留到实现完成后运行。
+- 最新完整单元测试 14 个文件、56 项通过；Mac 安装包 27 项端到端流程通过。最终 ad-hoc 签名包正在复验，细节见 release-verification.md。
 - 备份已改为整体加密容器；完整恢复、自动策略和密钥轮换继续按任务 17–19 完成。
 - 共用编辑器已有源码切换、表格与转换保全；Markdown 为权威正文，JSON 仅为缓存。
-- GitHub Actions 可用，尚未推送或触发；Windows 和双向迁移必须实际验证。
-- 最后必须按 code-review 分别运行 Standards／Spec 审查、修复并提交当前分支。
+- GitHub Actions 已触发 Mac 和 Windows Server 2025 流程；Windows 11 环境缺失，Server 结果仅作为补充证据。
+- code-review 的 Standards／Spec 审查、4 项问题修复和复核已完成，工作已提交并推送 master。
 
 ## 任务 03 结果
 
