@@ -1,6 +1,8 @@
 import { expect, test } from 'vitest';
 import yauzl from 'yauzl';
 import { renderDocx, renderHtml } from '../electron/export-documents';
+import { portableMarkdown, exportImageNames } from '../electron/export-markdown';
+import { marked } from 'marked';
 
 async function entries(bytes: Buffer) {
   return new Promise<Map<string, Buffer>>((resolve, reject) => {
@@ -51,4 +53,23 @@ test('Word 保留中文、实体、表格、代码和内嵌图片；打印 HTML 
   expect(html).not.toMatch(/src=["']https:/);
   expect(html).not.toMatch(/href=["']javascript:/);
   expect(html).not.toContain('workbench-asset:');
+});
+
+test('Word 行内代码保留实体字面值，与 Markdown 和 PDF 一致', async () => {
+  const markdown = '正文 &copy;，代码 `&copy;`、`&amp;` 和 `&lt;tag&gt;`。';
+  const xml = (await entries(await renderDocx(markdown, new Map())))
+    .get('word/document.xml')!
+    .toString();
+  expect(xml).toContain('&amp;copy;');
+  expect(xml).toContain('&amp;amp;');
+  expect(xml).toContain('&amp;lt;tag&amp;gt;');
+});
+
+test('便携 Markdown 保留代码、引用、嵌套清单和表格的阅读语义', () => {
+  const markdown =
+    '# 标题\n\n正文 **粗体**、*强调*、~~删除~~和 `&copy;`。\n\n> 引用\n>\n> 第二段\n\n3. 第三项\n4. 第四项\n   - 嵌套一\n   - 嵌套二\n\n- [x] 完成\n- [ ] 待办\n\n| A | B |\n| :--- | ---: |\n| a\\|b | `x\\|y` |\n\n```sh\nprintf "<tag> &copy;"\n```\n\n[平台][ref]\n\n[ref]: https://example.test "入口"';
+  expect(marked.parse(portableMarkdown(markdown, '图片/'))).toBe(marked.parse(markdown));
+  expect(exportImageNames('`![示例](workbench-asset://image/' + 'a'.repeat(64) + '.png)`')).toEqual(
+    new Set(),
+  );
 });

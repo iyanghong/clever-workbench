@@ -4,7 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
 import type { Readable } from 'node:stream';
 import { ZipFile } from 'yazl';
-import { assetReferences, text, type Store } from './store';
+import { text, type Store } from './store';
+import { exportImageNames, portableMarkdown } from './export-markdown';
 import type { Vault } from './vault';
 import {
   exportFormatLabels,
@@ -255,7 +256,7 @@ export class SystemExports {
     documents.unshift({ name: '系统总览.md', markdown: overview });
     const assets = new Map<string, Buffer>();
     for (const document of documents)
-      for (const name of assetReferences(document.markdown)) {
+      for (const name of exportImageNames(document.markdown)) {
         if (!assets.has(name)) {
           try {
             assets.set(name, fs.readFileSync(path.join(this.store.directory, 'assets', name)));
@@ -297,12 +298,7 @@ export class SystemExports {
           let bytes: Buffer;
           if (format === 'markdown') {
             const prefix = document.name.includes('/') ? '../图片/' : '图片/';
-            bytes = Buffer.from(
-              document.markdown.replace(
-                /workbench-asset:\/\/image\/([a-f0-9]{64}\.(?:png|jpg|webp|gif))/g,
-                (_, name: string) => prefix + name,
-              ),
-            );
+            bytes = Buffer.from(portableMarkdown(document.markdown, prefix));
           } else {
             if (!this.renderDocument) throw new Error('当前环境无法生成所选文档格式。');
             bytes = await this.renderDocument(format, document.markdown, assets);

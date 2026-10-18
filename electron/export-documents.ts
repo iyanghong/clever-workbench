@@ -114,7 +114,7 @@ export async function renderDocx(markdown: string, images: ExportImages) {
         case 'del':
           return inline(token.tokens, { ...style, strike: true }, maxWidth);
         case 'codespan':
-          return [textRun(decodeHTML(token.text), { ...style, font: 'Consolas' })];
+          return [textRun(token.text, { ...style, font: 'Consolas' })];
         case 'br':
           return [new TextRun({ break: 1 })];
         case 'html':

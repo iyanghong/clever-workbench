@@ -1,6 +1,6 @@
 import { BrowserWindow, nativeImage, session } from 'electron';
 import { randomUUID } from 'node:crypto';
-import { assetReferences } from './store';
+import { exportImageNames } from './export-markdown';
 import { renderDocx, renderHtml, type ExportImages } from './export-documents';
 import type { DocumentRenderer } from './system-export';
 
@@ -8,7 +8,7 @@ export const exportScheme = 'workbench-export';
 
 export const renderExportDocument: DocumentRenderer = async (format, markdown, assets) => {
   const images: ExportImages = new Map();
-  for (const name of assetReferences(markdown)) {
+  for (const name of exportImageNames(markdown)) {
     const bytes = assets.get(name);
     if (!bytes) throw new Error('正文图片缺失，无法导出。');
     const image = nativeImage.createFromBuffer(bytes);

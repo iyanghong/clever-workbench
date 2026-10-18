@@ -190,7 +190,7 @@ test('Markdown 系统资料包包含独立文档、任务、图片和所选密�
   expect(documents).toHaveLength(2);
   expect(new Set(documents.map(([name]) => name)).size).toBe(2);
   for (const link of overview.matchAll(/\]\(([^)]+)\)/g))
-    expect(output.has(`Markdown/${decodeURIComponent(link[1])}`)).toBe(true);
+    expect(output.has(`Markdown/${decodeURIComponent(link[1].replace(/^<|>$/g, ''))}`)).toBe(true);
   const markdown = [...output]
     .filter(([name]) => name.endsWith('.md'))
     .map(([, bytes]) => bytes.toString())
@@ -246,4 +246,47 @@ test('Markdown 系统资料包包含独立文档、任务、图片和所选密�
   expect((await files(target)).get('Markdown/系统总览.md')).toEqual(
     output.get('Markdown/系统总览.md'),
   );
+});
+
+test('形似图片 URI 的密码和代码原样保留，只打包真正图片节点，外部图片改为说明', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workbench-image-nodes-'));
+  roots.push(root);
+  const store = new Store(root);
+  stores.push(store);
+  const vault = new Vault(store);
+  vaults.push(vault);
+  await vault.initialize('fictional-image-node-password');
+  const systemId = store.mutate({ type: 'system.save', name: '节点语义' }).createdId!;
+  const missing = `workbench-asset://image/${'a'.repeat(64)}.png`;
+  vault.capture({ kind: 'access', systemId, environmentId: null, name: '入口', password: missing });
+  const image = store.importImage(
+    Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgqPr/HwAEcAJ5Qhlc0gAAAABJRU5ErkJggg==',
+      'base64',
+    ),
+    '截图.png',
+  );
+  const id = store.mutate({ type: 'document.create', context: { systemId } }).createdId!;
+  store.mutate({
+    ...store.document(id),
+    type: 'document.edit',
+    title: '原始代码',
+    markdown: `# 说明\n\n\`${image.src}\` 和 \`&copy;\`\n\n\`\`\`text\n![不是图片](${image.src})\n\`\`\`\n\n![真正图片][现场]\n\n[现场]: ${image.src}\n\n![外部](https://example.test/remote.png)\n\n> 引用 **强调**\n\n- [x] 完成\n  - 嵌套\n\n| A | B |\n| --- | ---: |\n| 内容 | 32G |`,
+  });
+  const target = path.join(root, 'nodes.zip');
+  await new SystemExports(store, vault).write(
+    { systemId, formats: ['markdown'], secretKinds: ['password'] },
+    target,
+  );
+  const output = await files(target);
+  expect(output.get('Markdown/系统总览.md')!.toString()).toContain(missing);
+  const document = [...output].find(([name]) => name.startsWith('Markdown/文档/'))![1].toString();
+  expect(document).toContain(`\`${image.src}\``);
+  expect(document).toContain(`![不是图片](${image.src})`);
+  expect(document).toContain('`&copy;`');
+  expect(document).toContain('外部图片：');
+  expect(document).not.toContain('![外部]');
+  expect(document).toContain('![真正图片](../图片/');
+  expect(document).toContain('- [x] 完成');
+  expect([...output.keys()].filter((name) => name.startsWith('Markdown/图片/'))).toHaveLength(1);
 });
