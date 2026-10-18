@@ -216,6 +216,7 @@ app
     secureHandler('document', (id) => store.document(id));
     secureHandler('search-documents', (query) => store.searchDocuments(query));
     secureHandler('task', (id) => store.task(id));
+    secureHandler('global-search', (query) => store.globalSearch(query));
     secureHandler('search', (query) => store.search(query));
     secureHandler('mutate', (command) => {
       writable();

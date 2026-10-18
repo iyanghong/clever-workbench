@@ -14,6 +14,7 @@ import type {
   TaskSummary,
 } from '../src/types';
 import { minute, validateTimes } from '../src/domain';
+import { searchWorkspace } from './search';
 import { initializeVault } from './vault';
 import { Documents, initializeDocuments } from './documents';
 import { Ledger, initializeLedger } from './ledger';
@@ -204,6 +205,9 @@ export class Store {
   }
   document(id: string) {
     return this.documents.get(id);
+  }
+  globalSearch(query: string) {
+    return searchWorkspace(this.db, this.ledger, query);
   }
   searchDocuments(query: string) {
     return this.documents.search(query);

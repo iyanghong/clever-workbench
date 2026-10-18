@@ -24,6 +24,7 @@ const api: DesktopAPI = {
   searchDocuments: (query) => call('search-documents', query),
   task: (id) => call('task', id),
   search: (q) => call('search', q),
+  globalSearch: (query) => call('global-search', query),
   mutate: (c) => call('mutate', c),
   saveDraft: (d) => call('draft', d),
   importImage: (b, n) => call('import-image', b, n),

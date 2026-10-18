@@ -1,3 +1,4 @@
+import type { SearchHit } from './search-types';
 import type { SecretKind, VaultStatus, AccountCopyTarget, ResourceCopyTarget } from './vault-types';
 import type { DocumentCommand, DocumentRecord, DocumentSummary } from './document-types';
 import type { JSONContent } from '@tiptap/react';
@@ -120,6 +121,7 @@ export interface DesktopAPI {
   searchDocuments(query: string): Promise<string[]>;
   task(id: string): Promise<Task>;
   search(query: string): Promise<string[]>;
+  globalSearch(query: string): Promise<SearchHit[]>;
   mutate(command: Command): Promise<MutationResult>;
   saveDraft(draft: Draft | null): Promise<void>;
   importImage(bytes: Uint8Array, name: string): Promise<Asset>;

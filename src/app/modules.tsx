@@ -1,3 +1,4 @@
+import type { SearchKind, SearchHit } from '../search-types';
 import type { ComponentType } from 'react';
 import {
   TrayIcon,
@@ -26,6 +27,7 @@ export type WorkbenchModule = {
   icon: Icon;
   section: 'workspace' | 'utility';
   Page: ComponentType<ModuleProps>;
+  searchKinds?: SearchKind[];
 };
 
 function TaskModule({ route, navigate, registerFlush }: ModuleProps) {
@@ -45,14 +47,23 @@ function TaskModule({ route, navigate, registerFlush }: ModuleProps) {
 export const modules: WorkbenchModule[] = [
   {
     id: 'documents',
+    searchKinds: ['document'],
     title: '文档',
     icon: NotePencilIcon,
     section: 'workspace',
     Page: DocumentsPage,
   },
-  { id: 'ledger', title: '台账', icon: StackIcon, section: 'workspace', Page: LedgerPage },
+  {
+    id: 'ledger',
+    searchKinds: ['system', 'environment', 'service', 'resource', 'account'],
+    title: '台账',
+    icon: StackIcon,
+    section: 'workspace',
+    Page: LedgerPage,
+  },
   {
     id: 'tasks',
+    searchKinds: ['task'],
     title: '任务',
     accessibleName: '工作任务',
     icon: TrayIcon,
@@ -70,3 +81,9 @@ export const modules: WorkbenchModule[] = [
   { id: 'trash', title: '回收站', icon: TrashIcon, section: 'utility', Page: TaskModule },
   { id: 'settings', title: '设置', icon: GearSixIcon, section: 'utility', Page: TaskModule },
 ];
+
+export function routeForHit(hit: Pick<SearchHit, 'kind' | 'id'>): Route {
+  const module = modules.find((item) => item.searchKinds?.includes(hit.kind));
+  if (!module) throw new Error('此类对象尚未登记入口。');
+  return { module: module.id, objectId: hit.id };
+}

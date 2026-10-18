@@ -253,12 +253,6 @@ export function TaskWorkspace({
   useEffect(() => {
     const handler = (command: string) => {
       if (command === 'new') void newTask();
-      if (command === 'search') {
-        void navigate('tasks').then(() => {
-          setFilter('all');
-          searchRef.current?.focus();
-        });
-      }
     };
     return window.desktop.onNativeCommand(handler);
   });

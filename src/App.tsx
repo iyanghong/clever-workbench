@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SquaresFourIcon, XIcon } from '@phosphor-icons/react';
+import { GlobalSearch } from './features/search/GlobalSearch';
 import { VaultControl } from './features/vault/VaultProvider';
 import { modules, type Route } from './app/modules';
 
@@ -68,12 +69,15 @@ export function App() {
           {navigation('utility')}
         </div>
       </aside>
-      <Page
-        key={`${route.module}:${route.project ?? ''}:${route.objectId ?? ''}:${Boolean(route.trash)}`}
-        route={route}
-        navigate={navigate}
-        registerFlush={registerFlush}
-      />
+      <div className="workspace-shell">
+        <GlobalSearch navigate={navigate} flush={() => save.current()} />
+        <Page
+          key={`${route.module}:${route.project ?? ''}:${route.objectId ?? ''}:${Boolean(route.trash)}`}
+          route={route}
+          navigate={navigate}
+          registerFlush={registerFlush}
+        />
+      </div>
       {error && (
         <div className="error-banner" role="alert">
           <span>{error}</span>

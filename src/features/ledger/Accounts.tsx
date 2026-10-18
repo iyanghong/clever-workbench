@@ -115,6 +115,7 @@ export function Accounts({
         <AccountEditor
           key={account.id}
           account={account}
+          revealTarget={focusAccount === account.id}
           environment={environment}
           snapshot={snapshot}
           flushAll={flushAll}
@@ -130,6 +131,7 @@ export function Accounts({
 
 function AccountEditor({
   account,
+  revealTarget,
   environment,
   snapshot,
   flushAll,
@@ -138,6 +140,7 @@ function AccountEditor({
 }: EditorHost &
   Pick<AccountNavigation, 'onOpenAccount'> & {
     account: AccountRecord;
+    revealTarget: boolean;
     environment: EnvironmentRecord;
     snapshot: Snapshot;
     flushAll: () => Promise<void>;
@@ -227,9 +230,13 @@ function AccountEditor({
       setBusy(false);
     }
   }
+  const targetElement = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (revealTarget) targetElement.current?.scrollIntoView({ block: 'center' });
+  }, [revealTarget]);
   const system = snapshot.systems.find((item) => item.id === environment.systemId)!;
   return (
-    <div className="account-editor">
+    <div ref={targetElement} className="account-editor">
       <div className="record-subheading">
         <strong>
           {system.name} / {environment.name} /{' '}
