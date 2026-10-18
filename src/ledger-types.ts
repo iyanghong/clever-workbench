@@ -31,7 +31,60 @@ export type DeploymentRecord = {
   port: string;
   notes: string;
 };
+export type ResourceKind = 'redis' | 'server' | 'other';
+export type ResourceRecord = {
+  id: string;
+  environmentId: string;
+  kind: ResourceKind;
+  name: string;
+  address: string;
+  port: string;
+  notes: string;
+  fields: Record<string, string>;
+  createdAt: number;
+  updatedAt: number;
+};
+export type AccountRecord = {
+  id: string;
+  environmentId: string;
+  resourceId: string | null;
+  name: string;
+  username: string;
+  notes: string;
+  createdAt: number;
+  updatedAt: number;
+};
 export type LedgerCommand =
+  | {
+      type: 'account.save';
+      id?: string;
+      environmentId: string;
+      resourceId?: string | null;
+      name: string;
+      username?: string;
+      notes?: string;
+    }
+  | {
+      type: 'account.copy';
+      id: string;
+      environmentId?: string;
+      resourceId?: string | null;
+      name?: string;
+    }
+  | { type: 'account.delete'; id: string }
+  | {
+      type: 'resource.save';
+      id?: string;
+      environmentId: string;
+      kind: ResourceKind;
+      name: string;
+      address?: string;
+      port?: string;
+      notes?: string;
+      fields?: Record<string, string>;
+    }
+  | { type: 'resource.copy'; id: string; environmentId?: string; name?: string }
+  | { type: 'resource.delete'; id: string }
   | {
       type: 'system.save';
       id?: string;

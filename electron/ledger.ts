@@ -7,11 +7,31 @@ import type {
   EnvironmentRecord,
   ServiceRecord,
   DeploymentRecord,
+  ResourceRecord,
+  AccountRecord,
 } from '../src/ledger-types';
 
 function field(value: unknown, max: number) {
   if (typeof value !== 'string' || value.length > max) throw new Error('台账内容无效或过长。');
   return value;
+}
+
+function resourceFields(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length > 50)
+    throw new Error('附加字段格式无效，最多支持 50 项。');
+  const result: Record<string, string> = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (!key.trim() || key.length > 80 || ['__proto__', 'prototype', 'constructor'].includes(key))
+      throw new Error('附加字段名称无效。');
+    result[key] = field(item, 3000);
+  }
+  return result;
+}
+function resourceRow(row: Record<string, unknown>): ResourceRecord {
+  return {
+    ...row,
+    fields: resourceFields(JSON.parse(field(row.fields, 200_000))),
+  } as ResourceRecord;
 }
 
 export function initializeLedger(db: DatabaseSync) {
@@ -36,6 +56,15 @@ export function initializeLedger(db: DatabaseSync) {
       id TEXT PRIMARY KEY, serviceId TEXT NOT NULL REFERENCES services(id), environmentId TEXT NOT NULL REFERENCES environments(id),
       address TEXT NOT NULL, port TEXT NOT NULL, notes TEXT NOT NULL, UNIQUE(serviceId,environmentId)
     );
+    CREATE TABLE IF NOT EXISTS resources(
+      id TEXT PRIMARY KEY, environmentId TEXT NOT NULL REFERENCES environments(id), kind TEXT NOT NULL,
+      name TEXT NOT NULL, address TEXT NOT NULL, port TEXT NOT NULL, notes TEXT NOT NULL, fields TEXT NOT NULL,
+      createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL, UNIQUE(environmentId,name)
+    );
+    CREATE TABLE IF NOT EXISTS accounts(
+      id TEXT PRIMARY KEY, environmentId TEXT NOT NULL REFERENCES environments(id), resourceId TEXT REFERENCES resources(id),
+      name TEXT NOT NULL, username TEXT NOT NULL, notes TEXT NOT NULL, createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL
+    );
   `);
   if (
     !db
@@ -56,6 +85,13 @@ export class Ledger {
   }
   snapshot() {
     return {
+      accounts: this.db
+        .prepare('SELECT * FROM accounts ORDER BY createdAt,rowid')
+        .all() as unknown as AccountRecord[],
+      resources: this.db
+        .prepare('SELECT * FROM resources ORDER BY createdAt,rowid')
+        .all()
+        .map(resourceRow),
       environments: this.db
         .prepare('SELECT * FROM environments ORDER BY createdAt,rowid')
         .all() as unknown as EnvironmentRecord[],
@@ -192,10 +228,197 @@ export class Ledger {
       );
     return id;
   }
+  account(id: string): AccountRecord {
+    const row = this.db.prepare('SELECT * FROM accounts WHERE id=?').get(field(id, 100));
+    if (!row) throw new Error('账号不存在。');
+    return row as unknown as AccountRecord;
+  }
+  accountTarget(environmentId: string, resourceId: string | null) {
+    const environment = this.environment(environmentId);
+    if (resourceId !== null && this.resource(resourceId).environmentId !== environmentId)
+      throw new Error('账号与资源必须属于同一环境。');
+    return environment;
+  }
+  saveAccount(command: Extract<LedgerCommand, { type: 'account.save' }>, now: number) {
+    const previous = command.id ? this.account(command.id) : null;
+    const resourceId =
+      command.resourceId === undefined ? (previous?.resourceId ?? null) : command.resourceId;
+    const environment = this.accountTarget(command.environmentId, resourceId);
+    if (previous && this.environment(previous.environmentId).systemId !== environment.systemId)
+      throw new Error('账号的归属必须在同一系统内调整。');
+    const name = field(command.name, 1000).trim();
+    if (!name) throw new Error('请填写账号用途或角色。');
+    const duplicate = this.db
+      .prepare(
+        'SELECT id FROM accounts WHERE environmentId=? AND resourceId IS ? AND lower(name)=lower(?)',
+      )
+      .get(environment.id, resourceId, name);
+    if (duplicate && duplicate.id !== previous?.id)
+      throw new Error('这个归属下已有同名账号，请使用不同的用途或角色。');
+    const id = previous?.id ?? randomUUID();
+    this.db
+      .prepare(
+        `INSERT INTO accounts VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+      environmentId=excluded.environmentId,resourceId=excluded.resourceId,name=excluded.name,username=excluded.username,notes=excluded.notes,updatedAt=excluded.updatedAt`,
+      )
+      .run(
+        id,
+        environment.id,
+        resourceId,
+        name,
+        field(command.username ?? previous?.username ?? '', 10_000),
+        field(command.notes ?? previous?.notes ?? '', 100_000),
+        previous?.createdAt ?? now,
+        now,
+      );
+    return id;
+  }
+  copyAccount(command: Extract<LedgerCommand, { type: 'account.copy' }>, now: number) {
+    const source = this.account(command.id),
+      environmentId = command.environmentId ?? source.environmentId;
+    const resourceId = command.resourceId === undefined ? source.resourceId : command.resourceId;
+    if (
+      this.environment(source.environmentId).systemId !== this.environment(environmentId).systemId
+    )
+      throw new Error('账号副本请选择同一系统内的归属。');
+    let name = command.name ?? `${source.name.slice(0, 960)} 副本`;
+    if (command.name === undefined) {
+      let index = 2;
+      while (
+        this.db
+          .prepare(
+            'SELECT 1 FROM accounts WHERE environmentId=? AND resourceId IS ? AND lower(name)=lower(?)',
+          )
+          .get(environmentId, resourceId, name)
+      )
+        name = `${source.name.slice(0, 960)} 副本 ${index++}`;
+    }
+    // Copy only explicitly listed metadata. Vault contents use a separate authenticated operation.
+    return this.saveAccount(
+      {
+        type: 'account.save',
+        environmentId,
+        resourceId,
+        name,
+        username: source.username,
+        notes: source.notes,
+      },
+      now,
+    );
+  }
+  deleteAccount(id: string) {
+    this.account(id);
+    try {
+      this.db.prepare('DELETE FROM accounts WHERE id=?').run(id);
+    } catch (cause) {
+      if (cause instanceof Error && cause.message.includes('FOREIGN KEY'))
+        throw new Error('账号仍有关联资料，请先处理引用。');
+      throw cause;
+    }
+  }
+  resource(id: string): ResourceRecord {
+    const row = this.db.prepare('SELECT * FROM resources WHERE id=?').get(field(id, 100));
+    if (!row) throw new Error('资源不存在。');
+    return resourceRow(row);
+  }
+  saveResource(command: Extract<LedgerCommand, { type: 'resource.save' }>, now: number) {
+    this.environment(command.environmentId);
+    const previous = command.id ? this.resource(command.id) : null;
+    if (previous && previous.environmentId !== command.environmentId)
+      throw new Error('已有资源的环境不能直接改变，请复制为新资源。');
+    if (!['redis', 'server', 'other'].includes(command.kind)) throw new Error('资源类型无效。');
+    const name = field(command.name, 1000).trim();
+    if (!name) throw new Error('请填写资源名称。');
+    const duplicate = this.db
+      .prepare('SELECT id FROM resources WHERE environmentId=? AND lower(name)=lower(?)')
+      .get(command.environmentId, name);
+    if (duplicate && duplicate.id !== previous?.id) throw new Error('这个环境中已有同名资源。');
+    const address = field(command.address ?? previous?.address ?? '', 10_000).trim();
+    const port = field(command.port ?? previous?.port ?? '', 8).trim();
+    if (port && (!/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535))
+      throw new Error('端口应为 1 到 65535，或留空。');
+    const fields = resourceFields(command.fields ?? previous?.fields ?? {});
+    const id = previous?.id ?? randomUUID();
+    this.db
+      .prepare(
+        `INSERT INTO resources VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+      kind=excluded.kind,name=excluded.name,address=excluded.address,port=excluded.port,notes=excluded.notes,fields=excluded.fields,updatedAt=excluded.updatedAt`,
+      )
+      .run(
+        id,
+        command.environmentId,
+        command.kind,
+        name,
+        address,
+        port,
+        field(command.notes ?? previous?.notes ?? '', 100_000),
+        JSON.stringify(fields),
+        previous?.createdAt ?? now,
+        now,
+      );
+    return id;
+  }
+  copyResource(command: Extract<LedgerCommand, { type: 'resource.copy' }>, now: number) {
+    const source = this.resource(command.id),
+      environmentId = command.environmentId ?? source.environmentId;
+    let name = command.name ?? `${source.name.slice(0, 960)} 副本`;
+    if (command.name === undefined) {
+      let index = 2;
+      while (
+        this.db
+          .prepare('SELECT 1 FROM resources WHERE environmentId=? AND lower(name)=lower(?)')
+          .get(environmentId, name)
+      )
+        name = `${source.name.slice(0, 960)} 副本 ${index++}`;
+    }
+    return this.saveResource(
+      {
+        type: 'resource.save',
+        environmentId,
+        kind: source.kind,
+        name,
+        address: source.address,
+        port: source.port,
+        notes: source.notes,
+        fields: source.fields,
+      },
+      now,
+    );
+  }
+  deleteResource(id: string) {
+    this.resource(id);
+    try {
+      this.db.prepare('DELETE FROM resources WHERE id=?').run(id);
+    } catch (cause) {
+      if (cause instanceof Error && cause.message.includes('FOREIGN KEY'))
+        throw new Error('资源仍有关联资料，请先处理引用。');
+      throw cause;
+    }
+  }
 }
 
 export function validateLedger(db: DatabaseSync) {
   const ledger = new Ledger(db);
+  for (const row of db.prepare('SELECT * FROM accounts').all()) {
+    ledger.accountTarget(
+      field(row.environmentId, 100),
+      row.resourceId === null ? null : field(row.resourceId, 100),
+    );
+    if (!field(row.name, 1000).trim()) throw new Error('备份账号用途无效。');
+    field(row.username, 10_000);
+    field(row.notes, 100_000);
+  }
+  for (const raw of db.prepare('SELECT * FROM resources').all()) {
+    const row = resourceRow(raw);
+    ledger.environment(field(row.environmentId, 100));
+    if (!field(row.name, 1000).trim() || !['redis', 'server', 'other'].includes(row.kind))
+      throw new Error('备份资源信息无效。');
+    field(row.address, 10_000);
+    field(row.notes, 100_000);
+    const port = field(row.port, 8);
+    if (port && (!/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535))
+      throw new Error('备份资源端口无效。');
+  }
   for (const row of db.prepare('SELECT * FROM environments').all()) {
     ledger.system(field(row.systemId, 100));
     if (!field(row.name, 1000).trim()) throw new Error('备份环境名称无效。');

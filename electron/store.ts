@@ -16,7 +16,7 @@ import type {
 import { minute, validateTimes } from '../src/domain';
 import { Ledger, initializeLedger } from './ledger';
 
-export const schemaVersion = 3;
+export const schemaVersion = 5;
 export const schemaTables = [
   'projects',
   'tasks',
@@ -26,6 +26,8 @@ export const schemaTables = [
   'environments',
   'services',
   'deployments',
+  'resources',
+  'accounts',
 ];
 
 export function atomicWrite(filename: string, bytes: string | Uint8Array) {
@@ -235,6 +237,31 @@ export class Store {
     try {
       const now = minute();
       switch (command.type) {
+        case 'account.save': {
+          createdId = this.ledger.saveAccount(command, now);
+          break;
+        }
+        case 'account.copy': {
+          createdId = this.ledger.copyAccount(command, now);
+          break;
+        }
+        case 'account.delete': {
+          this.ledger.deleteAccount(command.id);
+          break;
+        }
+        case 'resource.save': {
+          const id = this.ledger.saveResource(command, now);
+          if (!command.id) createdId = id;
+          break;
+        }
+        case 'resource.copy': {
+          createdId = this.ledger.copyResource(command, now);
+          break;
+        }
+        case 'resource.delete': {
+          this.ledger.deleteResource(command.id);
+          break;
+        }
         case 'environment.save': {
           const id = this.ledger.saveEnvironment(command, now);
           if (!command.id) createdId = id;

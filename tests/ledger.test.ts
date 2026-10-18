@@ -101,3 +101,155 @@ test('服务公共仓库只保存一份，测试与生产部署独立且不能�
   ).toThrow('同一系统');
   expect(store.snapshot().deployments).toHaveLength(2);
 });
+
+test('资源可快捷新增并复制到另一环境，复制后的普通资料独立且来源不变', () => {
+  const store = open();
+  const systemId = store.mutate({ type: 'system.save', name: '订单平台' }).createdId!;
+  const production = store.mutate({ type: 'environment.save', systemId, name: '生产' }).createdId!;
+  const staging = store.mutate({ type: 'environment.save', systemId, name: '预发布' }).createdId!;
+  const id = store.mutate({
+    type: 'resource.save',
+    environmentId: production,
+    kind: 'redis',
+    name: '订单缓存',
+    address: 'cache.prod.internal',
+    port: '6379',
+    fields: { 数据库: '2' },
+  }).createdId!;
+  const copy = store.mutate({ type: 'resource.copy', id, environmentId: staging }).createdId!;
+  store.mutate({
+    type: 'resource.save',
+    id: copy,
+    environmentId: staging,
+    kind: 'redis',
+    name: '预发布缓存',
+    address: 'cache.staging.internal',
+  });
+  expect(store.snapshot().resources).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id,
+        environmentId: production,
+        address: 'cache.prod.internal',
+        port: '6379',
+        fields: { 数据库: '2' },
+      }),
+      expect.objectContaining({
+        id: copy,
+        environmentId: staging,
+        name: '预发布缓存',
+        address: 'cache.staging.internal',
+        port: '6379',
+        fields: { 数据库: '2' },
+      }),
+    ]),
+  );
+  expect(copy).not.toBe(id);
+  expect(() =>
+    store.mutate({
+      type: 'resource.save',
+      id,
+      environmentId: production,
+      kind: 'redis',
+      name: '订单缓存',
+      port: '70000',
+    }),
+  ).toThrow('端口');
+  store.close();
+  stores.pop();
+  const reopened = new Store(store.root);
+  stores.push(reopened);
+  expect(reopened.snapshot().resources.find((item) => item.id === copy)?.fields).toEqual({
+    数据库: '2',
+  });
+  expect(() =>
+    reopened.mutate({
+      type: 'resource.save',
+      id,
+      environmentId: staging,
+      kind: 'redis',
+      name: '误移资源',
+    }),
+  ).toThrow('复制');
+});
+
+test('环境与资源可各有多个角色账号，空用户名合法，移动与删除保护关联', () => {
+  const store = open();
+  const systemId = store.mutate({ type: 'system.save', name: '园区平台' }).createdId!;
+  const environmentId = store.mutate({
+    type: 'environment.save',
+    systemId,
+    name: '生产',
+  }).createdId!;
+  const staging = store.mutate({ type: 'environment.save', systemId, name: '测试' }).createdId!;
+  const otherSystem = store.mutate({ type: 'system.save', name: '设备平台' }).createdId!;
+  const foreign = store.mutate({
+    type: 'environment.save',
+    systemId: otherSystem,
+    name: '生产',
+  }).createdId!;
+  const resourceId = store.mutate({
+    type: 'resource.save',
+    environmentId,
+    kind: 'redis',
+    name: '缓存',
+  }).createdId!;
+  const admin = store.mutate({
+    type: 'account.save',
+    environmentId,
+    name: '超管',
+    username: 'admin',
+  }).createdId!;
+  const token = store.mutate({ type: 'account.save', environmentId, name: 'B 角色' }).createdId!;
+  const cache = store.mutate({
+    type: 'account.save',
+    environmentId,
+    resourceId,
+    name: '应用连接',
+    username: 'app',
+  }).createdId!;
+  const copy = store.mutate({
+    type: 'account.copy',
+    id: cache,
+    environmentId: staging,
+    resourceId: null,
+  }).createdId!;
+  expect(store.snapshot().accounts).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: admin, resourceId: null, username: 'admin' }),
+      expect.objectContaining({ id: token, resourceId: null, username: '' }),
+      expect.objectContaining({ id: cache, resourceId, username: 'app' }),
+      expect.objectContaining({
+        id: copy,
+        environmentId: staging,
+        resourceId: null,
+        username: 'app',
+      }),
+    ]),
+  );
+  expect(() =>
+    store.mutate({ type: 'account.save', environmentId: staging, resourceId, name: '误挂' }),
+  ).toThrow('环境');
+  expect(() =>
+    store.mutate({ type: 'account.save', id: admin, environmentId: foreign, name: '误移' }),
+  ).toThrow('同一系统');
+  expect(() => store.mutate({ type: 'resource.delete', id: resourceId })).toThrow('引用');
+  store.mutate({
+    type: 'resource.save',
+    id: resourceId,
+    environmentId,
+    name: '新缓存名',
+    kind: 'redis',
+  });
+  store.close();
+  stores.pop();
+  const reopened = new Store(store.root);
+  stores.push(reopened);
+  expect(reopened.snapshot().accounts.find((item) => item.id === cache)).toMatchObject({
+    resourceId,
+    username: 'app',
+  });
+  expect(reopened.snapshot().resources.find((item) => item.id === resourceId)?.name).toBe(
+    '新缓存名',
+  );
+});

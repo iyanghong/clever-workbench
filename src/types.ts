@@ -6,6 +6,8 @@ import type {
   EnvironmentRecord,
   ServiceRecord,
   DeploymentRecord,
+  ResourceRecord,
+  AccountRecord,
 } from './ledger-types';
 export type Project = { id: string; name: string; color: string; archivedAt: number | null };
 export type TaskSummary = {
@@ -35,6 +37,8 @@ export type Settings = {
   lastBackupError: string | null;
 };
 export type Snapshot = {
+  resources: ResourceRecord[];
+  accounts: AccountRecord[];
   environments: EnvironmentRecord[];
   services: ServiceRecord[];
   deployments: DeploymentRecord[];
@@ -97,6 +101,7 @@ export interface DesktopAPI {
   restoreBackup(token: string): Promise<Snapshot>;
   retryBackup(): Promise<Snapshot>;
   backupDirectory(): Promise<Snapshot | null>;
+  copyText(value: string): Promise<void>;
   openExternal(url: string): Promise<void>;
   onFlush(handler: () => Promise<void>): () => void;
   onNativeCommand(handler: (command: string) => void): () => void;

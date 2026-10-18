@@ -9,6 +9,7 @@ import {
   Menu,
   nativeTheme,
   nativeImage,
+  clipboard,
 } from 'electron';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -18,7 +19,10 @@ import { Store, assetName, text } from './store';
 import { Backups } from './backup';
 
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'workbench-asset', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  {
+    scheme: 'workbench-asset',
+    privileges: { standard: true, secure: true, supportFetchAPI: true },
+  },
 ]);
 if (process.env.CLEVER_WORKBENCH_DATA_DIR)
   app.setPath('userData', path.resolve(process.env.CLEVER_WORKBENCH_DATA_DIR));
@@ -238,6 +242,9 @@ app
       await fs.access(directory, 2);
       store.set('backupDir', directory);
       return store.snapshot();
+    });
+    secureHandler('copy-text', (value) => {
+      clipboard.writeText(text(value, 200_000));
     });
     secureHandler('open-external', async (value) => {
       const url = new URL(text(value, 8192));

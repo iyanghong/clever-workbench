@@ -270,17 +270,20 @@ function SystemPanel({
           </div>
         </label>
       </div>
-      <label className="system-notes">
-        <span>系统说明</span>
-        <textarea
-          aria-label="系统说明"
-          rows={3}
-          placeholder="记下用途、负责人或需要留意的事…"
-          value={form.value.notes}
-          onChange={(event) => form.change({ ...form.value, notes: event.target.value })}
-          onBlur={commit}
-        />
-      </label>
+      <details className="compact-details system-extra">
+        <summary>系统说明</summary>
+        <label className="system-notes">
+          <span>系统说明</span>
+          <textarea
+            aria-label="系统说明"
+            rows={3}
+            placeholder="记下用途、负责人或需要留意的事…"
+            value={form.value.notes}
+            onChange={(event) => form.change({ ...form.value, notes: event.target.value })}
+            onBlur={commit}
+          />
+        </label>
+      </details>
       <Environments
         systemId={system.id}
         snapshot={snapshot}

@@ -3,9 +3,11 @@ import { PlusIcon, GitBranchIcon, GlobeIcon } from '@phosphor-icons/react';
 import type { Snapshot } from '../../types';
 import type { EnvironmentRecord, ServiceRecord, DeploymentRecord } from '../../ledger-types';
 import type { ModuleProps } from '../../app/modules';
+import { Accounts, type AccountTarget } from './Accounts';
+import { Resources } from './Resources';
 import { useAutosave } from '../../shared/useAutosave';
 
-type EditorHost = {
+export type EditorHost = {
   onSnapshot: (value: Snapshot) => void;
   registerFlush: ModuleProps['registerFlush'];
   onError: (message: string) => void;
@@ -23,6 +25,15 @@ export function Environments({
     [serviceId, setServiceId] = useState<string | null>(null);
   const [environmentName, setEnvironmentName] = useState(''),
     [serviceName, setServiceName] = useState('');
+  const [tab, setTab] = useState<'resources' | 'services' | 'accounts'>('resources');
+  const [focusResource, setFocusResource] = useState<string | null>(null),
+    [focusAccount, setFocusAccount] = useState<string | null>(null);
+  function openAccount(target: AccountTarget) {
+    setEnvironmentId(target.environmentId);
+    setFocusResource(target.resourceId);
+    setFocusAccount(target.accountId);
+    setTab(target.resourceId ? 'resources' : 'accounts');
+  }
   const creating = useRef(false);
   const environment = environments.find((item) => item.id === environmentId) ?? environments[0];
   const service = services.find((item) => item.id === serviceId) ?? services[0];
@@ -63,9 +74,9 @@ export function Environments({
     if (event.key === 'Enter' && event.nativeEvent.isComposing) event.preventDefault();
   };
   return (
-    <section className="system-section environment-workspace" aria-label="环境与服务">
+    <section className="system-section environment-workspace" aria-label="环境台账">
       <div className="section-heading">
-        <h3>环境与服务</h3>
+        <h3>环境台账</h3>
         <span>公共信息录一次，部署按环境记录</span>
       </div>
       <div className="entity-toolbar">
@@ -114,58 +125,117 @@ export function Environments({
       {environment && (
         <EnvironmentEditor key={environment.id} environment={environment} {...host} />
       )}
-      <div className="entity-toolbar">
-        <label className="context-select">
-          <GitBranchIcon size={17} />
-          <select
-            aria-label="查看服务"
-            value={service?.id ?? ''}
-            onChange={(event) => {
-              const id = event.target.value;
-              void select(() => setServiceId(id));
-            }}
-          >
-            {!services.length && <option value="">添加一个服务</option>}
-            {services.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <form
-          className="inline-create"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void create('service');
-          }}
+      <div className="entity-tabs" role="tablist" aria-label="台账内容">
+        <button
+          role="tab"
+          aria-selected={tab === 'resources'}
+          onClick={() => void select(() => setTab('resources'))}
         >
-          <PlusIcon size={15} />
-          <input
-            aria-label="新增服务名称"
-            placeholder="新增服务…"
-            value={serviceName}
-            onChange={(event) => setServiceName(event.target.value)}
-            onKeyDown={composing}
-          />
-          <kbd>↵</kbd>
-        </form>
+          资源
+        </button>
+        <button
+          role="tab"
+          aria-selected={tab === 'accounts'}
+          onClick={() => void select(() => setTab('accounts'))}
+        >
+          账号
+        </button>
+        <button
+          role="tab"
+          aria-selected={tab === 'services'}
+          onClick={() => void select(() => setTab('services'))}
+        >
+          服务
+        </button>
       </div>
-      {service ? (
-        <ServiceEditor key={service.id} service={service} {...host} />
-      ) : (
-        <p className="secondary-copy entity-empty">只需名称就能记录服务，仓库与部署信息以后补。</p>
-      )}
-      {service && environment && (
-        <DeploymentEditor
-          key={`${service.id}:${environment.id}`}
-          serviceId={service.id}
-          environment={environment}
-          deployment={snapshot.deployments.find(
-            (item) => item.serviceId === service.id && item.environmentId === environment.id,
+      {tab === 'resources' &&
+        (environment ? (
+          <Resources
+            environment={environment}
+            snapshot={snapshot}
+            flushAll={flushAll}
+            changeEnvironment={setEnvironmentId}
+            focusResource={focusResource}
+            focusAccount={focusAccount}
+            onOpenAccount={openAccount}
+            {...host}
+          />
+        ) : (
+          <p className="entity-empty secondary-copy">先添加一个环境，再记录它的资源。</p>
+        ))}
+      {tab === 'accounts' &&
+        (environment ? (
+          <Accounts
+            key={environment.id}
+            environment={environment}
+            resourceId={null}
+            snapshot={snapshot}
+            flushAll={flushAll}
+            focusAccount={focusAccount}
+            onOpenAccount={openAccount}
+            {...host}
+          />
+        ) : (
+          <p className="entity-empty secondary-copy">先添加一个环境，再记录系统账号。</p>
+        ))}
+      {tab === 'services' && (
+        <>
+          <div className="entity-toolbar">
+            <label className="context-select">
+              <GitBranchIcon size={17} />
+              <select
+                aria-label="查看服务"
+                value={service?.id ?? ''}
+                onChange={(event) => {
+                  const id = event.target.value;
+                  void select(() => setServiceId(id));
+                }}
+              >
+                {!services.length && <option value="">添加一个服务</option>}
+                {services.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <form
+              className="inline-create"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void create('service');
+              }}
+            >
+              <PlusIcon size={15} />
+              <input
+                aria-label="新增服务名称"
+                placeholder="新增服务…"
+                value={serviceName}
+                onChange={(event) => setServiceName(event.target.value)}
+                onKeyDown={composing}
+              />
+              <kbd>↵</kbd>
+            </form>
+          </div>
+          {service ? (
+            <ServiceEditor key={service.id} service={service} {...host} />
+          ) : (
+            <p className="secondary-copy entity-empty">
+              只需名称就能记录服务，仓库与部署信息以后补。
+            </p>
           )}
-          {...host}
-        />
+          {service && environment && (
+            <DeploymentEditor
+              key={`${service.id}:${environment.id}`}
+              serviceId={service.id}
+              environment={environment}
+              deployment={snapshot.deployments.find(
+                (item) => item.serviceId === service.id && item.environmentId === environment.id,
+              )}
+              {...host}
+            />
+          )}
+        </>
       )}
     </section>
   );

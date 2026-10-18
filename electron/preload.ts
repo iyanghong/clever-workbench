@@ -16,6 +16,7 @@ const api: DesktopAPI = {
   discardBackup: (t) => call('discard-backup', t),
   retryBackup: () => call('retry-backup'),
   backupDirectory: () => call('backup-directory'),
+  copyText: (value) => call('copy-text', value),
   openExternal: (u) => call('open-external', u),
   onFlush(handler) {
     const listener = async (_: unknown, token: string) => {
