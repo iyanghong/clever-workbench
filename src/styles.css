@@ -3162,3 +3162,53 @@ h3 {
   line-height: 1.8;
   margin: 3px 0;
 }
+
+/* Shared accessibility settings apply to every registered module. */
+:root[data-platform='darwin'] {
+  background: transparent;
+}
+:root[data-platform='darwin'] .app-shell {
+  background: transparent;
+}
+.workspace-shell {
+  background: var(--bg);
+}
+:root[data-high-contrast='true'] {
+  --muted: #535762;
+  --secondary: #41434b;
+  --line: #7b818c;
+  --accent: #005dcc;
+}
+:root[data-theme='dark'][data-high-contrast='true'] {
+  --muted: #c4c7d2;
+  --secondary: #e0e2e9;
+  --line: #9398a6;
+  --accent: #91c8ff;
+}
+:root[data-reduce-transparency='true']
+  :is(.sidebar, .window-toolbar, .command-bar, .modal, .toast) {
+  background: var(--panel) !important;
+  backdrop-filter: none !important;
+}
+:root[data-reduce-transparency='true'] .sidebar nav button.selected {
+  background: var(--selected) !important;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+:root[data-reduce-transparency='true'] .modal::backdrop {
+  backdrop-filter: none;
+  background: #0008;
+}
+:root[data-reduce-motion='true'] *,
+:root[data-reduce-motion='true'] *::before,
+:root[data-reduce-motion='true'] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 3px;
+}
+.modal > .error-text {
+  color: #d23838;
+}

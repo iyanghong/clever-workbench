@@ -178,6 +178,9 @@ export class Store {
     return {
       theme: this.get('theme', 'system'),
       autoBackup: this.get('autoBackup', true),
+      reduceTransparency: this.get('reduceTransparency', false),
+      highContrast: this.get('highContrast', false),
+      reduceMotion: this.get('reduceMotion', false),
       backupDir: this.get('backupDir', path.join(this.root, 'backups')),
       lastBackupAt: this.get('lastBackupAt', null),
       lastBackupError: this.get('lastBackupError', null),
@@ -529,6 +532,12 @@ export class Store {
           break;
         }
         case 'settings': {
+          for (const key of ['reduceTransparency', 'highContrast', 'reduceMotion'] as const) {
+            if (command[key] !== undefined) {
+              if (typeof command[key] !== 'boolean') throw new Error('外观偏好无效。');
+              this.set(key, command[key]);
+            }
+          }
           if (command.theme !== undefined) {
             if (!['system', 'light', 'dark'].includes(command.theme)) throw new Error('主题无效。');
             this.set('theme', command.theme);

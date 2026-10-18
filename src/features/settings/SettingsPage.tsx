@@ -195,6 +195,44 @@ export function SettingsPage({ setContext }: ModuleProps) {
                 ))}
               </div>
             </div>
+            <h3>可访问性</h3>
+            {(
+              [
+                {
+                  key: 'reduceTransparency',
+                  title: '减少透明度',
+                  description: '使用实色导航和工具栏，让文字背景更稳定。',
+                },
+                {
+                  key: 'highContrast',
+                  title: '增强对比',
+                  description: '加深次要文字与分隔线，突出操作焦点。',
+                },
+                {
+                  key: 'reduceMotion',
+                  title: '减少动态效果',
+                  description: '关闭过渡和动画，保留即时状态反馈。',
+                },
+              ] as const
+            ).map((preference) => (
+              <div className="setting-row" key={preference.key}>
+                <div>
+                  <strong>{preference.title}</strong>
+                  <p>{preference.description}</p>
+                </div>
+                <input
+                  role="switch"
+                  type="checkbox"
+                  aria-label={preference.title}
+                  checked={snapshot.settings[preference.key]}
+                  disabled={Boolean(busy)}
+                  onChange={(event) =>
+                    void update({ type: 'settings', [preference.key]: event.target.checked })
+                  }
+                />
+              </div>
+            ))}
+            <p className="backup-note">系统启用的可访问性偏好也会自动生效。</p>
             <h3>秘密保护</h3>
             <div className="setting-row">
               <div>

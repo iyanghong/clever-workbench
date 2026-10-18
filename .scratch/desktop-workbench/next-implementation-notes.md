@@ -1,9 +1,9 @@
-# 实现接续
+# 后续实施
 
-任务 01–15 已解决，任务 16 开始。全局首页、新建、上下文和常用对象已完成；不再需要按旧笔记重复搭建。工作区后续主要步骤见 backup-implementation-notes.md。
+用户持续授权至完成，goal 保持 active。功能任务 01–20 已提交，21–23 未验收。
 
-当前 schemaVersion=7。备份仍是普通 ZIP，任务 16–19 必须完成整体加密、密码预检、原子恢复、自动调度及密码轮换，才能交付。
+接下来完善打包与验证脚本、README 使用说明、编辑器按模块加载和应用图标；完成完整套件、实际 Mac 打包流程、Windows 可用环境运行和双向迁移。最终按 implement 要求运行 code-review 两轴审查、修复并提交。固定审查起点 d5167e4bde1881c39ee12ef7390fb12cc9cd7ed4。
 
-任务 20 把主题从 TaskWorkspace 迁到公共层，确保首页启动应用主题；添加明确减少透明度／动态效果设置，检查两平台和键盘焦点。任务 21–23 完成实际打包、运行与双向迁移。GitHub Actions 可用，尚未推送或触发。Windows 系统版本如实记录。最终全套测试和 code-review 双轴子智能体审查仍未执行。
+Windows 11 x64 真实环境尚未取得。GitHub Actions windows-latest 是其他 Windows 版本时必须如实区分，不能把交叉打包或 Server runner 等同 Windows 11。
 
-不要同时运行多个 Playwright 命令；同一 test-results 会冲突。首次全套测试留在所有功能实现完成后，现阶段继续适当单文件／针对场景验证。
+Playwright 命令保持顺序运行，避免共享 test-results 相互覆盖。多次真实密码派生／RSA 测试可需要 15–20 秒；最终套件应限制并行度，避免同时分配多份 128 MiB scrypt 工作内存造成非功能超时。

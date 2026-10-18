@@ -10,6 +10,13 @@ const call = async (channel: string, ...args: unknown[]) => {
 };
 const api: DesktopAPI = {
   platform: process.platform,
+  systemAppearance: () => call('system-appearance'),
+  onSystemAppearance(handler) {
+    const listener = (_event: unknown, preferences: Parameters<typeof handler>[0]) =>
+      handler(preferences);
+    ipcRenderer.on('system-appearance', listener);
+    return () => ipcRenderer.removeListener('system-appearance', listener);
+  },
   onDataRestored(handler) {
     const listener = () => handler();
     ipcRenderer.on('data-restored', listener);

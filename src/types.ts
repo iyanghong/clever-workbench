@@ -39,11 +39,15 @@ export type Draft = {
 };
 export type Settings = {
   theme: 'system' | 'light' | 'dark';
+  reduceTransparency: boolean;
+  highContrast: boolean;
+  reduceMotion: boolean;
   backupDir: string;
   autoBackup: boolean;
   lastBackupAt: number | null;
   lastBackupError: string | null;
 };
+export type SystemAppearance = { reduceTransparency: boolean; highContrast: boolean };
 export type Snapshot = {
   favorites: Favorite[];
   documents: DocumentSummary[];
@@ -90,7 +94,14 @@ export type Command =
   | { type: 'project.edit'; id: string; name: string; color: string }
   | { type: 'project.archive'; id: string; archived: boolean }
   | { type: 'project.delete'; id: string }
-  | { type: 'settings'; theme?: Settings['theme']; autoBackup?: boolean };
+  | {
+      type: 'settings';
+      theme?: Settings['theme'];
+      autoBackup?: boolean;
+      reduceTransparency?: boolean;
+      highContrast?: boolean;
+      reduceMotion?: boolean;
+    };
 export type MutationResult = { snapshot: Snapshot; createdId?: string };
 export type Asset = { src: string; name: string };
 export type BackupSelection = { token: string; name: string };
@@ -125,6 +136,8 @@ export interface DesktopAPI {
   removeSecret(accountId: string, kind: SecretKind): Promise<Snapshot>;
   onSettingsChange(handler: (settings: Settings) => void): () => void;
   onDataRestored(handler: () => void): () => void;
+  systemAppearance(): Promise<SystemAppearance>;
+  onSystemAppearance(handler: (preferences: SystemAppearance) => void): () => void;
   rotateVault(currentPassword: string, nextPassword: string): Promise<void>;
   onVaultStatus(handler: (status: VaultStatus) => void): () => void;
   snapshot(): Promise<Snapshot>;

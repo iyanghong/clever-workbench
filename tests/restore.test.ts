@@ -124,7 +124,14 @@ async function fixture() {
   });
   store.mutate({ type: 'favorite.set', kind: 'account', id: accountId, pinned: true });
   store.mutate({ type: 'system.save', id: systemId, name: '长期平台', projectId: nextProject });
-  store.mutate({ type: 'settings', theme: 'dark', autoBackup: false });
+  store.mutate({
+    type: 'settings',
+    theme: 'dark',
+    autoBackup: false,
+    reduceMotion: true,
+    highContrast: true,
+    reduceTransparency: true,
+  });
   const expected = store.snapshot(),
     task = store.task(taskId),
     document = store.document(documentId);
@@ -169,7 +176,14 @@ test(
       expect(actual[key]).toEqual(source.expected[key]);
     expect(store.task(source.task.id)).toEqual(source.task);
     expect(store.document(source.document.id)).toEqual(source.document);
-    expect(store.settings()).toMatchObject({ theme: 'dark', backupDir, lastBackupAt: null });
+    expect(store.settings()).toMatchObject({
+      theme: 'dark',
+      backupDir,
+      lastBackupAt: null,
+      reduceMotion: true,
+      highContrast: true,
+      reduceTransparency: true,
+    });
     expect(vault.status()).toEqual({ initialized: true, unlocked: false });
     await vault.unlock(password);
     expect(vault.read(source.accountId, 'password')).toBe('fictional-resource-secret');

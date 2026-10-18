@@ -4,7 +4,7 @@
 
 审查固定起点：`d5167e4bde1881c39ee12ef7390fb12cc9cd7ed4`（实现前的已确认规划提交）。
 
-- 已完成任务 01 至 19；任务 20 正在进行。
+- 已完成功能任务 01 至 20；下一步为 21–23 的打包、平台与迁移验收。
 - 新应用已复制并隔离可复用基础，产品名 Clever Workbench、资料变量 CLEVER_WORKBENCH_DATA_DIR、附件协议 workbench-asset、备份格式 clever-workbench。
 - 入口由模块登记组合；任务功能迁入独立模块，旧 App 不再充当所有功能的入口。
 - 已验证：持久化新用例 1 项、原存储测试 9 项、桌面生命周期场景 1 项；类型检查与生产构建通过。完整测试套件留到实现完成后运行。
@@ -80,3 +80,9 @@ Markdown 转换模块用独立标准解析器比较往返语义，不向 DOM 注
 ## 任务 19 结果
 
 真实密钥轮换与设置入口完成，使用当前密码验证、全新资料密钥及 RSA 备份对、原子重加密；旧活动会话失效，历史备份仍使用生成时密码。3 项轮换测试与 1 项 Electron 设置变更流程通过，覆盖旧密钥不能解当前密文、错误密码、部分写入回滚、锁定取消、旧包恢复后再次变更和重启。设置弹层布局截图已检查。
+
+## 任务 20 结果
+
+共用外观偏好和持久化设置完成，真实 Electron 流程 2 项通过；手动主题不被系统媒体事件覆盖，系统透明度／对比事件可更新全局材质，减少动态效果生效，弹层关闭返回键盘焦点。稳定状态的浅色、深色、高对比截图已核查并保存在 evidence/。Mac 原生材质随偏好关闭；Windows 仍保留原生窗口控制，实际 Windows 验收未完成。4 项恢复测试验证可访问性设置随备份迁移。
+
+平台 API 依据：[Electron nativeTheme](https://www.electronjs.org/docs/latest/api/native-theme) 提供透明度／对比偏好及 updated 事件；[BrowserWindow](https://www.electronjs.org/docs/latest/api/browser-window#winsetvibrancytype-options-macos) 支持用 null 移除 vibrancy。本次事件测试在隔离应用进程中模拟原生属性和 updated，不改动用户操作系统设置。

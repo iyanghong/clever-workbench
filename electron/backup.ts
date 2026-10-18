@@ -464,7 +464,10 @@ function validateDatabase(directory: string, manifest: Manifest) {
       if (row.key === 'favorites') validateFavorites(value);
       if (
         (row.key === 'theme' && !['system', 'light', 'dark'].includes(value)) ||
-        (row.key === 'autoBackup' && typeof value !== 'boolean') ||
+        (['autoBackup', 'reduceTransparency', 'highContrast', 'reduceMotion'].includes(
+          String(row.key),
+        ) &&
+          typeof value !== 'boolean') ||
         (row.key === 'revision' && (!Number.isSafeInteger(value) || value < 0))
       )
         throw new Error('备份设置无效。');

@@ -99,7 +99,29 @@ function importLocalImage(bytes: Uint8Array, name: string) {
   return store.importImage(bytes, name);
 }
 function applyTheme() {
-  nativeTheme.themeSource = store.settings().theme;
+  const theme = store.settings().theme;
+  if (nativeTheme.themeSource !== theme) nativeTheme.themeSource = theme;
+  applyWindowMaterial();
+}
+function systemAppearance() {
+  return {
+    reduceTransparency: nativeTheme.prefersReducedTransparency,
+    highContrast: nativeTheme.shouldUseHighContrastColors,
+  };
+}
+function applyWindowMaterial() {
+  if (!window || window.isDestroyed() || process.platform !== 'darwin') return;
+  const preferences = store.settings(),
+    system = systemAppearance();
+  const opaque =
+    preferences.reduceTransparency ||
+    preferences.highContrast ||
+    system.reduceTransparency ||
+    system.highContrast;
+  window.setVibrancy(opaque ? null : 'sidebar');
+  window.setBackgroundColor(
+    opaque ? (nativeTheme.shouldUseDarkColors ? '#202124' : '#f6f6f8') : '#00000000',
+  );
 }
 let checkingAutomatic = false;
 async function checkAutomaticBackup(flush: boolean) {
@@ -125,7 +147,7 @@ function createWindow() {
     height: 880,
     minWidth: 820,
     minHeight: 600,
-    backgroundColor: '#f5f5f7',
+    backgroundColor: mac ? '#00000000' : '#f5f5f7',
     title: 'Clever Workbench',
     titleBarStyle: mac ? 'hiddenInset' : 'default',
     ...(mac
@@ -143,6 +165,7 @@ function createWindow() {
       webSecurity: true,
     },
   });
+  applyWindowMaterial();
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event) => event.preventDefault());
   window.webContents.on('will-attach-webview', (event) => event.preventDefault());
@@ -193,6 +216,11 @@ app
     store = new Store(path.join(app.getPath('userData'), 'data'));
     backups = new Backups(store);
     secureHandler('data-generation', () => store.generation);
+    secureHandler('system-appearance', systemAppearance);
+    nativeTheme.on('updated', () => {
+      applyWindowMaterial();
+      window?.webContents.send('system-appearance', systemAppearance());
+    });
     vault = new Vault(store, (status) => {
       if (!status.unlocked) void secretClipboard?.clearOwned();
       window?.webContents.send('vault-status', status);

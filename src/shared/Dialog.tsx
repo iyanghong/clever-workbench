@@ -15,7 +15,13 @@ export function Dialog({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    dialog.current?.showModal();
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const element = dialog.current;
+    element?.showModal();
+    return () => {
+      element?.close();
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
+    };
   }, []);
   return (
     <dialog
