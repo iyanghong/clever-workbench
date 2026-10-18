@@ -11,6 +11,9 @@ export function App() {
   useAppearance();
   const [route, setRoute] = useState<Route>({ module: 'home' });
   const [error, setError] = useState('');
+  const [dataVersion, setDataVersion] = useState(0);
+  const [notice, setNotice] = useState('');
+  const generation = useRef(0);
   const [context, setContext] = useState<CreationContext>({});
   const save = useRef<() => Promise<void>>(async () => {});
   const registerFlush = useCallback((handler: () => Promise<void>) => {
@@ -20,10 +23,26 @@ export function App() {
     };
   }, []);
   useEffect(() => window.desktop.onFlush(() => save.current()), []);
+  useEffect(
+    () =>
+      window.desktop.onDataRestored(() => {
+        generation.current++;
+        setDataVersion(generation.current);
+        save.current = async () => {};
+        setRoute({ module: 'home' });
+        setContext({});
+        setError('');
+        setNotice('恢复完成，资料与附件已就位。');
+      }),
+    [],
+  );
   const navigate = useCallback(async (next: Route) => {
+    const expected = generation.current;
     try {
       await save.current();
+      if (expected !== generation.current) return;
       setError('');
+      setNotice('');
       setContext({});
       setRoute(next);
     } catch (cause) {
@@ -76,17 +95,25 @@ export function App() {
         </div>
       </aside>
       <div className="workspace-shell">
-        <GlobalSearch navigate={navigate} flush={() => save.current()}>
+        <GlobalSearch key={dataVersion} navigate={navigate} flush={() => save.current()}>
           <QuickCreate context={context} navigate={navigate} flush={() => save.current()} />
         </GlobalSearch>
         <Page
-          key={`${route.module}:${route.project ?? ''}:${route.objectId ?? ''}:${Boolean(route.trash)}`}
+          key={`${dataVersion}:${route.module}:${route.project ?? ''}:${route.objectId ?? ''}:${Boolean(route.trash)}`}
           route={route}
           navigate={navigate}
           registerFlush={registerFlush}
           setContext={setContext}
         />
       </div>
+      {notice && (
+        <div className="toast" role="status">
+          <span>{notice}</span>
+          <button className="icon-button" aria-label="关闭恢复提示" onClick={() => setNotice('')}>
+            <XIcon size={16} />
+          </button>
+        </div>
+      )}
       {error && (
         <div className="error-banner" role="alert">
           <span>{error}</span>

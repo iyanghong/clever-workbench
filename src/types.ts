@@ -124,6 +124,7 @@ export interface DesktopAPI {
   saveSecret(accountId: string, kind: SecretKind, value: string): Promise<Snapshot>;
   removeSecret(accountId: string, kind: SecretKind): Promise<Snapshot>;
   onSettingsChange(handler: (settings: Settings) => void): () => void;
+  onDataRestored(handler: () => void): () => void;
   onVaultStatus(handler: (status: VaultStatus) => void): () => void;
   snapshot(): Promise<Snapshot>;
   document(id: string): Promise<DocumentRecord>;

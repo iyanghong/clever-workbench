@@ -44,6 +44,8 @@ const secretAad = (accountId: string, kind: SecretKind) =>
   `clever-workbench/secret/1/${accountId}/${kind}`;
 export class Vault {
   private key: Buffer | null = null;
+  private dataGeneration: string | null = null;
+  private protectionId: string | null = null;
   private generation = 0;
   private busy = false;
   private initialized = false;
@@ -68,10 +70,18 @@ export class Vault {
     this.generation++;
     this.key?.fill(0);
     this.key = null;
+    this.dataGeneration = null;
+    this.protectionId = null;
     this.onStatus({ initialized: this.initialized, unlocked: false });
   }
   checkIdle() {
-    if (this.key && Date.now() - this.lastActivity >= 15 * 60_000) this.lock();
+    if (
+      this.key &&
+      (Date.now() - this.lastActivity >= 15 * 60_000 ||
+        this.dataGeneration !== this.store.generation ||
+        this.protectionId !== this.store.get<VaultConfig | null>('vaultConfig', null)?.id)
+    )
+      this.lock();
   }
   touch() {
     this.checkIdle();
@@ -92,25 +102,35 @@ export class Vault {
       throw new Error('秘密目标无效。');
     this.store.ledger.account(accountId);
   }
-  private async exclusive(operation: (generation: number) => Promise<void>) {
+  private async exclusive(operation: (assertCurrent: () => void) => Promise<void>) {
     if (this.busy) throw new Error('正在处理主密码，请稍后再试。');
+    this.checkIdle();
     this.busy = true;
     const generation = this.generation;
+    const dataGeneration = this.store.generation;
+    const protectionId = this.store.get<VaultConfig | null>('vaultConfig', null)?.id;
     try {
-      await operation(generation);
+      await operation(() => {
+        if (
+          generation !== this.generation ||
+          dataGeneration !== this.store.generation ||
+          protectionId !== this.store.get<VaultConfig | null>('vaultConfig', null)?.id
+        )
+          throw new Error('操作已取消，请重新解锁。');
+      });
     } finally {
       this.busy = false;
     }
   }
   async initialize(password: unknown) {
-    return this.exclusive(async (generation) => {
+    return this.exclusive(async (assertCurrent) => {
       if (this.status().initialized) throw new Error('主密码已设置，请解锁。');
       if (this.store.db.prepare('SELECT 1 FROM secrets LIMIT 1').get())
         throw new Error('秘密缺少保护材料，请从完整备份恢复。');
       const key = randomBytes(32);
       try {
         const config = await newProtection(password, key);
-        if (generation !== this.generation) throw new Error('操作已取消，请重新解锁。');
+        assertCurrent();
         this.store.db.exec('BEGIN IMMEDIATE');
         try {
           this.store.set('vaultConfig', config);
@@ -121,6 +141,8 @@ export class Vault {
           throw cause;
         }
         this.key = Buffer.from(key);
+        this.dataGeneration = this.store.generation;
+        this.protectionId = config.id;
         this.lastActivity = Date.now();
         this.onStatus(this.status());
       } finally {
@@ -129,7 +151,7 @@ export class Vault {
     });
   }
   async unlock(password: unknown) {
-    return this.exclusive(async (generation) => {
+    return this.exclusive(async (assertCurrent) => {
       const config = this.config(),
         wrapping = await derive(password, config.kdf);
       let key: Buffer | undefined;
@@ -140,9 +162,11 @@ export class Vault {
           throw new Error('主密码错误或保护材料损坏。');
         }
         if (key.length !== 32) throw new Error('主密码保护材料无效。');
-        if (generation !== this.generation) throw new Error('操作已取消，请重新解锁。');
+        assertCurrent();
         this.key?.fill(0);
         this.key = Buffer.from(key);
+        this.dataGeneration = this.store.generation;
+        this.protectionId = config.id;
         this.lastActivity = Date.now();
         this.onStatus(this.status());
       } finally {

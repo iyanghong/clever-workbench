@@ -63,7 +63,7 @@ function flushRenderer() {
   });
 }
 function secureHandler(channel: string, handler: (...args: any[]) => any) {
-  ipcMain.handle(channel, async (event, ...args) => {
+  ipcMain.handle(channel, async (event, generation, ...args) => {
     if (
       !window ||
       event.sender !== window.webContents ||
@@ -71,14 +71,23 @@ function secureHandler(channel: string, handler: (...args: any[]) => any) {
     )
       throw new Error('来源无效。');
     try {
-      return await handler(...args);
+      if (channel !== 'data-generation' && generation !== store.generation)
+        throw new Error('资料已切换，请重新操作。');
+      const result = await handler(...args);
+      if (
+        !['data-generation', 'restore-backup'].includes(channel) &&
+        generation !== store.generation
+      )
+        throw new Error('资料已切换，旧操作结果已取消。');
+      return result;
     } catch (e) {
       throw new Error(e instanceof Error ? e.message : '操作失败。');
     }
   });
 }
-function writable() {
+function writable(generation = store.generation) {
   if (restoring) throw new Error('正在恢复数据，请稍候。');
+  if (generation !== store.generation) throw new Error('资料已切换，旧操作已取消。');
 }
 function importLocalImage(bytes: Uint8Array, name: string) {
   if (!(bytes instanceof Uint8Array) || !bytes.length || bytes.length > 20 * 1024 * 1024)
@@ -163,6 +172,7 @@ app
   .then(() => {
     store = new Store(path.join(app.getPath('userData'), 'data'));
     backups = new Backups(store);
+    secureHandler('data-generation', () => store.generation);
     vault = new Vault(store, (status) => {
       if (!status.unlocked) void secretClipboard?.clearOwned();
       window?.webContents.send('vault-status', status);
@@ -240,6 +250,7 @@ app
     });
     secureHandler('choose-images', async () => {
       writable();
+      const generation = store.generation;
       const selection = await dialog.showOpenDialog(window!, {
         properties: ['openFile', 'multiSelections'],
         filters: [{ name: '图片', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }],
@@ -250,7 +261,9 @@ app
         try {
           const stat = await fs.stat(file);
           if (stat.size > 20 * 1024 * 1024) throw new Error('超过 20 MB');
-          assets.push(importLocalImage(await fs.readFile(file), path.basename(file)));
+          const bytes = await fs.readFile(file);
+          writable(generation);
+          assets.push(importLocalImage(bytes, path.basename(file)));
         } catch (e) {
           errors.push(`${path.basename(file)}：${e instanceof Error ? e.message : String(e)}`);
         }
@@ -258,12 +271,14 @@ app
       return { assets, errors };
     });
     secureHandler('backup', async () => {
+      const generation = store.generation;
       await flushRenderer();
       const selection = await dialog.showSaveDialog(window!, {
         defaultPath: `Clever-Workbench-${new Date().toISOString().slice(0, 10)}.cwb`,
         filters: [{ name: 'Clever Workbench 备份', extensions: ['cwb'] }],
       });
       if (selection.canceled || !selection.filePath) return null;
+      writable(generation);
       await backups.create(selection.filePath);
       return selection.filePath;
     });
@@ -305,7 +320,9 @@ app
       writable();
       restoring = true;
       try {
-        return await backups.restore(token);
+        const result = await backups.restore(token);
+        window?.webContents.send('data-restored', store.generation);
+        return result;
       } finally {
         restoring = false;
         applyTheme();
@@ -319,12 +336,15 @@ app
       return store.snapshot();
     });
     secureHandler('backup-directory', async () => {
+      const generation = store.generation;
+      writable(generation);
       const result = await dialog.showOpenDialog(window!, {
         properties: ['openDirectory', 'createDirectory'],
       });
       if (result.canceled) return null;
       const directory = result.filePaths[0];
       await fs.access(directory, 2);
+      writable(generation);
       store.set('backupDir', directory);
       return store.snapshot();
     });

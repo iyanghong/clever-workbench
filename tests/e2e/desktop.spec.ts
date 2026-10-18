@@ -82,6 +82,7 @@ test('pasted images survive immediate close, portable backup and restart', async
   try {
     let page = await application.firstWindow();
     await expect(page.getByLabel('快速新增任务')).toBeVisible();
+    await page.getByRole('button', { name: '工作任务', exact: true }).click();
     await page.getByLabel('快速新增任务').fill('检查截图持久化');
     await page.getByLabel('快速新增任务').press('Enter');
     await page.getByRole('button', { name: /检查截图持久化.*未分类/ }).click();
@@ -109,11 +110,14 @@ test('pasted images survive immediate close, portable backup and restart', async
     );
     await page.getByLabel('关闭详情').click();
     await page.getByRole('button', { name: '设置', exact: true }).click();
-    const archive = path.join(directory, 'portable.cleverplan.zip');
+    const archive = path.join(directory, 'portable.cwb');
     await application.evaluate(({ dialog }, filename) => {
       (dialog as any).showSaveDialog = async () => ({ canceled: false, filePath: filename });
     }, archive);
     await page.getByRole('button', { name: '导出完整备份', exact: true }).click();
+    await page.getByLabel('主密码', { exact: true }).fill('fictional-image-backup-password');
+    await page.getByLabel('确认主密码').fill('fictional-image-backup-password');
+    await page.getByRole('button', { name: '设置并解锁', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: '备份已保存' })).toBeVisible();
     await page.getByRole('button', { name: '工作任务', exact: false }).first().click();
     await page.getByLabel('快速新增任务').fill('备份后新增');
@@ -124,6 +128,8 @@ test('pasted images survive immediate close, portable backup and restart', async
       (dialog as any).showOpenDialog = async () => ({ canceled: false, filePaths: [filename] });
     }, archive);
     await page.getByRole('button', { name: '从备份恢复', exact: true }).click();
+    await page.getByLabel('备份密码', { exact: true }).fill('fictional-image-backup-password');
+    await page.getByRole('button', { name: '校验备份', exact: true }).click();
     await expect(page.getByRole('dialog')).toContainText('1 张图片');
     await page.getByRole('button', { name: '恢复备份', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: '恢复完成' })).toBeVisible();
@@ -134,6 +140,7 @@ test('pasted images survive immediate close, portable backup and restart', async
     await application.close();
     application = await electron.launch({ args: ['.'], env: environment });
     page = await application.firstWindow();
+    await page.getByRole('button', { name: '工作任务', exact: true }).click();
     await page.getByRole('button', { name: /检查截图持久化.*未分类/ }).click();
     await expect(page.getByRole('textbox', { name: '工作内容' })).toContainText('包含本地截图');
     await expect(page.getByRole('textbox', { name: '工作内容' }).locator('img')).toBeVisible();

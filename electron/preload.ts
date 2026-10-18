@@ -1,8 +1,20 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { DesktopAPI } from '../src/types';
-const call = (channel: string, ...args: unknown[]) => ipcRenderer.invoke(channel, ...args);
+let generation = ipcRenderer.invoke('data-generation') as Promise<string>;
+ipcRenderer.on('data-restored', (_event, next: string) => {
+  generation = Promise.resolve(next);
+});
+const call = async (channel: string, ...args: unknown[]) => {
+  const expected = generation;
+  return ipcRenderer.invoke(channel, await expected, ...args);
+};
 const api: DesktopAPI = {
   platform: process.platform,
+  onDataRestored(handler) {
+    const listener = () => handler();
+    ipcRenderer.on('data-restored', listener);
+    return () => ipcRenderer.removeListener('data-restored', listener);
+  },
   vaultStatus: () => call('vault-status'),
   vaultActivity: () => call('vault-activity'),
   copySecret: (id, kind) => call('secret-copy', id, kind),

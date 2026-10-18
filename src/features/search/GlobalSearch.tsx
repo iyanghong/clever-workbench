@@ -27,6 +27,7 @@ export function GlobalSearch({
   flushRef.current = flush;
   openRef.current = open;
   async function show() {
+    if (document.querySelector('dialog[open]') && !openRef.current) return;
     try {
       await flushRef.current();
       setError('');
