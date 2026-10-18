@@ -1,4 +1,3 @@
-import { SettingsPage } from '../features/settings/SettingsPage';
 import type { CreationContext, QuickAction } from './actions';
 import { HomePage } from '../features/home/HomePage';
 import { QuickTask } from '../features/tasks/QuickTask';
@@ -10,7 +9,7 @@ import {
   QuickAccount,
 } from '../features/ledger/QuickRecord';
 import type { SearchKind, SearchHit } from '../search-types';
-import type { ComponentType } from 'react';
+import { lazy, type ComponentType } from 'react';
 import {
   TrayIcon,
   SquaresFourIcon,
@@ -26,14 +25,27 @@ import {
   StackIcon,
   type Icon,
 } from '@phosphor-icons/react';
-import { TaskWorkspace, type TaskView } from '../features/tasks/TaskWorkspace';
-import { DocumentsPage } from '../features/documents/DocumentsPage';
-import { LedgerPage } from '../features/ledger/LedgerPage';
+import type { TaskView } from '../features/tasks/TaskWorkspace';
+const TaskWorkspace = lazy(() =>
+  import('../features/tasks/TaskWorkspace').then((module) => ({ default: module.TaskWorkspace })),
+);
+const DocumentsPage = lazy(() =>
+  import('../features/documents/DocumentsPage').then((module) => ({
+    default: module.DocumentsPage,
+  })),
+);
+const LedgerPage = lazy(() =>
+  import('../features/ledger/LedgerPage').then((module) => ({ default: module.LedgerPage })),
+);
+const SettingsPage = lazy(() =>
+  import('../features/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })),
+);
 
 export type Route = { module: string; project?: string; objectId?: string; trash?: boolean };
 export type ModuleProps = {
   route: Route;
   navigate: (route: Route) => Promise<void>;
+  /** Publish once the current context is known; this also enables global creation. */
   setContext: (context: CreationContext) => void;
   registerFlush: (save: () => Promise<void>) => () => void;
 };

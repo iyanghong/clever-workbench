@@ -14,5 +14,24 @@ export default defineConfig({
   ],
   base: './',
   server: { host: '127.0.0.1', port: 5173, strictPort: true },
-  build: { target: 'es2022' },
+  build: {
+    target: 'es2022',
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: 'editor-model',
+              test: /node_modules[\\/]prosemirror-[^\\/]+[\\/]/,
+            },
+            {
+              name: 'code-highlighting',
+              test: /node_modules[\\/](?:highlight\.js|lowlight)[\\/]/,
+              includeDependenciesRecursively: false,
+            },
+          ],
+        },
+      },
+    },
+  },
 });

@@ -3212,3 +3212,8 @@ h3 {
 .modal > .error-text {
   color: #d23838;
 }
+.module-loading {
+  padding: 64px 44px;
+  color: var(--secondary);
+  font-size: 13px;
+}

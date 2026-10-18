@@ -1,4 +1,5 @@
-import { test, expect, _electron as electron } from '@playwright/test';
+import { electron } from './launch';
+import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,6 +13,8 @@ test('默认工作台可固定账号、快速完成任务与写方案，入口�
     await expect(page.getByRole('heading', { name: '我的工作台', exact: true })).toBeVisible({
       timeout: 3000,
     });
+    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await expect(page.getByRole('button', { name: '快速新建', exact: true })).toBeEnabled();
     await page.evaluate(async () => {
       const systemId = (await window.desktop.mutate({ type: 'system.save', name: '订单平台' }))
         .createdId!;

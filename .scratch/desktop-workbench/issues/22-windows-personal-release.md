@@ -1,6 +1,6 @@
 # 22：Windows 11 x64 安装包与运行验收
 
-Status: ready-for-agent
+Status: claimed
 Blocked by: 08, 10, 11, 15, 19, 20
 
 当前阶段：任务拆分已确认。实施授权：用户已明确要求直接编码，按依赖自主执行至完成。

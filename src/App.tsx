@@ -1,6 +1,6 @@
 import type { CreationContext } from './app/actions';
 import { QuickCreate } from './app/QuickCreate';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { SquaresFourIcon, XIcon } from '@phosphor-icons/react';
 import { useAppearance } from './shared/useAppearance';
 import { GlobalSearch } from './features/search/GlobalSearch';
@@ -12,9 +12,15 @@ export function App() {
   const [route, setRoute] = useState<Route>({ module: 'home' });
   const [error, setError] = useState('');
   const [dataVersion, setDataVersion] = useState(0);
+  const [pageVersion, setPageVersion] = useState(0);
   const [notice, setNotice] = useState('');
   const generation = useRef(0);
-  const [context, setContext] = useState<CreationContext>({});
+  const [context, updateContext] = useState<CreationContext>({});
+  const [contextReady, setContextReady] = useState(false);
+  const setContext = useCallback((value: CreationContext) => {
+    updateContext(value);
+    setContextReady(true);
+  }, []);
   const save = useRef<() => Promise<void>>(async () => {});
   const registerFlush = useCallback((handler: () => Promise<void>) => {
     save.current = handler;
@@ -30,7 +36,8 @@ export function App() {
         setDataVersion(generation.current);
         save.current = async () => {};
         setRoute({ module: 'home' });
-        setContext({});
+        updateContext({});
+        setContextReady(false);
         setError('');
         setNotice('恢复完成，资料与附件已就位。');
       }),
@@ -43,8 +50,10 @@ export function App() {
       if (expected !== generation.current) return;
       setError('');
       setNotice('');
-      setContext({});
+      updateContext({});
+      setContextReady(false);
       setRoute(next);
+      setPageVersion((version) => version + 1);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -96,15 +105,28 @@ export function App() {
       </aside>
       <div className="workspace-shell">
         <GlobalSearch key={dataVersion} navigate={navigate} flush={() => save.current()}>
-          <QuickCreate context={context} navigate={navigate} flush={() => save.current()} />
+          <QuickCreate
+            ready={contextReady}
+            context={context}
+            navigate={navigate}
+            flush={() => save.current()}
+          />
         </GlobalSearch>
-        <Page
-          key={`${dataVersion}:${route.module}:${route.project ?? ''}:${route.objectId ?? ''}:${Boolean(route.trash)}`}
-          route={route}
-          navigate={navigate}
-          registerFlush={registerFlush}
-          setContext={setContext}
-        />
+        <Suspense
+          key={`${dataVersion}:${pageVersion}`}
+          fallback={
+            <main className="main module-loading" role="status">
+              正在打开…
+            </main>
+          }
+        >
+          <Page
+            route={route}
+            navigate={navigate}
+            registerFlush={registerFlush}
+            setContext={setContext}
+          />
+        </Suspense>
       </div>
       {notice && (
         <div className="toast" role="status">

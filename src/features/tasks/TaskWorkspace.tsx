@@ -426,8 +426,8 @@ export function TaskWorkspace({
     projects = snapshot?.projects ?? [],
     currentProject = projects.find((p) => p.id === project);
   useEffect(() => {
-    if (!selected) setContext({ projectId: currentProject?.id ?? null });
-  }, [selected, currentProject?.id]);
+    if (snapshot && !selected) setContext({ projectId: currentProject?.id ?? null });
+  }, [Boolean(snapshot), selected, currentProject?.id]);
   const scoped = useMemo(
     () =>
       all.filter(

@@ -24,7 +24,8 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
     [query, setQuery] = useState(''),
     [matches, setMatches] = useState<string[] | null>(null),
     [trash, setTrash] = useState(Boolean(route.trash)),
-    [error, setError] = useState('');
+    [error, setError] = useState(''),
+    [loading, setLoading] = useState(true);
   const saves = useSaveGroup(registerFlush),
     busy = useRef(false);
   useEffect(() => {
@@ -38,7 +39,8 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
           setDocument(record);
         }
       })
-      .catch((cause) => setError(String(cause)));
+      .catch((cause) => setError(String(cause)))
+      .finally(() => setLoading(false));
   }, []);
   useEffect(() => {
     let active = true;
@@ -62,9 +64,9 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
     };
   }, [query, trash, snapshot]);
   useEffect(() => {
-    if (!document)
+    if (!loading && !document)
       setContext({ projectId: route.project && route.project !== 'all' ? route.project : null });
-  }, [document?.id, route.project]);
+  }, [loading, document?.id, route.project]);
   async function select(id: string) {
     try {
       await saves.flush();

@@ -86,3 +86,7 @@ Markdown 转换模块用独立标准解析器比较往返语义，不向 DOM 注
 共用外观偏好和持久化设置完成，真实 Electron 流程 2 项通过；手动主题不被系统媒体事件覆盖，系统透明度／对比事件可更新全局材质，减少动态效果生效，弹层关闭返回键盘焦点。稳定状态的浅色、深色、高对比截图已核查并保存在 evidence/。Mac 原生材质随偏好关闭；Windows 仍保留原生窗口控制，实际 Windows 验收未完成。4 项恢复测试验证可访问性设置随备份迁移。
 
 平台 API 依据：[Electron nativeTheme](https://www.electronjs.org/docs/latest/api/native-theme) 提供透明度／对比偏好及 updated 事件；[BrowserWindow](https://www.electronjs.org/docs/latest/api/browser-window#winsetvibrancytype-options-macos) 支持用 null 移除 vibrancy。本次事件测试在隔离应用进程中模拟原生属性和 updated，不改动用户操作系统设置。
+
+## 交付准备进度
+
+完整单元测试 14 个文件／50 项通过。Mac DMG 与 ZIP、Windows x64 NSIS 均能构建；Mac 从 DMG 实际安装，首轮完整桌面套件发现分包循环错误，修复后 24/25 通过，再定位并修复快速导航下旧首页和新建背景问题。最终整套安装包检查待重跑。新增统一的 `CWB_TEST_EXECUTABLE` 测试入口和虚构资料迁移脚本，旧临时预览脚本已移除。Windows 11 环境尚待用户信息，当前仓库无自托管 runner；正在准备 hosted Windows Server 2025 的补充运行证据，不能替代 Windows 11。

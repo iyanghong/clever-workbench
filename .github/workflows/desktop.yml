@@ -1,16 +1,20 @@
-name: Desktop build and tests
+name: Desktop package and runtime checks
 on:
   push:
   pull_request:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   desktop:
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-latest, windows-2025]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -19,24 +23,54 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - run: npx install-electron --no
+      - run: npm run setup:electron
       - run: npm test
       - run: npm run build
-      - run: npm run test:e2e
-      - name: Package macOS
+      - name: Package macOS arm64
         if: runner.os == 'macOS'
         run: npx electron-builder --mac --arm64 --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-      - name: Package Windows
+      - name: Install macOS ZIP in isolated directory
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p release/installed
+          ditto -x -k 'release/Clever Workbench-0.1.0-arm64-mac.zip' release/installed
+          echo "CWB_TEST_EXECUTABLE=$GITHUB_WORKSPACE/release/installed/Clever Workbench.app/Contents/MacOS/Clever Workbench" >> "$GITHUB_ENV"
+      - name: Package Windows x64
         if: runner.os == 'Windows'
         run: npx electron-builder --win --x64 --publish never
+      - name: Install Windows package and record actual OS
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $destination = Join-Path $env:RUNNER_TEMP 'workbench-installed'
+          $installer = Get-Item 'release/Clever Workbench Setup 0.1.0.exe'
+          $process = Start-Process -FilePath $installer.FullName -ArgumentList '/S', "/D=$destination" -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Installer failed: $($process.ExitCode)" }
+          $executable = Join-Path $destination 'Clever Workbench.exe'
+          if (!(Test-Path $executable)) { throw 'Installed executable is missing.' }
+          "CWB_TEST_EXECUTABLE=$executable" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,OSArchitecture | ConvertTo-Json | Set-Content 'release/actual-windows.json'
+          Get-AuthenticodeSignature $installer.FullName | Select-Object Status,StatusMessage | ConvertTo-Json | Set-Content 'release/windows-signature.json'
+      - name: Test installed application
+        run: npm run test:e2e
+      - name: Export packaged Mac migration fixture
+        if: runner.os == 'macOS'
+        run: node scripts/verify-migration.mjs "$CWB_TEST_EXECUTABLE" release/migration/mac-ci
+      - name: Import Mac fixture and export on actual Windows runner
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: node scripts/verify-migration.mjs "$env:CWB_TEST_EXECUTABLE" release/migration/windows-return .scratch/desktop-workbench/evidence/migration/mac-seed
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: clever-workbench-${{ runner.os }}
+          retention-days: 14
           path: |
             release/*.dmg
             release/*.zip
             release/*.exe
+            release/*.json
+            release/migration/
             test-results/

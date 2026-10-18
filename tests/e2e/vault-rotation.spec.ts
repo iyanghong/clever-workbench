@@ -1,4 +1,5 @@
-import { test, expect, _electron as electron } from '@playwright/test';
+import { electron } from './launch';
+import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -27,7 +28,7 @@ test('设置更改主密码验证旧密码与新密码确认，取消不变更�
     await page.getByLabel('当前主密码', { exact: true }).fill('fictional-previous-password');
     await page.getByLabel('新主密码', { exact: true }).fill('fictional-next-password');
     await page.getByLabel('确认新主密码', { exact: true }).fill('fictional-next-password');
-    await page.screenshot({path:testInfo.outputPath('password-change.png')});
+    await page.screenshot({ path: testInfo.outputPath('password-change.png') });
     await page.getByRole('button', { name: '取消', exact: true }).click();
     await page.evaluate(() => window.desktop.lockVault());
     await page.evaluate(() => window.desktop.unlockVault('fictional-previous-password'));

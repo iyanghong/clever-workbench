@@ -5,10 +5,12 @@ import type { CreationContext, QuickAction } from './actions';
 import type { Snapshot } from '../types';
 import { Dialog } from '../shared/Dialog';
 export function QuickCreate({
+  ready,
   context,
   navigate,
   flush,
 }: {
+  ready: boolean;
   context: CreationContext;
   navigate: ModuleProps['navigate'];
   flush: () => Promise<void>;
@@ -20,9 +22,11 @@ export function QuickCreate({
   const opening = useRef(false),
     working = useRef(false),
     flushRef = useRef(flush);
+  const readyRef = useRef(ready);
+  readyRef.current = ready;
   flushRef.current = flush;
   async function show() {
-    if (opening.current || document.querySelector('dialog[open]')) return;
+    if (!readyRef.current || opening.current || document.querySelector('dialog[open]')) return;
     opening.current = true;
     try {
       await flushRef.current();
@@ -81,7 +85,12 @@ export function QuickCreate({
   const Form = action?.Form;
   return (
     <>
-      <button className="global-new" aria-label="快速新建" onClick={() => void show()}>
+      <button
+        className="global-new"
+        aria-label="快速新建"
+        disabled={!ready}
+        onClick={() => void show()}
+      >
         <PlusIcon size={17} />
         <span>新建</span>
       </button>

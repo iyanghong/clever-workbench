@@ -41,6 +41,7 @@ export function LedgerPage({ route, navigate, registerFlush, setContext }: Modul
         );
         if (target && !system) setError('关联对象已不存在，请重新选择。');
         setSelected(system?.id ?? next.systems[0]?.id ?? null);
+        if (!next.systems.length) setContext({});
       })
       .catch((cause) => setError(cause.message));
   }, []);
