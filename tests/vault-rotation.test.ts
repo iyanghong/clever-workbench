@@ -40,12 +40,14 @@ async function setup() {
 }
 afterEach(() => {
   for (const vault of vaults.splice(0)) vault.lock();
-  for (const store of stores.splice(0)) {
+  const opened = stores.splice(0);
+  for (const store of opened) {
     try {
       store.close();
     } catch {}
-    fs.rmSync(store.root, { recursive: true, force: true });
   }
+  for (const root of new Set(opened.map((store) => store.root)))
+    fs.rmSync(root, { recursive: true, force: true });
 });
 
 test(
