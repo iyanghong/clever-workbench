@@ -1,3 +1,4 @@
+import type { CreationContext } from '../../app/actions';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   PlusIcon,
@@ -67,12 +68,14 @@ export function TaskWorkspace({
   onNavigate,
   onOpenContext,
   onOpenDocuments,
+  setContext,
 }: {
   initialView?: TaskView;
   initialProject?: string;
   initialTaskId?: string;
   registerFlush: (save: () => Promise<void>) => () => void;
   onNavigate: (view: TaskView, project?: string) => Promise<void>;
+  setContext: (context: CreationContext) => void;
   onOpenContext: (id: string) => Promise<void>;
   onOpenDocuments: (project?: string, trash?: boolean) => Promise<void>;
 }) {
@@ -250,12 +253,6 @@ export function TaskWorkspace({
       notifyError(String(e));
     }
   }
-  useEffect(() => {
-    const handler = (command: string) => {
-      if (command === 'new') void newTask();
-    };
-    return window.desktop.onNativeCommand(handler);
-  });
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
       if (e.isComposing) return;
@@ -490,6 +487,9 @@ export function TaskWorkspace({
   const all = snapshot?.tasks ?? [],
     projects = snapshot?.projects ?? [],
     currentProject = projects.find((p) => p.id === project);
+  useEffect(() => {
+    if (!selected) setContext({ projectId: currentProject?.id ?? null });
+  }, [selected, currentProject?.id]);
   const scoped = useMemo(
     () =>
       all.filter(
@@ -1040,6 +1040,7 @@ export function TaskWorkspace({
               task={selected === 'new' ? null : task}
               draft={draft}
               snapshot={snapshot}
+              setContext={setContext}
               onOpenContext={onOpenContext}
               onClose={() => void closeDetail()}
               onDiscard={() => void discardDraft()}

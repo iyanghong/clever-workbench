@@ -18,7 +18,7 @@ import { useSaveGroup } from '../../shared/useSaveGroup';
 import { dateLabel } from '../../domain';
 import { Dialog } from '../../shared/Dialog';
 
-export function DocumentsPage({ route, navigate, registerFlush }: ModuleProps) {
+export function DocumentsPage({ route, navigate, registerFlush, setContext }: ModuleProps) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
     [document, setDocument] = useState<DocumentRecord | null>(null),
     [query, setQuery] = useState(''),
@@ -61,6 +61,10 @@ export function DocumentsPage({ route, navigate, registerFlush }: ModuleProps) {
       clearTimeout(timer);
     };
   }, [query, trash, snapshot]);
+  useEffect(() => {
+    if (!document)
+      setContext({ projectId: route.project && route.project !== 'all' ? route.project : null });
+  }, [document?.id, route.project]);
   async function select(id: string) {
     try {
       await saves.flush();
@@ -89,13 +93,6 @@ export function DocumentsPage({ route, navigate, registerFlush }: ModuleProps) {
       busy.current = false;
     }
   }
-  useEffect(
-    () =>
-      window.desktop.onNativeCommand((command) => {
-        if (command === 'new') void create();
-      }),
-    [],
-  );
   async function changeTrash(next: boolean) {
     try {
       await saves.flush();
@@ -196,6 +193,7 @@ export function DocumentsPage({ route, navigate, registerFlush }: ModuleProps) {
             snapshot={snapshot}
             navigate={navigate}
             registerFlush={saves.register}
+            setContext={setContext}
             onSnapshot={setSnapshot}
             onError={setError}
             onDocument={setDocument}
@@ -233,8 +231,10 @@ function DocumentEditor({
   onSnapshot,
   onError,
   onDocument,
+  setContext,
 }: {
   document: DocumentRecord;
+  setContext: ModuleProps['setContext'];
   snapshot: Snapshot;
   navigate: ModuleProps['navigate'];
   registerFlush: ModuleProps['registerFlush'];
@@ -262,6 +262,14 @@ function DocumentEditor({
     onError,
     pending,
   );
+  useEffect(() => {
+    setContext({
+      systemId: form.value.systemId,
+      environmentId: form.value.environmentId,
+      resourceId: form.value.resourceId,
+      projectId: form.value.projectId,
+    });
+  }, [form.value.systemId, form.value.environmentId, form.value.resourceId, form.value.projectId]);
   const latest = useRef(form.value);
   latest.current = form.value;
   useEffect(() => registerFlush(form.flush), [registerFlush, form.flush]);

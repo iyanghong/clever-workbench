@@ -4,6 +4,7 @@ import type { Snapshot } from '../../types';
 import type { AccountRecord, EnvironmentRecord } from '../../ledger-types';
 import type { EditorHost } from './Environments';
 import { useAutosave } from '../../shared/useAutosave';
+import { FavoriteButton } from '../home/FavoriteButton';
 import { useVault } from '../vault/VaultProvider';
 import { Secrets } from '../vault/Secrets';
 import { CopyValue } from '../../shared/CopyValue';
@@ -245,6 +246,12 @@ function AccountEditor({
             : '系统账号'}{' '}
           / {account.name}
         </strong>
+        <FavoriteButton
+          item={{ kind: 'account', id: account.id }}
+          snapshot={snapshot}
+          onSnapshot={host.onSnapshot}
+          onError={host.onError}
+        />
         <button
           className="save-indicator"
           onClick={() => void form.flush().catch((cause) => host.onError(String(cause)))}

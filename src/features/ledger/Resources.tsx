@@ -44,6 +44,17 @@ export function Resources({
   }, [focusResource]);
   const busy = useRef(false);
   const resource = resources.find((item) => item.id === selected) ?? resources[0];
+  useEffect(() => {
+    if (resource)
+      host.onContext({
+        systemId: environment.systemId,
+        environmentId: environment.id,
+        resourceId: resource.id,
+        projectId:
+          snapshot.systems.find((item) => item.id === environment.systemId)?.currentProjectId ??
+          null,
+      });
+  }, [resource?.id, environment.id, snapshot.systems]);
   async function create() {
     if (!name.trim() || busy.current) return;
     busy.current = true;

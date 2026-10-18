@@ -1,3 +1,5 @@
+import type { CreationContext } from './app/actions';
+import { QuickCreate } from './app/QuickCreate';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SquaresFourIcon, XIcon } from '@phosphor-icons/react';
 import { GlobalSearch } from './features/search/GlobalSearch';
@@ -5,8 +7,9 @@ import { VaultControl } from './features/vault/VaultProvider';
 import { modules, type Route } from './app/modules';
 
 export function App() {
-  const [route, setRoute] = useState<Route>({ module: 'tasks' });
+  const [route, setRoute] = useState<Route>({ module: 'home' });
   const [error, setError] = useState('');
+  const [context, setContext] = useState<CreationContext>({});
   const save = useRef<() => Promise<void>>(async () => {});
   const registerFlush = useCallback((handler: () => Promise<void>) => {
     save.current = handler;
@@ -19,6 +22,7 @@ export function App() {
     try {
       await save.current();
       setError('');
+      setContext({});
       setRoute(next);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -70,12 +74,15 @@ export function App() {
         </div>
       </aside>
       <div className="workspace-shell">
-        <GlobalSearch navigate={navigate} flush={() => save.current()} />
+        <GlobalSearch navigate={navigate} flush={() => save.current()}>
+          <QuickCreate context={context} navigate={navigate} flush={() => save.current()} />
+        </GlobalSearch>
         <Page
           key={`${route.module}:${route.project ?? ''}:${route.objectId ?? ''}:${Boolean(route.trash)}`}
           route={route}
           navigate={navigate}
           registerFlush={registerFlush}
+          setContext={setContext}
         />
       </div>
       {error && (

@@ -10,6 +10,7 @@ test('系统在不同项目间延续，环境台账入口保留创建时的任�
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
+    await page.getByRole('button', { name: '工作任务', exact: true }).click();
     await expect(page.getByRole('heading', { name: '工作任务' })).toBeVisible();
     const projects = await page.evaluate(async () => {
       const a = await window.desktop.mutate({

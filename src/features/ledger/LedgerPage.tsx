@@ -8,6 +8,7 @@ import {
 } from '@phosphor-icons/react';
 import type { ModuleProps } from '../../app/modules';
 import type { Snapshot } from '../../types';
+import { FavoriteButton } from '../home/FavoriteButton';
 import { RelatedWork, type RelatedHost } from './RelatedWork';
 import type { SystemRecord, ObjectContext } from '../../ledger-types';
 import { emptyContent, dateLabel } from '../../domain';
@@ -15,7 +16,7 @@ import { useAutosave } from '../../shared/useAutosave';
 import { useSaveGroup } from '../../shared/useSaveGroup';
 import { Environments } from './Environments';
 
-export function LedgerPage({ route, navigate, registerFlush }: ModuleProps) {
+export function LedgerPage({ route, navigate, registerFlush, setContext }: ModuleProps) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [name, setName] = useState(''),
@@ -43,13 +44,6 @@ export function LedgerPage({ route, navigate, registerFlush }: ModuleProps) {
       })
       .catch((cause) => setError(cause.message));
   }, []);
-  useEffect(
-    () =>
-      window.desktop.onNativeCommand((command) => {
-        if (command === 'new') input.current?.focus();
-      }),
-    [],
-  );
   async function choose(id: string) {
     try {
       await saves.flush();
@@ -82,6 +76,7 @@ export function LedgerPage({ route, navigate, registerFlush }: ModuleProps) {
     if (!system) throw new Error('系统不存在。');
     const result = await window.desktop.mutate({
       type: 'task.create',
+      consumeDraft: false,
       draft: {
         title,
         content: emptyContent(),
@@ -173,6 +168,7 @@ export function LedgerPage({ route, navigate, registerFlush }: ModuleProps) {
             createDocument={createDocument}
             navigate={navigate}
             focusId={route.objectId}
+            onContext={setContext}
           />
         ) : (
           <section className="ledger-empty">
@@ -205,8 +201,10 @@ function SystemPanel({
   createDocument,
   navigate,
   focusId,
+  onContext,
 }: RelatedHost & {
   focusId?: string;
+  onContext: ModuleProps['setContext'];
   system: SystemRecord;
   snapshot: Snapshot;
   onSnapshot: (snapshot: Snapshot) => void;
@@ -214,6 +212,10 @@ function SystemPanel({
   flushAll: () => Promise<void>;
   onError: (message: string) => void;
 }) {
+  useEffect(() => {
+    if (!snapshot.environments.some((item) => item.systemId === system.id))
+      onContext({ systemId: system.id, projectId: system.currentProjectId });
+  }, [system.id, system.currentProjectId, snapshot.environments.length]);
   const form = useAutosave(
     { name: system.name, notes: system.notes, url: system.url, projectId: system.currentProjectId },
     async (value) => {
@@ -229,6 +231,12 @@ function SystemPanel({
     <section className="system-detail">
       <div className="system-detail-heading">
         <span className="eyebrow">长期系统</span>
+        <FavoriteButton
+          item={{ kind: 'system', id: system.id }}
+          snapshot={snapshot}
+          onSnapshot={onSnapshot}
+          onError={onError}
+        />
         <button
           className={`save-indicator ${form.status.startsWith('保存失败') ? 'error-text' : ''}`}
           onClick={commit}
@@ -316,6 +324,7 @@ function SystemPanel({
         createDocument={createDocument}
         navigate={navigate}
         focusId={focusId}
+        onContext={onContext}
       />
       <section className="system-section" aria-label="项目沿革">
         <div className="section-heading">

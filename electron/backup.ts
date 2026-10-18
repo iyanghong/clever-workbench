@@ -16,6 +16,7 @@ import {
   schemaVersion,
   schemaTables,
 } from './store';
+import { validateFavorites } from './favorites';
 import { validateVault } from './vault';
 import { Ledger, validateLedger } from './ledger';
 import { validateTimes } from '../src/domain';
@@ -364,6 +365,7 @@ function validateDatabase(directory: string, manifest: Manifest) {
     const ledger = new Ledger(db);
     for (const row of db.prepare('SELECT key,value FROM preferences').all()) {
       const value = JSON.parse(row.value as string);
+      if (row.key === 'favorites') validateFavorites(value);
       if (
         (row.key === 'theme' && !['system', 'light', 'dark'].includes(value)) ||
         (row.key === 'autoBackup' && typeof value !== 'boolean') ||

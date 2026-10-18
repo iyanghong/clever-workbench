@@ -9,6 +9,7 @@ import { Resources } from './Resources';
 import { useAutosave } from '../../shared/useAutosave';
 
 export type EditorHost = RelatedHost & {
+  onContext: ModuleProps['setContext'];
   onSnapshot: (value: Snapshot) => void;
   registerFlush: ModuleProps['registerFlush'];
   onError: (message: string) => void;
@@ -59,6 +60,17 @@ export function Environments({
   }
   const creating = useRef(false);
   const environment = environments.find((item) => item.id === environmentId) ?? environments[0];
+  useEffect(() => {
+    if (
+      tab !== 'resources' ||
+      !snapshot.resources.some((item) => item.environmentId === environment?.id)
+    )
+      host.onContext({
+        systemId,
+        environmentId: environment?.id ?? null,
+        projectId: snapshot.systems.find((item) => item.id === systemId)?.currentProjectId ?? null,
+      });
+  }, [systemId, environment?.id, tab, snapshot.resources.length, snapshot.systems]);
   const service = services.find((item) => item.id === serviceId) ?? services[0];
   async function select(change: () => void) {
     try {

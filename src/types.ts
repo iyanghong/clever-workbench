@@ -1,3 +1,4 @@
+import type { Favorite, FavoriteCommand } from './home-types';
 import type { SearchHit } from './search-types';
 import type { SecretKind, VaultStatus, AccountCopyTarget, ResourceCopyTarget } from './vault-types';
 import type { DocumentCommand, DocumentRecord, DocumentSummary } from './document-types';
@@ -44,6 +45,7 @@ export type Settings = {
   lastBackupError: string | null;
 };
 export type Snapshot = {
+  favorites: Favorite[];
   documents: DocumentSummary[];
   resources: ResourceRecord[];
   accounts: AccountRecord[];
@@ -58,9 +60,10 @@ export type Snapshot = {
   settings: Settings;
 };
 export type Command =
+  | FavoriteCommand
   | DocumentCommand
   | LedgerCommand
-  | { type: 'task.create'; draft: Draft }
+  | { type: 'task.create'; draft: Draft; consumeDraft?: boolean }
   | {
       type: 'task.edit';
       id: string;

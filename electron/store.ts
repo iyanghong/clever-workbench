@@ -14,6 +14,7 @@ import type {
   TaskSummary,
 } from '../src/types';
 import { minute, validateTimes } from '../src/domain';
+import { validateFavorites } from './favorites';
 import { searchWorkspace } from './search';
 import { initializeVault } from './vault';
 import { Documents, initializeDocuments } from './documents';
@@ -182,9 +183,19 @@ export class Store {
       lastBackupError: this.get('lastBackupError', null),
     };
   }
+  favorites() {
+    const favorites = this.get<unknown>('favorites', []);
+    validateFavorites(favorites);
+    return favorites.filter((item) =>
+      this.db
+        .prepare(`SELECT 1 FROM ${item.kind === 'system' ? 'systems' : 'accounts'} WHERE id=?`)
+        .get(item.id),
+    );
+  }
   snapshot(): Snapshot {
     return {
       ...this.ledger.snapshot(),
+      favorites: this.favorites(),
       documents: this.documents.snapshot(),
       tasks: this.db
         .prepare(
@@ -261,12 +272,35 @@ export class Store {
     try {
       const now = minute();
       switch (command.type) {
+        case 'favorite.set':
+        case 'favorite.move': {
+          if (!['system', 'account'].includes(command.kind)) throw new Error('常用对象类型无效。');
+          if (command.kind === 'system') this.ledger.system(command.id);
+          else this.ledger.account(command.id);
+          const favorites = this.favorites(),
+            index = favorites.findIndex(
+              (item) => item.kind === command.kind && item.id === command.id,
+            );
+          if (command.type === 'favorite.set') {
+            if (typeof command.pinned !== 'boolean') throw new Error('常用状态无效。');
+            if (command.pinned && index < 0) favorites.push({ kind: command.kind, id: command.id });
+            if (!command.pinned && index >= 0) favorites.splice(index, 1);
+          } else {
+            if (![-1, 1].includes(command.direction) || index < 0)
+              throw new Error('常用对象排序无效。');
+            const target = Math.max(0, Math.min(favorites.length - 1, index + command.direction));
+            [favorites[index], favorites[target]] = [favorites[target], favorites[index]];
+          }
+          validateFavorites(favorites);
+          this.set('favorites', favorites);
+          break;
+        }
         case 'document.create':
         case 'document.edit':
         case 'document.delete':
         case 'document.restore':
         case 'document.purge': {
-          createdId = this.documents.mutate(command, now);
+          createdId = this.documents.mutate(command, Date.now());
           break;
         }
         case 'account.save': {
@@ -339,7 +373,9 @@ export class Store {
               context.environmentId,
               context.resourceId,
             );
-          this.set('draft', null);
+          if (command.consumeDraft !== undefined && typeof command.consumeDraft !== 'boolean')
+            throw new Error('草稿处理方式无效。');
+          if (command.consumeDraft !== false) this.set('draft', null);
           break;
         }
         case 'task.edit': {

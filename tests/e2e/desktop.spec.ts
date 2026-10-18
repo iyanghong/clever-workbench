@@ -4,13 +4,17 @@ import os from 'node:os';
 import path from 'node:path';
 test('native desktop capture, editor, completion, archive, recovery and theme', async ({}, testInfo) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'clever-workbench-e2e-'));
-  const environment: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  const environment: Record<string, string> = {
+    ...process.env,
+    CLEVER_WORKBENCH_DATA_DIR: directory,
+  };
   delete environment.ELECTRON_RUN_AS_NODE;
   const application = await electron.launch({ args: ['.'], env: environment });
   try {
     const page = await application.firstWindow();
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
+    await page.getByRole('button', { name: '工作任务', exact: true }).click();
     await expect(page.getByRole('heading', { name: '工作任务' })).toBeVisible();
     const runtime = await application.evaluate(() => ({
       node: process.versions.node,
@@ -69,7 +73,10 @@ test('native desktop capture, editor, completion, archive, recovery and theme', 
 
 test('pasted images survive immediate close, portable backup and restart', async ({}, testInfo) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'clever-workbench-images-'));
-  const environment: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  const environment: Record<string, string> = {
+    ...process.env,
+    CLEVER_WORKBENCH_DATA_DIR: directory,
+  };
   delete environment.ELECTRON_RUN_AS_NODE;
   let application = await electron.launch({ args: ['.'], env: environment });
   try {

@@ -1,3 +1,4 @@
+import type { CreationContext } from '../app/actions';
 import { useEffect, useRef, useState } from 'react';
 import {
   XIcon,
@@ -20,6 +21,7 @@ export function Detail({
   draft,
   snapshot,
   onOpenContext,
+  setContext,
   onClose,
   onDiscard,
   onSnapshot,
@@ -32,6 +34,7 @@ export function Detail({
   task: Task | null;
   draft: Draft;
   snapshot: Snapshot;
+  setContext: (context: CreationContext) => void;
   onOpenContext: (id: string) => Promise<void>;
   onClose: () => void;
   onDiscard: () => void;
@@ -69,6 +72,14 @@ export function Detail({
     pendingImports,
   );
   const { value, status, flush: save } = form;
+  useEffect(() => {
+    setContext({
+      systemId: value.systemId,
+      environmentId: value.environmentId,
+      resourceId: value.resourceId,
+      projectId: value.projectId,
+    });
+  }, [value.systemId, value.environmentId, value.resourceId, value.projectId]);
   const latest = useRef(value);
   const [expanded, setExpanded] = useState(false),
     [dates, setDates] = useState(false),
