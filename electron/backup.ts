@@ -16,7 +16,7 @@ import {
   schemaVersion,
   schemaTables,
 } from './store';
-import { encryptArchive, decryptArchive } from './encrypted-archive';
+import { encryptArchive, decryptArchive, checkEncryptedArchive } from './encrypted-archive';
 import { validateConfig, type VaultConfig } from './vault-crypto';
 import { validateFavorites } from './favorites';
 import { validateVault } from './vault';
@@ -58,6 +58,15 @@ function safeEntry(name: string) {
     (name.startsWith('assets/') && assetName.test(name.slice(7)))
   );
 }
+function backupFailure(cause: unknown) {
+  const code = (cause as NodeJS.ErrnoException)?.code;
+  if (code === 'ENOSPC') return new Error('磁盘空间不足，请释放空间或更改备份目录后重试。');
+  if (code === 'EACCES' || code === 'EPERM')
+    return new Error('无法写入备份目录，请检查权限或更改目录后重试。');
+  if (['ENOENT', 'EEXIST', 'ENOTDIR'].includes(code ?? ''))
+    return new Error('备份目录无法使用，请重新选择目录后重试。');
+  return cause instanceof Error ? cause : new Error(String(cause));
+}
 export class Backups {
   busy = false;
   prepared = new Map<string, { directory: string; manifest: Manifest; protection: VaultConfig }>();
@@ -74,6 +83,15 @@ export class Backups {
   async create(filename: string, fallbackProtection?: VaultConfig) {
     if (this.busy) throw new Error('另一项备份或恢复正在进行，请稍后再试。');
     this.busy = true;
+    try {
+      return await this.writeArchive(filename, fallbackProtection);
+    } catch (cause) {
+      throw backupFailure(cause);
+    } finally {
+      this.busy = false;
+    }
+  }
+  private async writeArchive(filename: string, fallbackProtection?: VaultConfig) {
     const staging = path.join(this.store.root, `backup-${randomUUID()}`),
       temporary = `${filename}.${randomUUID()}.tmp`;
     try {
@@ -167,16 +185,12 @@ export class Backups {
       await fsp.rename(temporary, filename);
       return manifest;
     } finally {
-      try {
-        const cleanup = await Promise.allSettled([
-          fsp.rm(staging, { recursive: true, force: true }),
-          fsp.rm(temporary, { force: true }),
-        ]);
-        const failure = cleanup.find((result) => result.status === 'rejected');
-        if (failure?.status === 'rejected') throw failure.reason;
-      } finally {
-        this.busy = false;
-      }
+      const cleanup = await Promise.allSettled([
+        fsp.rm(staging, { recursive: true, force: true }),
+        fsp.rm(temporary, { force: true }),
+      ]);
+      const failure = cleanup.find((result) => result.status === 'rejected');
+      if (failure?.status === 'rejected') throw failure.reason;
     }
   }
   async inspect(filename: string, password: unknown): Promise<BackupInfo> {
@@ -305,15 +319,20 @@ export class Backups {
     }
   }
   async restore(token: string) {
+    if (this.busy) throw new Error('另一项备份或恢复正在进行，请稍后再试。');
     const prepared = this.prepared.get(token);
     if (!prepared) throw new Error('请重新选择并校验备份。');
-    const recovery = path.join(this.store.root, 'recovery', `before-restore-${Date.now()}.cwb`);
-    await this.create(recovery, prepared.protection);
+    const recovery = path.join(
+      this.store.root,
+      'recovery',
+      `before-restore-${Date.now()}-${randomUUID()}.cwb`,
+    );
     this.busy = true;
     const oldDirectory = this.store.directory,
       oldGeneration = this.store.generation,
       deviceSettings = this.store.settings();
     try {
+      await this.writeArchive(recovery, prepared.protection);
       const replacement = new DatabaseSync(path.join(prepared.directory, 'database.sqlite'));
       try {
         for (const [key, value] of Object.entries({
@@ -357,38 +376,67 @@ export class Backups {
     }
   }
   async automatic(force = false) {
+    if (this.busy) {
+      if (force) throw new Error('另一项备份或恢复正在进行，请稍后再试。');
+      return;
+    }
     const settings = this.store.settings();
-    if (this.store.get('vaultConfig', null) === null) return;
+    if (this.store.get('vaultConfig', null) === null) {
+      if (force) throw new Error('请先设置主密码，再启用完整加密备份。');
+      return;
+    }
     const now = new Date();
     const last = settings.lastBackupAt ? new Date(settings.lastBackupAt) : null;
     if (
-      this.busy ||
-      (!force &&
-        (!settings.autoBackup ||
-          this.store.get<number>('revision', 0) === 0 ||
-          this.store.get<number>('revision', 0) ===
-            this.store.get<number>('lastBackupRevision', -1) ||
-          (last && last.toDateString() === now.toDateString())))
+      !force &&
+      (!settings.autoBackup ||
+        this.store.get<number>('revision', 0) === 0 ||
+        this.store.get<number>('revision', 0) ===
+          this.store.get<number>('lastBackupRevision', -1) ||
+        (last && last.toDateString() === now.toDateString()))
     )
       return;
     const revision = this.store.get('revision', 0);
+    this.busy = true;
     try {
+      const owner = this.automaticOwner();
       const filename = path.join(
         settings.backupDir,
-        `auto-${now.toISOString().replace(/[:.]/g, '-')}.cwb`,
+        `auto-${owner}-${now.toISOString().replace(/[:.]/g, '-')}-${randomUUID()}.cwb`,
       );
-      await this.create(filename);
+      await this.writeArchive(filename);
       this.store.set('lastBackupAt', Date.now());
       this.store.set('lastBackupRevision', revision);
       this.store.set('lastBackupError', null);
-      const files = (await fsp.readdir(settings.backupDir))
-        .filter((n) => /^auto-.*\.cwb$/.test(n))
-        .sort()
-        .reverse();
+      const pattern = new RegExp(
+        `^auto-${owner}-\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}-\\d{3}Z-[a-f0-9-]{36}\\.cwb$`,
+      );
+      const files: string[] = [];
+      for (const entry of await fsp.readdir(settings.backupDir, { withFileTypes: true })) {
+        if (!entry.isFile() || !pattern.test(entry.name)) continue;
+        try {
+          await checkEncryptedArchive(path.join(settings.backupDir, entry.name));
+        } catch {
+          continue;
+        }
+        files.push(entry.name);
+      }
+      files.sort().reverse();
       for (const name of files.slice(7)) await fsp.unlink(path.join(settings.backupDir, name));
     } catch (e) {
-      this.store.set('lastBackupError', e instanceof Error ? e.message : String(e));
+      this.store.set('lastBackupError', backupFailure(e).message);
+    } finally {
+      this.busy = false;
     }
+  }
+  private automaticOwner() {
+    // Device-local identity is deliberately outside portable preferences.
+    const filename = path.join(this.store.root, 'AUTO_BACKUP_OWNER');
+    if (!fs.existsSync(filename)) atomicWrite(filename, randomUUID());
+    const owner = fs.readFileSync(filename, 'utf8').trim();
+    if (!/^[a-f0-9-]{36}$/.test(owner))
+      throw new Error('自动备份标识损坏，请保留备份目录并检查本机资料。');
+    return owner;
   }
 }
 function validateDatabase(directory: string, manifest: Manifest) {

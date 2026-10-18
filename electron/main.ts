@@ -99,6 +99,23 @@ function importLocalImage(bytes: Uint8Array, name: string) {
 function applyTheme() {
   nativeTheme.themeSource = store.settings().theme;
 }
+let checkingAutomatic = false;
+async function checkAutomaticBackup(flush: boolean) {
+  if (checkingAutomatic || restoring || backups.busy) return;
+  checkingAutomatic = true;
+  const generation = store.generation;
+  try {
+    if (flush) await flushRenderer();
+    if (restoring || generation !== store.generation) return;
+    await backups.automatic();
+  } catch (cause) {
+    if (!restoring && generation === store.generation)
+      store.set('lastBackupError', cause instanceof Error ? cause.message : String(cause));
+  } finally {
+    checkingAutomatic = false;
+    window?.webContents.send('settings-changed', store.settings());
+  }
+}
 function createWindow() {
   const mac = process.platform === 'darwin';
   window = new BrowserWindow({
@@ -331,8 +348,11 @@ app
       }
     });
     secureHandler('retry-backup', async () => {
+      const generation = store.generation;
       await flushRenderer();
+      writable(generation);
       await backups.automatic(true);
+      window?.webContents.send('settings-changed', store.settings());
       return store.snapshot();
     });
     secureHandler('backup-directory', async () => {
@@ -345,7 +365,20 @@ app
       const directory = result.filePaths[0];
       await fs.access(directory, 2);
       writable(generation);
-      store.set('backupDir', directory);
+      if (backups.busy) throw new Error('备份正在进行，请完成后再更改目录。');
+      store.db.exec('BEGIN IMMEDIATE');
+      try {
+        store.set('backupDir', directory);
+        store.set('lastBackupAt', null);
+        store.set('lastBackupRevision', -1);
+        store.set('lastBackupError', null);
+        store.markChanged();
+        store.db.exec('COMMIT');
+      } catch (cause) {
+        store.db.exec('ROLLBACK');
+        throw cause;
+      }
+      window?.webContents.send('settings-changed', store.settings());
       return store.snapshot();
     });
     secureHandler('copy-text', (value) => secretClipboard.copyText(text(value, 200_000)));
@@ -417,8 +450,9 @@ app
       ]),
     );
     createWindow();
+    void checkAutomaticBackup(false);
     setInterval(() => {
-      if (!restoring) void backups.automatic();
+      void checkAutomaticBackup(true);
     }, 60000).unref();
     app.on('activate', () => {
       if (!window) createWindow();

@@ -31,11 +31,15 @@ export function SettingsPage({ setContext }: ModuleProps) {
     vault = useVault();
   useEffect(() => {
     setContext({});
+    const unsubscribe = window.desktop.onSettingsChange((settings) => {
+      setSnapshot((previous) => (previous ? { ...previous, settings } : previous));
+    });
     void window.desktop
       .snapshot()
       .then(setSnapshot)
       .catch((cause) => setError(message(cause)));
     return () => {
+      unsubscribe();
       for (const token of activeTokens.current)
         void window.desktop.discardBackup(token).catch(() => {});
       activeTokens.current.clear();
@@ -66,7 +70,11 @@ export function SettingsPage({ setContext }: ModuleProps) {
       setSnapshot((await window.desktop.mutate(command)).snapshot);
     } catch (cause) {
       setError(message(cause));
-      setSnapshot(await window.desktop.snapshot());
+      try {
+        setSnapshot(await window.desktop.snapshot());
+      } catch {
+        /* Keep the error visible. */
+      }
     }
   }
   async function exportBackup() {
