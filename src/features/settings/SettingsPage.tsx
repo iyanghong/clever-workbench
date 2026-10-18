@@ -429,7 +429,8 @@ export function SettingsPage({ setContext }: ModuleProps) {
               {preview.tasks} 条任务 · {preview.documents} 份文档 · {preview.images} 张图片
             </p>
             <p>
-              {preview.projects} 个项目 · {preview.systems} 个系统 · {preview.resources} 个资源
+              {preview.projects} 个项目 · {preview.systems} 个系统 · {preview.resources} 个资源 ·{' '}
+              {preview.accessEntries} 个访问入口
             </p>
             <p>
               {preview.accounts} 个账号 · {preview.secrets} 项秘密

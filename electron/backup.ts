@@ -21,6 +21,7 @@ import { validateConfig, type VaultConfig } from './vault-crypto';
 import { validateFavorites } from './favorites';
 import { verifyVaultIntegrity } from './vault';
 import { Ledger, validateLedger } from './ledger';
+import { migrateSystemLedger } from './ledger-migration';
 import { validateTimes } from '../src/domain';
 import type { DocumentRecord } from '../src/document-types';
 import type { Task, Draft, BackupInfo } from '../src/types';
@@ -33,6 +34,7 @@ type Manifest = {
   projects: number;
   documents: number;
   systems: number;
+  accessEntries?: number;
   resources: number;
   accounts: number;
   secrets: number;
@@ -105,6 +107,7 @@ export class Backups {
         projects: number,
         documents: number,
         systems: number,
+        accessEntries: number,
         resources: number,
         accounts: number,
         secrets: number,
@@ -116,6 +119,7 @@ export class Backups {
         validateConfig(value);
         protection = value;
         systems = Number(snapshot.prepare('SELECT count(*) n FROM systems').get()!.n);
+        accessEntries = Number(snapshot.prepare('SELECT count(*) n FROM access_entries').get()!.n);
         resources = Number(snapshot.prepare('SELECT count(*) n FROM resources').get()!.n);
         accounts = Number(snapshot.prepare('SELECT count(*) n FROM accounts').get()!.n);
         secrets = Number(snapshot.prepare('SELECT count(*) n FROM secrets').get()!.n);
@@ -162,6 +166,7 @@ export class Backups {
         projects,
         documents,
         systems,
+        accessEntries,
         resources,
         accounts,
         secrets,
@@ -308,6 +313,7 @@ export class Backups {
         projects: manifest.projects,
         documents: manifest.documents,
         systems: manifest.systems,
+        accessEntries: manifest.accessEntries ?? 0,
         resources: manifest.resources,
         accounts: manifest.accounts,
         secrets: manifest.secrets,
@@ -447,10 +453,13 @@ async function validateDatabase(
   password: unknown,
   protection: VaultConfig,
 ) {
-  const db = new DatabaseSync(path.join(directory, 'database.sqlite'), { readOnly: true });
+  // This is the authenticated, isolated extraction; never migrate the source or active database.
+  const db = new DatabaseSync(path.join(directory, 'database.sqlite'));
   try {
+    db.exec('PRAGMA trusted_schema=OFF; PRAGMA foreign_keys=ON');
+    const version = Number(db.prepare('PRAGMA user_version').get()!.user_version);
     if (
-      Number(db.prepare('PRAGMA user_version').get()!.user_version) !== schemaVersion ||
+      ![7, schemaVersion].includes(version) ||
       Object.values(db.prepare('PRAGMA integrity_check').get()!)[0] !== 'ok' ||
       db.prepare('PRAGMA foreign_key_check').all().length
     )
@@ -463,8 +472,12 @@ async function validateDatabase(
         .all(...schemaTables).length
     )
       throw new Error('备份数据库结构不兼容。');
-    validateLedger(db);
     await verifyVaultIntegrity(db, password, protection);
+    if (version < schemaVersion) {
+      migrateSystemLedger(db);
+      db.exec(`PRAGMA user_version=${schemaVersion}`);
+    }
+    validateLedger(db);
     const ledger = new Ledger(db);
     for (const row of db.prepare('SELECT key,value FROM preferences').all()) {
       const value = JSON.parse(row.value as string);
@@ -557,6 +570,11 @@ async function validateDatabase(
     for (const table of ['systems', 'resources', 'accounts', 'secrets'] as const)
       if (Number(db.prepare(`SELECT count(*) n FROM ${table}`).get()!.n) !== manifest[table])
         throw new Error('备份台账数量不一致。');
+    if (
+      Number(db.prepare('SELECT count(*) n FROM access_entries').get()!.n) !==
+      (manifest.accessEntries ?? 0)
+    )
+      throw new Error('备份访问入口数量不一致。');
     if (documents.length !== manifest.documents) throw new Error('备份文档数量不一致。');
     if (rows.length !== manifest.tasks || projects.length !== manifest.projects)
       throw new Error('备份记录数量不一致。');

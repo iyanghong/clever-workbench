@@ -10,7 +10,12 @@ import { Secrets } from '../vault/Secrets';
 import { CopyValue } from '../../shared/CopyValue';
 import { Dialog } from '../../shared/Dialog';
 
-export type AccountTarget = { environmentId: string; resourceId: string | null; accountId: string };
+export type AccountTarget = {
+  environmentId: string | null;
+  resourceId: string | null;
+  accessId?: string | null;
+  accountId: string;
+};
 export type AccountNavigation = {
   focusAccount: string | null;
   onOpenAccount: (target: AccountTarget) => void;
@@ -18,6 +23,8 @@ export type AccountNavigation = {
 export function Accounts({
   environment,
   resourceId,
+  accessId = null,
+  systemId,
   snapshot,
   flushAll,
   focusAccount,
@@ -25,7 +32,9 @@ export function Accounts({
   ...host
 }: EditorHost &
   AccountNavigation & {
-    environment: EnvironmentRecord;
+    environment: EnvironmentRecord | null;
+    systemId?: string;
+    accessId?: string | null;
     resourceId: string | null;
     snapshot: Snapshot;
     flushAll: () => Promise<void>;
@@ -36,13 +45,24 @@ export function Accounts({
     if (focusAccount) setSelected(focusAccount);
   }, [focusAccount]);
   const busy = useRef(false);
+  const ownerSystem =
+    systemId ??
+    environment?.systemId ??
+    snapshot.resources.find((r) => r.id === resourceId)?.systemId ??
+    snapshot.accessEntries.find((e) => e.id === accessId)?.systemId;
   const accounts = snapshot.accounts.filter(
-    (item) => item.environmentId === environment.id && item.resourceId === resourceId,
+    (item) =>
+      item.systemId === ownerSystem &&
+      item.environmentId === (environment?.id ?? null) &&
+      item.resourceId === resourceId &&
+      item.accessId === accessId,
   );
   const account = accounts.find((item) => item.id === selected) ?? accounts[0];
   const owner = resourceId
     ? snapshot.resources.find((item) => item.id === resourceId)?.name
-    : '系统账号';
+    : accessId
+      ? snapshot.accessEntries.find((e) => e.id === accessId)?.name
+      : '系统账号';
   async function create() {
     if (!name.trim() || busy.current) return;
     busy.current = true;
@@ -51,8 +71,9 @@ export function Accounts({
       const result = await window.desktop.mutate({
         type: 'account.save',
         name,
-        environmentId: environment.id,
+        environmentId: environment?.id ?? null,
         resourceId,
+        accessId,
       });
       host.onSnapshot(result.snapshot);
       setSelected(result.createdId!);
@@ -67,7 +88,7 @@ export function Accounts({
     <section className="accounts-section" aria-label={`${owner}账号`}>
       <div className="entity-toolbar">
         <span className="secondary-copy">
-          {environment.name} / {owner} · {accounts.length} 个账号
+          {environment?.name ?? '通用'} / {owner} · {accounts.length} 个账号
         </span>
         <form
           className="inline-create"
@@ -117,7 +138,6 @@ export function Accounts({
           key={account.id}
           account={account}
           revealTarget={focusAccount === account.id}
-          environment={environment}
           snapshot={snapshot}
           flushAll={flushAll}
           onOpenAccount={onOpenAccount}
@@ -133,7 +153,6 @@ export function Accounts({
 function AccountEditor({
   account,
   revealTarget,
-  environment,
   snapshot,
   flushAll,
   onOpenAccount,
@@ -142,7 +161,6 @@ function AccountEditor({
   Pick<AccountNavigation, 'onOpenAccount'> & {
     account: AccountRecord;
     revealTarget: boolean;
-    environment: EnvironmentRecord;
     snapshot: Snapshot;
     flushAll: () => Promise<void>;
   }) {
@@ -156,6 +174,7 @@ function AccountEditor({
             id: account.id,
             environmentId: account.environmentId,
             resourceId: account.resourceId,
+            accessId: account.accessId,
             ...value,
           })
         ).snapshot,
@@ -166,8 +185,11 @@ function AccountEditor({
   useEffect(() => host.registerFlush(form.flush), [host.registerFlush, form.flush]);
   const [modal, setModal] = useState<'copy' | 'move' | 'delete' | null>(null),
     [busy, setBusy] = useState(false);
-  const [targetEnvironment, setTargetEnvironment] = useState(environment.id),
-    [targetResource, setTargetResource] = useState(account.resourceId ?? ''),
+  const environment = snapshot.environments.find((e) => e.id === account.environmentId);
+  const [targetEnvironment, setTargetEnvironment] = useState(account.environmentId ?? ''),
+    [targetResource, setTargetResource] = useState(
+      account.accessId ? `access:${account.accessId}` : (account.resourceId ?? ''),
+    ),
     [targetName, setTargetName] = useState('');
   const [dialogError, setDialogError] = useState('');
   const vault = useVault();
@@ -175,8 +197,8 @@ function AccountEditor({
   function open(mode: 'copy' | 'move' | 'delete') {
     setDialogError('');
     setIncludeSecrets(false);
-    setTargetEnvironment(environment.id);
-    setTargetResource(account.resourceId ?? '');
+    setTargetEnvironment(account.environmentId ?? '');
+    setTargetResource(account.accessId ? `access:${account.accessId}` : (account.resourceId ?? ''));
     setTargetName(mode === 'copy' ? `${form.value.name} 副本` : form.value.name);
     setModal(mode);
   }
@@ -187,14 +209,18 @@ function AccountEditor({
     try {
       await flushAll();
       if (modal === 'copy' && includeSecrets && !(await vault.ensureUnlocked())) return;
+      const target = {
+        environmentId: targetEnvironment || null,
+        resourceId: targetResource.startsWith('access:') ? null : targetResource || null,
+        accessId: targetResource.startsWith('access:') ? targetResource.slice(7) : null,
+      };
       const result =
         modal === 'copy' && includeSecrets
           ? await window.desktop.copyAccountWithSecrets(
               account.id,
               {
                 name: targetName,
-                environmentId: targetEnvironment,
-                resourceId: targetResource || null,
+                ...target,
               },
               account.secretKinds,
             )
@@ -204,16 +230,14 @@ function AccountEditor({
                     type: 'account.copy',
                     id: account.id,
                     name: targetName,
-                    environmentId: targetEnvironment,
-                    resourceId: targetResource || null,
+                    ...target,
                   }
                 : modal === 'move'
                   ? {
                       type: 'account.save',
                       id: account.id,
                       name: form.value.name,
-                      environmentId: targetEnvironment,
-                      resourceId: targetResource || null,
+                      ...target,
                     }
                   : { type: 'account.delete', id: account.id },
             );
@@ -221,8 +245,7 @@ function AccountEditor({
       setModal(null);
       if (modal !== 'delete')
         onOpenAccount({
-          environmentId: targetEnvironment,
-          resourceId: targetResource || null,
+          ...target,
           accountId: result.createdId ?? account.id,
         });
     } catch (cause) {
@@ -235,15 +258,17 @@ function AccountEditor({
   useEffect(() => {
     if (revealTarget) targetElement.current?.scrollIntoView({ block: 'center' });
   }, [revealTarget]);
-  const system = snapshot.systems.find((item) => item.id === environment.systemId)!;
+  const system = snapshot.systems.find((item) => item.id === account.systemId)!;
   return (
     <div ref={targetElement} className="account-editor">
       <div className="record-subheading">
         <strong>
-          {system.name} / {environment.name} /{' '}
+          {system.name} / {environment?.name ?? '通用'} /{' '}
           {account.resourceId
             ? snapshot.resources.find((item) => item.id === account.resourceId)?.name
-            : '系统账号'}{' '}
+            : account.accessId
+              ? snapshot.accessEntries.find((e) => e.id === account.accessId)?.name
+              : '系统账号'}{' '}
           / {account.name}
         </strong>
         <FavoriteButton
@@ -317,7 +342,7 @@ function AccountEditor({
               ? '新账号默认只复制用途、用户名与普通说明。'
               : modal === 'move'
                 ? `在“${system.name}”内调整账号归属。`
-                : `删除“${account.name}”？有关联资料的账号需要先处理引用。`}
+                : `删除“${account.name}”？该账号的已保存秘密也会删除；有关联资料时需先处理引用。`}
           </p>
           {modal === 'copy' && (
             <label>
@@ -341,6 +366,7 @@ function AccountEditor({
                     setTargetResource('');
                   }}
                 >
+                  <option value="">系统通用</option>
                   {snapshot.environments
                     .filter((item) => item.systemId === system.id)
                     .map((item) => (
@@ -357,12 +383,29 @@ function AccountEditor({
                   value={targetResource}
                   onChange={(event) => setTargetResource(event.target.value)}
                 >
-                  <option value="">系统环境</option>
+                  <option value="">
+                    {targetEnvironment ? '系统环境' : '选择服务器或访问入口'}
+                  </option>
                   {snapshot.resources
-                    .filter((item) => item.environmentId === targetEnvironment)
+                    .filter(
+                      (item) =>
+                        item.systemId === system.id &&
+                        item.environmentId === (targetEnvironment || null),
+                    )
                     .map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.name}
+                      </option>
+                    ))}
+                  {snapshot.accessEntries
+                    .filter(
+                      (item) =>
+                        item.systemId === system.id &&
+                        item.environmentId === (targetEnvironment || null),
+                    )
+                    .map((item) => (
+                      <option key={item.id} value={`access:${item.id}`}>
+                        访问入口 · {item.name}
                       </option>
                     ))}
                 </select>
@@ -386,7 +429,11 @@ function AccountEditor({
             </button>
             <button
               className={modal === 'delete' ? 'danger-button' : 'primary-button'}
-              disabled={busy || (modal === 'copy' && !targetName.trim())}
+              disabled={
+                busy ||
+                (modal === 'copy' && !targetName.trim()) ||
+                (modal !== 'delete' && !targetEnvironment && !targetResource)
+              }
               onClick={() => void confirm()}
             >
               {busy

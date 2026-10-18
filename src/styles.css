@@ -3217,3 +3217,174 @@ h3 {
   color: var(--secondary);
   font-size: 13px;
 }
+
+.system-ledger-tabs {
+  margin: 22px 0 18px;
+}
+.system-asset-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+  margin: 18px 0 24px;
+}
+.system-asset-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  min-width: 0;
+}
+.system-asset-row > span {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.system-asset-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.system-asset-row small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.system-asset-row.selected {
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+  color: var(--accent);
+}
+.scope-filter {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+.scope-filter select,
+.preferred-account select,
+.access-shortcuts select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 10px;
+  color: var(--text);
+  background: var(--panel);
+  max-width: 100%;
+}
+.system-asset-empty {
+  padding: 42px 12px;
+  text-align: center;
+}
+.system-asset-empty svg {
+  color: var(--muted);
+}
+.system-asset-empty h3 {
+  margin: 14px 0 10px;
+}
+.system-asset-empty p {
+  color: var(--muted);
+  line-height: 1.8;
+}
+.ledger-capture .record-fields {
+  margin: 14px 0;
+}
+.ledger-capture > label {
+  margin: 14px 0;
+}
+.capture-configuration {
+  margin-top: 14px;
+}
+.server-configuration {
+  margin-top: 16px;
+}
+.access-address-heading {
+  margin-top: 24px;
+  margin-bottom: 12px;
+}
+.access-address-heading h3 {
+  font-size: 13px;
+}
+.access-address-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.6fr) minmax(150px, 1.5fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.access-address-row label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  min-width: 0;
+}
+.access-address-row input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+}
+.address-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-bottom: 5px;
+}
+.address-actions [aria-pressed='true'] {
+  color: var(--accent);
+}
+.preferred-account {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+  max-width: 380px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.access-shortcuts {
+  display: grid;
+  gap: 10px;
+  padding-left: 34px;
+  margin-top: 12px;
+}
+.access-shortcut-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12px;
+}
+.access-shortcut-line > span {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.access-shortcut-line select {
+  min-width: 0;
+  flex: 1;
+}
+@media (max-width: 1080px) {
+  .access-address-row {
+    grid-template-columns: minmax(90px, 0.6fr) minmax(150px, 1.5fr);
+  }
+  .address-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}
+
+.modal:has(.ledger-capture) {
+  width: 560px;
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 64px);
+  overflow: auto;
+}
+.ledger-capture .record-fields {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}

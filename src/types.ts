@@ -1,6 +1,12 @@
 import type { Favorite, FavoriteCommand } from './home-types';
 import type { SearchHit } from './search-types';
-import type { SecretKind, VaultStatus, AccountCopyTarget, ResourceCopyTarget } from './vault-types';
+import type {
+  SecretKind,
+  VaultStatus,
+  AccountCopyTarget,
+  ResourceCopyTarget,
+  AccessCopyTarget,
+} from './vault-types';
 import type { DocumentCommand, DocumentRecord, DocumentSummary } from './document-types';
 import type { JSONContent } from '@tiptap/react';
 import type {
@@ -12,6 +18,8 @@ import type {
   DeploymentRecord,
   ResourceRecord,
   AccountRecord,
+  AccessEntry,
+  LedgerCapture,
 } from './ledger-types';
 export type Project = { id: string; name: string; color: string; archivedAt: number | null };
 export type TaskSummary = {
@@ -49,6 +57,7 @@ export type Settings = {
 };
 export type SystemAppearance = { reduceTransparency: boolean; highContrast: boolean };
 export type Snapshot = {
+  accessEntries: AccessEntry[];
   favorites: Favorite[];
   documents: DocumentSummary[];
   resources: ResourceRecord[];
@@ -106,6 +115,7 @@ export type MutationResult = { snapshot: Snapshot; createdId?: string };
 export type Asset = { src: string; name: string };
 export type BackupSelection = { token: string; name: string };
 export type BackupInfo = {
+  accessEntries: number;
   token: string;
   createdAt: string;
   tasks: number;
@@ -118,6 +128,8 @@ export type BackupInfo = {
   secrets: number;
 };
 export interface DesktopAPI {
+  captureLedger(input: LedgerCapture): Promise<MutationResult>;
+  copyAccessWithSecrets(id: string, target: AccessCopyTarget): Promise<MutationResult>;
   platform: string;
   vaultStatus(): Promise<VaultStatus>;
   vaultActivity(): Promise<void>;

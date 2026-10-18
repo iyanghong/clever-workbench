@@ -1,5 +1,6 @@
 import type { CreationContext, QuickAction } from './actions';
 import { HomePage } from '../features/home/HomePage';
+import { QuickAccess, QuickServer } from '../features/ledger/LedgerCaptureForm';
 import { QuickTask } from '../features/tasks/QuickTask';
 import {
   QuickSystem,
@@ -15,6 +16,7 @@ import {
   SquaresFourIcon,
   GlobeIcon,
   DatabaseIcon,
+  DesktopTowerIcon,
   UserCircleIcon,
   GitBranchIcon,
   NotePencilIcon,
@@ -83,8 +85,24 @@ export const modules: WorkbenchModule[] = [
     icon: StackIcon,
     section: 'workspace',
     Page: LedgerPage,
-    searchKinds: ['system', 'environment', 'service', 'resource', 'account'],
+    searchKinds: ['system', 'environment', 'service', 'resource', 'account', 'access'],
     actions: [
+      {
+        id: 'new-access',
+        order: 25,
+        title: '新访问入口',
+        description: 'Jenkins、GitLab 等地址与账号',
+        icon: GlobeIcon,
+        Form: QuickAccess,
+      },
+      {
+        id: 'new-server',
+        order: 35,
+        title: '新服务器',
+        description: 'IP、配置与可选的访问账号',
+        icon: DesktopTowerIcon,
+        Form: QuickServer,
+      },
       {
         id: 'new-system',
         order: 20,

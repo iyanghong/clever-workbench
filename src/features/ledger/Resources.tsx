@@ -9,6 +9,7 @@ import {
 } from '@phosphor-icons/react';
 import type { Snapshot } from '../../types';
 import type { ResourceKind, ResourceRecord, EnvironmentRecord } from '../../ledger-types';
+import { serverConfigurationFields } from '../../ledger-types';
 import { useAutosave } from '../../shared/useAutosave';
 import { CopyValue } from '../../shared/CopyValue';
 import { Dialog } from '../../shared/Dialog';
@@ -51,8 +52,7 @@ export function Resources({
         environmentId: environment.id,
         resourceId: resource.id,
         projectId:
-          snapshot.systems.find((item) => item.id === environment.systemId)?.currentProjectId ??
-          null,
+          snapshot.systems.find((item) => item.id === resource.systemId)?.currentProjectId ?? null,
       });
   }, [resource?.id, environment.id, snapshot.systems]);
   async function create() {
@@ -141,10 +141,11 @@ export function Resources({
             snapshot={snapshot}
             flushAll={flushAll}
             {...host}
-            onOpen={(environmentId, id) => {
-              setSelected(id);
-              changeEnvironment(environmentId);
-            }}
+            onOpen={(id) =>
+              void host
+                .navigate({ module: 'ledger', objectId: id })
+                .catch((cause) => host.onError(String(cause)))
+            }
           />
           <Accounts
             key={`${environment.id}:${resource.id}`}
@@ -173,7 +174,7 @@ export function Resources({
   );
 }
 
-function ResourceEditor({
+export function ResourceEditor({
   resource,
   environment,
   snapshot,
@@ -182,14 +183,15 @@ function ResourceEditor({
   ...host
 }: EditorHost & {
   resource: ResourceRecord;
-  environment: EnvironmentRecord;
+  environment: EnvironmentRecord | null;
   snapshot: Snapshot;
   flushAll: () => Promise<void>;
-  onOpen: (environmentId: string, id: string) => void;
+  onOpen: (id: string) => void;
 }) {
   const form = useAutosave(
     {
       name: resource.name,
+      environmentId: resource.environmentId,
       kind: resource.kind,
       address: resource.address,
       port: resource.port,
@@ -202,7 +204,7 @@ function ResourceEditor({
           await window.desktop.mutate({
             type: 'resource.save',
             id: resource.id,
-            environmentId: resource.environmentId,
+            systemId: resource.systemId,
             ...value,
           })
         ).snapshot,
@@ -213,7 +215,8 @@ function ResourceEditor({
   useEffect(() => host.registerFlush(form.flush), [host.registerFlush, form.flush]);
   const [modal, setModal] = useState<'copy' | 'delete' | null>(null),
     [copyName, setCopyName] = useState(`${resource.name} 副本`),
-    [copyEnvironment, setCopyEnvironment] = useState(environment.id);
+    [copyEnvironment, setCopyEnvironment] = useState(resource.environmentId ?? ''),
+    [copySystem, setCopySystem] = useState(resource.systemId);
   const [fieldName, setFieldName] = useState(''),
     [fieldValue, setFieldValue] = useState(''),
     [busy, setBusy] = useState(false);
@@ -234,7 +237,8 @@ function ResourceEditor({
         modal === 'copy' && includeSecrets
           ? await window.desktop.copyResourceWithSecrets(resource.id, {
               name: copyName,
-              environmentId: copyEnvironment,
+              systemId: copySystem,
+              environmentId: copyEnvironment || null,
             })
           : await window.desktop.mutate(
               modal === 'copy'
@@ -242,13 +246,14 @@ function ResourceEditor({
                     type: 'resource.copy',
                     id: resource.id,
                     name: copyName,
-                    environmentId: copyEnvironment,
+                    systemId: copySystem,
+                    environmentId: copyEnvironment || null,
                   }
                 : { type: 'resource.delete', id: resource.id },
             );
       host.onSnapshot(result.snapshot);
       setModal(null);
-      if (result.createdId) onOpen(copyEnvironment, result.createdId);
+      if (result.createdId) onOpen(result.createdId);
     } catch (cause) {
       setDialogError(String(cause));
     } finally {
@@ -259,8 +264,8 @@ function ResourceEditor({
     <div className="resource-editor">
       <div className="record-subheading">
         <strong>
-          {snapshot.systems.find((item) => item.id === environment.systemId)?.name} /{' '}
-          {environment.name} / {resource.name}
+          {snapshot.systems.find((item) => item.id === resource.systemId)?.name} /{' '}
+          {environment?.name ?? '通用'} / {resource.name}
         </strong>
         <button
           className="save-indicator"
@@ -295,6 +300,43 @@ function ResourceEditor({
           </select>
         </label>
       </div>
+      {resource.kind === 'server' && (
+        <div className="record-fields">
+          <label>
+            用途
+            <input
+              aria-label="服务器用途"
+              value={form.value.fields['用途'] ?? ''}
+              placeholder="如订单应用、缓存或定时任务"
+              onChange={(event) =>
+                form.change({
+                  ...form.value,
+                  fields: { ...form.value.fields, 用途: event.target.value },
+                })
+              }
+            />
+          </label>
+          <label>
+            环境
+            <select
+              aria-label="服务器所属环境"
+              value={form.value.environmentId ?? ''}
+              onChange={(event) =>
+                form.change({ ...form.value, environmentId: event.target.value || null })
+              }
+            >
+              <option value="">系统通用</option>
+              {snapshot.environments
+                .filter((e) => e.systemId === resource.systemId)
+                .map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+        </div>
+      )}
       <div className="record-fields deployment-fields">
         <label>
           地址
@@ -337,40 +379,65 @@ function ResourceEditor({
           </div>
         </label>
       </div>
+      {resource.kind === 'server' && (
+        <div className="record-fields server-configuration">
+          {serverConfigurationFields.map((field) => (
+            <label key={field}>
+              {field}
+              <input
+                aria-label={`服务器${field}`}
+                value={form.value.fields[field] ?? ''}
+                placeholder="可选"
+                onChange={(event) =>
+                  form.change({
+                    ...form.value,
+                    fields: { ...form.value.fields, [field]: event.target.value },
+                  })
+                }
+              />
+            </label>
+          ))}
+        </div>
+      )}
       <details className="compact-details">
         <summary>附加信息</summary>
         <p className="field-hint">
           连接方式、数据库编号等普通信息。密码、Token 和私钥请存入账号的秘密字段。
         </p>
-        {Object.entries(form.value.fields).map(([key, value]) => (
-          <div className="extra-field" key={key}>
-            <label>
-              {key}
-              <input
-                aria-label={`附加字段 ${key}`}
-                value={value}
-                onChange={(event) =>
-                  form.change({
-                    ...form.value,
-                    fields: { ...form.value.fields, [key]: event.target.value },
-                  })
-                }
-              />
-            </label>
-            <CopyValue value={value} label={key} onError={host.onError} />
-            <button
-              className="icon-button"
-              aria-label={`删除字段 ${key}`}
-              onClick={() => {
-                const fields = { ...form.value.fields };
-                delete fields[key];
-                form.change({ ...form.value, fields });
-              }}
-            >
-              <TrashIcon size={15} />
-            </button>
-          </div>
-        ))}
+        {Object.entries(form.value.fields)
+          .filter(
+            ([key]) =>
+              resource.kind !== 'server' || !['用途', ...serverConfigurationFields].includes(key),
+          )
+          .map(([key, value]) => (
+            <div className="extra-field" key={key}>
+              <label>
+                {key}
+                <input
+                  aria-label={`附加字段 ${key}`}
+                  value={value}
+                  onChange={(event) =>
+                    form.change({
+                      ...form.value,
+                      fields: { ...form.value.fields, [key]: event.target.value },
+                    })
+                  }
+                />
+              </label>
+              <CopyValue value={value} label={key} onError={host.onError} />
+              <button
+                className="icon-button"
+                aria-label={`删除字段 ${key}`}
+                onClick={() => {
+                  const fields = { ...form.value.fields };
+                  delete fields[key];
+                  form.change({ ...form.value, fields });
+                }}
+              >
+                <TrashIcon size={15} />
+              </button>
+            </div>
+          ))}
         <div className="extra-field">
           <input
             aria-label="新字段名称"
@@ -418,6 +485,8 @@ function ResourceEditor({
             setDialogError('');
             setIncludeSecrets(false);
             setCopyName(`${form.value.name} 副本`);
+            setCopySystem(resource.systemId);
+            setCopyEnvironment(resource.environmentId ?? '');
             setModal('copy');
           }}
         >
@@ -443,7 +512,7 @@ function ResourceEditor({
         >
           {modal === 'copy' ? (
             <>
-              <p>创建独立的资源，默认只复制普通信息。</p>
+              <p>创建独立资源，复制普通资料及账号元数据；秘密需要明确选择。</p>
               <label>
                 名称
                 <input
@@ -452,6 +521,25 @@ function ResourceEditor({
                   onChange={(event) => setCopyName(event.target.value)}
                 />
               </label>
+              {resource.kind === 'server' && (
+                <label>
+                  目标系统
+                  <select
+                    aria-label="副本目标系统"
+                    value={copySystem}
+                    onChange={(event) => {
+                      setCopySystem(event.target.value);
+                      setCopyEnvironment('');
+                    }}
+                  >
+                    {snapshot.systems.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label>
                 目标环境
                 <select
@@ -459,8 +547,9 @@ function ResourceEditor({
                   value={copyEnvironment}
                   onChange={(event) => setCopyEnvironment(event.target.value)}
                 >
+                  {resource.kind === 'server' && <option value="">系统通用</option>}
                   {snapshot.environments
-                    .filter((item) => item.systemId === environment.systemId)
+                    .filter((item) => item.systemId === copySystem)
                     .map((item) => (
                       <option value={item.id} key={item.id}>
                         {item.name}

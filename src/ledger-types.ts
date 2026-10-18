@@ -38,9 +38,46 @@ export type DeploymentRecord = {
   notes: string;
 };
 export type ResourceKind = 'redis' | 'server' | 'other';
+export const serverConfigurationFields = ['操作系统', 'CPU', '内存', '硬盘'] as const;
+export type AccessAddress = { id: string; label: string; url: string };
+export type AccessEntry = {
+  id: string;
+  systemId: string;
+  environmentId: string | null;
+  name: string;
+  notes: string;
+  addresses: AccessAddress[];
+  preferredAddressId: string | null;
+  preferredAccountId: string | null;
+  createdAt: number;
+  updatedAt: number;
+};
+export type AccessSave = {
+  type: 'access.save';
+  id?: string;
+  systemId?: string;
+  environmentId?: string | null;
+  name?: string;
+  notes?: string;
+  addresses?: { id?: string; label: string; url: string }[];
+  preferredAddressId?: string | null;
+  preferredAccountId?: string | null;
+};
+export type LedgerCapture = {
+  kind: 'access' | 'server';
+  systemId: string;
+  environmentId: string | null;
+  name: string;
+  address?: string;
+  purpose?: string;
+  fields?: Record<string, string>;
+  username?: string;
+  password?: string;
+};
 export type ResourceRecord = {
   id: string;
-  environmentId: string;
+  systemId: string;
+  environmentId: string | null;
   kind: ResourceKind;
   name: string;
   address: string;
@@ -53,8 +90,10 @@ export type ResourceRecord = {
 export type AccountRecord = {
   secretKinds: SecretKind[];
   id: string;
-  environmentId: string;
+  systemId: string;
+  environmentId: string | null;
   resourceId: string | null;
+  accessId: string | null;
   name: string;
   username: string;
   notes: string;
@@ -62,11 +101,21 @@ export type AccountRecord = {
   updatedAt: number;
 };
 export type LedgerCommand =
+  | AccessSave
+  | {
+      type: 'access.copy';
+      id: string;
+      systemId?: string;
+      environmentId?: string | null;
+      name?: string;
+    }
+  | { type: 'access.delete'; id: string }
   | {
       type: 'account.save';
       id?: string;
-      environmentId: string;
+      environmentId: string | null;
       resourceId?: string | null;
+      accessId?: string | null;
       name: string;
       username?: string;
       notes?: string;
@@ -74,15 +123,17 @@ export type LedgerCommand =
   | {
       type: 'account.copy';
       id: string;
-      environmentId?: string;
+      environmentId?: string | null;
       resourceId?: string | null;
+      accessId?: string | null;
       name?: string;
     }
   | { type: 'account.delete'; id: string }
   | {
       type: 'resource.save';
       id?: string;
-      environmentId: string;
+      systemId?: string;
+      environmentId: string | null;
       kind: ResourceKind;
       name: string;
       address?: string;
@@ -90,7 +141,13 @@ export type LedgerCommand =
       notes?: string;
       fields?: Record<string, string>;
     }
-  | { type: 'resource.copy'; id: string; environmentId?: string; name?: string }
+  | {
+      type: 'resource.copy';
+      id: string;
+      systemId?: string;
+      environmentId?: string | null;
+      name?: string;
+    }
   | { type: 'resource.delete'; id: string }
   | {
       type: 'system.save';

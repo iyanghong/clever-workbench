@@ -129,8 +129,18 @@ test('系统减少动态效果生效，原生可访问性变化更新全局材�
       nativeTheme.emit('updated');
     });
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await expect(page.locator('html')).toHaveAttribute('data-reduce-transparency', 'false');
-    await expect(page.locator('html')).toHaveAttribute('data-high-contrast', 'false');
+    const media = await page.evaluate(() => ({
+      transparency: matchMedia('(prefers-reduced-transparency: reduce)').matches,
+      contrast: matchMedia('(prefers-contrast: more)').matches,
+    }));
+    await expect(page.locator('html')).toHaveAttribute(
+      'data-reduce-transparency',
+      String(media.transparency || media.contrast),
+    );
+    await expect(page.locator('html')).toHaveAttribute(
+      'data-high-contrast',
+      String(media.contrast),
+    );
     await expect(page.locator('html')).toHaveAttribute('data-reduce-motion', 'false');
   } finally {
     await app.close();

@@ -52,6 +52,17 @@ try {
   let page = await launch();
   if (input) {
     const expected = JSON.parse(await fs.readFile(`${input}.json`, 'utf8'));
+    // Schema 7 fixtures gain explicit system ownership without changing their original identities.
+    expected.workspace.data.accessEntries ??= [];
+    const systemByEnvironment = new Map(
+      expected.workspace.data.environments.map((item) => [item.id, item.systemId]),
+    );
+    for (const resource of expected.workspace.data.resources)
+      resource.systemId ??= systemByEnvironment.get(resource.environmentId);
+    for (const account of expected.workspace.data.accounts) {
+      account.systemId ??= systemByEnvironment.get(account.environmentId);
+      account.accessId ??= null;
+    }
     await page.evaluate(async () => {
       await window.desktop.mutate({
         type: 'task.create',
@@ -200,6 +211,36 @@ try {
         })
       ).createdId;
       await api.initializeVault(password);
+      await api.captureLedger({
+        kind: 'access',
+        systemId,
+        environmentId: null,
+        name: 'GitLab',
+        address: 'https://git.example.com',
+        username: 'developer',
+        password: 'fictional-git-password',
+      });
+      const access = (await api.snapshot()).accessEntries[0];
+      await api.mutate({
+        type: 'access.save',
+        ...access,
+        addresses: [
+          ...access.addresses,
+          { label: '外网', url: 'https://git-external.example.com' },
+        ],
+      });
+      await api.mutate({ type: 'favorite.set', kind: 'access', id: access.id, pinned: true });
+      await api.captureLedger({
+        kind: 'server',
+        systemId,
+        environmentId: null,
+        name: '通用运维节点',
+        address: '192.0.2.20',
+        purpose: '运维',
+        fields: { 操作系统: 'Kylin Linux V10', CPU: '16 核', 内存: '32G', 硬盘: '500G' },
+        username: 'operator',
+        password: 'fictional-operations-password',
+      });
       for (const [accountId, kind, value] of [
         [admin, 'password', 'fictional-admin-password'],
         [reader, 'password', 'fictional-reader-password'],

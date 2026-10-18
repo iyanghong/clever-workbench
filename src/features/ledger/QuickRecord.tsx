@@ -21,13 +21,21 @@ function QuickRecord({
     [systemId, setSystemId] = useState(context.systemId ?? ''),
     [environmentId, setEnvironmentId] = useState(context.environmentId ?? ''),
     [resourceId, setResourceId] = useState(context.resourceId ?? ''),
+    [accessId, setAccessId] = useState(context.accessId ?? ''),
     [resourceKind, setResourceKind] = useState<ResourceKind>('redis');
   const needsEnvironment = kind === 'resource' || kind === 'account',
     needsSystem = kind === 'environment' || kind === 'service';
   const environments = snapshot.environments.filter(
     (item) => !systemId || item.systemId === systemId,
   );
-  const valid = name.trim() && (!needsSystem || systemId) && (!needsEnvironment || environmentId);
+  const valid =
+    name.trim() &&
+    (!needsSystem || systemId) &&
+    (!needsEnvironment ||
+      environmentId ||
+      (systemId &&
+        ((kind === 'resource' && resourceKind === 'server') ||
+          (kind === 'account' && (resourceId || accessId)))));
   return (
     <form
       onSubmit={(event) => {
@@ -50,8 +58,20 @@ function QuickRecord({
                 : kind === 'service'
                   ? { type: 'service.save', name, systemId }
                   : kind === 'resource'
-                    ? { type: 'resource.save', name, environmentId, kind: resourceKind }
-                    : { type: 'account.save', name, environmentId, resourceId: resourceId || null },
+                    ? {
+                        type: 'resource.save',
+                        name,
+                        systemId: systemId || undefined,
+                        environmentId: environmentId || null,
+                        kind: resourceKind,
+                      }
+                    : {
+                        type: 'account.save',
+                        name,
+                        environmentId: environmentId || null,
+                        resourceId: resourceId || null,
+                        accessId: accessId || null,
+                      },
           );
           return { module: 'ledger', objectId: result.createdId };
         });
@@ -79,6 +99,7 @@ function QuickRecord({
               setSystemId(event.target.value);
               setEnvironmentId('');
               setResourceId('');
+              setAccessId('');
             }}
           >
             <option value="">{needsEnvironment ? '选择系统或直接选环境' : '选择系统'}</option>
@@ -101,11 +122,14 @@ function QuickRecord({
                 (item) => item.id === event.target.value,
               );
               setEnvironmentId(event.target.value);
-              setSystemId(environment?.systemId ?? '');
+              setSystemId(environment?.systemId ?? systemId);
               setResourceId('');
+              setAccessId('');
             }}
           >
-            <option value="">选择环境</option>
+            <option value="">
+              {kind === 'account' || resourceKind === 'server' ? '系统通用' : '选择环境'}
+            </option>
             {environments.map((item) => (
               <option key={item.id} value={item.id}>
                 {snapshot.systems.find((system) => system.id === item.systemId)?.name} / {item.name}
@@ -114,20 +138,37 @@ function QuickRecord({
           </select>
         </label>
       )}
-      {kind === 'account' && environmentId && (
+      {kind === 'account' && (environmentId || systemId) && (
         <label className="field-label">
           归属
           <select
             aria-label="新账号所属资源"
-            value={resourceId}
-            onChange={(event) => setResourceId(event.target.value)}
+            value={accessId ? `access:${accessId}` : resourceId}
+            onChange={(event) => {
+              const value = event.target.value;
+              setAccessId(value.startsWith('access:') ? value.slice(7) : '');
+              setResourceId(value.startsWith('access:') ? '' : value);
+            }}
           >
-            <option value="">系统环境</option>
+            <option value="">{environmentId ? '系统环境' : '选择服务器或访问入口'}</option>
             {snapshot.resources
-              .filter((item) => item.environmentId === environmentId)
+              .filter(
+                (item) =>
+                  item.systemId === systemId && item.environmentId === (environmentId || null),
+              )
               .map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
+                </option>
+              ))}
+            {snapshot.accessEntries
+              .filter(
+                (item) =>
+                  item.systemId === systemId && item.environmentId === (environmentId || null),
+              )
+              .map((item) => (
+                <option key={item.id} value={`access:${item.id}`}>
+                  访问入口 · {item.name}
                 </option>
               ))}
           </select>
@@ -148,7 +189,10 @@ function QuickRecord({
         </label>
       )}
       {((needsSystem && !snapshot.systems.length) ||
-        (needsEnvironment && !snapshot.environments.length)) && (
+        (needsEnvironment &&
+          !snapshot.environments.length &&
+          kind !== 'account' &&
+          resourceKind !== 'server')) && (
         <p className="field-hint">请先建立系统和环境，再记录其中的资料。</p>
       )}
       <div className="modal-actions">

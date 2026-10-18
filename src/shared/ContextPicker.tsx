@@ -72,7 +72,7 @@ export function ContextPicker({
           </select>
         </label>
       )}
-      {context.environmentId && (
+      {context.systemId && (
         <label>
           资源
           <select
@@ -81,9 +81,9 @@ export function ContextPicker({
             value={context.resourceId ?? ''}
             onChange={(event) => onChange({ ...context, resourceId: event.target.value || null })}
           >
-            <option value="">整个环境</option>
+            <option value="">{context.environmentId ? '整个环境' : '整个系统'}</option>
             {snapshot.resources
-              .filter((item) => item.environmentId === context.environmentId)
+              .filter((item) => item.systemId === context.systemId && item.environmentId === context.environmentId)
               .map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}

@@ -18,7 +18,7 @@ export function FavoriteButton({
   return (
     <button
       className="icon-button"
-      aria-label={`${pinned ? '移出' : '设为'}常用${item.kind === 'system' ? '系统' : '账号'}`}
+      aria-label={`${pinned ? '移出' : '设为'}常用${item.kind === 'system' ? '系统' : item.kind === 'access' ? '访问入口' : '账号'}`}
       title={pinned ? '移出常用' : '设为常用'}
       onClick={async () => {
         try {

@@ -186,6 +186,20 @@ export function GlobalSearch({
                       </span>
                       <ArrowUpRightIcon size={15} />
                     </button>
+                    {hit.kind === 'access' && hit.url && (
+                      <button
+                        className="icon-button"
+                        aria-label={`打开网站 ${hit.title}`}
+                        title={hit.url}
+                        onClick={() =>
+                          void window.desktop
+                            .openExternal(hit.url!)
+                            .catch((cause) => setError(String(cause)))
+                        }
+                      >
+                        <ArrowUpRightIcon size={16} />
+                      </button>
+                    )}
                     {hit.kind === 'account' && (
                       <div className="search-result-actions">
                         {hit.username && (

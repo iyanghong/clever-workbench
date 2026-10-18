@@ -2,11 +2,13 @@ import { randomBytes } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Store } from './store';
+import type { LedgerCapture } from '../src/ledger-types';
 import type {
   SecretKind,
   VaultStatus,
   AccountCopyTarget,
   ResourceCopyTarget,
+  AccessCopyTarget,
 } from '../src/vault-types';
 import {
   derive,
@@ -258,30 +260,86 @@ export class Vault {
       }
     });
   }
-  save(accountId: string, kind: SecretKind, value: unknown) {
-    const key = this.requireKey();
+  private writeSecret(accountId: string, kind: SecretKind, value: unknown, key: Buffer) {
     this.account(accountId, kind);
     if (typeof value !== 'string' || !value || Buffer.byteLength(value, 'utf8') > 256_000)
       throw new Error('请填写秘密，内容不能超过 256 KB。');
     const bytes = Buffer.from(value);
     try {
       const sealed = seal(bytes, key, secretAad(accountId, kind));
-      this.store.db.exec('BEGIN IMMEDIATE');
-      try {
-        this.store.db
-          .prepare(
-            'INSERT INTO secrets VALUES(?,?,?,?) ON CONFLICT(accountId,kind) DO UPDATE SET value=excluded.value,updatedAt=excluded.updatedAt',
-          )
-          .run(accountId, kind, JSON.stringify(sealed), Date.now());
-        this.store.markChanged();
-        this.store.db.exec('COMMIT');
-      } catch (cause) {
-        this.store.db.exec('ROLLBACK');
-        throw cause;
-      }
+      this.store.db
+        .prepare(
+          'INSERT INTO secrets VALUES(?,?,?,?) ON CONFLICT(accountId,kind) DO UPDATE SET value=excluded.value,updatedAt=excluded.updatedAt',
+        )
+        .run(accountId, kind, JSON.stringify(sealed), Date.now());
     } finally {
       bytes.fill(0);
     }
+  }
+  save(accountId: string, kind: SecretKind, value: unknown) {
+    const key = this.requireKey();
+    this.copyTransaction(() => {
+      this.writeSecret(accountId, kind, value, key);
+      return accountId;
+    });
+  }
+  capture(input: LedgerCapture) {
+    if (
+      !input ||
+      typeof input !== 'object' ||
+      !['access', 'server'].includes(input.kind) ||
+      ['password', 'username', 'address', 'purpose'].some(
+        (key) =>
+          input[key as keyof LedgerCapture] !== undefined &&
+          typeof input[key as keyof LedgerCapture] !== 'string',
+      ) ||
+      (input.fields !== undefined &&
+        (!input.fields || typeof input.fields !== 'object' || Array.isArray(input.fields)))
+    )
+      throw new Error('台账录入内容无效。');
+    const key = input.password ? this.requireKey() : null;
+    return this.copyTransaction(() => {
+      const now = Date.now();
+      const id =
+        input.kind === 'access'
+          ? this.store.ledger.accessEntries.save(
+              {
+                type: 'access.save',
+                systemId: input.systemId,
+                environmentId: input.environmentId,
+                name: input.name,
+                addresses: input.address ? [{ label: '主地址', url: input.address }] : [],
+              },
+              now,
+            )
+          : this.store.ledger.saveResource(
+              {
+                type: 'resource.save',
+                systemId: input.systemId,
+                environmentId: input.environmentId,
+                kind: 'server',
+                name: input.name,
+                address: input.address,
+                fields: { ...input.fields, ...(input.purpose ? { 用途: input.purpose } : {}) },
+              },
+              now,
+            );
+      if (input.username || input.password) {
+        const accountId = this.store.ledger.saveAccount(
+          {
+            type: 'account.save',
+            environmentId: input.environmentId,
+            resourceId: input.kind === 'server' ? id : null,
+            accessId: input.kind === 'access' ? id : null,
+            name: '默认账号',
+            username: input.username,
+          },
+          now,
+        );
+        if (key) this.writeSecret(accountId, 'password', input.password, key);
+      }
+      return id;
+    });
   }
   read(accountId: string, kind: SecretKind): string {
     const key = this.requireKey();
@@ -352,40 +410,55 @@ export class Vault {
       return created;
     });
   }
+  private copyOwnerSecrets(
+    owner: 'resourceId' | 'accessId',
+    source: string,
+    target: string,
+    key: Buffer,
+  ) {
+    const accounts = this.store.db
+      .prepare(
+        `SELECT a.id source,b.id target FROM accounts a JOIN accounts b ON b.name=a.name AND b.${owner}=? WHERE a.${owner}=?`,
+      )
+      .all(target, source);
+    for (const account of accounts) {
+      for (const secret of this.store.db
+        .prepare('SELECT kind FROM secrets WHERE accountId=?')
+        .all(account.source)) {
+        this.account(account.source, secret.kind);
+        this.cloneSecret(
+          String(account.source),
+          String(account.target),
+          secret.kind as SecretKind,
+          key,
+        );
+      }
+    }
+  }
   copyResource(id: string, options: ResourceCopyTarget) {
     const key = this.requireKey();
     if (!options || typeof options !== 'object' || Array.isArray(options))
       throw new Error('资源复制目标无效。');
-    const source = this.store.ledger.resource(id);
-    const accounts = this.store.db
-      .prepare('SELECT id,name FROM accounts WHERE resourceId=?')
-      .all(source.id);
     return this.copyTransaction(() => {
-      const resourceId = this.store.ledger.copyResource(
+      const target = this.store.ledger.copyResource(
         { ...options, type: 'resource.copy', id },
         Date.now(),
       );
-      const environmentId = this.store.ledger.resource(resourceId).environmentId;
-      for (const account of accounts) {
-        const accountId = this.store.ledger.copyAccount(
-          {
-            type: 'account.copy',
-            id: String(account.id),
-            environmentId,
-            resourceId,
-            name: String(account.name),
-          },
-          Date.now(),
-        );
-        const secrets = this.store.db
-          .prepare('SELECT kind FROM secrets WHERE accountId=?')
-          .all(account.id);
-        for (const secret of secrets) {
-          this.account(account.id, secret.kind);
-          this.cloneSecret(String(account.id), accountId, secret.kind, key);
-        }
-      }
-      return resourceId;
+      this.copyOwnerSecrets('resourceId', id, target, key);
+      return target;
+    });
+  }
+  copyAccess(id: string, options: AccessCopyTarget) {
+    const key = this.requireKey();
+    if (!options || typeof options !== 'object' || Array.isArray(options))
+      throw new Error('入口复制目标无效。');
+    return this.copyTransaction(() => {
+      const target = this.store.ledger.copyAccess(
+        { ...options, type: 'access.copy', id },
+        Date.now(),
+      );
+      this.copyOwnerSecrets('accessId', id, target, key);
+      return target;
     });
   }
   remove(accountId: string, kind: SecretKind) {

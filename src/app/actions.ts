@@ -3,7 +3,10 @@ import type { Icon } from '@phosphor-icons/react';
 import type { ObjectContext } from '../ledger-types';
 import type { Snapshot } from '../types';
 import type { Route } from './modules';
-export type CreationContext = Partial<ObjectContext> & { projectId?: string | null };
+export type CreationContext = Partial<ObjectContext> & {
+  projectId?: string | null;
+  accessId?: string | null;
+};
 export type CreationProps = {
   snapshot: Snapshot;
   context: CreationContext;

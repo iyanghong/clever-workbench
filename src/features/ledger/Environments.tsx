@@ -53,6 +53,12 @@ export function Environments({
   const [focusResource, setFocusResource] = useState<string | null>(focusedResource?.id ?? null),
     [focusAccount, setFocusAccount] = useState<string | null>(focusedAccount?.id ?? null);
   function openAccount(target: AccountTarget) {
+    if (target.accessId || target.environmentId === null) {
+      void host
+        .navigate({ module: 'ledger', objectId: target.accountId })
+        .catch((cause) => host.onError(String(cause)));
+      return;
+    }
     setEnvironmentId(target.environmentId);
     setFocusResource(target.resourceId);
     setFocusAccount(target.accountId);

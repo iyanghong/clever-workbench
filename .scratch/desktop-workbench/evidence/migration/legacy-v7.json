@@ -1,0 +1,413 @@
+{
+  "runtime": {
+    "version": "0.1.0",
+    "packaged": true,
+    "electron": "44.9.0",
+    "node": "24.22.0",
+    "arch": "arm64",
+    "platform": "darwin"
+  },
+  "os": {
+    "type": "Darwin",
+    "release": "27.0.0",
+    "version": "Darwin Kernel Version 27.0.0: Tue Aug 11 21:02:57 PDT 2026; root:xnu-13432.1.9~1/RELEASE_ARM64_T8132"
+  },
+  "createdAt": "2026-10-18T14:24:20.433Z",
+  "source": null,
+  "workspace": {
+    "data": {
+      "accounts": [
+        {
+          "id": "3a8493e4-18ce-4f2b-a2d4-c8548d1233cb",
+          "environmentId": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+          "resourceId": null,
+          "name": "超管",
+          "username": "admin",
+          "notes": "",
+          "createdAt": 1792333440000,
+          "updatedAt": 1792333440000,
+          "secretKinds": [
+            "password"
+          ]
+        },
+        {
+          "id": "4d4dbbcb-1220-4902-b462-b2e0f4eac6ff",
+          "environmentId": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+          "resourceId": null,
+          "name": "B 角色",
+          "username": "reader",
+          "notes": "",
+          "createdAt": 1792333440000,
+          "updatedAt": 1792333440000,
+          "secretKinds": [
+            "password"
+          ]
+        },
+        {
+          "id": "f6d82235-7c85-4901-8c58-4fdd2d77482c",
+          "environmentId": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+          "resourceId": "240f7f99-1fb4-4036-a928-939f463d1c26",
+          "name": "缓存连接",
+          "username": "cache",
+          "notes": "",
+          "createdAt": 1792333440000,
+          "updatedAt": 1792333440000,
+          "secretKinds": [
+            "token"
+          ]
+        },
+        {
+          "id": "0e033b2a-01a5-45ad-9434-fccb30208f8b",
+          "environmentId": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+          "resourceId": "f02fd254-f9b0-4240-b190-c42652e5408e",
+          "name": "SSH",
+          "username": "deploy",
+          "notes": "",
+          "createdAt": 1792333440000,
+          "updatedAt": 1792333440000,
+          "secretKinds": [
+            "privateKey"
+          ]
+        }
+      ],
+      "resources": [
+        {
+          "id": "240f7f99-1fb4-4036-a928-939f463d1c26",
+          "environmentId": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+          "kind": "redis",
+          "name": "生产 Redis",
+          "address": "redis.example.com",
+          "port": "6379",
+          "notes": "",
+          "fields": {},
+          "createdAt": 1792333440000,
+          "updatedAt": 1792333440000
+        },
+        {
+          "id": "f02fd254-f9b0-4240-b190-c42652e5408e",
+          "environmentId": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+          "kind": "server",
+          "name": "应用服务器",
+          "address": "192.0.2.10",
+          "port": "22",
+          "notes": "",
+          "fields": {
+            "用途": "订单部署"
+          },
+          "createdAt": 1792333440000,
+          "updatedAt": 1792333440000
+        }
+      ],
+      "environments": [
+        {
+          "id": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+          "systemId": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+          "name": "生产",
+          "notes": "",
+          "createdAt": 1792333440000
+        },
+        {
+          "id": "425f6d7f-c27a-44de-a1fa-7b9b0ad66b32",
+          "systemId": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+          "name": "测试",
+          "notes": "",
+          "createdAt": 1792333440000
+        }
+      ],
+      "services": [
+        {
+          "id": "c1f40a4b-23a0-49f0-99a0-f0bb524d0907",
+          "systemId": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+          "name": "订单服务",
+          "repository": "https://example.com/orders.git",
+          "notes": "",
+          "createdAt": 1792333440000
+        }
+      ],
+      "deployments": [
+        {
+          "id": "0c4e133c-67f4-4896-bef6-4b3ed5517882",
+          "serviceId": "c1f40a4b-23a0-49f0-99a0-f0bb524d0907",
+          "environmentId": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+          "address": "https://prod.example.com",
+          "port": "8080",
+          "notes": ""
+        },
+        {
+          "id": "22534531-9fc8-4468-b23a-4589745ed439",
+          "serviceId": "c1f40a4b-23a0-49f0-99a0-f0bb524d0907",
+          "environmentId": "425f6d7f-c27a-44de-a1fa-7b9b0ad66b32",
+          "address": "https://test.example.com",
+          "port": "8081",
+          "notes": ""
+        }
+      ],
+      "systems": [
+        {
+          "id": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+          "name": "园区平台",
+          "notes": "",
+          "url": "",
+          "currentProjectId": "da81cb09-f099-465b-b9b6-193fbf6455f6",
+          "createdAt": 1792333440000,
+          "updatedAt": 1792333440000
+        }
+      ],
+      "systemProjects": [
+        {
+          "systemId": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+          "projectId": "397805fe-8af0-4545-8479-e56ef7e7bafc",
+          "linkedAt": 1792333440000
+        },
+        {
+          "systemId": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+          "projectId": "da81cb09-f099-465b-b9b6-193fbf6455f6",
+          "linkedAt": 1792333440000
+        }
+      ],
+      "favorites": [
+        {
+          "kind": "system",
+          "id": "1f095d4e-cf0b-4281-9f59-c10318e5b985"
+        },
+        {
+          "kind": "account",
+          "id": "f6d82235-7c85-4901-8c58-4fdd2d77482c"
+        }
+      ],
+      "documents": [
+        {
+          "id": "f0dcf1de-4cc1-4b97-92de-d5b20732827e",
+          "title": "",
+          "projectId": "397805fe-8af0-4545-8479-e56ef7e7bafc",
+          "systemId": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+          "environmentId": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+          "resourceId": "240f7f99-1fb4-4036-a928-939f463d1c26",
+          "createdAt": 1792333459449,
+          "updatedAt": 1792333459450,
+          "deletedAt": 1792333459451
+        },
+        {
+          "id": "8caa8b82-660a-42bd-b6e4-75092057e530",
+          "title": "缓存排障方案",
+          "projectId": "397805fe-8af0-4545-8479-e56ef7e7bafc",
+          "systemId": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+          "environmentId": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+          "resourceId": "240f7f99-1fb4-4036-a928-939f463d1c26",
+          "createdAt": 1792333459447,
+          "updatedAt": 1792333459448,
+          "deletedAt": null
+        }
+      ],
+      "tasks": [
+        {
+          "id": "cfc533af-241c-42c4-a44c-344dd692b315",
+          "title": "完成缓存排查",
+          "projectId": "397805fe-8af0-4545-8479-e56ef7e7bafc",
+          "systemId": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+          "environmentId": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+          "resourceId": "240f7f99-1fb4-4036-a928-939f463d1c26",
+          "createdAt": 1792333440000,
+          "startedAt": 1792247040000,
+          "completedAt": 1792333440000,
+          "deletedAt": null
+        },
+        {
+          "id": "baf38c5f-c31c-4a9f-8c80-73855bf93411",
+          "title": "回收站工作",
+          "projectId": "397805fe-8af0-4545-8479-e56ef7e7bafc",
+          "systemId": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+          "environmentId": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+          "resourceId": "240f7f99-1fb4-4036-a928-939f463d1c26",
+          "createdAt": 1792333440000,
+          "startedAt": 1792333440000,
+          "completedAt": null,
+          "deletedAt": 1792333440000
+        },
+        {
+          "id": "0aadcf25-6b44-4ea4-ace7-806123cf3b94",
+          "title": "继续二期工作",
+          "projectId": "da81cb09-f099-465b-b9b6-193fbf6455f6",
+          "systemId": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+          "environmentId": null,
+          "resourceId": null,
+          "createdAt": 1792333440000,
+          "startedAt": 1792333440000,
+          "completedAt": null,
+          "deletedAt": null
+        }
+      ],
+      "projects": [
+        {
+          "id": "397805fe-8af0-4545-8479-e56ef7e7bafc",
+          "name": "园区一期",
+          "color": "#007aff",
+          "archivedAt": 1792333440000
+        },
+        {
+          "id": "da81cb09-f099-465b-b9b6-193fbf6455f6",
+          "name": "园区二期",
+          "color": "#34a271",
+          "archivedAt": null
+        }
+      ],
+      "draft": {
+        "title": "未提交的工作",
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph"
+            }
+          ]
+        },
+        "markdown": "草稿图片\n\n![截图](workbench-asset://image/db33d263fe38f81f30fe18c4e065d3847a15940a33180e5bd46f28e063719f5e.png)",
+        "projectId": "da81cb09-f099-465b-b9b6-193fbf6455f6",
+        "systemId": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+        "environmentId": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+        "resourceId": "240f7f99-1fb4-4036-a928-939f463d1c26"
+      }
+    },
+    "taskBodies": [
+      {
+        "id": "cfc533af-241c-42c4-a44c-344dd692b315",
+        "title": "完成缓存排查",
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph"
+            }
+          ]
+        },
+        "markdown": "处理记录\n\n![截图](workbench-asset://image/db33d263fe38f81f30fe18c4e065d3847a15940a33180e5bd46f28e063719f5e.png)",
+        "projectId": "397805fe-8af0-4545-8479-e56ef7e7bafc",
+        "createdAt": 1792333440000,
+        "startedAt": 1792247040000,
+        "completedAt": 1792333440000,
+        "deletedAt": null,
+        "systemId": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+        "environmentId": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+        "resourceId": "240f7f99-1fb4-4036-a928-939f463d1c26"
+      },
+      {
+        "id": "baf38c5f-c31c-4a9f-8c80-73855bf93411",
+        "title": "回收站工作",
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph"
+            }
+          ]
+        },
+        "markdown": "待恢复的内容",
+        "projectId": "397805fe-8af0-4545-8479-e56ef7e7bafc",
+        "createdAt": 1792333440000,
+        "startedAt": 1792333440000,
+        "completedAt": null,
+        "deletedAt": 1792333440000,
+        "systemId": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+        "environmentId": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+        "resourceId": "240f7f99-1fb4-4036-a928-939f463d1c26"
+      },
+      {
+        "id": "0aadcf25-6b44-4ea4-ace7-806123cf3b94",
+        "title": "继续二期工作",
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph"
+            }
+          ]
+        },
+        "markdown": "",
+        "projectId": "da81cb09-f099-465b-b9b6-193fbf6455f6",
+        "createdAt": 1792333440000,
+        "startedAt": 1792333440000,
+        "completedAt": null,
+        "deletedAt": null,
+        "systemId": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+        "environmentId": null,
+        "resourceId": null
+      }
+    ],
+    "documentBodies": [
+      {
+        "id": "f0dcf1de-4cc1-4b97-92de-d5b20732827e",
+        "title": "",
+        "markdown": "回收站截图\n\n![截图](workbench-asset://image/db33d263fe38f81f30fe18c4e065d3847a15940a33180e5bd46f28e063719f5e.png)",
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph"
+            }
+          ]
+        },
+        "projectId": "397805fe-8af0-4545-8479-e56ef7e7bafc",
+        "systemId": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+        "environmentId": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+        "resourceId": "240f7f99-1fb4-4036-a928-939f463d1c26",
+        "createdAt": 1792333459449,
+        "updatedAt": 1792333459450,
+        "deletedAt": 1792333459451
+      },
+      {
+        "id": "8caa8b82-660a-42bd-b6e4-75092057e530",
+        "title": "缓存排障方案",
+        "markdown": "## 排查\n\n| 项目 | 结果 |\n| --- | --- |\n| 连接 | 正常 |\n\n![截图](workbench-asset://image/db33d263fe38f81f30fe18c4e065d3847a15940a33180e5bd46f28e063719f5e.png)",
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph"
+            }
+          ]
+        },
+        "projectId": "397805fe-8af0-4545-8479-e56ef7e7bafc",
+        "systemId": "1f095d4e-cf0b-4281-9f59-c10318e5b985",
+        "environmentId": "7dc04256-5b45-4cdf-a1dc-847b3afb3965",
+        "resourceId": "240f7f99-1fb4-4036-a928-939f463d1c26",
+        "createdAt": 1792333459447,
+        "updatedAt": 1792333459448,
+        "deletedAt": null
+      }
+    ],
+    "preferences": {
+      "theme": "dark",
+      "reduceMotion": true,
+      "reduceTransparency": false,
+      "highContrast": false
+    }
+  },
+  "secrets": [
+    {
+      "accountId": "3a8493e4-18ce-4f2b-a2d4-c8548d1233cb",
+      "kind": "password",
+      "value": "fictional-admin-password"
+    },
+    {
+      "accountId": "4d4dbbcb-1220-4902-b462-b2e0f4eac6ff",
+      "kind": "password",
+      "value": "fictional-reader-password"
+    },
+    {
+      "accountId": "f6d82235-7c85-4901-8c58-4fdd2d77482c",
+      "kind": "token",
+      "value": "fictional-cache-token"
+    },
+    {
+      "accountId": "0e033b2a-01a5-45ad-9434-fccb30208f8b",
+      "kind": "privateKey",
+      "value": "fictional-ssh-material"
+    }
+  ],
+  "assets": [
+    {
+      "name": "db33d263fe38f81f30fe18c4e065d3847a15940a33180e5bd46f28e063719f5e.png",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgqPr/HwAEcAJ5Qhlc0gAAAABJRU5ErkJggg=="
+    }
+  ]
+}

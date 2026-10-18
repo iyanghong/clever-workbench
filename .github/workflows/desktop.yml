@@ -66,6 +66,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
+          name: migration-${{ runner.os }}
+          retention-days: 14
+          if-no-files-found: ignore
+          path: release/migration/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
           name: clever-workbench-${{ runner.os }}
           retention-days: 14
           path: |

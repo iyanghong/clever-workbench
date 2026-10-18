@@ -1,5 +1,30 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { DesktopAPI } from '../src/types';
+let flushHandler: (() => Promise<void>) | null = null;
+const waitingFlush = new Set<string>();
+function drainFlush() {
+  if (!flushHandler) return;
+  const handler = flushHandler;
+  for (const token of waitingFlush) {
+    waitingFlush.delete(token);
+    void Promise.resolve()
+      .then(handler)
+      .then(
+        () => ipcRenderer.send('flushed', token, null),
+        (cause) =>
+          ipcRenderer.send(
+            'flushed',
+            token,
+            cause instanceof Error ? cause.message : String(cause),
+          ),
+      );
+  }
+}
+// A close can arrive before React mounts its save coordinator.
+ipcRenderer.on('flush', (_event, token: string) => {
+  waitingFlush.add(token);
+  drainFlush();
+});
 let generation = ipcRenderer.invoke('data-generation') as Promise<string>;
 ipcRenderer.on('data-restored', (_event, next: string) => {
   generation = Promise.resolve(next);
@@ -10,6 +35,8 @@ const call = async (channel: string, ...args: unknown[]) => {
 };
 const api: DesktopAPI = {
   platform: process.platform,
+  captureLedger: (input) => call('ledger-capture', input),
+  copyAccessWithSecrets: (id, target) => call('access-copy-secrets', id, target),
   systemAppearance: () => call('system-appearance'),
   onSystemAppearance(handler) {
     const listener = (_event: unknown, preferences: Parameters<typeof handler>[0]) =>
@@ -64,16 +91,11 @@ const api: DesktopAPI = {
   copyText: (value) => call('copy-text', value),
   openExternal: (u) => call('open-external', u),
   onFlush(handler) {
-    const listener = async (_: unknown, token: string) => {
-      try {
-        await handler();
-        ipcRenderer.send('flushed', token, null);
-      } catch (e) {
-        ipcRenderer.send('flushed', token, e instanceof Error ? e.message : String(e));
-      }
+    flushHandler = handler;
+    drainFlush();
+    return () => {
+      if (flushHandler === handler) flushHandler = null;
     };
-    ipcRenderer.on('flush', listener);
-    return () => ipcRenderer.removeListener('flush', listener);
   },
   onNativeCommand(handler) {
     const listener = (_: unknown, command: string) => handler(command);

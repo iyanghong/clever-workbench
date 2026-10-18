@@ -15,6 +15,7 @@ import { emptyContent, dateLabel } from '../../domain';
 import { useAutosave } from '../../shared/useAutosave';
 import { useSaveGroup } from '../../shared/useSaveGroup';
 import { Environments } from './Environments';
+import { SystemAssets } from './SystemAssets';
 
 export function LedgerPage({ route, navigate, registerFlush, setContext }: ModuleProps) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -36,8 +37,16 @@ export function LedgerPage({ route, navigate, registerFlush, setContext }: Modul
           (item) => item.id === (resource?.environmentId ?? account?.environmentId ?? target),
         );
         const service = next.services.find((item) => item.id === target);
+        const access = next.accessEntries.find((item) => item.id === (account?.accessId ?? target));
         const system = next.systems.find(
-          (item) => item.id === (environment?.systemId ?? service?.systemId ?? target),
+          (item) =>
+            item.id ===
+            (resource?.systemId ??
+              account?.systemId ??
+              access?.systemId ??
+              environment?.systemId ??
+              service?.systemId ??
+              target),
         );
         if (target && !system) setError('关联对象已不存在，请重新选择。');
         setSelected(system?.id ?? next.systems[0]?.id ?? null);
@@ -213,10 +222,16 @@ function SystemPanel({
   flushAll: () => Promise<void>;
   onError: (message: string) => void;
 }) {
-  useEffect(() => {
-    if (!snapshot.environments.some((item) => item.systemId === system.id))
-      onContext({ systemId: system.id, projectId: system.currentProjectId });
-  }, [system.id, system.currentProjectId, snapshot.environments.length]);
+  const focusedAccount = snapshot.accounts.find((a) => a.id === focusId);
+  const [section, setSection] = useState<'access' | 'server' | 'environments'>(
+    snapshot.accessEntries.some((e) => e.id === (focusedAccount?.accessId ?? focusId))
+      ? 'access'
+      : snapshot.resources.some(
+            (r) => r.id === (focusedAccount?.resourceId ?? focusId) && r.kind === 'server',
+          )
+        ? 'server'
+        : 'environments',
+  );
   const form = useAutosave(
     { name: system.name, notes: system.notes, url: system.url, projectId: system.currentProjectId },
     async (value) => {
@@ -314,19 +329,69 @@ function SystemPanel({
           />
         </label>
       </details>
-      <Environments
-        systemId={system.id}
-        snapshot={snapshot}
-        onSnapshot={onSnapshot}
-        registerFlush={registerFlush}
-        flushAll={flushAll}
-        onError={onError}
-        createTask={createTask}
-        createDocument={createDocument}
-        navigate={navigate}
-        focusId={focusId}
-        onContext={onContext}
-      />
+      <div className="entity-tabs system-ledger-tabs" role="tablist" aria-label="系统资料类型">
+        {(
+          [
+            ['access', '访问入口'],
+            ['server', '服务器'],
+            ['environments', '环境台账'],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            role="tab"
+            aria-selected={section === value}
+            onClick={() => {
+              if (section === value) return;
+              void flushAll()
+                .then(() => {
+                  onContext({
+                    systemId: system.id,
+                    environmentId: null,
+                    resourceId: null,
+                    accessId: null,
+                    projectId: system.currentProjectId,
+                  });
+                  setSection(value);
+                })
+                .catch((cause) => onError(String(cause)));
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {section !== 'environments' ? (
+        <SystemAssets
+          key={section}
+          kind={section}
+          systemId={system.id}
+          snapshot={snapshot}
+          onSnapshot={onSnapshot}
+          registerFlush={registerFlush}
+          flushAll={flushAll}
+          onError={onError}
+          createTask={createTask}
+          createDocument={createDocument}
+          navigate={navigate}
+          focusId={focusId}
+          onContext={onContext}
+        />
+      ) : (
+        <Environments
+          systemId={system.id}
+          snapshot={snapshot}
+          onSnapshot={onSnapshot}
+          registerFlush={registerFlush}
+          flushAll={flushAll}
+          onError={onError}
+          createTask={createTask}
+          createDocument={createDocument}
+          navigate={navigate}
+          focusId={focusId}
+          onContext={onContext}
+        />
+      )}
       <section className="system-section" aria-label="项目沿革">
         <div className="section-heading">
           <h3>项目沿革</h3>

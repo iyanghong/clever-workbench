@@ -6,7 +6,7 @@ export function validateFavorites(value: unknown): asserts value is Favorite[] {
     if (
       !item ||
       typeof item !== 'object' ||
-      !['system', 'account'].includes(item.kind) ||
+      !['system', 'account', 'access'].includes(item.kind) ||
       typeof item.id !== 'string' ||
       item.id.length > 100
     )

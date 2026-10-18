@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
+import { AccessEntries } from './access-entries';
 import type {
   LedgerCommand,
   SystemProject,
@@ -78,7 +79,10 @@ export function initializeLedger(db: DatabaseSync) {
 }
 
 export class Ledger {
-  constructor(private db: DatabaseSync) {}
+  accessEntries: AccessEntries;
+  constructor(private db: DatabaseSync) {
+    this.accessEntries = new AccessEntries(db);
+  }
   system(id: string): SystemRecord {
     const row = this.db.prepare('SELECT * FROM systems WHERE id=?').get(field(id, 100));
     if (!row) throw new Error('系统不存在。');
@@ -86,6 +90,7 @@ export class Ledger {
   }
   snapshot() {
     return {
+      accessEntries: this.accessEntries.list(),
       accounts: this.db
         .prepare('SELECT * FROM accounts ORDER BY createdAt,rowid')
         .all()
@@ -245,11 +250,13 @@ export class Ledger {
       input.environmentId !== resource.environmentId
     )
       throw new Error('资源与背景环境不一致。');
-    const environmentId = resource?.environmentId ?? input.environmentId ?? null;
+    const environmentId = resource ? resource.environmentId : (input.environmentId ?? null);
     const environment = environmentId ? this.environment(environmentId) : null;
     if (environment && input.systemId !== undefined && input.systemId !== environment.systemId)
       throw new Error('环境与背景系统不一致。');
-    const systemId = environment?.systemId ?? input.systemId ?? null;
+    const systemId = resource?.systemId ?? environment?.systemId ?? input.systemId ?? null;
+    if (resource && input.systemId !== undefined && input.systemId !== systemId)
+      throw new Error('资源与背景系统不一致。');
     if (systemId) this.system(systemId);
     return { systemId, environmentId, resourceId };
   }
@@ -258,36 +265,53 @@ export class Ledger {
     if (!row) throw new Error('账号不存在。');
     return row as unknown as AccountRecord;
   }
-  accountTarget(environmentId: string, resourceId: string | null) {
-    const environment = this.environment(environmentId);
-    if (resourceId !== null && this.resource(resourceId).environmentId !== environmentId)
-      throw new Error('账号与资源必须属于同一环境。');
-    return environment;
+  accountTarget(
+    environmentId: string | null,
+    resourceId: string | null,
+    accessId: string | null = null,
+  ) {
+    if (resourceId !== null && accessId !== null)
+      throw new Error('账号只能归属一个资源或访问入口。');
+    if (accessId !== null) {
+      const access = this.accessEntries.get(accessId);
+      if (access.environmentId !== environmentId) throw new Error('账号与入口必须属于同一环境。');
+      return { id: environmentId, systemId: access.systemId };
+    }
+    if (resourceId !== null) {
+      const resource = this.resource(resourceId);
+      if (resource.environmentId !== environmentId) throw new Error('账号与资源必须属于同一环境。');
+      return { id: environmentId, systemId: resource.systemId };
+    }
+    if (environmentId === null) throw new Error('请为独立账号选择环境或所属服务器。');
+    return this.environment(environmentId);
   }
   saveAccount(command: Extract<LedgerCommand, { type: 'account.save' }>, now: number) {
     const previous = command.id ? this.account(command.id) : null;
     const resourceId =
       command.resourceId === undefined ? (previous?.resourceId ?? null) : command.resourceId;
-    const environment = this.accountTarget(command.environmentId, resourceId);
-    if (previous && this.environment(previous.environmentId).systemId !== environment.systemId)
+    const accessId =
+      command.accessId === undefined ? (previous?.accessId ?? null) : command.accessId;
+    const environment = this.accountTarget(command.environmentId, resourceId, accessId);
+    if (previous && previous.systemId !== environment.systemId)
       throw new Error('账号的归属必须在同一系统内调整。');
     const name = field(command.name, 1000).trim();
     if (!name) throw new Error('请填写账号用途或角色。');
     const duplicate = this.db
       .prepare(
-        'SELECT id FROM accounts WHERE environmentId=? AND resourceId IS ? AND lower(name)=lower(?)',
+        'SELECT id FROM accounts WHERE systemId=? AND environmentId IS ? AND resourceId IS ? AND accessId IS ? AND lower(name)=lower(?)',
       )
-      .get(environment.id, resourceId, name);
+      .get(environment.systemId, environment.id, resourceId, accessId, name);
     if (duplicate && duplicate.id !== previous?.id)
       throw new Error('这个归属下已有同名账号，请使用不同的用途或角色。');
     const id = previous?.id ?? randomUUID();
     this.db
       .prepare(
-        `INSERT INTO accounts VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
-      environmentId=excluded.environmentId,resourceId=excluded.resourceId,name=excluded.name,username=excluded.username,notes=excluded.notes,updatedAt=excluded.updatedAt`,
+        `INSERT INTO accounts(id,systemId,environmentId,resourceId,name,username,notes,createdAt,updatedAt,accessId) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+      environmentId=excluded.environmentId,resourceId=excluded.resourceId,accessId=excluded.accessId,name=excluded.name,username=excluded.username,notes=excluded.notes,updatedAt=excluded.updatedAt`,
       )
       .run(
         id,
+        environment.systemId,
         environment.id,
         resourceId,
         name,
@@ -295,16 +319,20 @@ export class Ledger {
         field(command.notes ?? previous?.notes ?? '', 100_000),
         previous?.createdAt ?? now,
         now,
+        accessId,
       );
+    if (previous?.accessId && previous.accessId !== accessId)
+      this.accessEntries.refreshPreferredAccount(previous.accessId);
+    if (accessId) this.accessEntries.refreshPreferredAccount(accessId);
     return id;
   }
   copyAccount(command: Extract<LedgerCommand, { type: 'account.copy' }>, now: number) {
     const source = this.account(command.id),
-      environmentId = command.environmentId ?? source.environmentId;
+      environmentId =
+        command.environmentId === undefined ? source.environmentId : command.environmentId;
     const resourceId = command.resourceId === undefined ? source.resourceId : command.resourceId;
-    if (
-      this.environment(source.environmentId).systemId !== this.environment(environmentId).systemId
-    )
+    const accessId = command.accessId === undefined ? source.accessId : command.accessId;
+    if (source.systemId !== this.accountTarget(environmentId, resourceId, accessId).systemId)
       throw new Error('账号副本请选择同一系统内的归属。');
     let name = command.name ?? `${source.name.slice(0, 960)} 副本`;
     if (command.name === undefined) {
@@ -312,9 +340,9 @@ export class Ledger {
       while (
         this.db
           .prepare(
-            'SELECT 1 FROM accounts WHERE environmentId=? AND resourceId IS ? AND lower(name)=lower(?)',
+            'SELECT 1 FROM accounts WHERE systemId=? AND environmentId IS ? AND resourceId IS ? AND accessId IS ? AND lower(name)=lower(?)',
           )
-          .get(environmentId, resourceId, name)
+          .get(source.systemId, environmentId, resourceId, accessId, name)
       )
         name = `${source.name.slice(0, 960)} 副本 ${index++}`;
     }
@@ -324,6 +352,7 @@ export class Ledger {
         type: 'account.save',
         environmentId,
         resourceId,
+        accessId,
         name,
         username: source.username,
         notes: source.notes,
@@ -332,14 +361,96 @@ export class Ledger {
     );
   }
   deleteAccount(id: string) {
-    this.account(id);
+    const account = this.account(id);
     try {
+      this.db.prepare('DELETE FROM secrets WHERE accountId=?').run(id);
       this.db.prepare('DELETE FROM accounts WHERE id=?').run(id);
+      if (account.accessId) this.accessEntries.refreshPreferredAccount(account.accessId);
     } catch (cause) {
       if (cause instanceof Error && cause.message.includes('FOREIGN KEY'))
         throw new Error('账号仍有关联资料，请先处理引用。');
       throw cause;
     }
+  }
+  deleteAccess(id: string) {
+    this.accessEntries.get(id);
+    for (const row of this.db.prepare('SELECT id FROM accounts WHERE accessId=?').all(id))
+      this.deleteAccount(String(row.id));
+    this.db.prepare('DELETE FROM access_entries WHERE id=?').run(id);
+  }
+  copyAccess(command: Extract<LedgerCommand, { type: 'access.copy' }>, now: number) {
+    const source = this.accessEntries.get(command.id);
+    const systemId = command.systemId ?? source.systemId;
+    const environmentId =
+      command.environmentId === undefined
+        ? systemId === source.systemId
+          ? source.environmentId
+          : null
+        : command.environmentId;
+    let name = command.name ?? `${source.name.slice(0, 960)} 副本`,
+      index = 2;
+    if (command.name === undefined)
+      while (
+        this.db
+          .prepare(
+            'SELECT 1 FROM access_entries WHERE systemId=? AND environmentId IS ? AND lower(name)=lower(?)',
+          )
+          .get(systemId, environmentId, name)
+      )
+        name = `${source.name.slice(0, 960)} 副本 ${index++}`;
+    const id = this.accessEntries.save(
+      {
+        type: 'access.save',
+        systemId,
+        environmentId,
+        name,
+        notes: source.notes,
+        addresses: source.addresses.map(({ label, url }) => ({ label, url })),
+      },
+      now,
+    );
+    const accounts = this.copyOwnedAccounts('accessId', source.id, id, environmentId, now);
+    const target = this.accessEntries.get(id);
+    this.accessEntries.save(
+      {
+        ...target,
+        type: 'access.save',
+        preferredAddressId:
+          target.addresses[source.addresses.findIndex((a) => a.id === source.preferredAddressId)]
+            ?.id ?? null,
+        preferredAccountId: source.preferredAccountId
+          ? (accounts.get(source.preferredAccountId) ?? null)
+          : null,
+      },
+      now,
+    );
+    return id;
+  }
+  private copyOwnedAccounts(
+    owner: 'resourceId' | 'accessId',
+    source: string,
+    target: string,
+    environmentId: string | null,
+    now: number,
+  ) {
+    const mapping = new Map<string, string>();
+    for (const row of this.db
+      .prepare(`SELECT * FROM accounts WHERE ${owner}=? ORDER BY createdAt,rowid`)
+      .all(source)) {
+      const id = this.saveAccount(
+        {
+          type: 'account.save',
+          environmentId,
+          [owner]: target,
+          name: String(row.name),
+          username: String(row.username),
+          notes: String(row.notes),
+        },
+        now,
+      );
+      mapping.set(String(row.id), id);
+    }
+    return mapping;
   }
   resource(id: string): ResourceRecord {
     const row = this.db.prepare('SELECT * FROM resources WHERE id=?').get(field(id, 100));
@@ -347,16 +458,30 @@ export class Ledger {
     return resourceRow(row);
   }
   saveResource(command: Extract<LedgerCommand, { type: 'resource.save' }>, now: number) {
-    this.environment(command.environmentId);
     const previous = command.id ? this.resource(command.id) : null;
-    if (previous && previous.environmentId !== command.environmentId)
-      throw new Error('已有资源的环境不能直接改变，请复制为新资源。');
+    const environment =
+      command.environmentId === null ? null : this.environment(command.environmentId);
+    const systemId = command.systemId ?? environment?.systemId ?? previous?.systemId;
+    if (!systemId) throw new Error('请先选择所属系统。');
+    this.system(systemId);
+    if (environment && environment.systemId !== systemId)
+      throw new Error('资源与环境必须属于同一系统。');
+    if (!environment && command.kind !== 'server') throw new Error('此类资源需要指定环境。');
+    if (previous && previous.systemId !== systemId)
+      throw new Error('已有资源不能移动到其他系统，请复制。');
+    if (previous && previous.environmentId !== command.environmentId) {
+      if (previous.kind !== 'server' || command.kind !== 'server')
+        throw new Error('已有资源的环境不能直接改变，请复制为新资源。');
+      this.protectResourceReferences(previous.id);
+    }
     if (!['redis', 'server', 'other'].includes(command.kind)) throw new Error('资源类型无效。');
     const name = field(command.name, 1000).trim();
     if (!name) throw new Error('请填写资源名称。');
     const duplicate = this.db
-      .prepare('SELECT id FROM resources WHERE environmentId=? AND lower(name)=lower(?)')
-      .get(command.environmentId, name);
+      .prepare(
+        'SELECT id FROM resources WHERE systemId=? AND environmentId IS ? AND lower(name)=lower(?)',
+      )
+      .get(systemId, command.environmentId, name);
     if (duplicate && duplicate.id !== previous?.id) throw new Error('这个环境中已有同名资源。');
     const address = field(command.address ?? previous?.address ?? '', 10_000).trim();
     const port = field(command.port ?? previous?.port ?? '', 8).trim();
@@ -366,11 +491,12 @@ export class Ledger {
     const id = previous?.id ?? randomUUID();
     this.db
       .prepare(
-        `INSERT INTO resources VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
-      kind=excluded.kind,name=excluded.name,address=excluded.address,port=excluded.port,notes=excluded.notes,fields=excluded.fields,updatedAt=excluded.updatedAt`,
+        `INSERT INTO resources(id,systemId,environmentId,kind,name,address,port,notes,fields,createdAt,updatedAt) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+      environmentId=excluded.environmentId,kind=excluded.kind,name=excluded.name,address=excluded.address,port=excluded.port,notes=excluded.notes,fields=excluded.fields,updatedAt=excluded.updatedAt`,
       )
       .run(
         id,
+        systemId,
         command.environmentId,
         command.kind,
         name,
@@ -381,24 +507,39 @@ export class Ledger {
         previous?.createdAt ?? now,
         now,
       );
+    if (previous && previous.environmentId !== command.environmentId)
+      this.db
+        .prepare('UPDATE accounts SET environmentId=? WHERE resourceId=?')
+        .run(command.environmentId, id);
     return id;
   }
   copyResource(command: Extract<LedgerCommand, { type: 'resource.copy' }>, now: number) {
     const source = this.resource(command.id),
-      environmentId = command.environmentId ?? source.environmentId;
+      environmentId =
+        command.environmentId === undefined
+          ? command.systemId && command.systemId !== source.systemId
+            ? null
+            : source.environmentId
+          : command.environmentId;
+    const systemId =
+      command.systemId ??
+      (environmentId ? this.environment(environmentId).systemId : source.systemId);
     let name = command.name ?? `${source.name.slice(0, 960)} 副本`;
     if (command.name === undefined) {
       let index = 2;
       while (
         this.db
-          .prepare('SELECT 1 FROM resources WHERE environmentId=? AND lower(name)=lower(?)')
-          .get(environmentId, name)
+          .prepare(
+            'SELECT 1 FROM resources WHERE systemId=? AND environmentId IS ? AND lower(name)=lower(?)',
+          )
+          .get(systemId, environmentId, name)
       )
         name = `${source.name.slice(0, 960)} 副本 ${index++}`;
     }
-    return this.saveResource(
+    const id = this.saveResource(
       {
         type: 'resource.save',
+        systemId,
         environmentId,
         kind: source.kind,
         name,
@@ -409,9 +550,12 @@ export class Ledger {
       },
       now,
     );
+    this.copyOwnedAccounts('resourceId', source.id, id, environmentId, now);
+    return id;
   }
   deleteResource(id: string) {
     this.resource(id);
+    this.protectResourceReferences(id);
     try {
       this.db.prepare('DELETE FROM resources WHERE id=?').run(id);
     } catch (cause) {
@@ -420,22 +564,48 @@ export class Ledger {
       throw cause;
     }
   }
+  private protectResourceReferences(id: string) {
+    const draft = this.db.prepare("SELECT value FROM preferences WHERE key='draft'").get();
+    if (
+      this.db
+        .prepare(
+          'SELECT 1 FROM tasks WHERE resourceId=? UNION ALL SELECT 1 FROM documents WHERE resourceId=? LIMIT 1',
+        )
+        .get(id, id) ||
+      (draft && JSON.parse(String(draft.value))?.resourceId === id)
+    )
+      throw new Error('资源仍被任务、文档或草稿引用，请先处理引用或复制为新资源。');
+  }
 }
 
 export function validateLedger(db: DatabaseSync) {
   const ledger = new Ledger(db);
+  ledger.accessEntries.validate();
   for (const row of db.prepare('SELECT * FROM accounts').all()) {
     ledger.accountTarget(
-      field(row.environmentId, 100),
+      row.environmentId === null ? null : field(row.environmentId, 100),
       row.resourceId === null ? null : field(row.resourceId, 100),
+      row.accessId === null ? null : field(row.accessId, 100),
     );
+    const owner = ledger.accountTarget(
+      row.environmentId === null ? null : String(row.environmentId),
+      row.resourceId === null ? null : String(row.resourceId),
+      row.accessId === null ? null : String(row.accessId),
+    );
+    if (field(row.systemId, 100) !== owner.systemId) throw new Error('备份账号系统归属无效。');
     if (!field(row.name, 1000).trim()) throw new Error('备份账号用途无效。');
     field(row.username, 10_000);
     field(row.notes, 100_000);
   }
   for (const raw of db.prepare('SELECT * FROM resources').all()) {
     const row = resourceRow(raw);
-    ledger.environment(field(row.environmentId, 100));
+    ledger.system(field(row.systemId, 100));
+    if (
+      row.environmentId !== null &&
+      ledger.environment(field(row.environmentId, 100)).systemId !== row.systemId
+    )
+      throw new Error('备份资源环境归属无效。');
+    if (row.environmentId === null && row.kind !== 'server') throw new Error('备份资源缺少环境。');
     if (!field(row.name, 1000).trim() || !['redis', 'server', 'other'].includes(row.kind))
       throw new Error('备份资源信息无效。');
     field(row.address, 10_000);

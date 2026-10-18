@@ -4,6 +4,7 @@ import {
   PlusIcon,
   NotePencilIcon,
   StackIcon,
+  GlobeIcon,
   UserCircleIcon,
   ArrowUpIcon,
   ArrowDownIcon,
@@ -20,6 +21,7 @@ import { contextLabel } from '../../shared/ContextPicker';
 import { CopyValue } from '../../shared/CopyValue';
 import { SecretCopyButton } from '../vault/SecretCopyButton';
 import { Dialog } from '../../shared/Dialog';
+import { AccessActions } from '../ledger/AccessActions';
 
 export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
@@ -97,19 +99,36 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
               snapshot.projects.find((project) => project.id === system.currentProjectId)?.name ??
               '长期系统',
             account: null,
+            access: null,
+          }
+        : null;
+    }
+    if (item.kind === 'access') {
+      const access = snapshot.accessEntries.find((value) => value.id === item.id);
+      return access
+        ? {
+            title: access.name,
+            context: `${snapshot.systems.find((s) => s.id === access.systemId)?.name} / ${snapshot.environments.find((e) => e.id === access.environmentId)?.name ?? '通用'}`,
+            account: null,
+            access,
           }
         : null;
     }
     const account = snapshot.accounts.find((value) => value.id === item.id);
     if (!account) return null;
-    const environment = snapshot.environments.find((value) => value.id === account.environmentId)!;
+    const environment = snapshot.environments.find((value) => value.id === account.environmentId);
     return {
       title: account.name,
-      context: contextLabel(snapshot, {
-        systemId: environment.systemId,
-        environmentId: environment.id,
-        resourceId: account.resourceId,
-      }),
+      context: [
+        snapshot.systems.find((s) => s.id === account.systemId)?.name,
+        environment?.name ?? '通用',
+        account.resourceId
+          ? snapshot.resources.find((r) => r.id === account.resourceId)?.name
+          : snapshot.accessEntries.find((e) => e.id === account.accessId)?.name,
+      ]
+        .filter(Boolean)
+        .join(' / '),
+      access: null,
       account,
     };
   }
@@ -117,6 +136,7 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
     ? [
         ...snapshot.systems.map((item) => ({ kind: 'system' as const, id: item.id })),
         ...snapshot.accounts.map((item) => ({ kind: 'account' as const, id: item.id })),
+        ...snapshot.accessEntries.map((item) => ({ kind: 'access' as const, id: item.id })),
       ]
     : [];
   return (
@@ -250,11 +270,13 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
                 <div className="favorite-row" key={`${item.kind}:${item.id}`}>
                   <button
                     className="favorite-open"
-                    aria-label={`打开常用${item.kind === 'system' ? '系统' : '账号'} ${info.title}`}
+                    aria-label={`打开常用${item.kind === 'system' ? '系统' : item.kind === 'access' ? '访问入口' : '账号'} ${info.title}`}
                     onClick={() => void navigate(routeForHit(item))}
                   >
                     {item.kind === 'system' ? (
                       <StackIcon size={22} weight="duotone" />
+                    ) : item.kind === 'access' ? (
+                      <GlobeIcon size={22} />
                     ) : (
                       <UserCircleIcon size={22} weight="duotone" />
                     )}
@@ -263,6 +285,9 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
                       <small>{info.context}</small>
                     </span>
                   </button>
+                  {info.access && (
+                    <AccessActions entry={info.access} snapshot={snapshot} onError={setError} />
+                  )}
                   {info.account && (
                     <div className="favorite-account-actions">
                       <span>{info.account.username || '无用户名'}</span>
@@ -320,7 +345,7 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
             {!snapshot?.favorites.length && (
               <div className="home-favorites-empty">
                 <StackIcon size={33} weight="duotone" />
-                <p>把经常查看的系统和账号放在这里。</p>
+                <p>把常用系统、访问入口和账号放在这里。</p>
                 <button
                   className="secondary-button"
                   onClick={() => {

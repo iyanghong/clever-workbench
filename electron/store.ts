@@ -19,8 +19,9 @@ import { searchWorkspace } from './search';
 import { initializeVault } from './vault';
 import { Documents, initializeDocuments } from './documents';
 import { Ledger, initializeLedger } from './ledger';
+import { migrateSystemLedger } from './ledger-migration';
 
-export const schemaVersion = 7;
+export const schemaVersion = 8;
 export const schemaTables = [
   'projects',
   'tasks',
@@ -32,6 +33,7 @@ export const schemaTables = [
   'deployments',
   'resources',
   'accounts',
+  'access_entries',
   'documents',
   'secrets',
 ];
@@ -163,6 +165,7 @@ export class Store {
    CREATE TABLE IF NOT EXISTS preferences(key TEXT PRIMARY KEY, value TEXT NOT NULL);
    `);
     initializeLedger(db);
+    migrateSystemLedger(db);
     initializeDocuments(db);
     initializeVault(db);
     db.exec(`PRAGMA user_version=${schemaVersion}`);
@@ -198,7 +201,9 @@ export class Store {
     validateFavorites(favorites);
     return favorites.filter((item) =>
       this.db
-        .prepare(`SELECT 1 FROM ${item.kind === 'system' ? 'systems' : 'accounts'} WHERE id=?`)
+        .prepare(
+          `SELECT 1 FROM ${item.kind === 'system' ? 'systems' : item.kind === 'access' ? 'access_entries' : 'accounts'} WHERE id=?`,
+        )
         .get(item.id),
     );
   }
@@ -278,10 +283,25 @@ export class Store {
     try {
       const now = minute();
       switch (command.type) {
+        case 'access.save': {
+          createdId = this.ledger.accessEntries.save(command, now);
+          break;
+        }
+        case 'access.delete': {
+          this.ledger.deleteAccess(command.id);
+          this.set('favorites', this.favorites());
+          break;
+        }
+        case 'access.copy': {
+          createdId = this.ledger.copyAccess(command, now);
+          break;
+        }
         case 'favorite.set':
         case 'favorite.move': {
-          if (!['system', 'account'].includes(command.kind)) throw new Error('常用对象类型无效。');
+          if (!['system', 'account', 'access'].includes(command.kind))
+            throw new Error('常用对象类型无效。');
           if (command.kind === 'system') this.ledger.system(command.id);
+          else if (command.kind === 'access') this.ledger.accessEntries.get(command.id);
           else this.ledger.account(command.id);
           const favorites = this.favorites(),
             index = favorites.findIndex(
@@ -319,6 +339,7 @@ export class Store {
         }
         case 'account.delete': {
           this.ledger.deleteAccount(command.id);
+          this.set('favorites', this.favorites());
           break;
         }
         case 'resource.save': {

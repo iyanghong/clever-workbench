@@ -288,6 +288,14 @@ app
       return store.snapshot();
     });
     secureHandler('snapshot', () => store.snapshot());
+    secureHandler('ledger-capture', (input) => {
+      writable();
+      return vault.capture(input);
+    });
+    secureHandler('access-copy-secrets', (id, target) => {
+      writable();
+      return vault.copyAccess(id, target);
+    });
     secureHandler('document', (id) => store.document(id));
     secureHandler('search-documents', (query) => store.searchDocuments(query));
     secureHandler('task', (id) => store.task(id));

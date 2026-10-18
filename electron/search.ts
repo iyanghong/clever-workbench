@@ -28,7 +28,11 @@ export function searchWorkspace(db: DatabaseSync, ledger: Ledger, query: unknown
   function context(value: Partial<ObjectContext>, projectId?: string | null) {
     return [
       value.systemId ? systems.get(value.systemId)?.name : null,
-      value.environmentId ? environments.get(value.environmentId)?.name : null,
+      value.environmentId
+        ? environments.get(value.environmentId)?.name
+        : value.systemId && value.environmentId === null
+          ? '通用'
+          : null,
       value.resourceId ? resources.get(value.resourceId)?.name : null,
       projectId
         ? `${projects.get(projectId)?.name ?? ''}${projects.get(projectId)?.archived ? ' · 已归档' : ''}`
@@ -79,31 +83,47 @@ export function searchWorkspace(db: DatabaseSync, ledger: Ledger, query: unknown
       item.notes,
     );
   for (const item of data.resources) {
-    const environment = environments.get(item.environmentId)!;
     add(
       {
         kind: 'resource',
         id: item.id,
         title: item.name,
-        context: context({ systemId: environment.systemId, environmentId: item.environmentId }),
+        context: context({ systemId: item.systemId, environmentId: item.environmentId }),
         summary: [kindWords[item.kind], item.address, item.port].filter(Boolean).join(' · '),
       },
       `${item.notes} ${Object.values(item.fields).join(' ')}`,
     );
   }
+  for (const item of data.accessEntries) {
+    add(
+      {
+        kind: 'access',
+        id: item.id,
+        title: item.name,
+        context: context({ systemId: item.systemId, environmentId: item.environmentId }),
+        summary: item.addresses.find((a) => a.id === item.preferredAddressId)?.url ?? '',
+        url: item.addresses.find((a) => a.id === item.preferredAddressId)?.url,
+      },
+      `${item.notes} ${item.addresses.map((a) => `${a.label} ${a.url}`).join(' ')}`,
+    );
+  }
   for (const item of data.accounts) {
-    const environment = environments.get(item.environmentId)!,
-      resource = item.resourceId ? resources.get(item.resourceId) : null;
+    const resource = item.resourceId ? resources.get(item.resourceId) : null;
     add(
       {
         kind: 'account',
         id: item.id,
         title: item.name,
-        context: context({
-          systemId: environment.systemId,
-          environmentId: item.environmentId,
-          resourceId: item.resourceId,
-        }),
+        context: [
+          context({
+            systemId: item.systemId,
+            environmentId: item.environmentId,
+            resourceId: item.resourceId,
+          }),
+          item.accessId ? data.accessEntries.find((e) => e.id === item.accessId)?.name : null,
+        ]
+          .filter(Boolean)
+          .join(' / '),
         summary: item.username || '无用户名',
         username: item.username,
         secretKinds: item.secretKinds,
