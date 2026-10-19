@@ -27,12 +27,18 @@ export class SecretClipboard {
     if (value !== null && (await this.clipboard.readText()) === value) this.clipboard.clear();
   }
   copy(accountId: string, kind: SecretKind) {
+    return this.copyProtected(() => ({ value: this.vault.read(accountId, kind), sensitive: true }));
+  }
+  copyAccount(accountId: string) {
+    return this.copyProtected(() => this.vault.accountText(accountId));
+  }
+  private copyProtected(read: () => { value: string; sensitive: boolean }) {
     const generation = this.generation;
     return this.enqueue(async () => {
       if (generation !== this.generation) throw new Error('复制已取消，请重新解锁。');
-      const value = this.vault.read(accountId, kind);
+      const { value, sensitive } = read();
       await this.clipboard.writeText(value);
-      if (generation !== this.generation || !this.vault.status().unlocked) {
+      if (generation !== this.generation || (sensitive && !this.vault.status().unlocked)) {
         await this.clearIf(value);
         throw new Error('秘密已锁定，复制已取消。');
       }

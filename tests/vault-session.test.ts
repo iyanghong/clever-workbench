@@ -152,3 +152,110 @@ test('异步剪贴板写入期间锁定会清除迟到的秘密，不保留已�
   await clearing;
   expect(text).toBe('');
 });
+
+test('整行复制取常用地址和当前账号，缺失密码留空且不复制其他凭据', async () => {
+  const { accountId, resourceId, environmentId } = await setup();
+  const systemId = store!.snapshot().systems[0].id;
+  const accessId = store!.mutate({
+    type: 'access.save',
+    systemId,
+    name: 'Jenkins',
+    addresses: [
+      { label: '内网', url: 'https://internal.example.invalid' },
+      { label: '常用', url: 'https://ci.example.invalid' },
+    ],
+  }).createdId!;
+  const access = store!.snapshot().accessEntries.find((a) => a.id === accessId)!;
+  store!.mutate({ type: 'access.save', id: accessId, preferredAddressId: access.addresses[1].id });
+  const operator = store!.mutate({
+    type: 'account.save',
+    accessId,
+    name: '运维',
+    username: 'operator',
+  }).createdId!;
+  vault!.save(operator, 'password', 'fictional-ci-password');
+  expect(vault!.accountText(operator)).toEqual({
+    value: 'Jenkins / 运维\nhttps://ci.example.invalid\noperator\nfictional-ci-password',
+    sensitive: true,
+  });
+  store!.mutate({
+    type: 'resource.save',
+    id: resourceId,
+    environmentId,
+    kind: 'redis',
+    name: '缓存',
+    address: '192.0.2.11',
+    port: '6379',
+  });
+  expect(vault!.accountText(accountId).value).toBe(
+    '缓存 / 连接账号\n192.0.2.11:6379\n\nfictional-secret-one',
+  );
+  const noPassword = store!.mutate({
+    type: 'account.save',
+    environmentId,
+    name: '自动化',
+    username: 'bot',
+  }).createdId!;
+  store!.mutate({
+    type: 'system.save',
+    id: systemId,
+    name: '订单平台',
+    url: 'https://app.example.invalid',
+  });
+  vault!.save(noPassword, 'token', 'fictional-token-only');
+  vault!.lock();
+  expect(vault!.accountText(noPassword)).toEqual({
+    value: '订单平台 / 自动化\nhttps://app.example.invalid\nbot\n',
+    sensitive: false,
+  });
+  expect(() => vault!.accountText(operator)).toThrow('解锁');
+  expect(() => vault!.accountText('missing')).toThrow('不存在');
+});
+
+test('整行复制采用受保护剪贴板，30 秒清理且复制期间锁定不留明文', async () => {
+  const { accountId } = await setup();
+  let text = '';
+  clipboard = new SecretClipboard(vault!, {
+    readText: async () => text,
+    writeText: async (value) => {
+      text = value;
+    },
+    clear: () => {
+      text = '';
+    },
+  });
+  vi.useFakeTimers();
+  await clipboard.copyAccount(accountId);
+  expect(text).toBe('缓存 / 连接账号\n\n\nfictional-secret-one');
+  await vi.advanceTimersByTimeAsync(30_000);
+  expect(text).toBe('');
+  await clipboard.copyAccount(accountId);
+  text = 'newer user text';
+  await clipboard.clearOwned();
+  expect(text).toBe('newer user text');
+  let release!: () => void, started!: () => void;
+  const writing = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  clipboard = new SecretClipboard(vault!, {
+    readText: async () => text,
+    writeText: async (value) => {
+      started();
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      text = value;
+    },
+    clear: () => {
+      text = '';
+    },
+  });
+  const copying = clipboard.copyAccount(accountId);
+  await writing;
+  vault!.lock();
+  const clearing = clipboard.clearOwned();
+  release();
+  await expect(copying).rejects.toThrow('取消');
+  await clearing;
+  expect(text).toBe('');
+});

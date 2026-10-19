@@ -4159,3 +4159,98 @@ h3 {
     flex-basis: 100%;
   }
 }
+
+.account-list-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0 14px;
+  font-size: 12px;
+  color: var(--secondary);
+}
+.account-list-heading .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.workspace-list .account-table {
+  min-width: 800px;
+}
+.workspace-list .account-table th:first-child {
+  width: 20%;
+}
+.workspace-list .account-table th:nth-child(2) {
+  width: 20%;
+}
+.workspace-list .account-table th:nth-child(3) {
+  width: 26%;
+}
+.workspace-list .account-table th:nth-child(4) {
+  width: 20%;
+}
+.workspace-list .account-table th:last-child {
+  width: 14%;
+}
+.show-inspector .workspace-list .account-table th,
+.show-inspector .workspace-list .account-table td {
+  display: table-cell;
+}
+.account-copy-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+}
+.account-copy-field code {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font-size: 12px;
+  user-select: text;
+}
+.account-copy-field .icon-button,
+.field-copy-action {
+  flex-shrink: 0;
+}
+.account-copy-field .icon-button {
+  width: 28px;
+  height: 28px;
+}
+.field-copy-action {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.account-copy-field:hover .field-copy-action,
+.account-copy-field:focus-within .field-copy-action {
+  opacity: 1;
+}
+.account-copy-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  color: var(--accent);
+}
+.account-owner {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.account-no-password {
+  font-size: 12px;
+  color: var(--muted);
+}
+.account-other-secret {
+  display: inline-block;
+  font-size: 11px;
+  margin-top: 6px;
+  margin-right: 10px;
+  color: var(--accent);
+}
+@media (hover: none) {
+  .field-copy-action {
+    opacity: 1;
+  }
+}

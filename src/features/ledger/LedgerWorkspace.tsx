@@ -23,6 +23,7 @@ import { emptyContent } from '../../domain';
 import { ResourceEditor } from './Resources';
 import { AccessEntryEditor } from './AccessEntryEditor';
 import { AccountEditor } from './Accounts';
+import { AccountList } from './AccountList';
 import { QuickAccess, QuickServer } from './LedgerCaptureForm';
 import { QuickAccount, QuickResource, QuickService, QuickSystem } from './QuickRecord';
 import { SystemExportDialog } from './SystemExportDialog';
@@ -364,6 +365,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
       extra:
         snapshot.resources.find((o) => o.id === r.resourceId)?.name ??
         snapshot.accessEntries.find((o) => o.id === r.accessId)?.name ??
+        snapshot.systems.find((o) => o.id === r.systemId)?.name ??
         '系统环境账号',
     })),
     ...snapshot.services.map((r) => ({
@@ -681,7 +683,9 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
           </div>
           <div className={`workspace-browser ${picked ? 'show-inspector' : ''}`}>
             <section className="workspace-results">
-              <div className="workspace-result-count">{visible.length} 条记录</div>
+              {view.category !== 'accounts' && (
+                <div className="workspace-result-count">{visible.length} 条记录</div>
+              )}
               <div
                 className="workspace-list"
                 ref={list}
@@ -692,77 +696,70 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                   localStorage.setItem('ledger-workspace', JSON.stringify(memory.current));
                 }}
               >
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{view.category === 'accounts' ? '用途／角色' : '名称'}</th>
-                      <th>
-                        {view.category === 'accounts'
-                          ? '用户名'
-                          : view.category === 'operations'
-                            ? '频率'
-                            : '地址／信息'}
-                      </th>
-                      <th>{view.category === 'accounts' ? '所属对象' : '说明'}</th>
-                      <th className="workspace-row-actions">快捷操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visible.map((row) => (
-                      <tr key={row.id} className={selected === row.id ? 'selected' : ''}>
-                        <td>
-                          <button onClick={() => openRow(row)}>
-                            <strong>{row.name}</strong>
-                            <small>{scopeLabel(row)}</small>
-                          </button>
-                        </td>
-                        <td>
-                          <span className="workspace-value">{row.address || '—'}</span>
-                        </td>
-                        <td>{row.extra || '—'}</td>
-                        <td className="workspace-row-actions">
-                          {row.kind === 'accounts' ? (
-                            <>
-                              <CopyValue
-                                value={row.address}
-                                label={`用户名 ${row.name} ${row.address}`}
-                                onError={setError}
-                              />
-                              {snapshot.accounts
-                                .find((a) => a.id === row.id)
-                                ?.secretKinds.map((kind) => (
-                                  <SecretCopyButton
-                                    key={kind}
-                                    accountId={row.id}
-                                    kind={kind}
-                                    name={`${row.name} ${row.address}`}
-                                    onError={setError}
-                                  />
-                                ))}
-                            </>
-                          ) : row.kind === 'access' && row.address ? (
-                            <button
-                              className="text-button"
-                              aria-label={`打开 ${row.name}`}
-                              onClick={() =>
-                                void window.desktop
-                                  .openExternal(row.address)
-                                  .catch((e) => setError(String(e)))
-                              }
-                            >
-                              打开
-                            </button>
-                          ) : row.kind === 'servers' || row.kind === 'resources' ? (
-                            <button className="text-button" onClick={() => openRow(row)}>
-                              {snapshot.accounts.filter((a) => a.resourceId === row.id).length}{' '}
-                              个账号
-                            </button>
-                          ) : null}
-                        </td>
+                {view.category === 'accounts' ? (
+                  <AccountList
+                    key={JSON.stringify([systemId, view.environment, view.tag, view.query])}
+                    snapshot={snapshot}
+                    rows={visible.map((row) => ({
+                      account: snapshot.accounts.find((a) => a.id === row.id)!,
+                      scope: scopeLabel(row),
+                      owner: row.extra,
+                    }))}
+                    selected={selected}
+                    onOpen={(id) => {
+                      const row = visible.find((r) => r.id === id);
+                      if (row) openRow(row);
+                    }}
+                    onError={setError}
+                  />
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>名称</th>
+                        <th>{view.category === 'operations' ? '频率' : '地址／信息'}</th>
+                        <th>说明</th>
+                        <th className="workspace-row-actions">快捷操作</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {visible.map((row) => (
+                        <tr key={row.id} className={selected === row.id ? 'selected' : ''}>
+                          <td>
+                            <button onClick={() => openRow(row)}>
+                              <strong>{row.name}</strong>
+                              <small>{scopeLabel(row)}</small>
+                            </button>
+                          </td>
+                          <td>
+                            <span className="workspace-value">{row.address || '—'}</span>
+                          </td>
+                          <td>{row.extra || '—'}</td>
+                          <td className="workspace-row-actions">
+                            {row.kind === 'access' && row.address ? (
+                              <button
+                                className="text-button"
+                                aria-label={`打开 ${row.name}`}
+                                onClick={() =>
+                                  void window.desktop
+                                    .openExternal(row.address)
+                                    .catch((e) => setError(String(e)))
+                                }
+                              >
+                                打开
+                              </button>
+                            ) : row.kind === 'servers' || row.kind === 'resources' ? (
+                              <button className="text-button" onClick={() => openRow(row)}>
+                                {snapshot.accounts.filter((a) => a.resourceId === row.id).length}{' '}
+                                个账号
+                              </button>
+                            ) : null}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
                 {!visible.length && (
                   <div className="empty-state">
                     <h3>这里还没有符合条件的记录</h3>

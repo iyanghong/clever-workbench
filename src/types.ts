@@ -152,6 +152,7 @@ export interface DesktopAPI {
   vaultStatus(): Promise<VaultStatus>;
   vaultActivity(): Promise<void>;
   copySecret(accountId: string, kind: SecretKind): Promise<void>;
+  copyAccountText(accountId: string): Promise<void>;
   copyAccountWithSecrets(
     id: string,
     target: AccountCopyTarget,

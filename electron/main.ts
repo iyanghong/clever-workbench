@@ -280,6 +280,10 @@ app
       writable();
       return secretClipboard.copy(id, kind);
     });
+    secureHandler('account-copy-text', (id) => {
+      writable();
+      return secretClipboard.copyAccount(id);
+    });
     secureHandler('account-copy-secrets', (id, target, kinds) => {
       writable();
       return vault.copyAccount(id, target, kinds);

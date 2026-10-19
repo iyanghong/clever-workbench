@@ -60,6 +60,7 @@ const api: DesktopAPI = {
   vaultStatus: () => call('vault-status'),
   vaultActivity: () => call('vault-activity'),
   copySecret: (id, kind) => call('secret-copy', id, kind),
+  copyAccountText: (id) => call('account-copy-text', id),
   copyAccountWithSecrets: (id, target, kinds) => call('account-copy-secrets', id, target, kinds),
   copyResourceWithSecrets: (id, target) => call('resource-copy-secrets', id, target),
   initializeVault: (password) => call('vault-initialize', password),

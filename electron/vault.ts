@@ -569,6 +569,38 @@ export class Vault {
       return created[0];
     });
   }
+  accountText(accountId: string): { value: string; sensitive: boolean } {
+    const account = this.store.ledger.account(accountId);
+    const owner = account.accessId
+      ? this.store.ledger.accessEntries.get(account.accessId)
+      : account.resourceId
+        ? this.store.ledger.resource(account.resourceId)
+        : this.store.ledger.system(account.systemId);
+    let address = '';
+    if ('addresses' in owner) {
+      address =
+        (owner.addresses.find((a) => a.id === owner.preferredAddressId) ?? owner.addresses[0])
+          ?.url ?? '';
+    } else if ('address' in owner) {
+      address = owner.address ? owner.address + (owner.port ? `:${owner.port}` : '') : '';
+    } else {
+      address = owner.url;
+    }
+    const sensitive = Boolean(
+      this.store.db
+        .prepare("SELECT 1 FROM secrets WHERE accountId=? AND kind='password'")
+        .get(accountId),
+    );
+    return {
+      value: [
+        `${owner.name} / ${account.name}`,
+        address,
+        account.username,
+        sensitive ? this.read(accountId, 'password') : '',
+      ].join('\n'),
+      sensitive,
+    };
+  }
   read(accountId: string, kind: SecretKind): string {
     const key = this.requireKey();
     this.account(accountId, kind);
