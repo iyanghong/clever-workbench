@@ -37,6 +37,7 @@ const api: DesktopAPI = {
   updateSnapshot: () => call('update-snapshot'),
   checkUpdate: () => call('update-check'),
   downloadUpdate: () => call('update-download'),
+  installUpdate: () => call('update-install'),
   onUpdateState(handler) {
     const listener = (_: unknown, state: Parameters<typeof handler>[0]) => handler(state);
     ipcRenderer.on('update-state', listener);

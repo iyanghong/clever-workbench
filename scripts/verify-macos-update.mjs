@@ -23,8 +23,13 @@ function bundle(destination, version) {
   run('/usr/bin/ditto', [electron, destination]);
   const resources = path.join(destination, 'Contents/Resources/app');
   mkdirSync(resources, { recursive: true });
-  writeFileSync(path.join(resources, 'package.json'), JSON.stringify({ name: 'clever-update-experiment', version, main: 'main.cjs' }));
-  writeFileSync(path.join(resources, 'main.cjs'), `
+  writeFileSync(
+    path.join(resources, 'package.json'),
+    JSON.stringify({ name: 'clever-update-experiment', version, main: 'main.cjs' }),
+  );
+  writeFileSync(
+    path.join(resources, 'main.cjs'),
+    `
 const { app, BrowserWindow } = require('electron');
 const fs = require('node:fs'); const path = require('node:path');
 const tx = process.argv[process.argv.indexOf('--clever-update-transaction') + 1];
@@ -36,9 +41,18 @@ app.whenReady().then(async () => {
   fs.writeFileSync(path.join(tx, app.getVersion() + '.json'), JSON.stringify({ version: app.getVersion(), pid: process.pid, executable: process.execPath, rendered, data: app.getPath('userData') }));
   setTimeout(() => app.quit(), 4000);
 });
-`);
-  run('/usr/libexec/PlistBuddy', ['-c', `Set :CFBundleIdentifier com.cleverworkbench.update-experiment`, path.join(destination, 'Contents/Info.plist')]);
-  run('/usr/libexec/PlistBuddy', ['-c', `Set :CFBundleShortVersionString ${version}`, path.join(destination, 'Contents/Info.plist')]);
+`,
+  );
+  run('/usr/libexec/PlistBuddy', [
+    '-c',
+    `Set :CFBundleIdentifier com.cleverworkbench.update-experiment`,
+    path.join(destination, 'Contents/Info.plist'),
+  ]);
+  run('/usr/libexec/PlistBuddy', [
+    '-c',
+    `Set :CFBundleShortVersionString ${version}`,
+    path.join(destination, 'Contents/Info.plist'),
+  ]);
   run('/usr/bin/codesign', ['--force', '--deep', '--sign', '-', destination]);
   run('/usr/bin/codesign', ['--verify', '--deep', '--strict', destination]);
 }
@@ -46,13 +60,17 @@ const current = path.join(root, 'Installed.app');
 const staged = path.join(root, 'Candidate.app');
 const transaction = path.join(root, 'transaction');
 mkdirSync(transaction, { mode: 0o700 });
+writeFileSync(path.join(transaction, 'expected-version'), '0.1.2');
+writeFileSync(path.join(transaction, 'expected-app-id'), 'com.cleverworkbench.update-experiment');
 bundle(current, '0.1.1');
 bundle(staged, '0.1.2');
 run('/usr/bin/ditto', ['-c', '-k', '--keepParent', staged, path.join(root, 'candidate.zip')]);
 run('/usr/bin/open', ['-n', current, '--args', '--clever-update-transaction', transaction]);
 await waitFor(() => existsSync(path.join(transaction, '0.1.1.json')));
 const old = JSON.parse(readFileSync(path.join(transaction, '0.1.1.json')));
-const worker = spawn('/bin/sh', [helper, String(old.pid), current, staged, transaction], { stdio: 'inherit' });
+const worker = spawn('/bin/sh', [helper, String(old.pid), current, staged, transaction], {
+  stdio: 'inherit',
+});
 const result = new Promise((resolve) => worker.on('exit', resolve));
 assert.equal(await result, 0, 'helper completes replacement and launch');
 await waitFor(() => existsSync(path.join(transaction, '0.1.2.json')));
@@ -69,20 +87,68 @@ console.log(JSON.stringify({ result: 'PASS replacement/relaunch', root, old, nex
 const failureApp = path.join(root, 'Failure.app');
 const failureTx = path.join(root, 'failure-transaction');
 mkdirSync(failureTx, { mode: 0o700 });
+writeFileSync(path.join(failureTx, 'expected-version'), '0.1.2');
+writeFileSync(path.join(failureTx, 'expected-app-id'), 'com.cleverworkbench.update-experiment');
 run('/usr/bin/ditto', [path.join(root, 'Installed.app.previous'), failureApp]);
 const blocker = spawn('/bin/sleep', ['30']);
-const failedWorker = spawn('/bin/sh', [helper, String(blocker.pid), failureApp, staged, failureTx], { stdio: 'inherit' });
+const failedWorker = spawn(
+  '/bin/sh',
+  [helper, String(blocker.pid), failureApp, staged, failureTx],
+  { stdio: 'inherit' },
+);
 const failedResult = new Promise((resolve) => failedWorker.on('exit', resolve));
-await waitFor(() => existsSync(path.join(failureTx, 'helper-status')) && readFileSync(path.join(failureTx, 'helper-status'), 'utf8').trim() === 'waiting-for-exit');
+await waitFor(
+  () =>
+    existsSync(path.join(failureTx, 'helper-status')) &&
+    readFileSync(path.join(failureTx, 'helper-status'), 'utf8').trim() === 'waiting-for-exit',
+);
 run('/usr/bin/chflags', ['uchg', failureApp + '.incoming']);
 blocker.kill();
 try {
   assert.equal(await failedResult, 1);
-  assert.equal(readFileSync(path.join(failureTx, 'helper-status'), 'utf8').trim(), 'failed:replacement-restored');
+  assert.equal(
+    readFileSync(path.join(failureTx, 'helper-status'), 'utf8').trim(),
+    'failed:replacement-restored',
+  );
   await waitFor(() => existsSync(path.join(failureTx, '0.1.1.json')));
   assert.equal(JSON.parse(readFileSync(path.join(failureTx, '0.1.1.json'))).version, '0.1.1');
-  assert.ok(!existsSync(path.join(failureTx, '0.1.2.json')), 'failed install never launches new version');
-  console.log(JSON.stringify({ result: 'PASS replacement failure restored/relaunched old app', root, failureApp }, null, 2));
+  assert.ok(
+    !existsSync(path.join(failureTx, '0.1.2.json')),
+    'failed install never launches new version',
+  );
+  console.log(
+    JSON.stringify(
+      { result: 'PASS replacement failure restored/relaunched old app', root, failureApp },
+      null,
+      2,
+    ),
+  );
 } finally {
   run('/usr/bin/chflags', ['nouchg', failureApp + '.incoming']);
 }
+
+// Re-enter the externally persisted crash boundary: old app has been moved,
+// new app has not. Recovery restores the package without touching/launching data.
+const interruptedApp = path.join(root, 'Interrupted.app');
+const interruptedTx = path.join(root, 'interrupted-transaction');
+mkdirSync(interruptedTx, { mode: 0o700 });
+writeFileSync(path.join(interruptedTx, 'expected-app-id'), 'com.cleverworkbench.update-experiment');
+writeFileSync(path.join(interruptedTx, 'helper-status'), 'replacing-app');
+run('/usr/bin/ditto', [path.join(root, 'Installed.app.previous'), interruptedApp + '.previous']);
+const recovery = spawn('/bin/sh', [helper, '99999999', interruptedApp, staged, interruptedTx], {
+  stdio: 'inherit',
+});
+assert.equal(await new Promise((resolve) => recovery.on('exit', resolve)), 1);
+assert.equal(
+  readFileSync(path.join(interruptedTx, 'helper-status'), 'utf8').trim(),
+  'failed:interrupted-replacement-restored',
+);
+assert.ok(existsSync(path.join(interruptedApp, 'Contents/MacOS/Electron')));
+assert.ok(!existsSync(path.join(interruptedTx, '0.1.1.json')));
+console.log(
+  JSON.stringify(
+    { result: 'PASS interrupted replacement restored without launching old data', root },
+    null,
+    2,
+  ),
+);

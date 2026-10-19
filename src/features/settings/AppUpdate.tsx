@@ -40,7 +40,7 @@ const labels: Record<UpdateSnapshot['status'], string> = {
   'no-release': '暂无正式版本',
   incompatible: '暂无兼容更新包',
   available: '有新版本',
-  error: '检查更新失败',
+  error: '更新失败',
 };
 export function UpdateDetails({ state }: { state: UpdateSnapshot | null }) {
   const [error, setError] = useState('');
@@ -80,7 +80,21 @@ export function UpdateDetails({ state }: { state: UpdateSnapshot | null }) {
             下载更新
           </button>
         )}
-        {state?.status === 'ready' && <p>重启并更新已准备就绪。</p>}
+        {state?.status === 'ready' && (
+          <button
+            className="primary-button"
+            onClick={() => {
+              setError('');
+              void window.desktop
+                .installUpdate()
+                .catch((cause) =>
+                  setError(cause instanceof Error ? cause.message : '更新准备失败，请重试。'),
+                );
+            }}
+          >
+            重启并更新
+          </button>
+        )}
         <button
           className="secondary-button"
           disabled={

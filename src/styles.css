@@ -3874,3 +3874,4 @@ h3 {
 .update-badge.has-update { color: #bf6b17; background: #c7761014; }
 .release-notes { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto; font: inherit; }
 .update-details { min-width: 0; }
+.update-install-overlay { position: fixed; inset: 0; z-index: 2147483647; display: grid; place-items: center; background: rgba(30, 34, 40, .85); color: white; }

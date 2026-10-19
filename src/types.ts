@@ -146,6 +146,7 @@ export interface DesktopAPI {
   updateSnapshot(): Promise<import('./update-types').UpdateSnapshot>;
   checkUpdate(): Promise<import('./update-types').UpdateSnapshot>;
   downloadUpdate(): Promise<import('./update-types').UpdateSnapshot>;
+  installUpdate(): Promise<import('./update-types').UpdateSnapshot>;
   onUpdateState(handler: (state: import('./update-types').UpdateSnapshot) => void): () => void;
   captureLedgerBatch(input: LedgerBatch): Promise<MutationResult>;
   exportSystem(options: SystemExportOptions): Promise<SystemExportResult | null>;

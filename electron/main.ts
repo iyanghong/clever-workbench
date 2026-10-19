@@ -23,6 +23,8 @@ import { Vault } from './vault';
 import { Backups } from './backup';
 import { SystemExports } from './system-export';
 import { UpdateCoordinator } from './update';
+import { UpdateInstallation } from './update-install';
+import { launchUpdateHelper } from './update-launcher';
 import { exportScheme, renderExportDocument } from './export-native';
 
 protocol.registerSchemesAsPrivileged([
@@ -46,6 +48,21 @@ let window: BrowserWindow | null = null,
   closePending = false,
   quitting = false;
 let updates: UpdateCoordinator;
+let installation: UpdateInstallation;
+let updateFrozen = false;
+const activeOperations = new Set<Promise<unknown>>();
+const updateReadChannels = new Set([
+  'update-snapshot',
+  'data-generation',
+  'system-appearance',
+  'vault-status',
+  'snapshot',
+  'document',
+  'search-documents',
+  'task',
+  'global-search',
+  'search',
+]);
 const backupSelections = new Map<string, { filename: string; expires: number }>();
 const pendingFlush = new Map<string, { resolve: () => void; reject: (e: Error) => void }>();
 function flushRenderer() {
@@ -80,7 +97,17 @@ function secureHandler(channel: string, handler: (...args: any[]) => any) {
     try {
       if (channel !== 'data-generation' && generation !== store.generation)
         throw new Error('资料已切换，请重新操作。');
-      const result = await handler(...args);
+      if (updateFrozen && !updateReadChannels.has(channel))
+        throw new Error('正在准备安装更新，请等待完成。');
+      const operation = Promise.resolve().then(() => handler(...args));
+      if (!updateReadChannels.has(channel) && channel !== 'update-install')
+        activeOperations.add(operation);
+      let result;
+      try {
+        result = await operation;
+      } finally {
+        activeOperations.delete(operation);
+      }
       if (
         !['data-generation', 'restore-backup'].includes(channel) &&
         generation !== store.generation
@@ -93,6 +120,7 @@ function secureHandler(channel: string, handler: (...args: any[]) => any) {
   });
 }
 function writable(generation = store.generation) {
+  if (updateFrozen) throw new Error('正在准备安装更新，请等待完成。');
   if (restoring) throw new Error('正在恢复数据，请稍候。');
   if (rotatingProtection) throw new Error('正在变更主密码，请稍候。');
   if (generation !== store.generation) throw new Error('资料已切换，旧操作已取消。');
@@ -131,12 +159,29 @@ function applyWindowMaterial() {
 }
 let checkingAutomatic = false;
 async function checkAutomaticBackup(flush: boolean) {
-  if (checkingAutomatic || closePending || restoring || rotatingProtection || backups.busy) return;
+  if (
+    checkingAutomatic ||
+    closePending ||
+    restoring ||
+    rotatingProtection ||
+    backups.busy ||
+    installation?.busy ||
+    updateFrozen
+  )
+    return;
   checkingAutomatic = true;
   const generation = store.generation;
   try {
     if (flush) await flushRenderer();
-    if (closePending || restoring || rotatingProtection || generation !== store.generation) return;
+    if (
+      closePending ||
+      restoring ||
+      rotatingProtection ||
+      updateFrozen ||
+      installation?.busy ||
+      generation !== store.generation
+    )
+      return;
     await backups.automatic();
   } catch (cause) {
     if (!restoring && generation === store.generation)
@@ -181,6 +226,7 @@ function createWindow() {
   window.on('close', (event) => {
     if (allowClose) return;
     event.preventDefault();
+    if (installation?.busy || updateFrozen) return;
     if (closePending) return;
     closePending = true;
     void (async () => {
@@ -239,6 +285,71 @@ app
     secureHandler('update-snapshot', () => updates.snapshot());
     secureHandler('update-check', () => updates.check(true));
     secureHandler('update-download', () => updates.download());
+    installation = new UpdateInstallation({
+      prepared: () => updates.preparedUpdate(),
+      status: (state) =>
+        updates.setInstallationState(
+          state as Parameters<UpdateCoordinator['setInstallationState']>[0],
+        ),
+      eligible: () => {
+        if (!app.isPackaged || process.platform !== 'darwin' || process.arch !== 'arm64')
+          throw Error('当前运行方式不支持自动安装更新。');
+        if (restoring || rotatingProtection || closePending)
+          throw Error('请等待资料保护或关闭操作完成后再更新。');
+        if (!store.get('vaultConfig', null))
+          throw Error('请先设置主密码，以便更新前创建完整加密备份。');
+      },
+      flush: flushRenderer,
+      freeze: (value) => {
+        updateFrozen = value;
+      },
+      idle: async () => {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          await Promise.race([
+            Promise.all([
+              Promise.all([...activeOperations]),
+              backups.whenIdle(),
+              systemExports.whenIdle(),
+            ]),
+            new Promise<never>((_, reject) => {
+              timer = setTimeout(() => reject(Error('仍有资料操作未完成，请完成后重试。')), 30000);
+            }),
+          ]);
+        } finally {
+          if (timer) clearTimeout(timer);
+        }
+      },
+      backup: async () => {
+        const filename = path.join(
+          store.settings().backupDir,
+          `Clever-Workbench-update-${randomUUID()}.cwb`,
+        );
+        await fs.mkdir(path.dirname(filename), { recursive: true, mode: 0o700 });
+        await backups.create(filename);
+        return filename;
+      },
+      launch: async (prepared, backup) => {
+        await launchUpdateHelper({
+          prepared,
+          backup,
+          executable: app.getPath('exe'),
+          currentVersion: app.getVersion(),
+          userDataDirectory: app.getPath('userData'),
+          transactionsDirectory: path.join(app.getPath('userData'), 'updates', 'transactions'),
+          helperSource: path.join(__dirname, 'macos-update-helper.sh'),
+        });
+      },
+      quit: () => {
+        vault.lock();
+        allowClose = true;
+        app.quit();
+      },
+    });
+    secureHandler('update-install', async () => {
+      await installation.install();
+      return updates.snapshot();
+    });
     updates.start();
     secureHandler('data-generation', () => store.generation);
     secureHandler('system-appearance', systemAppearance);
@@ -499,7 +610,9 @@ app
         else pending.resolve();
       }
     });
-    const send = (command: string) => window?.webContents.send('native-command', command);
+    const send = (command: string) => {
+      if (!installation.busy && !updateFrozen) window?.webContents.send('native-command', command);
+    };
     Menu.setApplicationMenu(
       Menu.buildFromTemplate([
         ...(process.platform === 'darwin'
