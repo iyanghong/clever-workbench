@@ -3,6 +3,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { UpdateJournal, UpdateHealth } from '../electron/update-recovery';
+// Native installation transactions require POSIX ownership; history remains portable.
+const posixTest = test.skipIf(process.platform === 'win32');
 async function pendingFixture() {
   const userData = await fs.mkdtemp(path.join(os.tmpdir(), 'update-health-'));
   const root = path.join(userData, 'updates');
@@ -28,31 +30,34 @@ async function pendingFixture() {
   await fs.writeFile(path.join(directory, 'helper-status'), 'launching');
   return { journal, userData, directory, target };
 }
-test('health success requires actual version, database, window and nonce roundtrip after helper awaits health', async () => {
-  const f = await pendingFixture();
-  try {
-    const health = new UpdateHealth(f.journal, {
-      version: '0.2.0',
-      target: f.target,
-      userDataDirectory: f.userData,
-    });
-    await health.discover();
-    health.databaseReady();
-    health.windowReady();
-    await health.confirm('wrong');
-    expect(f.journal.list()[0].outcome).toBe('in-progress');
-    await health.confirm(health.challenge!);
-    expect(f.journal.list()[0].outcome).toBe('in-progress');
-    await fs.writeFile(path.join(f.directory, 'helper-status'), 'awaiting-health');
-    await health.poll();
-    expect(f.journal.list()[0].outcome).toBe('success');
-    expect(
-      JSON.parse(await fs.readFile(path.join(f.directory, 'health.json'), 'utf8')).outcome,
-    ).toBe('success');
-  } finally {
-    await fs.rm(f.userData, { recursive: true, force: true });
-  }
-});
+posixTest(
+  'health success requires actual version, database, window and nonce roundtrip after helper awaits health',
+  async () => {
+    const f = await pendingFixture();
+    try {
+      const health = new UpdateHealth(f.journal, {
+        version: '0.2.0',
+        target: f.target,
+        userDataDirectory: f.userData,
+      });
+      await health.discover();
+      health.databaseReady();
+      health.windowReady();
+      await health.confirm('wrong');
+      expect(f.journal.list()[0].outcome).toBe('in-progress');
+      await health.confirm(health.challenge!);
+      expect(f.journal.list()[0].outcome).toBe('in-progress');
+      await fs.writeFile(path.join(f.directory, 'helper-status'), 'awaiting-health');
+      await health.poll();
+      expect(f.journal.list()[0].outcome).toBe('success');
+      expect(
+        JSON.parse(await fs.readFile(path.join(f.directory, 'health.json'), 'utf8')).outcome,
+      ).toBe('success');
+    } finally {
+      await fs.rm(f.userData, { recursive: true, force: true });
+    }
+  },
+);
 test('update attempts including failed downloads survive restart and retain only the latest 30', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'update-history-'));
   try {
@@ -78,30 +83,33 @@ test('update attempts including failed downloads survive restart and retain only
     await fs.rm(root, { recursive: true, force: true });
   }
 });
-test('timeout preserves backup and database while exposing a manual recovery result', async () => {
-  const f = await pendingFixture();
-  let now = Date.now();
-  try {
-    await fs.writeFile(path.join(f.userData, 'database'), 'user data');
-    const health = new UpdateHealth(f.journal, {
-      version: '0.2.0',
-      target: f.target,
-      userDataDirectory: f.userData,
-      now: () => now,
-    });
-    await health.discover();
-    now += 60001;
-    await health.poll();
-    expect(f.journal.list()[0]).toMatchObject({
-      outcome: 'manual',
-      backup: path.join(f.userData, 'backup.cwb'),
-    });
-    expect(await fs.readFile(path.join(f.userData, 'database'), 'utf8')).toBe('user data');
-  } finally {
-    await fs.rm(f.userData, { recursive: true, force: true });
-  }
-});
-test('an unrelated installed path cannot confirm a pending installation', async () => {
+posixTest(
+  'timeout preserves backup and database while exposing a manual recovery result',
+  async () => {
+    const f = await pendingFixture();
+    let now = Date.now();
+    try {
+      await fs.writeFile(path.join(f.userData, 'database'), 'user data');
+      const health = new UpdateHealth(f.journal, {
+        version: '0.2.0',
+        target: f.target,
+        userDataDirectory: f.userData,
+        now: () => now,
+      });
+      await health.discover();
+      now += 60001;
+      await health.poll();
+      expect(f.journal.list()[0]).toMatchObject({
+        outcome: 'manual',
+        backup: path.join(f.userData, 'backup.cwb'),
+      });
+      expect(await fs.readFile(path.join(f.userData, 'database'), 'utf8')).toBe('user data');
+    } finally {
+      await fs.rm(f.userData, { recursive: true, force: true });
+    }
+  },
+);
+posixTest('an unrelated installed path cannot confirm a pending installation', async () => {
   const f = await pendingFixture();
   try {
     const health = new UpdateHealth(f.journal, {
@@ -116,7 +124,7 @@ test('an unrelated installed path cannot confirm a pending installation', async 
     await fs.rm(f.userData, { recursive: true, force: true });
   }
 });
-test('database startup failure is recorded outside the database', async () => {
+posixTest('database startup failure is recorded outside the database', async () => {
   const f = await pendingFixture();
   try {
     const health = new UpdateHealth(f.journal, {
@@ -134,21 +142,24 @@ test('database startup failure is recorded outside the database', async () => {
     await fs.rm(f.userData, { recursive: true, force: true });
   }
 });
-test('a quarantined app launched through AppTranslocation records manual recovery instead of ignoring the pending update', async () => {
-  const f = await pendingFixture();
-  try {
-    const health = new UpdateHealth(f.journal, {
-      version: '0.2.0',
-      target: '/private/var/folders/test/AppTranslocation/nonce/d/Clever Workbench.app',
-      userDataDirectory: f.userData,
-    });
-    await health.discover();
-    expect(f.journal.list()[0]).toMatchObject({
-      outcome: 'manual',
-      backup: path.join(f.userData, 'backup.cwb'),
-    });
-    expect(health.challenge).toBeUndefined();
-  } finally {
-    await fs.rm(f.userData, { recursive: true, force: true });
-  }
-});
+posixTest(
+  'a quarantined app launched through AppTranslocation records manual recovery instead of ignoring the pending update',
+  async () => {
+    const f = await pendingFixture();
+    try {
+      const health = new UpdateHealth(f.journal, {
+        version: '0.2.0',
+        target: '/private/var/folders/test/AppTranslocation/nonce/d/Clever Workbench.app',
+        userDataDirectory: f.userData,
+      });
+      await health.discover();
+      expect(f.journal.list()[0]).toMatchObject({
+        outcome: 'manual',
+        backup: path.join(f.userData, 'backup.cwb'),
+      });
+      expect(health.challenge).toBeUndefined();
+    } finally {
+      await fs.rm(f.userData, { recursive: true, force: true });
+    }
+  },
+);
