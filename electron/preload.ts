@@ -36,6 +36,7 @@ const call = async (channel: string, ...args: unknown[]) => {
 const api: DesktopAPI = {
   updateSnapshot: () => call('update-snapshot'),
   checkUpdate: () => call('update-check'),
+  downloadUpdate: () => call('update-download'),
   onUpdateState(handler) {
     const listener = (_: unknown, state: Parameters<typeof handler>[0]) => handler(state);
     ipcRenderer.on('update-state', listener);

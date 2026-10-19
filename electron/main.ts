@@ -229,6 +229,7 @@ app
     backups = new Backups(store);
     updates = new UpdateCoordinator({
       currentVersion: app.getVersion(),
+      stagingDirectory: path.join(app.getPath('userData'), 'updates', 'staging'),
       packaged: app.isPackaged,
       platform: process.platform,
       arch: process.arch,
@@ -237,6 +238,7 @@ app
     updates.subscribe((state) => window?.webContents.send('update-state', state));
     secureHandler('update-snapshot', () => updates.snapshot());
     secureHandler('update-check', () => updates.check(true));
+    secureHandler('update-download', () => updates.download());
     updates.start();
     secureHandler('data-generation', () => store.generation);
     secureHandler('system-appearance', systemAppearance);

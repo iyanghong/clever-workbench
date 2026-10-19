@@ -12,6 +12,14 @@ export interface UpdateRelease {
   checksums: UpdateAsset;
 }
 export type UpdateStatus =
+  | 'downloading'
+  | 'verifying'
+  | 'ready'
+  | 'preparing'
+  | 'installing'
+  | 'validating'
+  | 'success'
+  | 'manual'
   | 'idle'
   | 'unsupported'
   | 'checking'
@@ -21,6 +29,7 @@ export type UpdateStatus =
   | 'available'
   | 'error';
 export interface UpdateSnapshot {
+  progress?: { received: number; total: number };
   status: UpdateStatus;
   currentVersion: string;
   release?: UpdateRelease;

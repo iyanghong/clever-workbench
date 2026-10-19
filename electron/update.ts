@@ -1,8 +1,14 @@
 import type { UpdateSnapshot, UpdateAsset } from '../src/update-types';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { extractBundle, runCommand, type RunCommand } from './update-package';
 
 export const RELEASES_URL = 'https://github.com/iyanghong/clever-workbench/releases';
 const LATEST = 'https://api.github.com/repos/iyanghong/clever-workbench/releases/latest';
 interface Options {
+  stagingDirectory?: string;
+  runCommand?: RunCommand;
   currentVersion: string;
   packaged: boolean;
   platform: string;
@@ -41,6 +47,128 @@ export class UpdateCoordinator {
   private state: UpdateSnapshot;
   private listeners = new Set<(state: UpdateSnapshot) => void>();
   private pending?: Promise<UpdateSnapshot>;
+  private downloading?: Promise<UpdateSnapshot>;
+  private prepared?: { appPath: string; version: string; stageDirectory: string };
+  preparedUpdate() {
+    return this.state.status === 'ready' && this.prepared ? { ...this.prepared } : undefined;
+  }
+  setInstallationState(value: {
+    status: 'preparing' | 'installing' | 'validating' | 'success' | 'manual' | 'error' | 'ready';
+    message?: string;
+  }) {
+    return this.set({ ...this.state, ...value });
+  }
+  async download(): Promise<UpdateSnapshot> {
+    if (this.downloading) return this.downloading;
+    if (
+      !this.state.release ||
+      !['available', 'error'].includes(this.state.status) ||
+      !this.options.stagingDirectory
+    )
+      return this.snapshot();
+    this.downloading = this.downloadRelease().finally(() => {
+      this.downloading = undefined;
+    });
+    return this.downloading;
+  }
+  private async downloadRelease() {
+    const release = this.state.release!;
+    let directory: string | undefined;
+    this.prepared = undefined;
+    try {
+      await fs.mkdir(this.options.stagingDirectory!, { recursive: true, mode: 0o700 });
+      directory = await fs.mkdtemp(path.join(this.options.stagingDirectory!, 'release-'));
+      this.set({
+        status: 'downloading',
+        release,
+        progress: { received: 0, total: release.zip.size },
+      });
+      const sums = (await this.downloadAsset(release.checksums, undefined, release)).toString(
+        'utf8',
+      );
+      const matching = sums
+        .split(/\r?\n/)
+        .filter((line) => line.match(/^([a-fA-F0-9]{64}) [ *](.+)$/)?.[2] === release.zip.name);
+      if (matching.length !== 1) throw Error('更新包缺少唯一的 SHA-256 校验。');
+      const zipPath = path.join(directory, 'update.zip');
+      const digest = (await this.downloadAsset(release.zip, zipPath, release)).toString();
+      if (digest !== matching[0].slice(0, 64).toLowerCase())
+        throw Error('更新包校验失败，请重新下载。');
+      this.set({ status: 'verifying', release });
+      const appPath = await extractBundle(
+        zipPath,
+        directory,
+        release.version,
+        this.options.runCommand ?? runCommand,
+      );
+      this.prepared = { appPath, version: release.version, stageDirectory: directory };
+      return this.set({ status: 'ready', release });
+    } catch (error) {
+      if (directory) await fs.rm(directory, { recursive: true, force: true }).catch(() => {});
+      return this.set({
+        status: 'error',
+        release,
+        message: error instanceof Error ? error.message : '下载或校验更新失败。',
+      });
+    }
+  }
+  private async downloadAsset(
+    asset: UpdateAsset,
+    filename: string | undefined,
+    release: NonNullable<UpdateSnapshot['release']>,
+  ): Promise<Buffer> {
+    let url = asset.url;
+    if (!trustedAsset(url, `v${release.version}`)) throw Error('更新来源无效。');
+    let response: Response | undefined;
+    for (let redirect = 0; redirect < 5; redirect++) {
+      response = await (this.options.fetch ?? fetch)(url, {
+        redirect: 'manual',
+        signal: AbortSignal.timeout(10 * 60 * 1000),
+      });
+      if (![301, 302, 303, 307, 308].includes(response.status)) break;
+      const location = response.headers.get('location');
+      await response.body?.cancel();
+      if (!location) throw Error('更新重定向无效。');
+      const next = new URL(location, url);
+      if (
+        next.protocol !== 'https:' ||
+        next.username ||
+        next.password ||
+        ![
+          'github.com',
+          'release-assets.githubusercontent.com',
+          'objects.githubusercontent.com',
+        ].includes(next.hostname) ||
+        (next.hostname === 'github.com' && !trustedAsset(next.href, `v${release.version}`))
+      )
+        throw Error('更新下载被重定向到不可信来源。');
+      url = next.href;
+    }
+    if (!response?.ok || !response.body) throw Error('下载更新失败，请检查网络后重试。');
+    const reader = response.body.getReader();
+    const chunks: Buffer[] = [];
+    const hash = createHash('sha256');
+    let received = 0;
+    const file = filename ? await fs.open(filename, 'wx', 0o600) : undefined;
+    try {
+      for (;;) {
+        const next = await reader.read();
+        if (next.done) break;
+        received += next.value.length;
+        if (received > asset.size) throw Error('下载内容超过声明大小。');
+        hash.update(next.value);
+        if (file) {
+          await file.writeFile(next.value);
+          this.set({ status: 'downloading', release, progress: { received, total: asset.size } });
+        } else chunks.push(Buffer.from(next.value));
+      }
+      if (received !== asset.size) throw Error('下载未完成，请重新下载。');
+    } finally {
+      await reader.cancel().catch(() => {});
+      await file?.close();
+    }
+    return file ? Buffer.from(hash.digest('hex')) : Buffer.concat(chunks);
+  }
   private cachedUntil = 0;
   private retryUntil = 0;
   private timer?: ReturnType<typeof setInterval>;
@@ -95,6 +223,11 @@ export class UpdateCoordinator {
     this.timer = undefined;
   }
   async check(force = false): Promise<UpdateSnapshot> {
+    if (
+      this.downloading ||
+      ['ready', 'preparing', 'installing', 'validating'].includes(this.state.status)
+    )
+      return this.snapshot();
     if (this.state.status === 'unsupported') return this.snapshot();
     if (this.pending) return this.pending;
     if (this.now() < this.retryUntil || (!force && this.now() < this.cachedUntil))

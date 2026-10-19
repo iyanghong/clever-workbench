@@ -25,6 +25,14 @@ export function useAppUpdate() {
   return state;
 }
 const labels: Record<UpdateSnapshot['status'], string> = {
+  downloading: '正在下载更新…',
+  verifying: '正在校验更新…',
+  ready: '更新已准备好，可以重启安装',
+  preparing: '正在保存并备份…',
+  installing: '正在安装更新…',
+  validating: '等待新版启动确认…',
+  success: '更新成功',
+  manual: '需要人工处理',
   idle: '尚未检查更新',
   checking: '正在检查更新…',
   unsupported: '不支持在线更新',
@@ -40,6 +48,13 @@ export function UpdateDetails({ state }: { state: UpdateSnapshot | null }) {
     <div className="update-details">
       <strong>Clever Workbench {state ? `v${state.currentVersion}` : ''}</strong>
       <p role="status">{state ? labels[state.status] : '正在读取版本…'}</p>
+      {state?.progress && (
+        <progress
+          aria-label="更新下载进度"
+          value={state.progress.received}
+          max={state.progress.total}
+        />
+      )}
       {state?.message && <p>{state.message}</p>}
       {state?.retryAt && <p>可重试时间：{new Date(state.retryAt).toLocaleString('zh-CN')}</p>}
       {state?.release && (
@@ -54,9 +69,33 @@ export function UpdateDetails({ state }: { state: UpdateSnapshot | null }) {
         </>
       )}
       <div className="backup-actions">
+        {state?.release && ['available', 'error'].includes(state.status) && (
+          <button
+            className="primary-button"
+            onClick={() => {
+              setError('');
+              void window.desktop.downloadUpdate().catch(() => setError('下载失败，请重试。'));
+            }}
+          >
+            下载更新
+          </button>
+        )}
+        {state?.status === 'ready' && <p>重启并更新已准备就绪。</p>}
         <button
           className="secondary-button"
-          disabled={!state || ['unsupported', 'checking'].includes(state.status)}
+          disabled={
+            !state ||
+            [
+              'unsupported',
+              'checking',
+              'downloading',
+              'verifying',
+              'ready',
+              'preparing',
+              'installing',
+              'validating',
+            ].includes(state.status)
+          }
           onClick={() => {
             setError('');
             void window.desktop.checkUpdate().catch(() => setError('检查更新失败，请重试。'));
