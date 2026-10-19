@@ -16,6 +16,7 @@ import { dateLabel } from '../../domain';
 import { useVault } from '../vault/VaultProvider';
 import { Dialog } from '../../shared/Dialog';
 import { PasswordChange } from './PasswordChange';
+import { AboutUpdate } from './AppUpdate';
 const message = (cause: unknown) =>
   String(cause).replace(/^Error: Error invoking remote method '[^']+': Error: /, '');
 export function SettingsPage({ setContext }: ModuleProps) {
@@ -367,12 +368,7 @@ export function SettingsPage({ setContext }: ModuleProps) {
               项目历史、台账、账号、任务、文档、草稿和引用图片整体加密。换机使用备份生成时的主密码；导出不需要解锁秘密。
             </p>
             <h3>关于</h3>
-            <div className="about-row">
-              <div>
-                <strong>Clever Workbench</strong>
-                <p>版本 0.1.0 · 本地个人工作台</p>
-              </div>
-            </div>
+            <AboutUpdate />
           </>
         )}
       </section>

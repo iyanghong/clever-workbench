@@ -1,4 +1,5 @@
 import { build } from 'esbuild';
+import { copyFile } from 'node:fs/promises';
 await build({
   entryPoints: ['electron/tools/zip-worker.ts'],
   outfile: 'dist-electron/zip-worker.cjs',
@@ -15,9 +16,10 @@ await build({
   platform: 'node',
   format: 'cjs',
   target: 'node24',
-  external: ['electron'],
+  external: ['electron', 'original-fs'],
   sourcemap: true,
 });
+await copyFile('scripts/macos-update-helper.sh', 'dist-electron/macos-update-helper.sh');
 await build({
   entryPoints: ['electron/preload.ts'],
   outfile: 'dist-electron/preload.cjs',

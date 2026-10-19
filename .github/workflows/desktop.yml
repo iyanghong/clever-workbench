@@ -35,7 +35,8 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           mkdir -p release/installed
-          ditto -x -k 'release/Clever Workbench-0.1.0-arm64-mac.zip' release/installed
+          version=$(node -p 'require("./package.json").version')
+          ditto -x -k "release/Clever-Workbench-$version-arm64.zip" release/installed
           codesign --verify --deep --strict 'release/installed/Clever Workbench.app'
           echo "CWB_TEST_EXECUTABLE=$GITHUB_WORKSPACE/release/installed/Clever Workbench.app/Contents/MacOS/Clever Workbench" >> "$GITHUB_ENV"
       - name: Package Windows x64
@@ -46,7 +47,8 @@ jobs:
         shell: pwsh
         run: |
           $destination = Join-Path $env:RUNNER_TEMP 'workbench-installed'
-          $installer = Get-Item 'release/Clever Workbench Setup 0.1.0.exe'
+          $version = node -p 'require("./package.json").version'
+          $installer = Get-Item "release/Clever Workbench Setup $version.exe"
           $process = Start-Process -FilePath $installer.FullName -ArgumentList '/S', "/D=$destination" -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw "Installer failed: $($process.ExitCode)" }
           $executable = Join-Path $destination 'Clever Workbench.exe'

@@ -23,6 +23,12 @@ import { Vault } from './vault';
 import { Backups } from './backup';
 import { SystemExports } from './system-export';
 import { Tools } from './tools';
+import { UpdateCoordinator } from './update';
+import { localGitHubCredential } from './update-credential';
+import { fetchUpdate } from './update-fetch';
+import { UpdateInstallation } from './update-install';
+import { launchUpdateHelper } from './update-launcher';
+import { UpdateJournal, UpdateHealth } from './update-recovery';
 import { exportScheme, renderExportDocument } from './export-native';
 
 protocol.registerSchemesAsPrivileged([
@@ -46,6 +52,33 @@ let window: BrowserWindow | null = null,
   allowClose = false,
   closePending = false,
   quitting = false;
+let updates: UpdateCoordinator;
+let updateJournal: UpdateJournal | undefined, updateHealth: UpdateHealth | undefined;
+let updaterAvailable = true;
+function disableUpdates() {
+  updaterAvailable = false;
+  updates.stop();
+  updates.setRecoverySummary('manual', '更新记录无法写入，在线更新已暂停；本地工作空间仍可使用。');
+}
+let installation: UpdateInstallation;
+let updateFrozen = false;
+const activeOperations = new Set<Promise<unknown>>();
+const updateReadChannels = new Set([
+  'update-history',
+  'update-health-ready',
+  'update-health-confirm',
+  'update-recovery-open',
+  'update-snapshot',
+  'data-generation',
+  'system-appearance',
+  'vault-status',
+  'snapshot',
+  'document',
+  'search-documents',
+  'task',
+  'global-search',
+  'search',
+]);
 const backupSelections = new Map<string, { filename: string; expires: number }>();
 const pendingFlush = new Map<string, { resolve: () => void; reject: (e: Error) => void }>();
 function flushRenderer() {
@@ -80,7 +113,17 @@ function secureHandler(channel: string, handler: (...args: any[]) => any) {
     try {
       if (channel !== 'data-generation' && generation !== store.generation)
         throw new Error('资料已切换，请重新操作。');
-      const result = await handler(...args);
+      if (updateFrozen && !updateReadChannels.has(channel))
+        throw new Error('正在准备安装更新，请等待完成。');
+      const operation = Promise.resolve().then(() => handler(...args));
+      if (!updateReadChannels.has(channel) && channel !== 'update-install')
+        activeOperations.add(operation);
+      let result;
+      try {
+        result = await operation;
+      } finally {
+        activeOperations.delete(operation);
+      }
       if (
         !['data-generation', 'restore-backup'].includes(channel) &&
         generation !== store.generation
@@ -93,6 +136,7 @@ function secureHandler(channel: string, handler: (...args: any[]) => any) {
   });
 }
 function writable(generation = store.generation) {
+  if (updateFrozen) throw new Error('正在准备安装更新，请等待完成。');
   if (restoring) throw new Error('正在恢复数据，请稍候。');
   if (rotatingProtection) throw new Error('正在变更主密码，请稍候。');
   if (generation !== store.generation) throw new Error('资料已切换，旧操作已取消。');
@@ -131,12 +175,29 @@ function applyWindowMaterial() {
 }
 let checkingAutomatic = false;
 async function checkAutomaticBackup(flush: boolean) {
-  if (checkingAutomatic || closePending || restoring || rotatingProtection || backups.busy) return;
+  if (
+    checkingAutomatic ||
+    closePending ||
+    restoring ||
+    rotatingProtection ||
+    backups.busy ||
+    installation?.busy ||
+    updateFrozen
+  )
+    return;
   checkingAutomatic = true;
   const generation = store.generation;
   try {
     if (flush) await flushRenderer();
-    if (closePending || restoring || rotatingProtection || generation !== store.generation) return;
+    if (
+      closePending ||
+      restoring ||
+      rotatingProtection ||
+      updateFrozen ||
+      installation?.busy ||
+      generation !== store.generation
+    )
+      return;
     await backups.automatic();
   } catch (cause) {
     if (!restoring && generation === store.generation)
@@ -175,12 +236,20 @@ function createWindow() {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event) => event.preventDefault());
   window.webContents.on('will-attach-webview', (event) => event.preventDefault());
+  window.webContents.on('did-finish-load', () => {
+    updateHealth?.windowReady();
+    void updateHealth?.poll().catch(() => {});
+  });
+  window.webContents.on('did-fail-load', () => {
+    void updateHealth?.fail('新版窗口加载失败，请查看日志与恢复材料。').catch(() => {});
+  });
   if (!app.isPackaged && process.env.VITE_DEV_SERVER_URL)
     window.loadURL(process.env.VITE_DEV_SERVER_URL);
   else window.loadFile(path.join(__dirname, '../dist/index.html'));
   window.on('close', (event) => {
     if (allowClose) return;
     event.preventDefault();
+    if (installation?.busy || updateFrozen) return;
     if (closePending) return;
     closePending = true;
     void (async () => {
@@ -227,8 +296,44 @@ app.on('second-instance', () => {
 });
 app
   .whenReady()
-  .then(() => {
+  .then(async () => {
+    updates = new UpdateCoordinator({
+      currentVersion: app.getVersion(),
+      stagingDirectory: path.join(app.getPath('userData'), 'updates', 'staging'),
+      packaged: app.isPackaged,
+      platform: process.platform,
+      arch: process.arch,
+      fetch: fetchUpdate,
+      githubCredential: () => localGitHubCredential(app.getPath('userData')),
+    });
+    try {
+      updateJournal = await UpdateJournal.open(path.join(app.getPath('userData'), 'updates'));
+      updateHealth = new UpdateHealth(updateJournal, {
+        version: app.getVersion(),
+        target: path.resolve(app.getPath('exe'), '../../..'),
+        userDataDirectory: app.getPath('userData'),
+        status: (status, message) => {
+          if (status === 'validating') {
+            updates.setInstallationState({ status, message });
+            updates.setRecoverySummary(status, message);
+          } else updates.finishHealthCheck(status, message, updaterAvailable);
+        },
+      });
+      if (app.isPackaged) await updateHealth.discover();
+      const previous = updateJournal.list()[0];
+      if (previous && ['success', 'manual', 'failed'].includes(previous.outcome))
+        updates.setRecoverySummary(previous.outcome, previous.message ?? '请查看上次更新记录。');
+    } catch {
+      updaterAvailable = false;
+      updates.stop();
+      updates.setInstallationState({
+        status: 'manual',
+        message: '更新记录无法读取，在线更新暂不可用；本地工作空间仍可使用。',
+      });
+    }
     store = new Store(path.join(app.getPath('userData'), 'data'));
+    store.snapshot();
+    updateHealth?.databaseReady();
     backups = new Backups(store);
     tools = new Tools(store, __dirname);
     secureHandler('tool-state', (id) => tools.get(id).snapshot());
@@ -252,6 +357,116 @@ app
       const error = await shell.openPath(output);
       if (error) throw new Error(error);
     });
+    updates.subscribe((state) => {
+      window?.webContents.send('update-state', state);
+      if (updateJournal && updaterAvailable)
+        void updateJournal
+          .observe(state)
+          .then(() => window?.webContents.send('update-history-changed'))
+          .catch(() => {
+            disableUpdates();
+          });
+    });
+    secureHandler('update-snapshot', () => updates.snapshot());
+    secureHandler('update-check', () => {
+      if (!updaterAvailable) return updates.snapshot();
+      return updates.check(true);
+    });
+    secureHandler('update-download', () => {
+      if (!updaterAvailable) throw Error('更新记录不可写，请检查更新目录。');
+      return updates.download();
+    });
+    secureHandler('update-history', () => updateJournal?.list() ?? []);
+    secureHandler('update-health-ready', () => updateHealth?.challenge ?? null);
+    secureHandler('update-health-confirm', async (nonce) => {
+      if (typeof nonce === 'string') await updateHealth?.confirm(nonce);
+    });
+    secureHandler('update-recovery-open', async (id, kind) => {
+      if (typeof id !== 'string' || !['backup', 'logs', 'previous'].includes(kind))
+        throw Error('恢复资料类型无效。');
+      const filename = updateJournal?.recoveryPath(id, kind);
+      if (!filename) throw Error('没有对应恢复资料。');
+      await fs.access(filename);
+      shell.showItemInFolder(filename);
+    });
+    installation = new UpdateInstallation({
+      prepared: () => updates.preparedUpdate(),
+      status: (state) =>
+        updates.setInstallationState(
+          state as Parameters<UpdateCoordinator['setInstallationState']>[0],
+        ),
+      eligible: () => {
+        if (!updaterAvailable) throw Error('更新记录不可写，请检查更新目录。');
+        if (!app.isPackaged || process.platform !== 'darwin' || process.arch !== 'arm64')
+          throw Error('当前运行方式不支持自动安装更新。');
+        if (restoring || rotatingProtection || closePending)
+          throw Error('请等待资料保护或关闭操作完成后再更新。');
+        if (tools.busy) throw Error('工具任务尚未完成，请等待完成后再更新。');
+        if (!store.get('vaultConfig', null))
+          throw Error('请先设置主密码，以便更新前创建完整加密备份。');
+      },
+      flush: flushRenderer,
+      freeze: (value) => {
+        updateFrozen = value;
+      },
+      idle: async () => {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          await Promise.race([
+            Promise.all([
+              Promise.all([...activeOperations]),
+              backups.whenIdle(),
+              systemExports.whenIdle(),
+            ]),
+            new Promise<never>((_, reject) => {
+              timer = setTimeout(() => reject(Error('仍有资料操作未完成，请完成后重试。')), 30000);
+            }),
+          ]);
+        } finally {
+          if (timer) clearTimeout(timer);
+        }
+      },
+      backup: async () => {
+        const filename = path.join(
+          store.settings().backupDir,
+          `Clever-Workbench-update-${randomUUID()}.cwb`,
+        );
+        await fs.mkdir(path.dirname(filename), { recursive: true, mode: 0o700 });
+        await backups.create(filename);
+        return filename;
+      },
+      launch: async (prepared, backup) => {
+        await updateJournal?.flush();
+        await launchUpdateHelper({
+          beforeLaunch: async (directory, transaction) => {
+            await updateJournal?.attach(directory, transaction);
+          },
+          historyId: updateJournal?.activeId,
+          prepared,
+          backup,
+          executable: app.getPath('exe'),
+          currentVersion: app.getVersion(),
+          userDataDirectory: app.getPath('userData'),
+          transactionsDirectory: path.join(app.getPath('userData'), 'updates', 'transactions'),
+          helperSource: path.join(__dirname, 'macos-update-helper.sh'),
+        });
+      },
+      quit: () => {
+        vault.lock();
+        allowClose = true;
+        app.quit();
+      },
+    });
+    secureHandler('update-install', async () => {
+      await installation.install();
+      return updates.snapshot();
+    });
+    if (updaterAvailable && !updateHealth?.pending) updates.start();
+    setInterval(() => {
+      void updateHealth?.poll().catch(() => {
+        disableUpdates();
+      });
+    }, 1000).unref();
     secureHandler('data-generation', () => store.generation);
     secureHandler('system-appearance', systemAppearance);
     nativeTheme.on('updated', () => {
@@ -514,7 +729,9 @@ app
         else pending.resolve();
       }
     });
-    const send = (command: string) => window?.webContents.send('native-command', command);
+    const send = (command: string) => {
+      if (!installation.busy && !updateFrozen) window?.webContents.send('native-command', command);
+    };
     Menu.setApplicationMenu(
       Menu.buildFromTemplate([
         ...(process.platform === 'darwin'
@@ -575,7 +792,10 @@ app
       if (!window) createWindow();
     });
   })
-  .catch((error) => {
+  .catch(async (error) => {
+    await updateHealth
+      ?.fail('新版资料库或启动初始化失败，请查看恢复材料；未自动恢复旧数据。')
+      .catch(() => {});
     dialog.showErrorBox('Clever Workbench 无法打开', error.message);
     app.quit();
   });
@@ -586,6 +806,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 app.on('will-quit', () => {
+  updates?.stop();
   vault?.lock();
   store?.close();
 });

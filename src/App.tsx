@@ -6,9 +6,18 @@ import { useAppearance } from './shared/useAppearance';
 import { GlobalSearch } from './features/search/GlobalSearch';
 import { VaultControl } from './features/vault/VaultProvider';
 import { modules, type Route } from './app/modules';
+import { UpdateBadge, useAppUpdate } from './features/settings/AppUpdate';
 
 export function App() {
   useAppearance();
+  useEffect(() => {
+    void window.desktop
+      .updateHealthReady()
+      .then((nonce) => (nonce ? window.desktop.confirmUpdateHealth(nonce) : undefined))
+      .catch(() => {});
+  }, []);
+  const update = useAppUpdate();
+  const installing = update?.status === 'preparing' || update?.status === 'installing';
   const [route, setRoute] = useState<Route>({ module: 'home' });
   const [error, setError] = useState('');
   const [dataVersion, setDataVersion] = useState(0);
@@ -79,71 +88,88 @@ export function App() {
     </nav>
   );
   return (
-    <div className={`app-shell ${window.desktop.platform}`}>
-      <aside className="sidebar">
-        <div className="sidebar-drag" />
-        <div className="brand">
-          <div className="app-mark">
-            <SquaresFourIcon weight="fill" size={25} />
+    <>
+      <div className={`app-shell ${window.desktop.platform}`} inert={installing}>
+        <aside className="sidebar">
+          <div className="sidebar-drag" />
+          <div className="brand">
+            <div className="app-mark">
+              <SquaresFourIcon weight="fill" size={25} />
+            </div>
+            <div>
+              <strong>Clever Workbench</strong>
+              <span>个人工作台</span>
+            </div>
           </div>
-          <div>
-            <strong>Clever Workbench</strong>
-            <span>个人工作台</span>
+          <div className="workspace-label">工作空间</div>
+          {navigation('workspace')}
+          <div className="sidebar-bottom">
+            <UpdateBadge />
+            <VaultControl />
+            <div className="local-badge">
+              <span className="status-dot saved" />
+              <span>本地工作空间</span>
+              <span className="local-badge-note">离线可用</span>
+            </div>
+            {navigation('utility')}
           </div>
+        </aside>
+        <div className="workspace-shell">
+          <GlobalSearch key={dataVersion} navigate={navigate} flush={() => save.current()}>
+            <QuickCreate
+              ready={contextReady}
+              context={context}
+              navigate={navigate}
+              flush={() => save.current()}
+            />
+          </GlobalSearch>
+          <Suspense
+            key={`${dataVersion}:${pageVersion}`}
+            fallback={
+              <main className="main module-loading" role="status">
+                正在打开…
+              </main>
+            }
+          >
+            <Page
+              route={route}
+              navigate={navigate}
+              registerFlush={registerFlush}
+              setContext={setContext}
+            />
+          </Suspense>
         </div>
-        <div className="workspace-label">工作空间</div>
-        {navigation('workspace')}
-        <div className="sidebar-bottom">
-          <VaultControl />
-          <div className="local-badge">
-            <span className="status-dot saved" />
-            <span>本地工作空间</span>
-            <span className="local-badge-note">离线可用</span>
+        {notice && (
+          <div className="toast" role="status">
+            <span>{notice}</span>
+            <button className="icon-button" aria-label="关闭恢复提示" onClick={() => setNotice('')}>
+              <XIcon size={16} />
+            </button>
           </div>
-          {navigation('utility')}
-        </div>
-      </aside>
-      <div className="workspace-shell">
-        <GlobalSearch key={dataVersion} navigate={navigate} flush={() => save.current()}>
-          <QuickCreate
-            ready={contextReady}
-            context={context}
-            navigate={navigate}
-            flush={() => save.current()}
-          />
-        </GlobalSearch>
-        <Suspense
-          key={`${dataVersion}:${pageVersion}`}
-          fallback={
-            <main className="main module-loading" role="status">
-              正在打开…
-            </main>
-          }
-        >
-          <Page
-            route={route}
-            navigate={navigate}
-            registerFlush={registerFlush}
-            setContext={setContext}
-          />
-        </Suspense>
+        )}
+        {error && (
+          <div className="error-banner" role="alert">
+            <span>{error}</span>
+            <button aria-label="关闭提示" onClick={() => setError('')}>
+              <XIcon />
+            </button>
+          </div>
+        )}
       </div>
-      {notice && (
-        <div className="toast" role="status">
-          <span>{notice}</span>
-          <button className="icon-button" aria-label="关闭恢复提示" onClick={() => setNotice('')}>
-            <XIcon size={16} />
-          </button>
+      {installing && (
+        <div
+          className="update-install-overlay"
+          role="alertdialog"
+          aria-modal="true"
+          aria-label="正在安装更新"
+        >
+          <p>
+            {update?.status === 'preparing'
+              ? '正在保存并创建完整加密备份，请稍候…'
+              : '更新已准备好，正在退出并重新启动…'}
+          </p>
         </div>
       )}
-      {error && (
-        <div className="error-banner" role="alert">
-          <span>{error}</span>
-          <button aria-label="关闭提示" onClick={() => setError('')}>
-            <XIcon />
-          </button>
-        </div>
-      )}
-    </div>
+    </>
   );
 }
