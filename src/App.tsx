@@ -6,6 +6,7 @@ import { useAppearance } from './shared/useAppearance';
 import { GlobalSearch } from './features/search/GlobalSearch';
 import { VaultControl } from './features/vault/VaultProvider';
 import { modules, type Route } from './app/modules';
+import { UpdateBadge } from './features/settings/AppUpdate';
 
 export function App() {
   useAppearance();
@@ -94,6 +95,7 @@ export function App() {
         <div className="workspace-label">工作空间</div>
         {navigation('workspace')}
         <div className="sidebar-bottom">
+          <UpdateBadge />
           <VaultControl />
           <div className="local-badge">
             <span className="status-dot saved" />

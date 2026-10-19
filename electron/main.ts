@@ -22,6 +22,7 @@ import { SecretClipboard } from './secret-clipboard';
 import { Vault } from './vault';
 import { Backups } from './backup';
 import { SystemExports } from './system-export';
+import { UpdateCoordinator } from './update';
 import { exportScheme, renderExportDocument } from './export-native';
 
 protocol.registerSchemesAsPrivileged([
@@ -44,6 +45,7 @@ let window: BrowserWindow | null = null,
   allowClose = false,
   closePending = false,
   quitting = false;
+let updates: UpdateCoordinator;
 const backupSelections = new Map<string, { filename: string; expires: number }>();
 const pendingFlush = new Map<string, { resolve: () => void; reject: (e: Error) => void }>();
 function flushRenderer() {
@@ -225,6 +227,17 @@ app
   .then(() => {
     store = new Store(path.join(app.getPath('userData'), 'data'));
     backups = new Backups(store);
+    updates = new UpdateCoordinator({
+      currentVersion: app.getVersion(),
+      packaged: app.isPackaged,
+      platform: process.platform,
+      arch: process.arch,
+      fetch: (input, init) => net.fetch(input instanceof URL ? input.href : input, init),
+    });
+    updates.subscribe((state) => window?.webContents.send('update-state', state));
+    secureHandler('update-snapshot', () => updates.snapshot());
+    secureHandler('update-check', () => updates.check(true));
+    updates.start();
     secureHandler('data-generation', () => store.generation);
     secureHandler('system-appearance', systemAppearance);
     nativeTheme.on('updated', () => {
@@ -556,6 +569,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 app.on('will-quit', () => {
+  updates?.stop();
   vault?.lock();
   store?.close();
 });
