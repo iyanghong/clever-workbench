@@ -1,5 +1,9 @@
-import fs from 'node:fs/promises';
-import { createWriteStream } from 'node:fs';
+import nodeFs from 'node:fs';
+// Electron's patched fs treats app.asar as a mounted archive even while it is
+// still being written. Bundle staging must always use the actual filesystem.
+const rawFs: typeof nodeFs = process.versions.electron ? require('original-fs') : nodeFs;
+const fs = rawFs.promises;
+const createWriteStream = rawFs.createWriteStream;
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { execFile } from 'node:child_process';

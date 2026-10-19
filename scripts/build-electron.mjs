@@ -7,7 +7,7 @@ await build({
   platform: 'node',
   format: 'cjs',
   target: 'node24',
-  external: ['electron'],
+  external: ['electron', 'original-fs'],
   sourcemap: true,
 });
 await copyFile('scripts/macos-update-helper.sh', 'dist-electron/macos-update-helper.sh');
