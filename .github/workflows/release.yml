@@ -40,6 +40,7 @@ jobs:
           export CWB_UPDATE_ZIP="$GITHUB_WORKSPACE/release/Clever-Workbench-$version-arm64.zip"
           npx vitest run tests/update-download.test.ts
           node scripts/verify-electron-update-extraction.mjs "$CWB_UPDATE_ZIP"
+          node scripts/verify-electron-update-transport.mjs "$CWB_UPDATE_ZIP"
           mkdir -p release/installed
           ditto -x -k "$CWB_UPDATE_ZIP" release/installed
           codesign --verify --deep --strict 'release/installed/Clever Workbench.app'
