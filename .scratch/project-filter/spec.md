@@ -18,3 +18,9 @@ Status: ready-for-agent
 候选原因按顺序为：①工具栏拖动区域截获鼠标，单独排除 select 后命中检查与鼠标操作应恢复；②控件／菜单焦点异常，修正拖动区域后仍会无法选择；③额外覆盖层截获鼠标，排除拖动区域后仍会命中其他元素。只改变第一项验证。
 
 现有公共样式给工具栏声明 drag，并将 button、input、label 排除，遗漏 select。根据 [Electron 原生拖动区域说明](https://www.electronjs.org/docs/latest/tutorial/custom-window-interactions)，拖动区域不接收指针事件，需要显式 no-drag。实际回归同时检查该平台边界和项目筛选结果；DOM selectOption 本身会绕过原生命中，不能单独证明鼠标可用。
+
+## Answer
+
+`6bf9cdb` 已为工具栏中的 `select` 补上现有 `no-drag` 规则，未调整筛选逻辑或资料。旧样式失败的命中检查已通过，新增流程覆盖 A、B、未分类和全部项目的切换及列表结果。
+
+通过 CUA 原生鼠标操作展开菜单并选择虚构项目后，界面显示所选项目与该项目唯一任务，见 [原生操作截图](evidence/native-project-filter.png)。完整单元检查 18 个文件、72 项通过，定向桌面检查 4 项通过。安装包及双平台最终结果见[交付验证](../desktop-workbench/release-verification.md)，[两轴审查](code-review.md)未发现可操作问题。

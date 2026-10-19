@@ -1,43 +1,43 @@
 {
   "version": "0.1.0",
-  "sourceCommit": "758f87a91ec0ece061ef447e78961b7296b23cab",
-  "createdAt": "2026-10-18T17:21:29.230Z",
+  "sourceCommit": "6bf9cdb9af1a5db5658bf3db71f5bd6efe9c54d3",
+  "createdAt": "2026-10-19T01:26:13.835Z",
   "artifacts": [
     {
       "name": "Clever Workbench-0.1.0-arm64.dmg",
-      "bytes": 129423174,
-      "sha256": "88d774694ed2b648040b74da380f7209e8d1f22e699ce255c8be5e2005f8ae14"
+      "bytes": 129423192,
+      "sha256": "c368a6b71107704285cb5d07273f43b23597388f36f2d21826de83f36cac2f62"
     },
     {
       "name": "Clever Workbench-0.1.0-arm64-mac.zip",
-      "bytes": 128775959,
-      "sha256": "35f2de4e0a923bcb83f6bbd840895154c5c346fed30347a61bc774b753bd3f6b"
+      "bytes": 128775881,
+      "sha256": "c7333b94ea8acf4891aa397b785ab25a3767574c2c3eb0ead6032d41b585b3d9"
     },
     {
       "name": "Clever Workbench Setup 0.1.0.exe",
-      "bytes": 112653162,
-      "sha256": "3aff81802b0b4d87e96a2a9e94ad0a79ada5027a0b427d907517f5f59d67d51b"
+      "bytes": 112653049,
+      "sha256": "118bea15e3b7581dd85d72afe4c7e5af1b22426def6acc5249c17bd75d1bfa3f"
     }
   ],
   "packages": [
     {
-      "archive": "release/installed-758f87a/Clever Workbench.app/Contents/Resources/app.asar",
-      "sha256": "221d13e846a039a90356900ed9b5c1bf979973cf04c8a29eded7aa90d5f37790",
+      "archive": "release/installed-6bf9cdb/Clever Workbench.app/Contents/Resources/app.asar",
+      "sha256": "5360a26c2a2ff52ca7abc591aa84c330c806d79173fea1781f8b82ccbab5cff9",
       "files": [
         "/dist-electron/main.cjs",
         "/dist-electron/main.cjs.map",
         "/dist-electron/preload.cjs",
-        "/dist/assets/CaretRight.es-CeysSyic.js",
-        "/dist/assets/CheckCircle.es-oVTzDFT9.js",
-        "/dist/assets/DocumentsPage-Cs75E0OH.js",
-        "/dist/assets/Editor-CrkNBvo_.js",
-        "/dist/assets/LedgerPage-DcZOO5T_.js",
-        "/dist/assets/SettingsPage-cPgf9m5g.js",
-        "/dist/assets/TaskWorkspace-C6dQgbcU.js",
-        "/dist/assets/code-highlighting-DfyQaNvh.js",
+        "/dist/assets/CaretRight.es-7sJd7TES.js",
+        "/dist/assets/CheckCircle.es-DGx87AJG.js",
+        "/dist/assets/DocumentsPage-DylWv-kP.js",
+        "/dist/assets/Editor-DgNtYvHT.js",
+        "/dist/assets/LedgerPage-s8SWGoPt.js",
+        "/dist/assets/SettingsPage-CaqSHk69.js",
+        "/dist/assets/TaskWorkspace-DtFEdOOx.js",
+        "/dist/assets/code-highlighting-CCORd9d_.js",
         "/dist/assets/editor-model--1ETbRp-.js",
-        "/dist/assets/index-1P2VYC6m.js",
-        "/dist/assets/index-BwjfYppX.css",
+        "/dist/assets/index-DVTKYUDQ.js",
+        "/dist/assets/index-t2xBbhjE.css",
         "/dist/index.html"
       ],
       "buildFilesMatch": true,
@@ -45,22 +45,22 @@
     },
     {
       "archive": "release/win-unpacked/resources/app.asar",
-      "sha256": "221d13e846a039a90356900ed9b5c1bf979973cf04c8a29eded7aa90d5f37790",
+      "sha256": "5360a26c2a2ff52ca7abc591aa84c330c806d79173fea1781f8b82ccbab5cff9",
       "files": [
         "/dist-electron/main.cjs",
         "/dist-electron/main.cjs.map",
         "/dist-electron/preload.cjs",
-        "/dist/assets/CaretRight.es-CeysSyic.js",
-        "/dist/assets/CheckCircle.es-oVTzDFT9.js",
-        "/dist/assets/DocumentsPage-Cs75E0OH.js",
-        "/dist/assets/Editor-CrkNBvo_.js",
-        "/dist/assets/LedgerPage-DcZOO5T_.js",
-        "/dist/assets/SettingsPage-cPgf9m5g.js",
-        "/dist/assets/TaskWorkspace-C6dQgbcU.js",
-        "/dist/assets/code-highlighting-DfyQaNvh.js",
+        "/dist/assets/CaretRight.es-7sJd7TES.js",
+        "/dist/assets/CheckCircle.es-DGx87AJG.js",
+        "/dist/assets/DocumentsPage-DylWv-kP.js",
+        "/dist/assets/Editor-DgNtYvHT.js",
+        "/dist/assets/LedgerPage-s8SWGoPt.js",
+        "/dist/assets/SettingsPage-CaqSHk69.js",
+        "/dist/assets/TaskWorkspace-DtFEdOOx.js",
+        "/dist/assets/code-highlighting-CCORd9d_.js",
         "/dist/assets/editor-model--1ETbRp-.js",
-        "/dist/assets/index-1P2VYC6m.js",
-        "/dist/assets/index-BwjfYppX.css",
+        "/dist/assets/index-DVTKYUDQ.js",
+        "/dist/assets/index-t2xBbhjE.css",
         "/dist/index.html"
       ],
       "buildFilesMatch": true,
@@ -78,25 +78,35 @@
     "passed": 72
   },
   "installedMacE2E": {
-    "passed": 37,
+    "passed": 38,
     "failed": 0,
-    "durationSecondsApprox": 144,
+    "fullRun": {
+      "passed": 37,
+      "failed": 1,
+      "durationSecondsApprox": 156,
+      "failedCheck": "clipboard clears after 30 seconds",
+      "cause": "The system clipboard was externally replaced during the wait; the app preserved the new ordinary text."
+    },
+    "targetedRerun": {
+      "passed": 1,
+      "failed": 0,
+      "durationSeconds": 32.8
+    },
     "os": "macOS 27.0.1 (26A434)",
     "arch": "arm64"
   },
   "hostedCI": {
-    "runId": 39148983022,
-    "url": "https://github.com/iyanghong/clever-workbench/actions/runs/39148983022",
-    "sourceCommit": "758f87a91ec0ece061ef447e78961b7296b23cab",
+    "runId": 39184778921,
+    "url": "https://github.com/iyanghong/clever-workbench/actions/runs/39184778921",
+    "sourceCommit": "6bf9cdb9af1a5db5658bf3db71f5bd6efe9c54d3",
     "conclusion": "success",
     "macOS": {
       "unitPassed": 72,
-      "installedE2EPassed": 37
+      "installedE2EPassed": 38
     },
     "windowsServer2025": {
       "unitPassed": 72,
-      "installedE2EPassed": 37,
-      "pdfChineseAndEmbeddedFontsVerified": true
+      "installedE2EPassed": 38
     },
     "windows11Verified": false
   },
@@ -110,5 +120,16 @@
     "tasks": 3,
     "documents": 2,
     "continuedEditingAndReexport": true
+  },
+  "nativeProjectMenu": {
+    "sourceCommit": "6bf9cdb9af1a5db5658bf3db71f5bd6efe9c54d3",
+    "macOSNativeMouseVerified": true,
+    "screenshot": "../../project-filter/evidence/native-project-filter.png",
+    "fixtureDataOnly": true
+  },
+  "pdfVisualVerification": {
+    "sourceCommit": "758f87a91ec0ece061ef447e78961b7296b23cab",
+    "windowsCiRunId": 39148983022,
+    "chineseAndEmbeddedFontsVerified": true
   }
 }

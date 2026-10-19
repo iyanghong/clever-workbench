@@ -1,6 +1,6 @@
 # 首版交付验证
 
-版本：0.1.0。功能任务 01–20 及访问入口、服务器配置扩展已完成。用户最新追加的文档归属、系统任务与三种格式导出已实现，最终 Mac 安装包已通过复验；Windows 11 验收保持未完成。
+版本：0.1.0。功能任务 01–20 及访问入口、服务器配置扩展已完成。文档归属、系统任务、三种格式导出和项目选择修复均已交付，最终 Mac 安装包已通过复验；Windows 11 验收保持未完成。
 
 实际本机：macOS 27.0.1（26A434）、Apple Silicon arm64；Electron 44.9.0，运行时 Node.js 24.22.0。所有测试使用独立的虚构资料目录。
 
@@ -9,16 +9,23 @@
 | 范围 | 证据 | 结果 |
 | --- | --- | --- |
 | 新功能完整单元检查 | 18 个文件、72 项（2026-10-19） | 全部通过 |
-| 新功能完整桌面检查 | 开发构建、37 项真实 Electron 流程 | 全部通过 |
+| 项目选择定向桌面检查 | 开发构建、4 项真实 Electron 流程；另以原生鼠标展开菜单并选择项目 | 全部通过 |
+| 本机 Mac 安装检查 | DMG 安装后的 38 项流程，首轮 37 项通过，另 1 项外部剪贴板干扰后复跑通过 | 全部场景已覆盖通过，详见下文 |
 | Word／PDF 阅读检查 | 8 份文件、22 页，中文、32 行表格、代码、复选框与图片 | 全部通过，见补充规格证据 |
-| 最终双平台 CI | 758f87a，Mac 与 Windows Server 2025，各 72 项单元和 37 项安装包流程 | 全部通过，包含本轮导出 |
-| 最终 Mac／Windows 安装包 | 758f87a 的 DMG／ZIP 与 NSIS 已生成；Mac 从 DMG 安装并通过严格签名检查，双平台安装运行通过 | 通过，Windows 11 仍未验收 |
+| 最终双平台 CI | 6bf9cdb，Mac 与 Windows Server 2025，各 72 项单元和 38 项安装包流程 | 全部通过，包含项目选择修复 |
+| 最终 Mac／Windows 安装包 | 6bf9cdb 的 DMG／ZIP 与 NSIS 已生成；Mac 从 DMG 安装并通过严格签名检查，双平台安装运行通过 | 通过，Windows 11 仍未验收 |
 | Windows 11 x64 | 用户确认目前没有可用环境 | 未验收 |
 | 双向加密备份迁移 | Mac → Windows Server 2025 → Mac，含继续编辑和再次备份 | 通过；Windows 11 待验收 |
 | 原生闲置与锁屏 | 909468 ms 真正闲置锁定；另一次观察到真实系统锁屏后立即锁定 | 通过，原生休眠仅有事件边界验证 |
-| 两轴审查 | 原规格、台账扩展、文档／导出三轮发现均已修复并复核 | 已通过 |
+| 两轴审查 | 原规格、台账扩展、文档／导出的发现均已修复并复核，项目选择修复无新发现 | 已通过 |
 
-CI 链接：[758f87a / run 39148983022](https://github.com/iyanghong/clever-workbench/actions/runs/39148983022)。Windows runner 实际为 Windows Server 2025 Datacenter x64（10.0.26100），不能替代 Windows 11。
+CI 链接：[6bf9cdb / run 39184778921](https://github.com/iyanghong/clever-workbench/actions/runs/39184778921)。Windows runner 为 Windows Server 2025 x64，不能替代 Windows 11。
+
+## 项目选择修复
+
+工具栏的窗口拖动区域漏掉了 `select` 的排除规则，导致项目选择框无法接收原生鼠标输入。`6bf9cdb` 只为该控件补充既有 `no-drag` 样式；新增检查在旧样式中失败、修正后通过，同时覆盖具体项目、未分类和全部筛选。原生菜单操作与截图、诊断及两轴审查见[问题记录](../project-filter/spec.md)。
+
+本机安装回归首轮 37/38 通过，剪贴板清空断言因等待期间被外部操作写入新内容而未满足。应用保留新内容符合规则；同一安装包单独复跑该项通过（32.8 秒）。未修改剪贴板实现或放宽测试。隔离 CI 的 Mac 与 Windows 全套各 38 项均一次通过。
 
 ## 导出与页面验收
 
@@ -38,7 +45,7 @@ DOCX 由应用生成 OOXML，再以随环境提供的 LibreOffice 渲染；指�
 
 ## 安装包与依赖
 
-最终产物与源提交、SHA-256、ASAR 内容比对、签名和安装结果统一记录在 `evidence/release-artifacts.json`。当前源提交为 758f87a，包含新导出及审查修复。Mac 与 Windows 的应用 ASAR 完全一致，15 份包内构建文件逐一匹配本地生产构建。Mac 为 ad-hoc 签名，无 Developer ID 和公证；Windows 无发布者签名，属于个人使用版本。
+最终产物与源提交、SHA-256、ASAR 内容比对、签名和安装结果统一记录在 `evidence/release-artifacts.json`。当前源提交为 6bf9cdb，包含新导出、审查修复及项目选择修复。Mac 与 Windows 的应用 ASAR 完全一致，15 份包内构建文件逐一匹配本地生产构建。Mac 为 ad-hoc 签名，无 Developer ID 和公证；Windows 无发布者签名，属于个人使用版本。
 
 2026-10-19，`npm audit --omit=dev` 为 0 项漏洞。8 项 moderate 均来自 electron-builder 构建依赖中的 sprintf-js 链，不进入应用运行时；当前审计建议降级 builder，未直接采用。首页初始脚本约 331 kB，编辑器和各业务模块按需加载。
 
@@ -48,6 +55,6 @@ Windows 11 x64：安装同版本 NSIS，验证启动／退出、中文输入、�
 
 Mac 原生休眠仍需实际执行：先解锁一项虚构秘密，休眠后唤醒，确认普通台账可读、秘密要求重新解锁。当前仅有原生事件边界验证。
 
-最新两轴报告见 [system-documents-export/code-review.md](../system-documents-export/code-review.md)。零起点步骤、跨行标题和原始 HTML 的明确失败也已补充测试并经复核。
+文档／导出两轴报告见 [system-documents-export/code-review.md](../system-documents-export/code-review.md)，项目选择修复报告见 [project-filter/code-review.md](../project-filter/code-review.md)。零起点步骤、跨行标题和原始 HTML 的明确失败也已补充测试并经复核。
 
-Windows CI 实际生成的 PDF 总览两页均已渲染检查，中文正常，Microsoft YaHei 与 Consolas 字体已嵌入；样例和记录见补充规格的 `evidence/windows-verification.json`。
+758f87a 的 Windows CI 实际生成的 PDF 总览两页均已渲染检查，中文正常，Microsoft YaHei 与 Consolas 字体已嵌入；样例和记录见补充规格的 `evidence/windows-verification.json`。
