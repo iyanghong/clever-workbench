@@ -144,6 +144,11 @@ export type BackupInfo = {
 };
 export interface DesktopAPI {
   updateSnapshot(): Promise<import('./update-types').UpdateSnapshot>;
+  updateHistory(): Promise<import('./update-types').UpdateHistoryEntry[]>;
+  onUpdateHistory(handler: () => void): () => void;
+  updateHealthReady(): Promise<string | null>;
+  confirmUpdateHealth(nonce: string): Promise<void>;
+  openUpdateRecovery(id: string, kind: 'backup' | 'logs' | 'previous'): Promise<void>;
   checkUpdate(): Promise<import('./update-types').UpdateSnapshot>;
   downloadUpdate(): Promise<import('./update-types').UpdateSnapshot>;
   installUpdate(): Promise<import('./update-types').UpdateSnapshot>;

@@ -29,6 +29,7 @@ export type UpdateStatus =
   | 'available'
   | 'error';
 export interface UpdateSnapshot {
+  recovery?: { outcome: string; message: string };
   progress?: { received: number; total: number };
   status: UpdateStatus;
   currentVersion: string;
@@ -36,4 +37,19 @@ export interface UpdateSnapshot {
   message?: string;
   checkedAt?: string;
   retryAt?: string;
+}
+export interface UpdateHistoryEntry {
+  id: string;
+  currentVersion: string;
+  targetVersion: string;
+  createdAt: string;
+  updatedAt: string;
+  phase: string;
+  phaseStartedAt: number;
+  durations: Record<string, number>;
+  outcome: 'in-progress' | 'ready' | 'failed' | 'manual' | 'success';
+  message?: string;
+  backup?: string;
+  previousApp?: string;
+  transactionDirectory?: string;
 }

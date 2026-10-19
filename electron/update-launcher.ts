@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import type { PreparedUpdate } from './update-install';
 
 export interface InstallationTransaction {
+  historyId?: string;
   id: string;
   createdAt: string;
   currentVersion: string;
@@ -16,6 +17,7 @@ export interface InstallationTransaction {
 }
 
 export async function launchUpdateHelper(options: {
+  historyId?: string;
   prepared: PreparedUpdate;
   backup: string;
   executable: string;
@@ -38,6 +40,7 @@ export async function launchUpdateHelper(options: {
   const directory = path.join(options.transactionsDirectory, id);
   await fs.mkdir(directory, { mode: 0o700 });
   const transaction: InstallationTransaction = {
+    historyId: options.historyId,
     id,
     createdAt: new Date().toISOString(),
     currentVersion: options.currentVersion,

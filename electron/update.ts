@@ -44,6 +44,11 @@ export function trustedAsset(url: string, tag: string) {
   }
 }
 export class UpdateCoordinator {
+  private recovery?: UpdateSnapshot['recovery'];
+  setRecoverySummary(outcome: string, message: string) {
+    this.recovery = { outcome, message };
+    this.set({ ...this.state, recovery: this.recovery });
+  }
   private state: UpdateSnapshot;
   private listeners = new Set<(state: UpdateSnapshot) => void>();
   private pending?: Promise<UpdateSnapshot>;
@@ -201,6 +206,7 @@ export class UpdateCoordinator {
   private set(value: Partial<UpdateSnapshot>) {
     this.state = {
       currentVersion: this.options.currentVersion,
+      recovery: this.recovery,
       checkedAt: new Date(this.now()).toISOString(),
       ...value,
     } as UpdateSnapshot;

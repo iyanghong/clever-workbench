@@ -10,6 +10,12 @@ import { UpdateBadge, useAppUpdate } from './features/settings/AppUpdate';
 
 export function App() {
   useAppearance();
+  useEffect(() => {
+    void window.desktop
+      .updateHealthReady()
+      .then((nonce) => (nonce ? window.desktop.confirmUpdateHealth(nonce) : undefined))
+      .catch(() => {});
+  }, []);
   const update = useAppUpdate();
   const installing = update?.status === 'preparing' || update?.status === 'installing';
   const [route, setRoute] = useState<Route>({ module: 'home' });

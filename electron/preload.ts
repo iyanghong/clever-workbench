@@ -35,6 +35,15 @@ const call = async (channel: string, ...args: unknown[]) => {
 };
 const api: DesktopAPI = {
   updateSnapshot: () => call('update-snapshot'),
+  updateHistory: () => call('update-history'),
+  updateHealthReady: () => call('update-health-ready'),
+  confirmUpdateHealth: (nonce) => call('update-health-confirm', nonce),
+  openUpdateRecovery: (id, kind) => call('update-recovery-open', id, kind),
+  onUpdateHistory(handler) {
+    const listener = () => handler();
+    ipcRenderer.on('update-history-changed', listener);
+    return () => ipcRenderer.removeListener('update-history-changed', listener);
+  },
   checkUpdate: () => call('update-check'),
   downloadUpdate: () => call('update-download'),
   installUpdate: () => call('update-install'),

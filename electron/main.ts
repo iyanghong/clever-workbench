@@ -25,6 +25,7 @@ import { SystemExports } from './system-export';
 import { UpdateCoordinator } from './update';
 import { UpdateInstallation } from './update-install';
 import { launchUpdateHelper } from './update-launcher';
+import { UpdateJournal, UpdateHealth } from './update-recovery';
 import { exportScheme, renderExportDocument } from './export-native';
 
 protocol.registerSchemesAsPrivileged([
@@ -48,10 +49,21 @@ let window: BrowserWindow | null = null,
   closePending = false,
   quitting = false;
 let updates: UpdateCoordinator;
+let updateJournal: UpdateJournal | undefined, updateHealth: UpdateHealth | undefined;
+let updaterAvailable = true;
+function disableUpdates() {
+  updaterAvailable = false;
+  updates.stop();
+  updates.setRecoverySummary('manual', '更新记录无法写入，在线更新已暂停；本地工作空间仍可使用。');
+}
 let installation: UpdateInstallation;
 let updateFrozen = false;
 const activeOperations = new Set<Promise<unknown>>();
 const updateReadChannels = new Set([
+  'update-history',
+  'update-health-ready',
+  'update-health-confirm',
+  'update-recovery-open',
   'update-snapshot',
   'data-generation',
   'system-appearance',
@@ -220,6 +232,13 @@ function createWindow() {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event) => event.preventDefault());
   window.webContents.on('will-attach-webview', (event) => event.preventDefault());
+  window.webContents.on('did-finish-load', () => {
+    updateHealth?.windowReady();
+    void updateHealth?.poll().catch(() => {});
+  });
+  window.webContents.on('did-fail-load', () => {
+    void updateHealth?.fail('新版窗口加载失败，请查看日志与恢复材料。').catch(() => {});
+  });
   if (!app.isPackaged && process.env.VITE_DEV_SERVER_URL)
     window.loadURL(process.env.VITE_DEV_SERVER_URL);
   else window.loadFile(path.join(__dirname, '../dist/index.html'));
@@ -270,9 +289,7 @@ app.on('second-instance', () => {
 });
 app
   .whenReady()
-  .then(() => {
-    store = new Store(path.join(app.getPath('userData'), 'data'));
-    backups = new Backups(store);
+  .then(async () => {
     updates = new UpdateCoordinator({
       currentVersion: app.getVersion(),
       stagingDirectory: path.join(app.getPath('userData'), 'updates', 'staging'),
@@ -281,10 +298,64 @@ app
       arch: process.arch,
       fetch: (input, init) => net.fetch(input instanceof URL ? input.href : input, init),
     });
-    updates.subscribe((state) => window?.webContents.send('update-state', state));
+    try {
+      updateJournal = await UpdateJournal.open(path.join(app.getPath('userData'), 'updates'));
+      updateHealth = new UpdateHealth(updateJournal, {
+        version: app.getVersion(),
+        target: path.resolve(app.getPath('exe'), '../../..'),
+        userDataDirectory: app.getPath('userData'),
+        status: (status, message) => {
+          updates.setInstallationState({ status, message });
+          updates.setRecoverySummary(status, message);
+        },
+      });
+      if (app.isPackaged) await updateHealth.discover();
+      const previous = updateJournal.list()[0];
+      if (previous && ['success', 'manual', 'failed'].includes(previous.outcome))
+        updates.setRecoverySummary(previous.outcome, previous.message ?? '请查看上次更新记录。');
+    } catch {
+      updaterAvailable = false;
+      updates.setInstallationState({
+        status: 'manual',
+        message: '更新记录无法读取，在线更新暂不可用；本地工作空间仍可使用。',
+      });
+    }
+    store = new Store(path.join(app.getPath('userData'), 'data'));
+    store.snapshot();
+    updateHealth?.databaseReady();
+    backups = new Backups(store);
+    updates.subscribe((state) => {
+      window?.webContents.send('update-state', state);
+      if (updateJournal && updaterAvailable)
+        void updateJournal
+          .observe(state)
+          .then(() => window?.webContents.send('update-history-changed'))
+          .catch(() => {
+            disableUpdates();
+          });
+    });
     secureHandler('update-snapshot', () => updates.snapshot());
-    secureHandler('update-check', () => updates.check(true));
-    secureHandler('update-download', () => updates.download());
+    secureHandler('update-check', () => {
+      if (!updaterAvailable) return updates.snapshot();
+      return updates.check(true);
+    });
+    secureHandler('update-download', () => {
+      if (!updaterAvailable) throw Error('更新记录不可写，请检查更新目录。');
+      return updates.download();
+    });
+    secureHandler('update-history', () => updateJournal?.list() ?? []);
+    secureHandler('update-health-ready', () => updateHealth?.challenge ?? null);
+    secureHandler('update-health-confirm', async (nonce) => {
+      if (typeof nonce === 'string') await updateHealth?.confirm(nonce);
+    });
+    secureHandler('update-recovery-open', async (id, kind) => {
+      if (typeof id !== 'string' || !['backup', 'logs', 'previous'].includes(kind))
+        throw Error('恢复资料类型无效。');
+      const filename = updateJournal?.recoveryPath(id, kind);
+      if (!filename) throw Error('没有对应恢复资料。');
+      await fs.access(filename);
+      shell.showItemInFolder(filename);
+    });
     installation = new UpdateInstallation({
       prepared: () => updates.preparedUpdate(),
       status: (state) =>
@@ -292,6 +363,7 @@ app
           state as Parameters<UpdateCoordinator['setInstallationState']>[0],
         ),
       eligible: () => {
+        if (!updaterAvailable) throw Error('更新记录不可写，请检查更新目录。');
         if (!app.isPackaged || process.platform !== 'darwin' || process.arch !== 'arm64')
           throw Error('当前运行方式不支持自动安装更新。');
         if (restoring || rotatingProtection || closePending)
@@ -330,7 +402,9 @@ app
         return filename;
       },
       launch: async (prepared, backup) => {
-        await launchUpdateHelper({
+        await updateJournal?.flush();
+        const directory = await launchUpdateHelper({
+          historyId: updateJournal?.activeId,
           prepared,
           backup,
           executable: app.getPath('exe'),
@@ -339,6 +413,10 @@ app
           transactionsDirectory: path.join(app.getPath('userData'), 'updates', 'transactions'),
           helperSource: path.join(__dirname, 'macos-update-helper.sh'),
         });
+        const transaction = JSON.parse(
+          await fs.readFile(path.join(directory, 'transaction.json'), 'utf8'),
+        );
+        await updateJournal?.attach(directory, transaction);
       },
       quit: () => {
         vault.lock();
@@ -350,7 +428,12 @@ app
       await installation.install();
       return updates.snapshot();
     });
-    updates.start();
+    if (updaterAvailable && !updateHealth?.pending) updates.start();
+    setInterval(() => {
+      void updateHealth?.poll().catch(() => {
+        disableUpdates();
+      });
+    }, 1000).unref();
     secureHandler('data-generation', () => store.generation);
     secureHandler('system-appearance', systemAppearance);
     nativeTheme.on('updated', () => {
@@ -673,7 +756,10 @@ app
       if (!window) createWindow();
     });
   })
-  .catch((error) => {
+  .catch(async (error) => {
+    await updateHealth
+      ?.fail('新版资料库或启动初始化失败，请查看恢复材料；未自动恢复旧数据。')
+      .catch(() => {});
     dialog.showErrorBox('Clever Workbench 无法打开', error.message);
     app.quit();
   });

@@ -20,6 +20,7 @@ candidate="$target.incoming"
 previous="$target.previous"
 lock="$target.update-lock"
 phase() {
+  /usr/bin/printf '%s|%s\n' "$(/bin/date +%s)" "$1" >> "$transaction/phases.log"
   /usr/bin/printf '%s\n' "$1" > "$transaction/helper-status.next"
   /bin/mv -f "$transaction/helper-status.next" "$transaction/helper-status"
 }
