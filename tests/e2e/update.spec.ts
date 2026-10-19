@@ -64,7 +64,7 @@ test('installed updated application confirms a private pending transaction only 
       createdAt: new Date().toISOString(),
       currentVersion: '0.0.0',
       targetVersion: version,
-      target: path.resolve(process.env.CWB_TEST_EXECUTABLE!, '../../..'),
+      target: await fs.realpath(path.resolve(process.env.CWB_TEST_EXECUTABLE!, '../../..')),
       backup: path.join(directory, 'retained.cwb'),
       stageDirectory: path.join(directory, 'stage'),
       userDataDirectory: directory,
