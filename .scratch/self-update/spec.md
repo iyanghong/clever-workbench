@@ -1,6 +1,8 @@
 # Clever Workbench GitHub Release 自更新
 
-Status: ready-for-agent
+Status: ready-for-human
+
+Completion: 实现已合入 feat/self-update；本地验证及审查见 implementation.md，真实公开 Release 升级验收尚待发布条件具备后完成。
 
 日期：2026-10-19。用户已确认规格、测试边界及七项任务，并调用 implement-spec 授权实施。本文是需求规格，不代表已实现或已通过 macOS 安装实验。
 
@@ -131,3 +133,4 @@ Status: ready-for-agent
 ## Comments
 
 - 2026-10-19：根据已完成访谈创建可审阅草案。测试接口与真实安装包验证边界待用户确认；确认后发布为 ready-for-agent，无需再次分流。
+- 2026-10-19：用户通过 implement-spec 明确确认并授权实施。已完成更新入口、下载校验、独立安装助手、备份与健康确认、历史恢复、发布流程。系统拦截发生在应用初始化之前时，由独立助手作有限时诊断并打开恢复材料，不进行自动数据库回退。发布条件及验收限制见实施和验收记录。
