@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-test('月度回顾和项目全貌可定位跨月与同日任务，重开后完成计数更新', async ({}, testInfo) => {
+test('月度回顾和系统全貌可定位跨月与同日任务，重开后完成计数更新', async ({}, testInfo) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-timeline-ui-'));
   const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
   delete env.ELECTRON_RUN_AS_NODE;
@@ -15,9 +15,8 @@ test('月度回顾和项目全貌可定位跨月与同日任务，重开后完�
       const now = new Date(),
         year = now.getFullYear(),
         month = now.getMonth();
-      const projectId = (
-        await window.desktop.mutate({ type: 'project.create', name: '迭代回顾', color: '#007aff' })
-      ).createdId!;
+      const projectId = (await window.desktop.mutate({ type: 'system.save', name: '迭代回顾' }))
+        .createdId!;
       const make = async (title: string, start: number, end?: number) => {
         const id = (
           await window.desktop.mutate({
@@ -26,7 +25,8 @@ test('月度回顾和项目全貌可定位跨月与同日任务，重开后完�
               title,
               markdown: '',
               content: { type: 'doc', content: [{ type: 'paragraph' }] },
-              projectId,
+              systemId: projectId,
+              projectId: null,
               startedAt: start,
             },
           })
@@ -67,8 +67,8 @@ test('月度回顾和项目全貌可定位跨月与同日任务，重开后完�
     await page.getByLabel('回顾月份').fill(fixture.previous);
     await expect(stat('本月涉及任务')).toHaveText('02');
     await expect(stat('本月完成任务')).toHaveText('00');
-    await page.getByRole('button', { name: '项目回顾', exact: true }).click();
-    await page.getByLabel('回顾项目').selectOption(fixture.projectId);
+    await page.getByRole('button', { name: '系统回顾', exact: true }).click();
+    await page.getByLabel('回顾系统').selectOption(fixture.projectId);
     await expect(page.locator('.timeline-row')).toHaveCount(3);
     await page.locator('.timeline-row').filter({ hasText: '同日处理' }).click();
     await expect(page.getByLabel('任务标题', { exact: true })).toHaveValue('同日处理');

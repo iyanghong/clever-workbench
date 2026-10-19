@@ -1,3 +1,4 @@
+import { WorkspaceLedger } from './ledger-workspace';
 import type { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import { AccessEntries } from './access-entries';
@@ -241,16 +242,27 @@ export class Ledger {
       );
     return id;
   }
-  resolveContext(input: Partial<ObjectContext>): ObjectContext {
+  resolveContext(input: Partial<ObjectContext>, historical = false): ObjectContext {
     const resourceId = input.resourceId ?? null;
     const resource = resourceId ? this.resource(resourceId) : null;
     if (
       resource &&
       input.environmentId !== undefined &&
-      input.environmentId !== resource.environmentId
+      input.environmentId !== null &&
+      this.environment(input.environmentId!).systemId !== resource.systemId
     )
       throw new Error('资源与背景环境不一致。');
-    const environmentId = resource ? resource.environmentId : (input.environmentId ?? null);
+    const environmentId =
+      input.environmentId !== undefined ? input.environmentId : (resource?.environmentId ?? null);
+    if (resource && !historical && input.environmentId !== undefined) {
+      const scope = new WorkspaceLedger(this.db)
+        .scopes()
+        .find((s) => s.kind === 'resource' && s.ownerId === resource.id);
+      const environments =
+        scope?.environmentIds ?? (resource.environmentId ? [resource.environmentId] : []);
+      if (environments.length && environmentId && !environments.includes(environmentId))
+        throw new Error('资源与背景环境不一致。');
+    }
     const environment = environmentId ? this.environment(environmentId) : null;
     if (environment && input.systemId !== undefined && input.systemId !== environment.systemId)
       throw new Error('环境与背景系统不一致。');
@@ -381,6 +393,7 @@ export class Ledger {
     for (const row of this.db.prepare('SELECT id FROM accounts WHERE accessId=?').all(id))
       this.deleteAccount(String(row.id));
     this.db.prepare('DELETE FROM access_entries WHERE id=?').run(id);
+    this.db.prepare("DELETE FROM ledger_scopes WHERE kind='access' AND ownerId=?").run(id);
   }
   copyAccess(command: Extract<LedgerCommand, { type: 'access.copy' }>, now: number) {
     const source = this.accessEntries.get(command.id);
@@ -428,6 +441,10 @@ export class Ledger {
       },
       now,
     );
+    const workspace = new WorkspaceLedger(this.db);
+    const scope = workspace.scopes().find((s) => s.kind === 'access' && s.ownerId === source.id);
+    if (scope && systemId === source.systemId && command.environmentId === undefined)
+      workspace.saveScope('access', id, scope);
     return { id, accounts };
   }
   private copyOwnedAccounts(
@@ -470,15 +487,14 @@ export class Ledger {
     this.system(systemId);
     if (environment && environment.systemId !== systemId)
       throw new Error('资源与环境必须属于同一系统。');
-    if (!environment && command.kind !== 'server') throw new Error('此类资源需要指定环境。');
+
     if (previous && previous.systemId !== systemId)
       throw new Error('已有资源不能移动到其他系统，请复制。');
     if (previous && previous.environmentId !== command.environmentId) {
-      if (previous.kind !== 'server' || command.kind !== 'server')
-        throw new Error('已有资源的环境不能直接改变，请复制为新资源。');
       this.protectResourceReferences(previous.id);
     }
-    if (!['redis', 'server', 'other'].includes(command.kind)) throw new Error('资源类型无效。');
+    if (!['redis', 'server', 'database', 'other'].includes(command.kind))
+      throw new Error('资源类型无效。');
     const name = field(command.name, 1000).trim();
     if (!name) throw new Error('请填写资源名称。');
     const duplicate = this.db
@@ -515,6 +531,18 @@ export class Ledger {
       this.db
         .prepare('UPDATE accounts SET environmentId=? WHERE resourceId=?')
         .run(command.environmentId, id);
+    const workspace = new WorkspaceLedger(this.db);
+    const scope = workspace.scopes().find((s) => s.kind === 'resource' && s.ownerId === id);
+    workspace.saveScope(
+      'resource',
+      id,
+      scope && previous?.environmentId === command.environmentId
+        ? scope
+        : {
+            environmentIds: command.environmentId ? [command.environmentId] : [],
+            tags: scope?.tags ?? [],
+          },
+    );
     return id;
   }
   copyResource(command: Extract<LedgerCommand, { type: 'resource.copy' }>, now: number) {
@@ -555,6 +583,10 @@ export class Ledger {
       now,
     );
     const accounts = this.copyOwnedAccounts('resourceId', source.id, id, environmentId, now);
+    const workspace = new WorkspaceLedger(this.db);
+    const scope = workspace.scopes().find((s) => s.kind === 'resource' && s.ownerId === source.id);
+    if (scope && systemId === source.systemId && command.environmentId === undefined)
+      workspace.saveScope('resource', id, scope);
     return { id, accounts };
   }
   deleteResource(id: string) {
@@ -562,6 +594,7 @@ export class Ledger {
     this.protectResourceReferences(id);
     try {
       this.db.prepare('DELETE FROM resources WHERE id=?').run(id);
+      this.db.prepare("DELETE FROM ledger_scopes WHERE kind='resource' AND ownerId=?").run(id);
     } catch (cause) {
       if (cause instanceof Error && cause.message.includes('FOREIGN KEY'))
         throw new Error('资源仍有关联资料，请先处理引用。');
@@ -569,6 +602,14 @@ export class Ledger {
     }
   }
   private protectResourceReferences(id: string) {
+    if (
+      this.db
+        .prepare(
+          'SELECT 1 FROM deployment_nodes WHERE serverId=? UNION ALL SELECT 1 FROM operations WHERE resourceId=?',
+        )
+        .get(id, id)
+    )
+      throw new Error('资源仍被部署节点或运维记录引用，请先处理引用。');
     const draft = this.db.prepare("SELECT value FROM preferences WHERE key='draft'").get();
     if (
       this.db
@@ -604,8 +645,11 @@ export function validateLedger(db: DatabaseSync) {
       ledger.environment(field(row.environmentId, 100)).systemId !== row.systemId
     )
       throw new Error('备份资源环境归属无效。');
-    if (row.environmentId === null && row.kind !== 'server') throw new Error('备份资源缺少环境。');
-    if (!field(row.name, 1000).trim() || !['redis', 'server', 'other'].includes(row.kind))
+
+    if (
+      !field(row.name, 1000).trim() ||
+      !['redis', 'server', 'database', 'other'].includes(row.kind)
+    )
       throw new Error('备份资源信息无效。');
     field(row.address, 10_000);
     field(row.notes, 100_000);

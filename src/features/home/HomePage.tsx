@@ -1,3 +1,4 @@
+import { scopeFor } from '../../ledger-workspace-types';
 import { useEffect, useRef, useState } from 'react';
 import {
   CheckIcon,
@@ -88,6 +89,15 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
       .filter((item) => item.deletedAt === null && item.completedAt === null)
       .sort((a, b) => b.createdAt - a.createdAt) ?? [];
   const recent = snapshot?.documents.filter((item) => item.deletedAt === null).slice(0, 6) ?? [];
+  function scopeName(kind: 'resource' | 'access', id: string, environmentId: string | null) {
+    if (!snapshot) return '';
+    const scope = scopeFor(snapshot.scopes, kind, id, environmentId);
+    return scope.environmentIds.length
+      ? scope.environmentIds
+          .map((id) => snapshot.environments.find((e) => e.id === id)?.name)
+          .join('、')
+      : '系统通用';
+  }
   function favoriteInfo(item: Favorite) {
     if (!snapshot) return null;
     if (item.kind === 'system') {
@@ -108,7 +118,7 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
       return access
         ? {
             title: access.name,
-            context: `${snapshot.systems.find((s) => s.id === access.systemId)?.name} / ${snapshot.environments.find((e) => e.id === access.environmentId)?.name ?? '通用'}`,
+            context: `${snapshot.systems.find((s) => s.id === access.systemId)?.name} / ${scopeName('access', access.id, access.environmentId)}`,
             account: null,
             access,
           }
@@ -121,7 +131,11 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
       title: account.name,
       context: [
         snapshot.systems.find((s) => s.id === account.systemId)?.name,
-        environment?.name ?? '通用',
+        account.resourceId
+          ? scopeName('resource', account.resourceId, account.environmentId)
+          : account.accessId
+            ? scopeName('access', account.accessId, account.environmentId)
+            : (environment?.name ?? '通用'),
         account.resourceId
           ? snapshot.resources.find((r) => r.id === account.resourceId)?.name
           : snapshot.accessEntries.find((e) => e.id === account.accessId)?.name,
@@ -202,8 +216,8 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
                   >
                     <strong>{item.title}</strong>
                     <span>
-                      {snapshot?.projects.find((project) => project.id === item.projectId)?.name ??
-                        '未分类'}
+                      {snapshot?.systems.find((system) => system.id === item.systemId)?.name ??
+                        '未关联系统'}
                     </span>
                   </button>
                 </div>

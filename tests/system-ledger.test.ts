@@ -72,7 +72,7 @@ test(
           expect.objectContaining({
             kind: 'account',
             username: 'operator',
-            context: '订单平台 / 通用 / Jenkins',
+            context: '订单平台 / 系统通用 / Jenkins',
           }),
         ]),
       );
@@ -127,7 +127,19 @@ test(
       expect(resource.systemId).toBe(
         snapshot.environments.find((e) => e.id === resource.environmentId)!.systemId,
       );
-    expect(snapshot.tasks).toEqual(original.workspace.data.tasks);
+    for (const old of original.workspace.data.tasks) {
+      const migrated = snapshot.tasks.find((task) => task.id === old.id)!;
+      expect(migrated).toMatchObject({
+        ...old,
+        projectId: null,
+        environmentId: null,
+        resourceId: null,
+      });
+      if (old.projectId)
+        expect(migrated.history).toContain(
+          original.workspace.data.projects.find((p: any) => p.id === old.projectId).name,
+        );
+    }
     expect(snapshot.documents).toEqual(original.workspace.data.documents);
     const vault = new Vault(store);
     try {
@@ -175,7 +187,7 @@ test('无环境可记录多台服务器及可选多角色账号，相关任务�
       content: emptyContent(),
     },
   }).createdId!;
-  expect(store.task(task)).toMatchObject({ systemId, environmentId: null, resourceId: server });
+  expect(store.task(task)).toMatchObject({ systemId, environmentId: null, resourceId: null });
   expect(store.snapshot().resources).toHaveLength(2);
   expect(
     store.snapshot().accounts.map((a) => [a.name, a.username, a.systemId, a.environmentId]),
@@ -189,9 +201,9 @@ test('无环境可记录多台服务器及可选多角色账号，相关任务�
       systemId,
       environmentId: null,
       kind: 'redis',
-      name: '不支持的通用 Redis',
+      name: '通用 Redis',
     }),
-  ).toThrow('环境');
+  ).not.toThrow();
   expect(() => store.mutate({ type: 'resource.delete', id: server })).toThrow('引用');
   store.close();
   const reopened = open(store.root);
@@ -256,17 +268,15 @@ test('服务器可后补环境并保留多账号，带资料引用时保护旧�
         content: emptyContent(),
       },
     }).createdId!;
-    expect(() =>
-      store.mutate({
-        type: 'resource.save',
-        id: server,
-        kind: 'server',
-        systemId,
-        environmentId: null,
-        name: '应用节点',
-      }),
-    ).toThrow('引用');
-    expect(store.task(task)).toMatchObject({ resourceId: server, environmentId });
+    store.mutate({
+      type: 'resource.save',
+      id: server,
+      kind: 'server',
+      systemId,
+      environmentId: null,
+      name: '应用节点',
+    });
+    expect(store.task(task)).toMatchObject({ systemId, resourceId: null, environmentId: null });
     const plain = store.mutate({
       type: 'resource.copy',
       id: server,

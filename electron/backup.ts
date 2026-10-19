@@ -1,3 +1,5 @@
+import { WorkspaceLedger } from './ledger-workspace';
+import { migrateWorkbench } from './workbench-migration';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
@@ -469,7 +471,7 @@ async function validateDatabase(
     db.exec('PRAGMA trusted_schema=OFF; PRAGMA foreign_keys=ON');
     const version = Number(db.prepare('PRAGMA user_version').get()!.user_version);
     if (
-      ![7, schemaVersion].includes(version) ||
+      ![7, 8, schemaVersion].includes(version) ||
       Object.values(db.prepare('PRAGMA integrity_check').get()!)[0] !== 'ok' ||
       db.prepare('PRAGMA foreign_key_check').all().length
     )
@@ -485,9 +487,16 @@ async function validateDatabase(
     await verifyVaultIntegrity(db, password, protection);
     if (version < schemaVersion) {
       migrateSystemLedger(db);
+      migrateWorkbench(db);
       db.exec(`PRAGMA user_version=${schemaVersion}`);
     }
     validateLedger(db);
+    db.exec('SAVEPOINT validate_workspace');
+    try {
+      new WorkspaceLedger(db).validate();
+    } finally {
+      db.exec('ROLLBACK TO validate_workspace; RELEASE validate_workspace');
+    }
     const ledger = new Ledger(db);
     for (const row of db.prepare('SELECT key,value FROM preferences').all()) {
       const value = JSON.parse(row.value as string);
@@ -569,7 +578,7 @@ async function validateDatabase(
         (document.deletedAt !== null && !Number.isSafeInteger(document.deletedAt))
       )
         throw new Error('文档记录无效。');
-      ledger.resolveContext(document);
+      ledger.resolveContext(document, true);
       if (document.projectId !== null && !projectMap.has(document.projectId))
         throw new Error('文档项目丢失。');
       const content = JSON.parse(row.content as string);

@@ -1,3 +1,4 @@
+import { openLedgerRecord } from './ledger-actions';
 import { electron } from './launch';
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
@@ -25,7 +26,7 @@ test('首次保存秘密设置主密码，手动锁定及重启后按需解锁�
       });
     });
     await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('tab', { name: '账号', exact: true }).click();
+    await openLedgerRecord(page, '账号', undefined, true);
     await page.getByRole('button', { name: '添加密码', exact: true }).click({ timeout: 3000 });
     await page.getByLabel('主密码', { exact: true }).fill('fictional-master-password-2026');
     await page.getByLabel('确认主密码').fill('fictional-master-password-2026');
@@ -49,7 +50,7 @@ test('首次保存秘密设置主密码，手动锁定及重启后按需解锁�
     app = await electron.launch({ args: ['.'], env });
     page = await app.firstWindow();
     await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('tab', { name: '账号', exact: true }).click();
+    await openLedgerRecord(page, '账号', undefined, true);
     await expect(page.getByLabel('账号用户名', { exact: true })).toHaveValue('admin');
     expect(await page.evaluate(() => window.desktop.vaultStatus())).toEqual({
       initialized: true,
@@ -98,7 +99,7 @@ test('秘密在可信侧复制，30 秒清理及锁屏事件撤销访问，取�
       return account;
     });
     await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('tab', { name: '账号', exact: true }).click();
+    await openLedgerRecord(page, '账号', undefined, true);
     await page.getByRole('button', { name: '复制密码', exact: true }).click({ timeout: 3000 });
     await expect
       .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
@@ -171,6 +172,7 @@ test('账号和资源的秘密复制必须明确勾选，取消解锁不创建�
       await window.desktop.lockVault();
     });
     await page.getByRole('button', { name: '台账', exact: true }).click();
+    await openLedgerRecord(page, '账号', '连接账号', true);
     await page.getByRole('button', { name: '复制账号', exact: true }).click();
     await expect(page.getByLabel('同时复制账号秘密')).not.toBeChecked();
     await page.getByLabel('同时复制账号秘密').check();
@@ -188,10 +190,15 @@ test('账号和资源的秘密复制必须明确勾选，取消解锁不创建�
     await expect(page.getByLabel('账号用途', { exact: true })).toHaveValue('连接账号 副本');
     await page.getByRole('button', { name: '查看密码', exact: true }).click();
     await expect(page.getByLabel('已显示的密码')).toHaveValue('fictional-clone-secret');
+    await openLedgerRecord(page, '数据库／中间件', '生产缓存', true);
     await page.getByRole('button', { name: '复制资源', exact: true }).click();
     await expect(page.getByLabel('同时复制资源账号和秘密')).not.toBeChecked();
     await page.getByLabel('同时复制资源账号和秘密').check();
     await page.getByRole('button', { name: '创建副本', exact: true }).click();
+    await page
+      .getByRole('complementary', { name: '台账详情' })
+      .getByRole('button', { name: '编辑', exact: true })
+      .click();
     await expect(page.getByLabel('资源名称', { exact: true })).toHaveValue('生产缓存 副本');
     const snapshot = await page.evaluate(() => window.desktop.snapshot());
     expect(snapshot.resources).toHaveLength(2);

@@ -1,3 +1,10 @@
+import type {
+  WorkspaceLedgerCommand,
+  LedgerScope,
+  DeploymentNode,
+  Operation,
+  LedgerBatch,
+} from './ledger-workspace-types';
 import type { Favorite, FavoriteCommand } from './home-types';
 import type { SystemExportOptions, SystemExportResult } from './export-types';
 import type { SearchHit } from './search-types';
@@ -24,6 +31,7 @@ import type {
 } from './ledger-types';
 export type Project = { id: string; name: string; color: string; archivedAt: number | null };
 export type TaskSummary = {
+  history?: string;
   id: string;
   title: string;
   projectId: string | null;
@@ -37,6 +45,7 @@ export type TaskSummary = {
 };
 export type Task = TaskSummary & { content: JSONContent; markdown: string };
 export type Draft = {
+  history?: string;
   title: string;
   projectId: string | null;
   systemId?: string | null;
@@ -58,6 +67,9 @@ export type Settings = {
 };
 export type SystemAppearance = { reduceTransparency: boolean; highContrast: boolean };
 export type Snapshot = {
+  scopes: LedgerScope[];
+  deploymentNodes: DeploymentNode[];
+  operations: Operation[];
   accessEntries: AccessEntry[];
   favorites: Favorite[];
   documents: DocumentSummary[];
@@ -74,6 +86,7 @@ export type Snapshot = {
   settings: Settings;
 };
 export type Command =
+  | WorkspaceLedgerCommand
   | FavoriteCommand
   | DocumentCommand
   | LedgerCommand
@@ -96,6 +109,7 @@ export type Command =
       restoreProject?: boolean;
       completedAt?: number;
     }
+  | { type: 'task.assign-system'; ids: string[]; systemId: string | null }
   | { type: 'task.dates'; id: string; startedAt: number; completedAt: number | null }
   | { type: 'task.delete'; id: string }
   | { type: 'task.restore'; id: string; destination?: 'original' | 'unclassified' }
@@ -129,6 +143,7 @@ export type BackupInfo = {
   secrets: number;
 };
 export interface DesktopAPI {
+  captureLedgerBatch(input: LedgerBatch): Promise<MutationResult>;
   exportSystem(options: SystemExportOptions): Promise<SystemExportResult | null>;
   captureLedger(input: LedgerCapture): Promise<MutationResult>;
   copyAccessWithSecrets(id: string, target: AccessCopyTarget): Promise<MutationResult>;

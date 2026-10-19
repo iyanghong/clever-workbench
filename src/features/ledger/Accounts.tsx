@@ -150,7 +150,7 @@ export function Accounts({
   );
 }
 
-function AccountEditor({
+export function AccountEditor({
   account,
   revealTarget,
   snapshot,

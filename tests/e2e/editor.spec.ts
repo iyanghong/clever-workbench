@@ -32,7 +32,7 @@ test('以 Markdown 为准加载，粘贴截图后立即退出仍保留正文和�
     );
     await page.getByRole('button', { name: '台账', exact: true }).click();
     await page.getByRole('button', { name: '工作任务', exact: true }).click();
-    await page.getByRole('button', { name: /正文权威来源.*未分类/ }).click();
+    await page.getByRole('button', { name: /正文权威来源.*未关联系统/ }).click();
     let editor = page.getByRole('textbox', { name: '工作内容' });
     await expect(editor).toContainText('检查连接池', { timeout: 3000 });
     await expect(editor).not.toContainText('旧缓存');
@@ -52,7 +52,7 @@ test('以 Markdown 为准加载，粘贴截图后立即退出仍保留正文和�
     await app.close();
     app = await electron.launch({ args: ['.'], env });
     page = await app.firstWindow();
-    await page.getByRole('button', { name: /正文权威来源.*未分类/ }).click();
+    await page.getByRole('button', { name: /正文权威来源.*未关联系统/ }).click();
     editor = page.getByRole('textbox', { name: '工作内容' });
     await expect(editor).toContainText('检查连接池');
     await expect(editor.locator('img')).toBeVisible();
@@ -91,7 +91,7 @@ test('以 Markdown 为准加载，粘贴截图后立即退出仍保留正文和�
     await expect(editor.locator('img')).toHaveCount(2);
     await fs.rm(original);
     await page.getByLabel('关闭详情').click();
-    await page.getByRole('button', { name: /正文权威来源.*未分类/ }).click();
+    await page.getByRole('button', { name: /正文权威来源.*未关联系统/ }).click();
     await expect(editor.locator('img')).toHaveCount(2);
     await expect
       .poll(() =>
@@ -116,7 +116,7 @@ test('表格与源码切换保全内容，不支持的结构重启后仍可编�
     let page = await app.firstWindow();
     await page.getByLabel('快速新增任务').fill('检查编辑往返');
     await page.getByLabel('快速新增任务').press('Enter');
-    await page.getByRole('button', { name: /检查编辑往返.*未分类/ }).click();
+    await page.getByRole('button', { name: /检查编辑往返.*未关联系统/ }).click();
     await page.getByRole('button', { name: 'Markdown 源码', exact: true }).click({ timeout: 3000 });
     const source =
       '## 排障记录\n\n| 环境 | 端口 |\n| --- | --- |\n| 生产 | 6379 |\n\n```sql\nselect 1;\n```\n\n- [x] 完成检查\n- [ ] 继续观察';
@@ -138,7 +138,7 @@ test('表格与源码切换保全内容，不支持的结构重启后仍可编�
     await app.close();
     app = await electron.launch({ args: ['.'], env });
     page = await app.firstWindow();
-    await page.getByRole('button', { name: /检查编辑往返.*未分类/ }).click();
+    await page.getByRole('button', { name: /检查编辑往返.*未关联系统/ }).click();
     await expect(page.getByLabel('Markdown 源码内容')).toHaveValue(unsupported);
     await page.screenshot({ path: testInfo.outputPath('markdown-source-preserved.png') });
   } finally {
@@ -158,7 +158,7 @@ test('保存失败时留在编辑页并保留最新内容，重试成功后再�
     const page = await app.firstWindow();
     await page.getByLabel('快速新增任务').fill('保留未保存内容');
     await page.getByLabel('快速新增任务').press('Enter');
-    await page.getByRole('button', { name: /保留未保存内容.*未分类/ }).click();
+    await page.getByRole('button', { name: /保留未保存内容.*未关联系统/ }).click();
     const generation = (await fs.readFile(path.join(directory, 'data', 'CURRENT'), 'utf8')).trim();
     database = new DatabaseSync(
       path.join(directory, 'data', 'vaults', generation, 'database.sqlite'),
@@ -174,7 +174,7 @@ test('保存失败时留在编辑页并保留最新内容，重试成功后再�
     database.exec('DROP TRIGGER test_write_failure');
     await page.getByLabel('关闭详情').click();
     await expect(page.getByRole('complementary', { name: '任务详情' })).toHaveCount(0);
-    await page.getByRole('button', { name: /保留未保存内容.*未分类/ }).click();
+    await page.getByRole('button', { name: /保留未保存内容.*未关联系统/ }).click();
     await expect(editor).toContainText('最新的排障结论不能丢失。');
   } finally {
     if (database) {

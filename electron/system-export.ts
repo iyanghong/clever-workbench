@@ -15,6 +15,7 @@ import {
 } from '../src/export-types';
 import { secretLabels } from '../src/vault-types';
 import type { ObjectContext } from '../src/ledger-types';
+import { scopeFor, type ScopeKind } from '../src/ledger-workspace-types';
 
 type ExportDocument = { name: string; markdown: string };
 export type DocumentRenderer = (
@@ -110,6 +111,22 @@ export class SystemExports {
     };
     const environmentName = (id: string | null | undefined) =>
       snapshot.environments.find((item) => item.id === id)?.name ?? '系统通用';
+    const range = (
+      kind: ScopeKind,
+      id: string,
+      environmentId?: string | null,
+    ): [string, string][] => {
+      const scope = scopeFor(snapshot.scopes, kind, id, environmentId);
+      return [
+        [
+          '适用环境',
+          scope.environmentIds.length
+            ? scope.environmentIds.map(environmentName).join('、')
+            : '系统通用',
+        ],
+        ['标签', scope.tags.join('、')],
+      ];
+    };
     const projectName = (id: string | null) =>
       snapshot.projects.find((item) => item.id === id)?.name ?? '不关联项目';
     const background = (
@@ -162,11 +179,37 @@ export class SystemExports {
         table([
           ['仓库', service.repository],
           ['说明', service.notes],
+          ...range('service', service.id),
+          [
+            '状态',
+            { active: '在用', inactive: '停用', unverified: '待确认' }[
+              scopeFor(snapshot.scopes, 'service', service.id).status ?? 'active'
+            ],
+          ],
+          ['状态说明', scopeFor(snapshot.scopes, 'service', service.id).statusNotes ?? ''],
         ]);
-      for (const deployment of snapshot.deployments.filter((item) => item.serviceId === service.id))
+      for (const deployment of snapshot.deploymentNodes.filter(
+        (item) => item.serviceId === service.id,
+      ))
         overview += table([
+          ['节点', deployment.name],
           ['环境', environmentName(deployment.environmentId)],
-          ['部署地址', deployment.address],
+          ['方式', deployment.mode === 'scheduled' ? '按需调度' : '固定部署'],
+          ['节点规模', deployment.count],
+          [
+            '服务器',
+            snapshot.resources.find((r) => r.id === deployment.serverId)?.name ?? '未关联',
+          ],
+          [
+            '部署地址',
+            deployment.address ||
+              snapshot.resources.find((r) => r.id === deployment.serverId)?.address ||
+              '',
+          ],
+          [
+            '地址来源',
+            deployment.address ? '独立节点地址' : deployment.serverId ? '关联服务器' : '待补充',
+          ],
           ['端口', deployment.port],
           ['说明', deployment.notes],
         ]);
@@ -176,8 +219,13 @@ export class SystemExports {
       overview +=
         `### ${heading(resource.name)}\n\n` +
         table([
-          ['类型', { server: '服务器', redis: 'Redis', other: '其他资源' }[resource.kind]],
-          ['环境', environmentName(resource.environmentId)],
+          [
+            '类型',
+            { server: '服务器', redis: 'Redis', database: '数据库', other: '其他资源' }[
+              resource.kind
+            ],
+          ],
+          ...range('resource', resource.id, resource.environmentId),
           ['IP 或地址', resource.address],
           ['端口', resource.port],
           ...Object.entries(resource.fields),
@@ -188,7 +236,7 @@ export class SystemExports {
       overview +=
         `### ${heading(entry.name)}\n\n` +
         table([
-          ['环境', environmentName(entry.environmentId)],
+          ...range('access', entry.id, entry.environmentId),
           ['常用账号', accounts.find((a) => a.id === entry.preferredAccountId)?.name ?? '—'],
           ['说明', entry.notes],
         ]);
@@ -208,7 +256,11 @@ export class SystemExports {
       overview +=
         `### ${heading(owner)} / ${heading(account.name)}\n\n` +
         table([
-          ['环境', environmentName(account.environmentId)],
+          ...(account.resourceId
+            ? range('resource', account.resourceId, account.environmentId)
+            : account.accessId
+              ? range('access', account.accessId, account.environmentId)
+              : ([['环境', environmentName(account.environmentId)]] as [string, string][])),
           ['用途或角色', account.name],
           ['用户名', account.username],
           ['说明', account.notes],
@@ -220,6 +272,25 @@ export class SystemExports {
           : '已保存，本次未选择导出。\n\n';
       }
     }
+    const operations = snapshot.operations.filter((o) => o.systemId === system.id);
+    if (operations.length) overview += '## 运行维护\n\n';
+    for (const operation of operations)
+      overview +=
+        `### ${heading(operation.name)}\n\n` +
+        table([
+          ['类型', operation.kind === 'backup' ? '备份策略' : '运行作业'],
+          ['频率', operation.frequency],
+          ['状态', { active: '在用', inactive: '停用', unverified: '待确认' }[operation.status]],
+          ...range('operation', operation.id, operation.environmentId),
+          [
+            '关联对象',
+            snapshot.services.find((s) => s.id === operation.serviceId)?.name ??
+              snapshot.resources.find((r) => r.id === operation.resourceId)?.name ??
+              '',
+          ],
+          ['步骤文档', snapshot.documents.find((d) => d.id === operation.documentId)?.title ?? ''],
+          ['说明', operation.notes],
+        ]);
     if (tasks.length) overview += '## 关联任务\n\n';
     for (const [index, task] of tasks.entries()) {
       const name = `任务/${filename(task.title, index)}.md`;
@@ -229,7 +300,8 @@ export class SystemExports {
         markdown:
           `# ${heading(task.title)}\n\n` +
           table([
-            ...background(task),
+            ['系统', system.name],
+            ['历史说明', task.history ?? ''],
             ['创建时间', date(task.createdAt)],
             ['开始时间', date(task.startedAt)],
             ['完成时间', date(task.completedAt)],

@@ -1,193 +1,175 @@
 import { electron } from './launch';
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+import { openLedgerRecord } from './ledger-actions';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-
-test('系统在不同项目间延续，环境台账入口保留创建时的任务背景', async ({}, testInfo) => {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-ledger-ui-'));
+async function session(run: (page: Page) => Promise<void>) {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'ledger-redesign-regression-'));
   const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
   delete env.ELECTRON_RUN_AS_NODE;
   const app = await electron.launch({ args: ['.'], env });
   try {
-    const page = await app.firstWindow();
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
-    await expect(page.getByRole('heading', { name: '工作任务' })).toBeVisible();
-    const projects = await page.evaluate(async () => {
-      const a = await window.desktop.mutate({
-        type: 'project.create',
-        name: '园区一期',
-        color: '#007aff',
-      });
-      const b = await window.desktop.mutate({
-        type: 'project.create',
-        name: '园区二期',
-        color: '#34a271',
-      });
-      return [a.createdId!, b.createdId!];
+    await run(await app.firstWindow());
+  } finally {
+    await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+}
+test('系统跨项目保留沿革，任务只保留系统归属', async () =>
+  session(async (page) => {
+    const ids = await page.evaluate(async () => {
+      const api = window.desktop;
+      const a = (await api.mutate({ type: 'project.create', name: '园区一期', color: '#007aff' }))
+          .createdId!,
+        b = (await api.mutate({ type: 'project.create', name: '园区二期', color: '#34a271' }))
+          .createdId!;
+      return { a, b };
     });
-    await page.getByRole('button', { name: '台账', exact: true }).click({ timeout: 3000 });
-    await page.getByLabel('新增系统名称').fill('园区平台');
-    await page.getByLabel('新增系统名称').press('Enter');
-    await page.getByLabel('当前项目', { exact: true }).selectOption(projects[0]);
-    await page.getByLabel('为当前系统新增任务').fill('检查生产缓存');
-    await page.getByLabel('为当前系统新增任务').press('Enter');
-    await expect(page.getByLabel('任务标题', { exact: true })).toHaveValue('检查生产缓存');
-    await expect(page.getByLabel('所属项目', { exact: true })).toHaveValue(projects[0]);
     await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByLabel('当前项目', { exact: true }).selectOption(projects[1]);
+    await page.getByRole('button', { name: '新增系统', exact: true }).first().click();
+    await page.getByLabel('快速新建系统名称').fill('园区平台');
+    await page.getByRole('button', { name: '创建系统', exact: true }).click();
+    await page.getByRole('button', { name: '系统信息', exact: true }).click();
+    await page.getByLabel('当前项目', { exact: true }).selectOption(ids.a);
+    await page
+      .getByRole('dialog', { name: '系统信息' })
+      .getByRole('button', { name: '完成', exact: true })
+      .click();
+    await page.getByRole('button', { name: '快速新建', exact: true }).click();
+    await page.getByRole('button', { name: '新任务', exact: true }).click();
+    await page.getByLabel('快速新建任务标题').fill('检查生产缓存');
+    await page.getByRole('button', { name: '创建任务', exact: true }).click();
+    await expect(page.getByLabel('所属项目', { exact: true })).toHaveCount(0);
+    await expect(page.getByLabel('关联系统', { exact: true })).toContainText('园区平台');
+    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('button', { name: '系统信息', exact: true }).click();
+    await page.getByLabel('当前项目', { exact: true }).selectOption(ids.b);
     await page.getByLabel('系统名称', { exact: true }).fill('智慧园区平台');
-    await page.getByLabel('当前项目', { exact: true }).click();
-    await expect(page.getByRole('region', { name: '项目沿革' })).toContainText('园区一期');
-    await expect(page.getByRole('region', { name: '项目沿革' })).toContainText('园区二期');
+    await page
+      .getByRole('dialog', { name: '系统信息' })
+      .getByRole('button', { name: '完成', exact: true })
+      .click();
+    const data = await page.evaluate(() => window.desktop.snapshot());
+    expect(data.systemProjects.map((l) => l.projectId)).toEqual([ids.a, ids.b]);
+    expect(data.tasks[0]).toMatchObject({ systemId: data.systems[0].id, projectId: null });
     await page.getByRole('button', { name: '工作任务', exact: true }).click();
-    await page.getByRole('button', { name: /检查生产缓存.*园区一期/ }).click();
-    await expect(page.getByLabel('所属项目', { exact: true })).toHaveValue(projects[0]);
+    await page.locator('.task-open').filter({ hasText: '检查生产缓存' }).click();
     await expect(page.getByLabel('关联系统')).toContainText('智慧园区平台');
-    await page.screenshot({ path: testInfo.outputPath('system-project-history.png') });
-  } finally {
-    await app.close();
-    await fs.rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('服务仓库跨环境复用，切换环境前保存各自部署地址', async ({}, testInfo) => {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-deployment-ui-'));
-  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
-  delete env.ELECTRON_RUN_AS_NODE;
-  const app = await electron.launch({ args: ['.'], env });
-  try {
-    const page = await app.firstWindow();
+  }));
+test('服务仓库只维护一份，多个环境的独立部署节点可编辑', async () =>
+  session(async (page) => {
+    const ids = await page.evaluate(async () => {
+      const api = window.desktop,
+        systemId = (await api.mutate({ type: 'system.save', name: '订单平台' })).createdId!;
+      const testing = (await api.mutate({ type: 'environment.save', systemId, name: '测试' }))
+          .createdId!,
+        production = (await api.mutate({ type: 'environment.save', systemId, name: '生产' }))
+          .createdId!;
+      return { systemId, testing, production };
+    });
     await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByLabel('新增系统名称').fill('订单平台');
-    await page.getByLabel('新增系统名称').press('Enter');
-    await page.getByLabel('新增环境名称').fill('测试', { timeout: 3000 });
-    await page.getByLabel('新增环境名称').press('Enter');
-    await page.getByLabel('新增环境名称').fill('生产');
-    await page.getByLabel('新增环境名称').press('Enter');
-    await page.getByLabel('查看环境', { exact: true }).selectOption({ label: '测试' });
-    await page.getByRole('tab', { name: '服务', exact: true }).click();
-    await page.getByLabel('新增服务名称').fill('订单服务');
-    await page.getByLabel('新增服务名称').press('Enter');
-    await page.getByLabel('服务仓库', { exact: true }).fill('git@example.test:orders.git');
-    await page.getByLabel('部署地址', { exact: true }).fill('orders.test.internal');
-    await page.getByLabel('部署端口', { exact: true }).fill('8080');
-    await page.getByLabel('查看环境', { exact: true }).selectOption({ label: '生产' });
-    await expect(page.getByLabel('部署地址', { exact: true })).toHaveValue('');
-    await expect(page.getByLabel('服务仓库', { exact: true })).toHaveValue(
-      'git@example.test:orders.git',
-    );
-    await page.getByLabel('部署地址', { exact: true }).fill('orders.prod.internal');
-    await page.getByLabel('部署端口', { exact: true }).fill('8443');
-    await page.getByLabel('查看环境', { exact: true }).selectOption({ label: '测试' });
-    await expect(page.getByLabel('部署地址', { exact: true })).toHaveValue('orders.test.internal');
-    await expect(page.getByLabel('部署端口', { exact: true })).toHaveValue('8080');
-    await page.screenshot({ path: testInfo.outputPath('service-environments.png') });
-  } finally {
-    await app.close();
-    await fs.rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('资源快速录入、普通字段复制与跨环境副本互不影响', async ({}, testInfo) => {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-resource-ui-'));
-  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
-  delete env.ELECTRON_RUN_AS_NODE;
-  const app = await electron.launch({ args: ['.'], env });
-  try {
-    const page = await app.firstWindow();
-    await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByLabel('新增系统名称').fill('订单平台');
-    await page.getByLabel('新增系统名称').press('Enter');
-    for (const name of ['预发布', '生产']) {
-      await page.getByLabel('新增环境名称').fill(name);
-      await page.getByLabel('新增环境名称').press('Enter');
-      await expect(page.getByLabel('查看环境')).toContainText(name);
+    await page.getByRole('button', { name: '应用部署', exact: true }).click();
+    await page.getByRole('button', { name: '新增应用部署', exact: true }).click();
+    await page.getByLabel('快速新建服务名称').fill('订单服务');
+    await page.getByRole('button', { name: '创建服务', exact: true }).click();
+    await page
+      .getByRole('complementary', { name: '台账详情' })
+      .getByRole('button', { name: '编辑', exact: true })
+      .click();
+    await page.getByLabel('代码仓库', { exact: true }).fill('git@example.test:orders.git');
+    await page.getByRole('button', { name: '完成编辑', exact: true }).click();
+    for (const [environment, name, address, port] of [
+      [ids.testing, '测试节点', 'orders.test.internal', '8080'],
+      [ids.production, '生产节点', 'orders.prod.internal', '8443'],
+    ]) {
+      await page.getByRole('button', { name: '新增节点', exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: '新增部署节点' });
+      await dialog.getByLabel('节点名称').fill(name);
+      await dialog.getByLabel('部署环境').selectOption(environment);
+      await dialog.getByLabel('独立地址（留空展示服务器地址）').fill(address);
+      await dialog.getByLabel('端口', { exact: true }).fill(port);
+      await dialog.getByRole('button', { name: '保存节点', exact: true }).click();
     }
-    await page.getByLabel('新增资源名称').fill('订单缓存', { timeout: 3000 });
-    await page.getByLabel('新增资源名称').press('Enter');
-    await page.getByLabel('资源地址', { exact: true }).fill('cache.prod.internal');
-    await page.getByLabel('资源端口', { exact: true }).fill('6379');
-    await page.getByRole('button', { name: '复制资源地址', exact: true }).click();
-    await expect
-      .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
-      .toBe('cache.prod.internal');
-    await page.getByText('附加信息', { exact: true }).click();
-    await page.getByLabel('新字段名称').fill('数据库');
-    await page.getByLabel('新字段值').fill('2');
-    await page.getByRole('button', { name: '添加字段', exact: true }).click();
-    await page.getByRole('button', { name: '复制资源', exact: true }).click();
-    await page.getByLabel('副本目标环境').selectOption({ label: '预发布' });
-    await page.getByRole('button', { name: '创建副本', exact: true }).click();
-    await expect(page.getByLabel('资源名称', { exact: true })).toHaveValue('订单缓存 副本');
-    await page.getByLabel('资源地址', { exact: true }).fill('cache.staging.internal');
-    await page.getByLabel('查看环境').selectOption({ label: '生产' });
-    await expect(page.getByLabel('资源地址', { exact: true })).toHaveValue('cache.prod.internal');
-    await page.getByLabel('新增资源类型').selectOption('server');
-    await page.getByLabel('新增资源名称').fill('应用服务器');
-    await page.getByLabel('新增资源名称').press('Enter');
-    await page.getByLabel('资源地址', { exact: true }).fill('10.0.0.10');
-    await page.getByLabel('资源端口', { exact: true }).fill('22');
-    await page.getByRole('button', { name: '资源 订单缓存', exact: true }).click();
-    await expect(page.getByLabel('资源端口', { exact: true })).toHaveValue('6379');
-    await page.screenshot({ path: testInfo.outputPath('resource-ledger.png') });
-  } finally {
-    await app.close();
-    await fs.rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('系统环境与资源分别维护多角色账号，复制元数据与空用户名可用', async ({}, testInfo) => {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-accounts-ui-'));
-  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
-  delete env.ELECTRON_RUN_AS_NODE;
-  const app = await electron.launch({ args: ['.'], env });
-  try {
-    const page = await app.firstWindow();
+    await page.getByRole('button', { name: '编辑节点', exact: true }).first().click();
+    const nodeEditor = page.getByRole('dialog', { name: '编辑部署节点' });
+    await nodeEditor.getByLabel('端口', { exact: true }).fill('8081');
+    await nodeEditor.getByRole('button', { name: '完成', exact: true }).click();
+    await page.getByLabel('台账环境筛选').selectOption(ids.testing);
+    await openLedgerRecord(page, '应用部署', '订单服务');
+    await expect(page.locator('.workspace-node')).toContainText('orders.test.internal');
+    await expect(page.locator('.workspace-node')).not.toContainText('orders.prod.internal');
+    const data = await page.evaluate(() => window.desktop.snapshot());
+    expect(data.services[0].repository).toBe('git@example.test:orders.git');
+    expect(data.deploymentNodes).toHaveLength(2);
+  }));
+test('资源普通字段编辑与跨环境复制互不影响', async () =>
+  session(async (page) => {
+    const ids = await page.evaluate(async () => {
+      const api = window.desktop,
+        systemId = (await api.mutate({ type: 'system.save', name: '订单平台' })).createdId!;
+      const a = (await api.mutate({ type: 'environment.save', systemId, name: '生产' })).createdId!,
+        b = (await api.mutate({ type: 'environment.save', systemId, name: '测试' })).createdId!;
+      await api.mutate({
+        type: 'resource.save',
+        systemId,
+        environmentId: a,
+        kind: 'redis',
+        name: '订单缓存',
+        address: '192.0.2.2',
+      });
+      return { a, b };
+    });
     await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByLabel('新增系统名称').fill('园区平台');
-    await page.getByLabel('新增系统名称').press('Enter');
-    await page.getByLabel('新增环境名称').fill('生产');
-    await page.getByLabel('新增环境名称').press('Enter');
-    await page.getByRole('tab', { name: '账号', exact: true }).click({ timeout: 3000 });
-    await page.getByLabel('新增账号用途').fill('超管');
-    await page.getByLabel('新增账号用途').press('Enter');
-    await page.getByLabel('账号用户名', { exact: true }).fill('admin');
-    await page.getByRole('button', { name: '复制用户名', exact: true }).click();
-    await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toBe('admin');
-    await page.getByLabel('新增账号用途').fill('B 角色');
-    await page.getByLabel('新增账号用途').press('Enter');
+    await openLedgerRecord(page, '数据库／中间件', '订单缓存', true);
+    await page.getByLabel('资源端口', { exact: true }).fill('6379');
+    await page.getByRole('button', { name: '复制资源', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel('副本目标环境', { exact: true }).selectOption(ids.b);
+    await dialog.getByRole('button', { name: '创建副本', exact: true }).click();
+    await expect(page.getByRole('heading', { name: '订单缓存 副本', exact: true })).toBeVisible();
+    await page
+      .getByRole('complementary', { name: '台账详情' })
+      .getByRole('button', { name: '编辑', exact: true })
+      .click();
+    await page.getByLabel('资源地址', { exact: true }).fill('192.0.2.3');
+    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    const data = await page.evaluate(() => window.desktop.snapshot());
+    expect(data.resources.find((r) => r.name === '订单缓存')?.address).toBe('192.0.2.2');
+    expect(data.resources.find((r) => r.name === '订单缓存 副本')).toMatchObject({
+      environmentId: ids.b,
+      address: '192.0.2.3',
+      port: '6379',
+    });
+  }));
+test('账号汇总保留环境和资源归属，普通资料与空用户名可编辑', async () =>
+  session(async (page) => {
+    await page.evaluate(async () => {
+      const api = window.desktop,
+        systemId = (await api.mutate({ type: 'system.save', name: '平台' })).createdId!,
+        environmentId = (await api.mutate({ type: 'environment.save', systemId, name: '生产' }))
+          .createdId!,
+        resourceId = (
+          await api.mutate({
+            type: 'resource.save',
+            systemId,
+            environmentId,
+            kind: 'redis',
+            name: '缓存',
+          })
+        ).createdId!;
+      await api.mutate({ type: 'account.save', environmentId, name: '超管', username: 'admin' });
+      await api.mutate({ type: 'account.save', environmentId, resourceId, name: '应用连接' });
+    });
+    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await openLedgerRecord(page, '账号', '应用连接', true);
     await expect(page.getByLabel('账号用户名', { exact: true })).toHaveValue('');
-    await page.getByRole('tab', { name: '资源', exact: true }).click();
-    await page.getByLabel('新增资源名称').fill('生产 Redis');
-    await page.getByLabel('新增资源名称').press('Enter');
-    await page.getByLabel('新增账号用途').fill('应用连接');
-    await page.getByLabel('新增账号用途').press('Enter');
-    await page.getByLabel('账号用户名', { exact: true }).fill('app');
-    await page.getByRole('button', { name: '复制账号', exact: true }).click();
-    await page.getByLabel('账号副本名称').fill('只读连接');
-    await page.getByRole('button', { name: '创建副本', exact: true }).click();
-    await expect(page.getByLabel('账号用途', { exact: true })).toHaveValue('只读连接');
-    await expect(page.getByLabel('账号用户名', { exact: true })).toHaveValue('app');
-    await page.getByRole('button', { name: '调整归属', exact: true }).click();
-    await page.getByLabel('账号目标归属').selectOption('');
-    await page.getByRole('button', { name: '保存归属', exact: true }).click();
-    await expect(page.getByRole('tab', { name: '账号', exact: true })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
-    await expect(page.getByLabel('账号用途', { exact: true })).toHaveValue('只读连接');
-    await page.getByRole('button', { name: '复制账号', exact: true }).click();
-    await page.getByLabel('账号副本名称').fill('超管');
-    await page.getByRole('button', { name: '创建副本', exact: true }).click();
-    await expect(page.getByRole('dialog').getByRole('alert')).toContainText('同名账号');
-    await page.getByRole('button', { name: '取消', exact: true }).click();
-    await expect(page.getByRole('button', { name: '账号 超管', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: '账号 B 角色', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: '账号 应用连接', exact: true })).toHaveCount(0);
-    await page.screenshot({ path: testInfo.outputPath('environment-accounts.png') });
-  } finally {
-    await app.close();
-    await fs.rm(directory, { recursive: true, force: true });
-  }
-});
+    await page.getByLabel('账号用户名', { exact: true }).fill('application');
+    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await openLedgerRecord(page, '账号', '超管', true);
+    await expect(page.getByLabel('账号用户名', { exact: true })).toHaveValue('admin');
+    const data = await page.evaluate(() => window.desktop.snapshot());
+    expect(data.accounts.find((a) => a.name === '应用连接')?.username).toBe('application');
+    expect(data.accounts).toHaveLength(2);
+  }));

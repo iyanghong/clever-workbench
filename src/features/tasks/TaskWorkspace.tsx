@@ -19,34 +19,32 @@ import {
   ArrowRightIcon,
   CheckCircleIcon,
 } from '@phosphor-icons/react';
-import type { Command, Draft, Project, Snapshot, Task } from '../../types';
-import { dateLabel, emptyContent, projectColors } from '../../domain';
+import type { Command, Draft, Snapshot, Task } from '../../types';
+import { dateLabel, emptyContent } from '../../domain';
 import { Detail } from '../../components/Detail';
 import { Timeline } from '../../components/Timeline';
 import { useVirtual } from '../../useVirtual';
-const freshDraft = (projectId: string | null = null): Draft => ({
+const freshDraft = (systemId: string | null = null): Draft => ({
   title: '',
   content: emptyContent(),
   markdown: '',
-  projectId,
+  projectId: null,
+  systemId,
 });
-export type TaskView = 'tasks' | 'review' | 'archive' | 'trash';
+export type TaskView = 'tasks' | 'review' | 'trash';
 function savedNavigation() {
   try {
     const n = JSON.parse(localStorage.getItem('clever-workbench-navigation') ?? '{}');
     return {
-      view: (['tasks', 'review', 'archive', 'trash'].includes(n.view)
-        ? n.view
-        : 'tasks') as TaskView,
-      project: typeof n.project === 'string' ? n.project : 'all',
+      view: (['tasks', 'review', 'trash'].includes(n.view) ? n.view : 'tasks') as TaskView,
+      systemScope: typeof n.systemScope === 'string' ? n.systemScope : 'all',
       filter: (['pending', 'completed', 'all'].includes(n.filter) ? n.filter : 'pending') as
         'pending' | 'completed' | 'all',
     };
   } catch {
-    return { view: 'tasks' as TaskView, project: 'all', filter: 'pending' as const };
+    return { view: 'tasks' as TaskView, systemScope: 'all', filter: 'pending' as const };
   }
 }
-const initialNavigation = savedNavigation();
 type Confirmation = {
   title: string;
   body: string;
@@ -57,7 +55,7 @@ type Confirmation = {
 };
 export function TaskWorkspace({
   initialView = 'tasks',
-  initialProject = 'all',
+  initialSystem = 'all',
   initialTaskId,
   registerFlush,
   onNavigate,
@@ -66,18 +64,25 @@ export function TaskWorkspace({
   setContext,
 }: {
   initialView?: TaskView;
-  initialProject?: string;
+  initialSystem?: string;
   initialTaskId?: string;
   registerFlush: (save: () => Promise<void>) => () => void;
-  onNavigate: (view: TaskView, project?: string) => Promise<void>;
+  onNavigate: (view: TaskView, systemScope?: string) => Promise<void>;
   setContext: (context: CreationContext) => void;
   onOpenContext: (id: string) => Promise<void>;
-  onOpenDocuments: (project?: string, trash?: boolean) => Promise<void>;
+  onOpenDocuments: (systemScope?: string, trash?: boolean) => Promise<void>;
 }) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
     [view, setView] = useState<TaskView>(initialView),
-    [project, setProject] = useState(initialProject),
-    [filter, setFilter] = useState<'pending' | 'completed' | 'all'>(initialNavigation.filter),
+    [systemScope, setSystemScope] = useState(initialSystem),
+    [filter, setFilter] = useState<'pending' | 'completed' | 'all'>(savedNavigation().filter),
+    [layout, setLayout] = useState<'normal' | 'compact'>(() =>
+      localStorage.getItem('task-layout') === 'compact' ? 'compact' : 'normal',
+    ),
+    [batchMode, setBatchMode] = useState(false),
+    [batchIds, setBatchIds] = useState<string[]>([]),
+    [batchSystem, setBatchSystem] = useState(''),
+    [batchBusy, setBatchBusy] = useState(false),
     [query, setQuery] = useState(''),
     [matches, setMatches] = useState<Set<string> | null>(null),
     [selected, setSelected] = useState<string | null>(initialTaskId ?? null),
@@ -86,10 +91,10 @@ export function TaskWorkspace({
     [error, setError] = useState(''),
     [notice, setNotice] = useState<{ text: string; undo?: () => Promise<void> } | null>(null),
     [confirm, setConfirm] = useState<Confirmation | null>(null),
-    [projectEditor, setProjectEditor] = useState<Partial<Project> | null>(null),
-    [projectName, setProjectName] = useState(''),
-    [projectColor, setProjectColor] = useState(projectColors[0]),
     [busy, setBusy] = useState('');
+  useEffect(() => {
+    localStorage.setItem('task-layout', layout);
+  }, [layout]);
   const draftRef = useRef(draft),
     flushRef = useRef<() => Promise<void>>(async () => {}),
     quickTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
@@ -97,11 +102,13 @@ export function TaskWorkspace({
     quickDirty = useRef(false),
     searchRef = useRef<HTMLInputElement>(null),
     dialogRef = useRef<HTMLDialogElement>(null),
-    projectDialogRef = useRef<HTMLDialogElement>(null),
     creating = useRef(false);
   useEffect(() => {
-    localStorage.setItem('clever-workbench-navigation', JSON.stringify({ view, project, filter }));
-  }, [view, project, filter]);
+    localStorage.setItem(
+      'clever-workbench-navigation',
+      JSON.stringify({ view, systemScope, filter }),
+    );
+  }, [view, systemScope, filter]);
   const snapshotRef = useRef(snapshot);
   snapshotRef.current = snapshot;
   const notifyError = useCallback(
@@ -121,8 +128,11 @@ export function TaskWorkspace({
       .then((s) => {
         setSnapshot(s);
         updateDraft(s.draft);
-        if (s.projects.some((item) => item.id === initialProject && item.archivedAt !== null))
-          setFilter('all');
+        if (
+          !['all', 'none'].includes(initialSystem) &&
+          !s.systems.some((item) => item.id === initialSystem)
+        )
+          setSystemScope('all');
       })
       .catch((e) => notifyError(e.message));
   }, []);
@@ -171,9 +181,6 @@ export function TaskWorkspace({
   useEffect(() => {
     if (confirm) dialogRef.current?.showModal();
   }, [confirm]);
-  useEffect(() => {
-    if (projectEditor) projectDialogRef.current?.showModal();
-  }, [projectEditor]);
   async function flushQuick() {
     if (quickTimer.current) {
       clearTimeout(quickTimer.current);
@@ -202,13 +209,13 @@ export function TaskWorkspace({
     confirm?.resolve(value);
     setConfirm(null);
   };
-  async function navigate(next: TaskView, projectId = 'all') {
+  async function navigate(next: TaskView, systemId = 'all') {
     try {
       await flush();
       setSelected(null);
       setView(next);
-      setProject(projectId);
-      await onNavigate(next, projectId);
+      setSystemScope(systemId);
+      await onNavigate(next, systemId);
       setQuery('');
       setMatches(null);
       if (next === 'tasks') setFilter('pending');
@@ -229,8 +236,8 @@ export function TaskWorkspace({
     try {
       await flush();
       if (!draftRef.current.title && !draftRef.current.markdown) {
-        const p = snapshotRef.current?.projects.find((p) => p.id === project);
-        updateDraft(freshDraft(p && p.archivedAt === null ? p.id : null));
+        const system = snapshotRef.current?.systems.find((item) => item.id === systemScope);
+        updateDraft(freshDraft(system?.id ?? null));
       }
       setSelected('new');
     } catch (e) {
@@ -240,7 +247,7 @@ export function TaskWorkspace({
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
       if (e.isComposing) return;
-      if (e.key === 'Escape' && !confirm && !projectEditor) {
+      if (e.key === 'Escape' && !confirm) {
         if (selected) void closeDetail();
         else {
           setQuery('');
@@ -310,40 +317,6 @@ export function TaskWorkspace({
     try {
       await flush();
       setNotice(null);
-      if (command.type === 'task.complete' && !command.complete) {
-        const item = snapshotRef.current?.tasks.find(
-          (t) => t.id === (command as { id: string }).id,
-        );
-        const p = snapshotRef.current?.projects.find((p) => p.id === item?.projectId);
-        if (p?.archivedAt) {
-          if (
-            !(await ask(
-              '恢复项目并重新打开？',
-              `“${p.name}”已归档。重新打开任务会同时将项目恢复到常用项目。`,
-              '恢复并重新打开',
-            ))
-          )
-            return;
-          command = { ...command, restoreProject: true };
-        }
-      }
-      if (command.type === 'task.restore') {
-        const item = snapshotRef.current?.tasks.find(
-          (t) => t.id === (command as { id: string }).id,
-        );
-        const p = snapshotRef.current?.projects.find((p) => p.id === item?.projectId);
-        if (item?.completedAt === null && p?.archivedAt) {
-          const restore = await ask(
-            '恢复到哪个位置？',
-            '原项目已归档。选择“同时恢复项目”保留归属，选择“恢复到未分类”则保留项目归档状态。',
-            '同时恢复项目',
-            false,
-            '恢复到未分类',
-          );
-          if (restore === null) return;
-          command = { ...command, destination: restore ? 'original' : 'unclassified' };
-        }
-      }
       if (
         command.type === 'task.purge' &&
         !(await ask(
@@ -354,11 +327,6 @@ export function TaskWorkspace({
           '彻底删除',
           true,
         ))
-      )
-        return;
-      if (
-        command.type === 'project.delete' &&
-        !(await ask('删除空项目？', '仅能删除没有关联任务的项目。', '删除项目', true))
       )
         return;
       const before =
@@ -389,61 +357,28 @@ export function TaskWorkspace({
           },
         });
       }
-      if (command.type === 'project.delete') {
-        setProject('all');
-        setSelected(null);
-      }
-      if (command.type === 'project.archive') {
-        setSelected(null);
-        setProject('all');
-        setNotice({ text: command.archived ? '项目已归档，历史记录仍可回顾。' : '项目已恢复。' });
-      }
       return true;
     } catch (e) {
       notifyError(e instanceof Error ? e.message : String(e));
       return false;
     }
   }
-  function editProject(p?: Project) {
-    setError('');
-    setProjectEditor(p ?? {});
-    setProjectName(p?.name ?? '');
-    setProjectColor(
-      p?.color ?? projectColors[(snapshot?.projects.length ?? 0) % projectColors.length],
-    );
-  }
-  async function saveProject() {
-    try {
-      const saved = await run(
-        projectEditor?.id
-          ? { type: 'project.edit', id: projectEditor.id, name: projectName, color: projectColor }
-          : { type: 'project.create', name: projectName, color: projectColor },
-      );
-      if (saved) setProjectEditor(null);
-    } catch (e) {
-      notifyError(String(e));
-    }
-  }
   const all = snapshot?.tasks ?? [],
-    projects = snapshot?.projects ?? [],
-    currentProject = projects.find((p) => p.id === project);
+    systems = snapshot?.systems ?? [],
+    currentSystem = systems.find((item) => item.id === systemScope);
   useEffect(() => {
-    if (snapshot && !selected) setContext({ projectId: currentProject?.id ?? null });
-  }, [Boolean(snapshot), selected, currentProject?.id]);
+    if (snapshot && !selected) setContext({ systemId: currentSystem?.id ?? null });
+  }, [Boolean(snapshot), selected, currentSystem?.id]);
   const scoped = useMemo(
     () =>
       all.filter(
         (t) =>
           (view === 'trash' ? t.deletedAt !== null : t.deletedAt === null) &&
-          (project === 'all' ||
-            (project === 'none' ? t.projectId === null : t.projectId === project)) &&
-          (view === 'trash' ||
-            project !== 'all' ||
-            matches !== null ||
-            !projects.some((p) => p.id === t.projectId && p.archivedAt !== null)) &&
+          (systemScope === 'all' ||
+            (systemScope === 'none' ? !t.systemId : t.systemId === systemScope)) &&
           (!matches || matches.has(t.id)),
       ),
-    [all, projects, view, project, matches],
+    [all, view, systemScope, matches],
   );
   const visible = useMemo(
     () =>
@@ -464,10 +399,26 @@ export function TaskWorkspace({
         }),
     [scoped, view, filter],
   );
-  const virtual = useVirtual(visible.length, 68);
+  useEffect(() => {
+    setBatchIds([]);
+  }, [systemScope, filter, query, view]);
+  async function assignSystem() {
+    if (batchBusy) return;
+    setBatchBusy(true);
+    try {
+      if (await run({ type: 'task.assign-system', ids: batchIds, systemId: batchSystem || null })) {
+        if (selected && batchIds.includes(selected)) setSelected(null);
+        setBatchIds([]);
+        setBatchMode(false);
+      }
+    } finally {
+      setBatchBusy(false);
+    }
+  }
+  const virtual = useVirtual(visible.length, layout === 'compact' ? 44 : 68);
   useEffect(() => {
     if (virtual.element) virtual.element.scrollTop = 0;
-  }, [view, project, filter, query]);
+  }, [view, systemScope, filter, query]);
   const pending = all.filter((t) => t.deletedAt === null && t.completedAt === null).length;
   if (!snapshot)
     return (
@@ -483,7 +434,7 @@ export function TaskWorkspace({
       ? '回收站'
       : query
         ? '搜索结果'
-        : (currentProject?.name ?? (project === 'none' ? '未分类' : '工作任务'));
+        : (currentSystem?.name ?? (systemScope === 'none' ? '未关联系统' : '工作任务'));
   return (
     <div className={`task-workspace ${selected ? 'has-detail' : ''}`}>
       <main className="main">
@@ -492,31 +443,24 @@ export function TaskWorkspace({
             <SidebarSimpleIcon size={18} />
             <span>工作空间</span>
             <CaretRightIcon size={11} />
-            <span>
-              {view === 'review' ? '工作回顾' : view === 'archive' ? '归档项目' : listTitle}
-            </span>
+            <span>{view === 'review' ? '工作回顾' : listTitle}</span>
           </div>
           <div className="spacer" />
           {view === 'tasks' && (
             <div className="project-picker">
               <select
-                aria-label="项目范围"
-                value={project}
+                aria-label="系统范围"
+                value={systemScope}
                 onChange={(event) => void navigate('tasks', event.target.value)}
               >
-                <option value="all">全部项目</option>
-                <option value="none">未分类</option>
-                {projects
-                  .filter((p) => p.archivedAt === null || p.id === project)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
+                <option value="all">全部系统</option>
+                <option value="none">未关联系统</option>
+                {systems.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
               </select>
-              <button className="icon-button" aria-label="新增项目" onClick={() => editProject()}>
-                <PlusIcon size={16} />
-              </button>
             </div>
           )}
           {view === 'trash' && (
@@ -538,8 +482,6 @@ export function TaskWorkspace({
                 placeholder="搜索记录"
                 onChange={(e) => {
                   setQuery(e.target.value);
-                  setProject('all');
-                  setFilter('all');
                 }}
               />
               <kbd>{window.desktop.platform === 'darwin' ? '⌘' : 'Ctrl'} K</kbd>
@@ -552,60 +494,7 @@ export function TaskWorkspace({
         </header>
         <div className="workspace-content">
           {view === 'review' ? (
-            <Timeline tasks={all} projects={projects} onSelect={(id) => void select(id)} />
-          ) : view === 'archive' ? (
-            <section className="archive-page">
-              <span className="eyebrow">A LITTLE ROOM FOR WHAT’S NEXT</span>
-              <h1>归档项目</h1>
-              <p className="page-description">项目可以结束，做过的工作一直都在。</p>
-              {projects.filter((p) => p.archivedAt !== null).length ? (
-                projects
-                  .filter((p) => p.archivedAt !== null)
-                  .map((p) => (
-                    <div className="archive-row" key={p.id}>
-                      <span className="project-dot" style={{ background: p.color }} />
-                      <button
-                        className="archive-title"
-                        onClick={() => {
-                          void navigate('tasks', p.id).then(() => setFilter('all'));
-                        }}
-                      >
-                        <strong>{p.name}</strong>
-                        <small>
-                          {all.filter((t) => t.projectId === p.id && t.deletedAt === null).length}{' '}
-                          条记录 · {dateLabel(p.archivedAt)}归档
-                        </small>
-                      </button>
-                      <button
-                        className="text-button"
-                        aria-label={`查看项目文档 ${p.name}`}
-                        onClick={() => void onOpenDocuments(p.id)}
-                      >
-                        文档{' '}
-                        {
-                          snapshot.documents.filter(
-                            (item) => item.projectId === p.id && item.deletedAt === null,
-                          ).length
-                        }
-                      </button>
-                      <button
-                        className="secondary-button"
-                        onClick={() =>
-                          void run({ type: 'project.archive', id: p.id, archived: false })
-                        }
-                      >
-                        恢复项目
-                      </button>
-                    </div>
-                  ))
-              ) : (
-                <div className="empty-state">
-                  <ArchiveIcon size={44} weight="duotone" />
-                  <h3>这里会收好结束的项目</h3>
-                  <p>完成项目中的任务后，即可归档。</p>
-                </div>
-              )}
-            </section>
+            <Timeline tasks={all} systems={systems} onSelect={(id) => void select(id)} />
           ) : (
             <section className="task-page">
               <div className="page-heading">
@@ -624,15 +513,6 @@ export function TaskWorkspace({
                     <span className="heading-count">{scoped.length}</span>
                   </h1>
                 </div>
-                {currentProject && (
-                  <button
-                    className="icon-button project-menu"
-                    aria-label="项目设置"
-                    onClick={() => editProject(currentProject)}
-                  >
-                    <DotsThreeIcon size={24} />
-                  </button>
-                )}
                 {view === 'trash' && scoped.length > 0 && (
                   <button
                     className="text-button danger-text"
@@ -670,6 +550,28 @@ export function TaskWorkspace({
                       </button>
                     ))}
                   </div>
+                  <div className="segmented" role="group" aria-label="任务布局">
+                    {(['normal', 'compact'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        aria-pressed={layout === mode}
+                        className={layout === mode ? 'active' : ''}
+                        onClick={() => setLayout(mode)}
+                      >
+                        {mode === 'normal' ? '正常' : '紧凑'}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    className="text-button"
+                    aria-pressed={batchMode}
+                    onClick={() => {
+                      setBatchMode(!batchMode);
+                      setBatchIds([]);
+                    }}
+                  >
+                    批量关联系统
+                  </button>
                   <span className="list-sort">
                     {filter === 'completed' ? '最近完成优先' : '最近记录优先'}
                   </span>
@@ -677,7 +579,7 @@ export function TaskWorkspace({
               ) : (
                 <p className="page-description">记录会保留在这里，直到你选择恢复或彻底删除。</p>
               )}
-              {view !== 'trash' && !currentProject?.archivedAt && (
+              {view !== 'trash' && (
                 <form
                   className="quick-add"
                   onSubmit={(e) => {
@@ -695,10 +597,14 @@ export function TaskWorkspace({
                       if (
                         !draft.title &&
                         !draft.markdown &&
-                        project !== 'all' &&
-                        project !== 'none'
+                        systemScope !== 'all' &&
+                        systemScope !== 'none'
                       )
-                        updateDraft({ ...draftRef.current, projectId: project });
+                        updateDraft({
+                          ...draftRef.current,
+                          projectId: null,
+                          systemId: systemScope,
+                        });
                       quickChange(e.target.value);
                     }}
                     onKeyDown={(e) => {
@@ -707,7 +613,7 @@ export function TaskWorkspace({
                   />
                   <span className="quick-project">
                     {draft.title
-                      ? (projects.find((p) => p.id === draft.projectId)?.name ?? '未分类')
+                      ? (systems.find((p) => p.id === draft.systemId)?.name ?? '未关联系统')
                       : ''}
                   </span>
                   <button
@@ -721,6 +627,43 @@ export function TaskWorkspace({
                   <kbd>↵</kbd>
                 </form>
               )}
+              {batchMode && view === 'tasks' && (
+                <div className="workspace-query">
+                  <label>
+                    <input
+                      type="checkbox"
+                      aria-label="选择当前结果"
+                      checked={visible.length > 0 && visible.every((t) => batchIds.includes(t.id))}
+                      disabled={batchBusy || visible.length > 1000}
+                      onChange={(e) =>
+                        setBatchIds(e.target.checked ? visible.map((t) => t.id) : [])
+                      }
+                    />
+                    选择当前结果
+                  </label>
+                  <span>已选 {batchIds.length} 项</span>
+                  <select
+                    aria-label="批量关联系统"
+                    value={batchSystem}
+                    disabled={batchBusy}
+                    onChange={(e) => setBatchSystem(e.target.value)}
+                  >
+                    <option value="">未关联系统</option>
+                    {systems.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="primary-button"
+                    disabled={!batchIds.length || batchBusy}
+                    onClick={() => void assignSystem()}
+                  >
+                    应用到所选任务
+                  </button>
+                </div>
+              )}
               <div className="list-section-label">
                 <span>
                   {query
@@ -733,17 +676,35 @@ export function TaskWorkspace({
                 </span>
                 <span>{visible.length} 项</span>
               </div>
-              <div className="task-list" ref={virtual.ref}>
+              <div
+                className={`task-list ${layout === 'compact' ? 'compact-tasks' : ''}`}
+                ref={virtual.ref}
+              >
                 {visible.length ? (
                   <>
                     <div style={{ height: virtual.paddingTop }} />
                     {visible.slice(virtual.start, virtual.end).map((t) => {
-                      const p = projects.find((p) => p.id === t.projectId);
+                      const p = systems.find((p) => p.id === t.systemId);
                       return (
                         <div
                           className={`task-row ${selected === t.id ? 'selected' : ''}`}
                           key={t.id}
                         >
+                          {batchMode && view === 'tasks' && (
+                            <input
+                              type="checkbox"
+                              aria-label={`选择任务 ${t.title}`}
+                              checked={batchIds.includes(t.id)}
+                              disabled={batchBusy}
+                              onChange={(e) =>
+                                setBatchIds((ids) =>
+                                  e.target.checked
+                                    ? [...ids, t.id]
+                                    : ids.filter((id) => id !== t.id),
+                                )
+                              }
+                            />
+                          )}
                           <button
                             className={`completion ${t.completedAt !== null ? 'checked' : ''}`}
                             aria-label={
@@ -760,14 +721,20 @@ export function TaskWorkspace({
                           >
                             {t.completedAt !== null && <CheckIcon weight="bold" size={13} />}
                           </button>
-                          <button className="task-open" onClick={() => void select(t.id)}>
+                          <button
+                            className="task-open"
+                            title={t.title}
+                            onClick={() => void select(t.id)}
+                          >
                             <span className={`task-title ${t.completedAt !== null ? 'done' : ''}`}>
                               {t.title}
                             </span>
                             <span className="task-subtitle">
-                              <span className="dot" style={{ background: p?.color ?? '#b1b1b9' }} />
-                              {p?.name ?? '未分类'}
-                              {p?.archivedAt ? ' · 已归档' : ''}
+                              <span
+                                className="dot"
+                                style={{ background: p ? '#007aff' : '#b1b1b9' }}
+                              />
+                              {p?.name ?? '未关联系统'}
                               <span className="subtitle-divider">·</span>
                               {view === 'trash'
                                 ? `${dateLabel(t.deletedAt)}删除`
@@ -827,7 +794,7 @@ export function TaskWorkspace({
                         className="secondary-button"
                         onClick={() => {
                           setQuery('');
-                          setProject('all');
+                          setSystemScope('all');
                           setFilter('all');
                         }}
                       >
@@ -927,77 +894,6 @@ export function TaskWorkspace({
               onClick={() => answer(true)}
             >
               {confirm.confirm}
-            </button>
-          </div>
-        </dialog>
-      )}
-      {projectEditor && (
-        <dialog ref={projectDialogRef} className="modal" onCancel={() => setProjectEditor(null)}>
-          <div className="modal-heading">
-            <h2>{projectEditor.id ? '项目设置' : '新建项目'}</h2>
-            <button className="icon-button" onClick={() => setProjectEditor(null)}>
-              <XIcon />
-            </button>
-          </div>
-          <label className="field-label">
-            项目名称
-            <input
-              aria-label="项目名称"
-              autoFocus
-              value={projectName}
-              placeholder="例如：产品迭代"
-              onChange={(e) => setProjectName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.nativeEvent.isComposing) void saveProject();
-              }}
-            />
-          </label>
-          <p className="error-text" role="alert">
-            {error}
-          </p>
-          <div className="color-picker">
-            {projectColors.map((color) => (
-              <button
-                key={color}
-                aria-label={`项目颜色 ${color}`}
-                aria-pressed={color === projectColor}
-                style={{ background: color }}
-                onClick={() => setProjectColor(color)}
-              >
-                {color === projectColor && <CheckIcon weight="bold" size={16} />}
-              </button>
-            ))}
-          </div>
-          <div className="modal-actions">
-            {projectEditor.id && (
-              <button
-                className="text-button"
-                onClick={() => {
-                  setProjectEditor(null);
-                  void run({
-                    type: 'project.archive',
-                    id: projectEditor.id!,
-                    archived: !projectEditor.archivedAt,
-                  });
-                }}
-              >
-                {projectEditor.archivedAt ? '恢复项目' : '归档项目'}
-              </button>
-            )}
-            {projectEditor.id && (
-              <button
-                className="text-button danger-text"
-                onClick={() => {
-                  setProjectEditor(null);
-                  void run({ type: 'project.delete', id: projectEditor.id! });
-                }}
-              >
-                删除
-              </button>
-            )}
-            <span className="spacer" />
-            <button className="primary-button" disabled={!projectName.trim()} onClick={saveProject}>
-              保存项目
             </button>
           </div>
         </dialog>

@@ -1,3 +1,4 @@
+import type { SystemRecord } from '../ledger-types';
 import { useEffect, useMemo, useState } from 'react';
 import {
   CaretLeftIcon,
@@ -7,16 +8,16 @@ import {
   CheckCircleIcon,
   ClockIcon,
 } from '@phosphor-icons/react';
-import type { Project, TaskSummary } from '../types';
+import type { TaskSummary } from '../types';
 import { completedInMonth, dateLabel, intersectsMonth } from '../domain';
 import { useVirtual } from '../useVirtual';
 export function Timeline({
   tasks,
-  projects,
+  systems,
   onSelect,
 }: {
   tasks: TaskSummary[];
-  projects: Project[];
+  systems: SystemRecord[];
   onSelect: (id: string) => void;
 }) {
   const [clock, setClock] = useState(Date.now());
@@ -43,8 +44,7 @@ export function Timeline({
       tasks.filter(
         (t) =>
           t.deletedAt === null &&
-          (project === 'all' ||
-            (project === 'none' ? t.projectId === null : t.projectId === project)),
+          (project === 'all' || (project === 'none' ? !t.systemId : t.systemId === project)),
       ),
     [tasks, project],
   );
@@ -99,7 +99,7 @@ export function Timeline({
             月度回顾
           </button>
           <button className={mode === 'project' ? 'active' : ''} onClick={() => setMode('project')}>
-            项目回顾
+            系统回顾
           </button>
         </div>
       </div>
@@ -107,11 +107,11 @@ export function Timeline({
         <div className="month-picker">
           {mode === 'project' && (
             <select
-              aria-label="项目时间范围"
+              aria-label="系统时间范围"
               value={zoom}
               onChange={(e) => setZoom(e.target.value as 'all' | 'month')}
             >
-              <option value="all">项目全貌</option>
+              <option value="all">系统全貌</option>
               <option value="month">逐月查看</option>
             </select>
           )}
@@ -137,20 +137,19 @@ export function Timeline({
             本月
           </button>
         </div>
-        <select aria-label="回顾项目" value={project} onChange={(e) => setProject(e.target.value)}>
-          <option value="all">全部项目</option>
-          <option value="none">未分类</option>
-          {projects.map((p) => (
+        <select aria-label="回顾系统" value={project} onChange={(e) => setProject(e.target.value)}>
+          <option value="all">全部系统</option>
+          <option value="none">未关联系统</option>
+          {systems.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
-              {p.archivedAt ? ' · 已归档' : ''}
             </option>
           ))}
         </select>
       </div>
       <div className="review-stats">
         <div>
-          <span>{mode === 'month' ? '本月涉及任务' : '项目任务总数'}</span>
+          <span>{mode === 'month' ? '本月涉及任务' : '系统任务总数'}</span>
           <strong>
             {(mode === 'month' ? rows.length : scoped.length).toString().padStart(2, '0')}
           </strong>
@@ -180,7 +179,7 @@ export function Timeline({
         </div>
       </div>
       <div className="timeline-header">
-        <div>任务 / 项目</div>
+        <div>任务 / 系统</div>
         <div className="timeline-axis">
           {ticks.map((d, i) => (
             <span
@@ -204,7 +203,7 @@ export function Timeline({
           <>
             <div style={{ height: paddingTop }} />
             {rows.slice(start, end).map((t) => {
-              const p = projects.find((p) => p.id === t.projectId),
+              const p = systems.find((p) => p.id === t.systemId),
                 left = Math.max(0, ((t.startedAt - first) / span) * 100),
                 right = Math.min(100, (((t.completedAt ?? clock) - first) / span) * 100);
               return (
@@ -215,7 +214,7 @@ export function Timeline({
                   title={`${t.title}\n${dateLabel(t.startedAt, true)} → ${t.completedAt ? dateLabel(t.completedAt, true) : '截至现在'}`}
                 >
                   <span className="timeline-name">
-                    <span className="dot" style={{ background: p?.color ?? '#92929a' }} />
+                    <span className="dot" style={{ background: p ? '#007aff' : '#92929a' }} />
                     {t.title}
                   </span>
                   <span
@@ -233,10 +232,10 @@ export function Timeline({
                       style={{
                         left: `${left}%`,
                         width: `max(9px, ${Math.max(0, right - left)}%)`,
-                        backgroundColor: p?.color ?? '#7c8799',
+                        backgroundColor: p ? '#007aff' : '#7c8799',
                       }}
                     >
-                      {right - left > 16 ? <span>{p?.name ?? '未分类'}</span> : null}
+                      {right - left > 16 ? <span>{p?.name ?? '未关联系统'}</span> : null}
                     </span>
                   </span>
                 </button>

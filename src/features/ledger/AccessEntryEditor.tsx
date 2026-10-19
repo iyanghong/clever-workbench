@@ -21,9 +21,11 @@ export function AccessEntryEditor({
   entry,
   snapshot,
   flushAll,
+  scopeManaged = false,
   ...host
 }: EditorHost & {
   entry: AccessEntry;
+  scopeManaged?: boolean;
   snapshot: Snapshot;
   flushAll: () => Promise<void>;
 }) {
@@ -43,6 +45,7 @@ export function AccessEntryEditor({
             id: entry.id,
             systemId: entry.systemId,
             ...value,
+            environmentId: scopeManaged ? entry.environmentId : value.environmentId,
           })
         ).snapshot,
       );
@@ -86,7 +89,10 @@ export function AccessEntryEditor({
       const target = {
         name: copyName,
         systemId: copySystem,
-        environmentId: copyEnvironment || null,
+        environmentId:
+          copySystem === entry.systemId && (copyEnvironment || null) === entry.environmentId
+            ? undefined
+            : copyEnvironment || null,
       };
       const result =
         modal === 'delete'
@@ -133,25 +139,27 @@ export function AccessEntryEditor({
             onChange={(event) => form.change({ ...form.value, name: event.target.value })}
           />
         </label>
-        <label>
-          环境
-          <select
-            aria-label="入口所属环境"
-            value={form.value.environmentId ?? ''}
-            onChange={(event) =>
-              form.change({ ...form.value, environmentId: event.target.value || null })
-            }
-          >
-            <option value="">系统通用</option>
-            {snapshot.environments
-              .filter((e) => e.systemId === entry.systemId)
-              .map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
-          </select>
-        </label>
+        {!scopeManaged && (
+          <label>
+            环境
+            <select
+              aria-label="入口所属环境"
+              value={form.value.environmentId ?? ''}
+              onChange={(event) =>
+                form.change({ ...form.value, environmentId: event.target.value || null })
+              }
+            >
+              <option value="">系统通用</option>
+              {snapshot.environments
+                .filter((e) => e.systemId === entry.systemId)
+                .map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+        )}
       </div>
       <div className="section-heading access-address-heading">
         <h3>登录地址</h3>

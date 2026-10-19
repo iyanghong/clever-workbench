@@ -5,15 +5,6 @@ import { emptyContent } from '../../domain';
 export function QuickTask({ snapshot, context, busy, execute, cancel }: CreationProps) {
   const [title, setTitle] = useState(''),
     [background, setBackground] = useState(context);
-  const inherited =
-    context.projectId === undefined
-      ? snapshot.systems.find((item) => item.id === context.systemId)?.currentProjectId
-      : context.projectId;
-  const [projectId, setProjectId] = useState(
-    snapshot.projects.some((item) => item.id === inherited && item.archivedAt === null)
-      ? (inherited ?? null)
-      : null,
-  );
   return (
     <form
       onSubmit={(event) => {
@@ -23,7 +14,13 @@ export function QuickTask({ snapshot, context, busy, execute, cancel }: Creation
             const result = await window.desktop.mutate({
               type: 'task.create',
               consumeDraft: false,
-              draft: { title, markdown: '', content: emptyContent(), ...background, projectId },
+              draft: {
+                title,
+                markdown: '',
+                content: emptyContent(),
+                systemId: background.systemId ?? null,
+                projectId: null,
+              },
             });
             return { module: 'tasks', objectId: result.createdId };
           });
@@ -48,37 +45,7 @@ export function QuickTask({ snapshot, context, busy, execute, cancel }: Creation
           value={background}
           onChange={(value) => setBackground({ ...background, ...value })}
         />
-        <div className="context-fields">
-          <label>
-            项目（可选）
-            <select
-              aria-label="新任务项目"
-              value={projectId ?? ''}
-              onChange={(event) => setProjectId(event.target.value || null)}
-            >
-              <option value="">不关联项目</option>
-              {snapshot.projects
-                .filter((item) => item.archivedAt === null)
-                .map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-            </select>
-          </label>
-        </div>
       </div>
-      {background.systemId && (
-        <details className="compact-details">
-          <summary>环境与资源（可选）</summary>
-          <ContextPicker
-            mode="details"
-            snapshot={snapshot}
-            value={background}
-            onChange={(value) => setBackground({ ...background, ...value })}
-          />
-        </details>
-      )}
       <div className="modal-actions">
         <button type="button" className="secondary-button" disabled={busy} onClick={cancel}>
           取消

@@ -85,7 +85,7 @@ test('从资源创建文档带入当时项目，系统换项目后仍可查询�
   });
 });
 
-test('无标题未分类文档可保存，任务的资源背景可调整且校验环境', () => {
+test('无标题未分类文档可保存，任务只保留系统且文档校验背景', () => {
   const store = open();
   const doc = store.mutate({ type: 'document.create' }).createdId!;
   store.mutate({
@@ -129,7 +129,7 @@ test('无标题未分类文档可保存，任务的资源背景可调整且校�
       resourceId,
     },
   }).createdId!;
-  expect(store.task(taskId)).toMatchObject({ environmentId, resourceId });
+  expect(store.task(taskId)).toMatchObject({ systemId, environmentId: null, resourceId: null });
   expect(() =>
     store.mutate({
       type: 'document.edit',
@@ -206,10 +206,8 @@ test('项目归档清除当前标记但保留历史，账号与旧项目文档�
     type: 'task.create',
     draft: { title: '阶段收尾', markdown: '', content: emptyContent(), projectId, systemId },
   }).createdId!;
-  expect(() => store.mutate({ type: 'project.archive', id: projectId, archived: true })).toThrow(
-    '未完成',
-  );
-  expect(store.snapshot().systems[0].currentProjectId).toBe(projectId);
+  store.mutate({ type: 'project.archive', id: projectId, archived: true });
+  expect(store.snapshot().systems[0].currentProjectId).toBeNull();
   store.mutate({ type: 'task.complete', id: taskId, complete: true });
   store.mutate({ type: 'project.archive', id: projectId, archived: true });
   expect(store.snapshot().systems[0].currentProjectId).toBeNull();
@@ -226,11 +224,9 @@ test('项目归档清除当前标记但保留历史，账号与旧项目文档�
   const document = store.document(documentId);
   store.mutate({ ...document, type: 'document.edit', markdown: '归档后补充复盘' });
   expect(store.document(documentId)).toMatchObject({ projectId, markdown: '归档后补充复盘' });
-  expect(() => store.mutate({ type: 'task.complete', id: taskId, complete: false })).toThrow(
-    '恢复项目',
-  );
+  store.mutate({ type: 'task.complete', id: taskId, complete: false });
   store.mutate({ type: 'task.complete', id: taskId, complete: false, restoreProject: true });
-  expect(store.snapshot().projects[0].archivedAt).toBeNull();
+  expect(store.snapshot().projects[0].archivedAt).not.toBeNull();
   expect(store.task(taskId).completedAt).toBeNull();
   expect(store.snapshot().systems[0].currentProjectId).toBeNull();
 });

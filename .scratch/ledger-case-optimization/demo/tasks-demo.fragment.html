@@ -1,0 +1,133 @@
+<style>
+  html{color-scheme:light dark;background:light-dark(#edf0f5,#14161a)}
+  body{margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif}
+  #cw-ledger-preview{max-width:1440px;margin:auto;min-height:820px;box-shadow:0 16px 70px light-dark(#172b4512,#00000025)}
+  #cw-ledger-preview button,#cw-ledger-preview summary,#cw-ledger-preview select{cursor:pointer}
+  #cw-ledger-preview button:disabled{cursor:default}
+  #cw-ledger-preview .cw-header{padding-right:24px}
+  #cw-ledger-preview .cw-nav-item[data-demo-page]{width:100%;text-align:left}
+  #cw-ledger-preview .cw-nav-item[data-demo-page]:hover{background:var(--cw-hover)}
+  #cw-ledger-preview .cw-task-main{min-width:0;display:flex;flex-direction:column;background:var(--cw-bg)}
+  #cw-ledger-preview .cw-task-top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 32px;border-bottom:1px solid var(--cw-line);min-height:72px;flex-wrap:wrap}
+  #cw-ledger-preview .cw-task-crumb{color:var(--cw-muted);font-size:13px}
+  #cw-ledger-preview .cw-task-top-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  #cw-ledger-preview .cw-task-content{padding:38px 40px 40px;flex:1;min-width:0}
+  #cw-ledger-preview .cw-task-date{font-size:12px;color:var(--cw-muted);margin-bottom:10px}
+  #cw-ledger-preview .cw-task-title{display:flex;align-items:center;gap:12px;margin-bottom:30px}
+  #cw-ledger-preview .cw-task-title h1{font-size:30px;letter-spacing:-1px;margin:0;font-weight:600}
+  #cw-ledger-preview .cw-task-title>span{font-size:18px;color:var(--cw-muted)}
+  #cw-ledger-preview .cw-task-controls{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+  #cw-ledger-preview .cw-segment{display:inline-flex;gap:3px;padding:4px;background:var(--cw-pane);border-radius:9px;max-width:100%}
+  #cw-ledger-preview .cw-segment button{padding:7px 11px;min-height:34px;border-radius:6px;font-size:13px;color:var(--cw-muted);white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:7px}
+  #cw-ledger-preview .cw-segment button[aria-pressed=true]{background:var(--cw-bg);color:var(--cw-text);box-shadow:0 1px 4px var(--cw-shadow)}
+  #cw-ledger-preview .cw-segment small{font-size:11px;color:var(--cw-muted)}
+  #cw-ledger-preview .cw-layout-label{font-size:12px;color:var(--cw-muted);margin-right:5px}
+  #cw-ledger-preview .cw-layout-wrap{display:flex;align-items:center;gap:5px}
+  #cw-ledger-preview .cw-quick-task{display:flex;align-items:center;gap:10px;border:1px solid var(--cw-line);border-radius:11px;padding:10px 14px;box-shadow:0 3px 12px var(--cw-shadow);margin-bottom:24px}
+  #cw-ledger-preview .cw-quick-task>svg{color:var(--cw-blue);width:20px;height:20px}
+  #cw-ledger-preview .cw-quick-task input{border:0;background:none;flex:1;min-width:0;padding:7px 0;font-size:14px}
+  #cw-ledger-preview .cw-quick-task button{color:var(--cw-muted);border:1px solid var(--cw-line);border-radius:6px;padding:5px 7px}
+  #cw-ledger-preview .cw-task-list-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+  #cw-ledger-preview .cw-task-list-bar>span{color:var(--cw-muted);font-size:12px}
+  #cw-ledger-preview .cw-task-list-bar input{border:0;border-bottom:1px solid var(--cw-line);background:none;padding:7px 0;font-size:12px;width:180px;max-width:50%}
+  #cw-ledger-preview .cw-task-row{display:grid;grid-template-columns:26px minmax(0,1fr);column-gap:13px;align-items:center;min-height:88px;padding:17px 10px;border-bottom:1px solid var(--cw-line);border-radius:7px;box-sizing:border-box}
+  #cw-ledger-preview .cw-task-row:hover{background:var(--cw-soft)}
+  #cw-ledger-preview .cw-task-check{width:20px;height:20px;padding:0;border:1.5px solid var(--cw-muted);border-radius:50%;display:grid;place-items:center;grid-column:1;grid-row:1 / 3;color:var(--cw-bg)}
+  #cw-ledger-preview .cw-task-check[aria-pressed=true]{background:var(--cw-green);border-color:var(--cw-green)}
+  #cw-ledger-preview .cw-task-check svg{width:13px;height:13px}
+  #cw-ledger-preview .cw-task-open{padding:0;text-align:left;grid-column:2;font-size:15px;line-height:1.5;min-width:0;overflow-wrap:anywhere}
+  #cw-ledger-preview .cw-task-row.cw-done .cw-task-open{text-decoration:line-through;color:var(--cw-muted)}
+  #cw-ledger-preview .cw-task-meta{display:flex;align-items:center;gap:14px;grid-column:2;margin-top:7px;color:var(--cw-muted);font-size:12px;min-width:0}
+  #cw-ledger-preview .cw-task-system{display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #cw-ledger-preview .cw-task-system::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--cw-blue);flex-shrink:0}
+  #cw-ledger-preview .cw-task-system.cw-unbound::before{background:var(--cw-muted)}
+  #cw-ledger-preview .cw-task-time{white-space:nowrap;font-variant-numeric:tabular-nums}
+  #cw-ledger-preview .cw-task-list.cw-compact .cw-task-row{grid-template-columns:24px minmax(0,1fr) 270px;column-gap:12px;height:44px;min-height:44px;padding:0 10px;border-radius:0}
+  #cw-ledger-preview .cw-task-list.cw-compact .cw-task-check{grid-row:1;grid-column:1;width:17px;height:17px}
+  #cw-ledger-preview .cw-task-list.cw-compact .cw-task-open{grid-row:1;grid-column:2;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;font-size:13px;line-height:1.4}
+  #cw-ledger-preview .cw-task-list.cw-compact .cw-task-meta{grid-row:1;grid-column:3;margin:0;display:grid;grid-template-columns:110px 1fr;gap:12px;font-size:11px}
+  #cw-ledger-preview .cw-task-list.cw-compact .cw-task-time{text-align:right}
+  #cw-ledger-preview .cw-task-detail-times{display:flex;gap:12px;flex-wrap:wrap;color:var(--cw-muted);font-size:11px;margin-top:16px}
+  #cw-ledger-preview .cw-task-description{font-family:inherit;line-height:1.6}
+  #cw-ledger-preview .cw-task-notice{font-size:12px;color:var(--cw-green);min-height:18px;margin-top:14px}
+  @media(max-width:1100px){#cw-ledger-preview .cw-task-content{padding:28px}#cw-ledger-preview .cw-task-list.cw-compact .cw-task-row{grid-template-columns:22px minmax(0,1fr) 220px}#cw-ledger-preview .cw-task-list.cw-compact .cw-task-meta{grid-template-columns:90px 1fr;gap:8px}}
+  @media(max-width:760px){body{padding:8px}#cw-ledger-preview .cw-task-content{padding:22px 16px}#cw-ledger-preview .cw-task-top{padding:16px}#cw-ledger-preview .cw-task-list.cw-compact .cw-task-row{grid-template-columns:22px minmax(0,1fr) 90px;gap:8px}#cw-ledger-preview .cw-task-list.cw-compact .cw-task-meta{display:block}#cw-ledger-preview .cw-task-list.cw-compact .cw-task-time{display:none}#cw-ledger-preview .cw-task-title h1{font-size:26px}#cw-ledger-preview .cw-task-title{margin-bottom:22px}#cw-ledger-preview .cw-task-meta{flex-wrap:wrap;gap:6px 12px}#cw-ledger-preview .cw-task-top-actions{gap:8px}}
+  @media(max-width:620px){#cw-ledger-preview .cw-sidebar{display:flex;flex-direction:row;padding:8px 12px;gap:8px;border-right:0;border-bottom:1px solid var(--cw-line)}#cw-ledger-preview .cw-sidebar>*{display:none}#cw-ledger-preview .cw-sidebar [data-demo-page]{display:flex;width:auto}#cw-ledger-preview .cw-sidebar [data-demo-page]>span{display:inline}#cw-ledger-preview .cw-task-top{min-height:60px}#cw-ledger-preview .cw-task-content{padding:22px 14px}#cw-ledger-preview .cw-task-controls{gap:12px}#cw-ledger-preview .cw-layout-label{display:none}#cw-ledger-preview .cw-task-list.cw-compact .cw-task-row{grid-template-columns:20px minmax(0,1fr) 76px;gap:7px;padding:0 4px}#cw-ledger-preview .cw-task-list.cw-compact .cw-task-system{font-size:10px}#cw-ledger-preview .cw-task-crumb{display:none}#cw-ledger-preview .cw-task-row{padding-left:4px;padding-right:4px}#cw-ledger-preview .cw-task-top-actions{width:100%;justify-content:space-between}}
+</style>
+<script>
+(() => {
+  const root=document.getElementById('cw-ledger-preview');
+  // Standalone opening should lead to the complete demo, which owns the shared shell.
+  if(!root){
+    window.location.replace(new URL('./workbench-demo.html',window.location.href).href);
+    return;
+  }
+  const ledger=root.querySelector('.cw-main');
+  const icon=name=>`<i data-lucide="${name}" aria-hidden="true"></i>`;
+  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const icons=()=>window.lucide?.createIcons({attrs:{width:16,height:16}});
+  const systems=[{id:'collab',name:'协作平台'},{id:'device',name:'设备平台'}];
+  const systemName=id=>systems.find(s=>s.id===id)?.name||'未关联系统';
+  const timestamp=offset=>new Date(Date.now()-offset*86400000).toISOString();
+  const tasks=[
+    {id:'t1',title:'排查生产环境缓存连接偶发超时',system:'collab',created:timestamp(0),body:'## 问题\n高峰期出现少量连接超时。\n\n## 处理\n- 核对连接池配置\n- 对照 Redis 与应用日志'},
+    {id:'t2',title:'更新应用节点的巡检与回滚说明',system:'collab',created:timestamp(0),body:'补充巡检命令、观察指标和回滚步骤。'},
+    {id:'t3',title:'核对设备平台新一批终端的接入情况',system:'device',created:timestamp(1),body:'检查终端在线状态及消息上报。'},
+    {id:'t4',title:'验证数据库备份能否在测试环境完整恢复',system:'collab',created:timestamp(1),body:'记录恢复耗时，并抽查关键数据。'},
+    {id:'t5',title:'整理本周技术评审问题与后续安排',system:null,created:timestamp(2),body:'整理会议笔记与待确认事项。'},
+    {id:'t6',title:'跟进 Jenkins 构建失败并补充排障过程',system:'collab',created:timestamp(2),body:'对比最近一次成功构建的差异。'},
+    {id:'t7',title:'检查设备接入服务在多节点部署下的消息重复与重连行为，记录问题和处理方案',system:'device',created:timestamp(3),body:'覆盖节点重启、断网重连和重复投递场景。'},
+    {id:'t8',title:'汇总个人工作回顾',system:null,created:timestamp(3),body:'整理已完成工作与下周事项。'},
+    {id:'t9',title:'补齐测试服务器的基本配置信息',system:'collab',created:timestamp(4),completed:timestamp(1),body:'已补齐操作系统、CPU、内存、硬盘。'},
+    {id:'t10',title:'记录设备接入平台常用地址',system:'device',created:timestamp(5),completed:timestamp(2),body:'已整理测试与生产入口。'}
+  ];
+  const state={layout:'normal',status:'open',system:'all',query:''};
+  try{if(localStorage.getItem('clever-workbench-demo-task-layout')==='compact')state.layout='compact';}catch{}
+  root.querySelectorAll('.cw-nav-item').forEach(item=>{
+    const name=item.textContent.trim();if(!['台账','任务'].includes(name))return;
+    const button=document.createElement('button');button.type='button';button.className='cw-nav-item';button.dataset.demoPage=name==='台账'?'ledger':'tasks';button.innerHTML=item.innerHTML;item.replaceWith(button);
+  });
+  const main=document.createElement('main');main.className='cw-task-main';main.setAttribute('aria-label','工作任务');
+  main.innerHTML=`<header class="cw-task-top"><span class="cw-task-crumb">工作空间　 ›　 工作任务</span><div class="cw-task-top-actions"><label class="cw-filter"><span class="cw-visually-hidden">任务系统筛选</span><select id="demo-task-system"><option value="all">全部系统</option><option value="none">未关联系统</option>${systems.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></label><button class="cw-edit" type="button" data-task-action="new">${icon('plus')}新增任务</button></div></header><section class="cw-task-content"><div class="cw-task-date">${new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long'})}</div><div class="cw-task-title"><h1>工作任务</h1><span id="demo-task-total"></span></div><div class="cw-task-controls"><div class="cw-segment" role="group" aria-label="任务状态" id="demo-task-status"></div><div class="cw-layout-wrap"><span class="cw-layout-label">布局</span><div class="cw-segment" role="group" aria-label="任务布局"><button type="button" data-layout="normal">${icon('list')}正常</button><button type="button" data-layout="compact">${icon('align-justify')}紧凑</button></div></div></div><div class="cw-quick-task">${icon('plus')}<input id="demo-task-quick" placeholder="记下一件要做的事…" aria-label="快速新增任务"><button type="button" data-task-action="quick" aria-label="添加任务">${icon('corner-down-left')}</button></div><div class="cw-task-list-bar"><span id="demo-task-result" aria-live="polite"></span><input type="search" id="demo-task-search" placeholder="搜索任务…" aria-label="搜索任务"></div><div id="demo-task-list" class="cw-task-list"></div><div class="cw-task-notice" id="demo-task-notice" role="status" aria-live="polite"></div></section><footer class="cw-footer"><span>HTML Demo · 虚构资料 · 刷新重置任务</span><span>仅布局偏好保存在本机</span></footer>`;
+  ledger.after(main);
+  const el=id=>root.querySelector('#'+id);
+  const date=value=>new Date(value).toLocaleDateString('zh-CN',{month:'numeric',day:'numeric'});
+  const fullDate=value=>new Date(value).toLocaleString('zh-CN');
+  function baseTasks(){const q=state.query.trim().toLowerCase();return tasks.filter(t=>(state.system==='all'||(state.system==='none'?!t.system:t.system===state.system))&&(!q||(t.title+' '+t.body).toLowerCase().includes(q)));}
+  function render(){
+    const base=baseTasks(),open=base.filter(t=>!t.completed).length,done=base.length-open;
+    el('demo-task-total').textContent=base.length;
+    el('demo-task-status').innerHTML=[['open','未完成',open],['done','已完成',done],['all','全部',base.length]].map(([id,label,count])=>`<button type="button" data-task-status="${id}" aria-pressed="${id===state.status}">${label}<small>${count}</small></button>`).join('');
+    root.querySelectorAll('[data-layout]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.layout===state.layout)));
+    const visible=base.filter(t=>state.status==='all'||(state.status==='done'?!!t.completed:!t.completed));
+    el('demo-task-result').textContent=`${visible.length} 项 · ${state.layout==='compact'?'紧凑布局，一行一项':'正常布局'}`;
+    const list=el('demo-task-list');list.classList.toggle('cw-compact',state.layout==='compact');
+    list.innerHTML=visible.length?visible.map(t=>`<div class="cw-task-row ${t.completed?'cw-done':''}" data-task-row="${t.id}"><button type="button" class="cw-task-check" data-task-toggle="${t.id}" aria-label="${t.completed?'重新打开':'完成'}：${esc(t.title)}" aria-pressed="${!!t.completed}">${t.completed?icon('check'):''}</button><button type="button" class="cw-task-open" data-task-open="${t.id}" title="${esc(t.title)}">${esc(t.title)}</button><div class="cw-task-meta"><span class="cw-task-system ${!t.system?'cw-unbound':''}" title="${esc(systemName(t.system))}">${esc(systemName(t.system))}</span><span class="cw-task-time" title="${fullDate(t.completed||t.created)}">${date(t.completed||t.created)} ${t.completed?'完成':'开始'}</span></div></div>`).join(''):'<div class="cw-empty">当前没有符合条件的任务</div>';
+    icons();
+  }
+  function page(name){ledger.hidden=name!=='ledger';main.hidden=name!=='tasks';root.querySelectorAll('[data-demo-page]').forEach(button=>{button.classList.toggle('cw-nav-current',button.dataset.demoPage===name);if(button.dataset.demoPage===name)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');});el('cw-overlay').hidden=true;icons();}
+  function notify(message){el('demo-task-notice').textContent=message;}
+  function quick(){const input=el('demo-task-quick'),title=input.value.trim();if(!title)return;const task={id:'t'+Date.now(),title,system:['collab','device'].includes(state.system)?state.system:null,created:new Date().toISOString(),body:''};tasks.unshift(task);input.value='';state.status='open';state.query='';el('demo-task-search').value='';render();notify('已添加：'+title);input.focus();}
+  function detail(id){
+    const t=tasks.find(task=>task.id===id);const sheet=el('cw-sheet');sheet.setAttribute('aria-label',t?'任务详情':'新增任务');
+    sheet.innerHTML=`<div class="cw-sheet-header"><h2>${t?'任务详情':'新增任务'}</h2><button type="button" data-task-action="close" aria-label="关闭任务详情">${icon('x')}</button></div><div class="cw-editor"><label class="cw-field">任务标题<input id="demo-edit-title" value="${esc(t?.title||'')}" required></label><label class="cw-field">关联系统 · 可选<select id="demo-edit-system"><option value="">未关联系统</option>${systems.map(s=>`<option value="${s.id}" ${(t?t.system:state.system)===s.id?'selected':''}>${s.name}</option>`).join('')}</select></label><label class="cw-field">工作内容 · Markdown<textarea class="cw-task-description" id="demo-edit-body" rows="7">${esc(t?.body||'')}</textarea></label></div>${t?`<div class="cw-task-detail-times"><span>创建：${fullDate(t.created)}</span>${t.completed?`<span>完成：${fullDate(t.completed)}</span>`:''}</div>`:''}<div class="cw-sheet-actions"><button type="button" class="cw-text-button" data-task-action="close">取消</button><button type="button" class="cw-add" data-task-save="${id||'new'}">${t?'保存示例修改':'建立示例任务'}</button></div>`;
+    el('cw-overlay').hidden=false;icons();el('demo-edit-title').focus();
+  }
+  root.addEventListener('click',event=>{
+    const b=event.target.closest('button');if(!b)return;
+    if(b.dataset.demoPage){page(b.dataset.demoPage);return;}
+    if(b.dataset.layout){state.layout=b.dataset.layout;try{localStorage.setItem('clever-workbench-demo-task-layout',state.layout);}catch{}render();return;}
+    if(b.dataset.taskStatus){state.status=b.dataset.taskStatus;render();return;}
+    if(b.dataset.taskToggle){const t=tasks.find(task=>task.id===b.dataset.taskToggle);if(t.completed){delete t.completed;notify('已重新打开：'+t.title);}else{t.completed=new Date().toISOString();notify('已完成：'+t.title+' · '+fullDate(t.completed));}render();return;}
+    if(b.dataset.taskOpen){detail(b.dataset.taskOpen);return;}
+    if(b.dataset.taskSave){const title=el('demo-edit-title');if(!title.reportValidity()||!title.value.trim())return;const values={title:title.value.trim(),system:el('demo-edit-system').value||null,body:el('demo-edit-body').value};if(b.dataset.taskSave==='new'){tasks.unshift({id:'t'+Date.now(),created:new Date().toISOString(),...values});state.status='open';state.query='';el('demo-task-search').value='';state.system=values.system||'none';el('demo-task-system').value=state.system;}else Object.assign(tasks.find(t=>t.id===b.dataset.taskSave),values);el('cw-overlay').hidden=true;render();notify('示例任务已保存');return;}
+    if(b.dataset.taskAction==='quick')quick();
+    if(b.dataset.taskAction==='new')detail(null);
+    if(b.dataset.taskAction==='close')el('cw-overlay').hidden=true;
+  });
+  el('demo-task-system').addEventListener('change',event=>{state.system=event.target.value;render();});
+  el('demo-task-search').addEventListener('input',event=>{state.query=event.target.value;render();});
+  el('demo-task-quick').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();quick();}});
+  render();page('tasks');
+})();
+</script>

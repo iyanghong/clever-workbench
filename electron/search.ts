@@ -1,3 +1,5 @@
+import { WorkspaceLedger } from './ledger-workspace';
+import { scopeFor } from '../src/ledger-workspace-types';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Ledger } from './ledger';
 import type { ObjectContext } from '../src/ledger-types';
@@ -5,13 +7,18 @@ import type { SearchHit } from '../src/search-types';
 
 type Entry = { hit: SearchHit; text: string };
 const normalize = (value: string) => value.normalize('NFKC').toLocaleLowerCase();
-const kindWords = { redis: 'Redis 缓存', server: 'server 服务器 SSH', other: '其他资源' };
+const kindWords = {
+  redis: 'Redis 缓存',
+  server: 'server 服务器 SSH',
+  database: '数据库',
+  other: '其他资源',
+};
 export function searchWorkspace(db: DatabaseSync, ledger: Ledger, query: unknown): SearchHit[] {
   if (typeof query !== 'string' || query.length > 1000) throw new Error('搜索内容无效或过长。');
   const terms = [...new Set(normalize(query).trim().split(/\s+/).filter(Boolean))];
   if (!terms.length) return [];
   if (terms.length > 30) throw new Error('搜索关键词过多。');
-  const data = ledger.snapshot(),
+  const data = { ...ledger.snapshot(), ...new WorkspaceLedger(db).snapshot() },
     entries: Entry[] = [];
   const systems = new Map(data.systems.map((item) => [item.id, item])),
     environments = new Map(data.environments.map((item) => [item.id, item])),
@@ -42,6 +49,40 @@ export function searchWorkspace(db: DatabaseSync, ledger: Ledger, query: unknown
       .join(' / ');
   }
   function add(hit: SearchHit, extra = '') {
+    const account = hit.kind === 'account' ? data.accounts.find((a) => a.id === hit.id) : undefined;
+    const ownerId = account?.resourceId ?? account?.accessId ?? hit.id;
+    const kind = account
+      ? account.resourceId
+        ? 'resource'
+        : account.accessId
+          ? 'access'
+          : null
+      : ['resource', 'access', 'service', 'operation'].includes(hit.kind)
+        ? hit.kind
+        : null;
+    const scope = data.scopes.find((s) => s.kind === kind && s.ownerId === ownerId);
+    if (scope) {
+      const owner = account
+        ? (resources.get(ownerId)?.name ?? data.accessEntries.find((e) => e.id === ownerId)?.name)
+        : null;
+      hit.context = [
+        systems.get(scope.systemId)?.name,
+        scope.environmentIds.length
+          ? scope.environmentIds.map((id) => environments.get(id)?.name).join('、')
+          : '系统通用',
+        owner,
+      ]
+        .filter(Boolean)
+        .join(' / ');
+      extra +=
+        ' ' +
+        scope.tags.join(' ') +
+        ' ' +
+        (scope.statusNotes ?? '') +
+        ' ' +
+        { active: '在用', inactive: '停用', unverified: '待确认' }[scope.status ?? 'active'];
+    }
+
     entries.push({ hit, text: normalize(`${hit.title} ${hit.context} ${hit.summary} ${extra}`) });
   }
   for (const item of data.systems) {
@@ -91,7 +132,7 @@ export function searchWorkspace(db: DatabaseSync, ledger: Ledger, query: unknown
         context: context({ systemId: item.systemId, environmentId: item.environmentId }),
         summary: [kindWords[item.kind], item.address, item.port].filter(Boolean).join(' · '),
       },
-      `${item.notes} ${Object.values(item.fields).join(' ')}`,
+      `${item.notes} ${Object.entries(item.fields).flat().join(' ')}`,
     );
   }
   for (const item of data.accessEntries) {
@@ -129,6 +170,34 @@ export function searchWorkspace(db: DatabaseSync, ledger: Ledger, query: unknown
         secretKinds: item.secretKinds,
       },
       `${resource ? kindWords[resource.kind] : ''} ${item.notes}`,
+    );
+  }
+  for (const item of data.operations)
+    add(
+      {
+        kind: 'operation',
+        id: item.id,
+        title: item.name,
+        context: context(item),
+        summary: [
+          item.frequency,
+          { active: '在用', inactive: '停用', unverified: '待确认' }[item.status],
+        ].join(' · '),
+      },
+      item.notes,
+    );
+  for (const node of data.deploymentNodes) {
+    const service = data.services.find((s) => s.id === node.serviceId);
+    const server = resources.get(node.serverId ?? '');
+    add(
+      {
+        kind: 'deployment',
+        id: node.id,
+        title: node.name,
+        context: context({ systemId: service?.systemId, environmentId: node.environmentId }),
+        summary: node.address || server?.address || '服务器待补充',
+      },
+      `${service?.name ?? ''} ${server?.name ?? ''} ${node.port} ${node.count} ${node.notes}`,
     );
   }
   for (const kind of ['task', 'document'] as const) {

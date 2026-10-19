@@ -58,22 +58,22 @@ describe('local task model', () => {
     ).toThrow();
     expect(s.task(id!).startedAt).toBe(start);
   });
-  test('archive, reopen, trash and restore preserve project invariant', () => {
+  test('archive, reopen, trash and restore keep tasks independent of projects', () => {
     const s = setup();
     const p = s.mutate({ type: 'project.create', name: '网站', color: '#007aff' }).createdId!;
     const id = s.mutate({ type: 'task.create', draft: { ...draft(), projectId: p } }).createdId!;
-    expect(() => s.mutate({ type: 'project.archive', id: p, archived: true })).toThrow();
+    s.mutate({ type: 'project.archive', id: p, archived: true });
     s.mutate({ type: 'task.complete', id, complete: true });
     const done = s.task(id).completedAt;
     s.mutate({ type: 'task.complete', id, complete: true });
     expect(s.task(id).completedAt).toBe(done);
     s.mutate({ type: 'project.archive', id: p, archived: true });
-    expect(() => s.mutate({ type: 'task.complete', id, complete: false })).toThrow();
+    s.mutate({ type: 'task.complete', id, complete: false });
     s.mutate({ type: 'task.complete', id, complete: false, restoreProject: true });
-    expect(s.project(p).archivedAt).toBeNull();
+    expect(s.project(p).archivedAt).not.toBeNull();
     s.mutate({ type: 'task.delete', id });
     s.mutate({ type: 'project.archive', id: p, archived: true });
-    expect(() => s.mutate({ type: 'task.restore', id })).toThrow();
+    s.mutate({ type: 'task.restore', id });
     s.mutate({ type: 'task.restore', id, destination: 'unclassified' });
     expect(s.task(id).projectId).toBeNull();
     expect(s.task(id).deletedAt).toBeNull();

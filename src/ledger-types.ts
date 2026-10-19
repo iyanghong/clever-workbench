@@ -37,7 +37,7 @@ export type DeploymentRecord = {
   port: string;
   notes: string;
 };
-export type ResourceKind = 'redis' | 'server' | 'other';
+export type ResourceKind = 'redis' | 'server' | 'database' | 'other';
 export const serverConfigurationFields = ['操作系统', 'CPU', '内存', '硬盘'] as const;
 export type AccessAddress = { id: string; label: string; url: string };
 export type AccessEntry = {

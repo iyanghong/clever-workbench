@@ -97,7 +97,12 @@ export class Documents {
     if (command.type === 'document.edit') {
       if (old.deletedAt !== null) throw new Error('请先恢复文档。');
       this.validate(command);
-      const context = this.ledger.resolveContext(command);
+      const context = this.ledger.resolveContext(
+        command,
+        command.systemId === old.systemId &&
+          command.environmentId === old.environmentId &&
+          command.resourceId === old.resourceId,
+      );
       this.db
         .prepare(
           'UPDATE documents SET title=?,markdown=?,content=?,projectId=?,systemId=?,environmentId=?,resourceId=?,updatedAt=? WHERE id=?',
@@ -114,6 +119,8 @@ export class Documents {
           old.id,
         );
     } else if (command.type === 'document.delete') {
+      if (this.db.prepare('SELECT 1 FROM operations WHERE documentId=?').get(old.id))
+        throw new Error('文档仍被运维记录引用，请先解除关联。');
       this.db
         .prepare('UPDATE documents SET deletedAt=? WHERE id=?')
         .run(old.deletedAt ?? now, old.id);

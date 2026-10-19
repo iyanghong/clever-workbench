@@ -1,3 +1,4 @@
+import { WorkspaceLedger } from './ledger-workspace';
 import type { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import type { AccessAddress, AccessEntry, AccessSave } from '../src/ledger-types';
@@ -122,6 +123,15 @@ export class AccessEntries {
         now,
       );
     this.db.prepare('UPDATE accounts SET environmentId=? WHERE accessId=?').run(environmentId, id);
+    const workspace = new WorkspaceLedger(this.db);
+    const scope = workspace.scopes().find((s) => s.kind === 'access' && s.ownerId === id);
+    workspace.saveScope(
+      'access',
+      id,
+      scope && previous?.environmentId === environmentId
+        ? scope
+        : { environmentIds: environmentId ? [environmentId] : [], tags: scope?.tags ?? [] },
+    );
     return id;
   }
   refreshPreferredAccount(id: string) {

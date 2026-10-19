@@ -323,6 +323,10 @@ app
       writable();
       return vault.capture(input);
     });
+    secureHandler('ledger-batch', (input) => {
+      writable();
+      return vault.captureBatch(input);
+    });
     secureHandler('access-copy-secrets', (id, target) => {
       writable();
       return vault.copyAccess(id, target);

@@ -74,7 +74,7 @@ test('全局搜索区分环境，可从结果按需解锁复制秘密并用键�
       .toBe('fictional-search-secret');
     await expect(page.getByLabel('搜索工作台内容')).toHaveValue('订单平台 生产 Redis');
     await page.getByRole('button', { name: '打开账号 应用连接', exact: true }).click();
-    await expect(page.getByLabel('账号用户名', { exact: true })).toHaveValue('app-prod');
+    await expect(page.locator('.workspace-inspector')).toContainText('app-prod');
     await page.keyboard.press('ControlOrMeta+k');
     await page.getByLabel('搜索工作台内容').fill('连接池');
     await expect(

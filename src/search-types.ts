@@ -1,6 +1,15 @@
 import type { SecretKind } from './vault-types';
 export type SearchKind =
-  'system' | 'environment' | 'service' | 'resource' | 'account' | 'access' | 'task' | 'document';
+  | 'operation'
+  | 'deployment'
+  | 'system'
+  | 'environment'
+  | 'service'
+  | 'resource'
+  | 'account'
+  | 'access'
+  | 'task'
+  | 'document';
 export type SearchHit = {
   kind: SearchKind;
   id: string;
@@ -12,6 +21,8 @@ export type SearchHit = {
   secretKinds?: SecretKind[];
 };
 export const searchKindLabels: Record<SearchKind, string> = {
+  operation: '运行维护',
+  deployment: '部署节点',
   system: '系统',
   environment: '环境',
   service: '服务',

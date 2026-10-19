@@ -290,3 +290,102 @@ test('形似图片 URI 的密码和代码原样保留，只打包真正图片节
   expect(document).toContain('- [x] 完成');
   expect([...output.keys()].filter((name) => name.startsWith('Markdown/图片/'))).toHaveLength(1);
 });
+
+test('新台账范围、节点、运维和任务历史进入导出与完整备份，恢复保留身份', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workbench-expanded-export-'));
+  roots.push(root);
+  const store = new Store(root);
+  stores.push(store);
+  const vault = new Vault(store);
+  vaults.push(vault);
+  const password = 'fictional-expanded-backup-password';
+  await vault.initialize(password);
+  const systemId = store.mutate({ type: 'system.save', name: '扩展平台' }).createdId!,
+    prod = store.mutate({ type: 'environment.save', systemId, name: '生产' }).createdId!,
+    testing = store.mutate({ type: 'environment.save', systemId, name: '测试' }).createdId!;
+  const server = store.mutate({
+    type: 'resource.save',
+    systemId,
+    environmentId: null,
+    kind: 'server',
+    name: '应用节点',
+    address: '192.0.2.19',
+  }).createdId!;
+  store.mutate({
+    type: 'scope.save',
+    kind: 'resource',
+    ownerId: server,
+    scope: { environmentIds: [prod, testing], tags: ['内网'] },
+  });
+  const service = store.mutate({ type: 'service.save', systemId, name: '订单服务' }).createdId!;
+  const node = store.mutate({
+    type: 'node.save',
+    value: {
+      serviceId: service,
+      environmentId: prod,
+      name: '独立节点',
+      serverId: server,
+      address: '',
+      port: '8080',
+      notes: '调度说明',
+      mode: 'fixed',
+      count: '',
+    },
+  }).createdId!;
+  const operation = store.mutate({
+    type: 'operation.save',
+    value: {
+      systemId,
+      environmentId: prod,
+      serviceId: service,
+      resourceId: null,
+      documentId: null,
+      name: '每日巡检',
+      kind: 'job',
+      frequency: '每日 02:00',
+      status: 'unverified',
+      notes: '先校对',
+    },
+  }).createdId!;
+  const task = store.mutate({
+    type: 'task.create',
+    draft: {
+      title: '迁移任务',
+      projectId: null,
+      systemId,
+      content: emptyContent(),
+      markdown: '任务正文',
+      history: '原项目：建设一期',
+    },
+  }).createdId!;
+  const exportPath = path.join(root, 'expanded.zip');
+  await new SystemExports(store, vault).write(
+    { systemId, formats: ['markdown'], secretKinds: [] },
+    exportPath,
+  );
+  const output = await files(exportPath);
+  const overview = output.get('Markdown/系统总览.md')!.toString();
+  for (const value of ['生产、测试', '内网', '独立节点', '192.0.2.19', '每日巡检', '每日 02:00'])
+    expect(overview).toContain(value);
+  expect(overview.match(/### 应用节点/g) || []).toHaveLength(1);
+  const taskMarkdown = [...output].find(([name]) => name.includes('任务/'))![1].toString();
+  expect(taskMarkdown).toContain('原项目：建设一期');
+  expect(taskMarkdown).not.toContain('| 项目 |');
+  expect(store.globalSearch('独立节点')[0].kind).toBe('deployment');
+  expect(store.globalSearch('每日巡检')[0].kind).toBe('operation');
+  expect(store.globalSearch('内网 应用节点').some((hit) => hit.id === server)).toBe(true);
+  const backup = new Backups(store),
+    backupPath = path.join(root, 'complete.cwb');
+  await backup.create(backupPath);
+  store.mutate({ type: 'node.delete', id: node });
+  store.mutate({ type: 'operation.delete', id: operation });
+  const info = await backup.inspect(backupPath, password);
+  await backup.restore(info.token);
+  expect(store.snapshot().deploymentNodes[0]).toMatchObject({ id: node, serverId: server });
+  expect(store.snapshot().operations[0].id).toBe(operation);
+  expect(store.task(task).history).toBe('原项目：建设一期');
+  expect(store.snapshot().scopes.find((s) => s.ownerId === server)?.environmentIds).toEqual([
+    prod,
+    testing,
+  ]);
+});

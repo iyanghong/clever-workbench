@@ -1,3 +1,5 @@
+import { WorkspaceLedger } from './ledger-workspace';
+import { migrateWorkbench } from './workbench-migration';
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,7 +23,7 @@ import { Documents, initializeDocuments } from './documents';
 import { Ledger, initializeLedger } from './ledger';
 import { migrateSystemLedger } from './ledger-migration';
 
-export const schemaVersion = 8;
+export const schemaVersion = 9;
 export const schemaTables = [
   'projects',
   'tasks',
@@ -34,6 +36,10 @@ export const schemaTables = [
   'resources',
   'accounts',
   'access_entries',
+  'ledger_scopes',
+  'deployment_nodes',
+  'operations',
+  'ledger_batches',
   'documents',
   'secrets',
 ];
@@ -126,6 +132,7 @@ export function validateContent(content: any) {
 export function validateDraftFields(draft: Draft) {
   if (!draft || typeof draft !== 'object') throw new Error('草稿格式无效。');
   text(draft.title, 1000);
+  if (draft.history !== undefined) text(draft.history, 5000);
   if (draft.startedAt !== undefined) validateTimes(draft.startedAt, null);
   text(draft.markdown, 10_000_000);
   validateContent(draft.content);
@@ -168,6 +175,7 @@ export class Store {
     migrateSystemLedger(db);
     initializeDocuments(db);
     initializeVault(db);
+    migrateWorkbench(db);
     db.exec(`PRAGMA user_version=${schemaVersion}`);
     this.ledger = new Ledger(db);
     this.documents = new Documents(db, this.ledger, (value) => this.validateDraft(value));
@@ -210,11 +218,12 @@ export class Store {
   snapshot(): Snapshot {
     return {
       ...this.ledger.snapshot(),
+      ...new WorkspaceLedger(this.db).snapshot(),
       favorites: this.favorites(),
       documents: this.documents.snapshot(),
       tasks: this.db
         .prepare(
-          'SELECT id,title,projectId,systemId,environmentId,resourceId,createdAt,startedAt,completedAt,deletedAt FROM tasks',
+          'SELECT id,title,projectId,systemId,environmentId,resourceId,createdAt,startedAt,completedAt,deletedAt,history FROM tasks',
         )
         .all() as unknown as TaskSummary[],
       projects: this.db
@@ -243,10 +252,6 @@ export class Store {
     if (!row) throw new Error('项目不存在。');
     return row as unknown as Project;
   }
-  activeProject(id: string | null) {
-    if (id !== null && this.project(id).archivedAt !== null)
-      throw new Error('请先恢复项目，或选择未分类。');
-  }
   checkAssets(content: unknown) {
     for (const name of assetReferences(content))
       if (!fs.existsSync(path.join(this.directory, 'assets', name)))
@@ -257,13 +262,18 @@ export class Store {
     this.checkAssets(draft.content);
     this.checkAssets(draft.markdown);
     if (draft.projectId !== null) this.project(draft.projectId);
-    this.ledger.resolveContext(draft);
+    // Document context is checked by Documents, which can distinguish preserved historical context.
   }
   markChanged() {
     this.set('revision', this.get('revision', 0) + 1);
   }
   saveDraft(draft: Draft | null) {
-    if (draft !== null) this.validateDraft(draft);
+    if (draft !== null) {
+      const { environmentId, resourceId, ...taskDraft } = draft;
+      draft = { ...taskDraft, projectId: null };
+      this.ledger.resolveContext(draft);
+      this.validateDraft(draft);
+    }
     this.set('draft', draft);
     this.markChanged();
   }
@@ -283,6 +293,16 @@ export class Store {
     try {
       const now = minute();
       switch (command.type) {
+        case 'scope.save':
+        case 'node.save':
+        case 'node.delete':
+        case 'operation.save':
+        case 'operation.delete':
+        case 'environment.delete':
+        case 'service.delete': {
+          createdId = new WorkspaceLedger(this.db).mutate(command);
+          break;
+        }
         case 'access.save': {
           createdId = this.ledger.accessEntries.save(command, now);
           break;
@@ -367,6 +387,24 @@ export class Store {
         }
         case 'deployment.save': {
           createdId = this.ledger.saveDeployment(command);
+          const legacy = this.db.prepare('SELECT * FROM deployments WHERE id=?').get(createdId)!;
+          this.db
+            .prepare(
+              "INSERT OR IGNORE INTO deployment_nodes(id,serviceId,environmentId,name,serverId,address,port,notes,mode,count) SELECT id,serviceId,environmentId,'原部署节点',NULL,address,port,notes,'fixed','' FROM deployments WHERE id=?",
+            )
+            .run(createdId);
+          new WorkspaceLedger(this.db).saveNode({
+            id: createdId,
+            serviceId: command.serviceId,
+            environmentId: command.environmentId,
+            name: '原部署节点',
+            serverId: null,
+            address: String(legacy.address),
+            port: String(legacy.port),
+            notes: String(legacy.notes),
+            mode: 'fixed',
+            count: '',
+          });
           break;
         }
         case 'system.save': {
@@ -375,10 +413,20 @@ export class Store {
           break;
         }
         case 'task.create': {
-          const d = command.draft;
+          const systemId =
+            command.draft.systemId === undefined
+              ? this.ledger.resolveContext(command.draft).systemId
+              : command.draft.systemId;
+          const d = {
+            ...command.draft,
+            systemId,
+            projectId: null,
+            environmentId: null,
+            resourceId: null,
+          };
           this.validateDraft(d);
           const context = this.ledger.resolveContext(d);
-          this.activeProject(d.projectId);
+
           const start = d.startedAt ?? now;
           validateTimes(start, null);
           createdId = randomUUID();
@@ -400,6 +448,8 @@ export class Store {
               context.environmentId,
               context.resourceId,
             );
+          if (d.history)
+            this.db.prepare('UPDATE tasks SET history=? WHERE id=?').run(d.history, createdId);
           if (command.consumeDraft !== undefined && typeof command.consumeDraft !== 'boolean')
             throw new Error('草稿处理方式无效。');
           if (command.consumeDraft !== false) this.set('draft', null);
@@ -408,27 +458,44 @@ export class Store {
         case 'task.edit': {
           const old = this.task(command.id);
           if (old.deletedAt !== null) throw new Error('请先恢复此任务。');
-          this.validateDraft(command);
-          if (command.projectId !== old.projectId || old.completedAt === null)
-            this.activeProject(command.projectId);
+          this.validateDraft({
+            ...command,
+            projectId: null,
+            environmentId: null,
+            resourceId: null,
+          });
           this.db
             .prepare('UPDATE tasks SET title=?,content=?,markdown=?,projectId=? WHERE id=?')
             .run(
               title(command.title),
               JSON.stringify(command.content),
               command.markdown,
-              command.projectId,
+              null,
               command.id,
             );
           const context = this.ledger.resolveContext({
             systemId: command.systemId === undefined ? old.systemId : command.systemId,
-            environmentId:
-              command.environmentId === undefined ? old.environmentId : command.environmentId,
-            resourceId: command.resourceId === undefined ? old.resourceId : command.resourceId,
+            environmentId: null,
+            resourceId: null,
           });
           this.db
             .prepare('UPDATE tasks SET systemId=?,environmentId=?,resourceId=? WHERE id=?')
             .run(context.systemId, context.environmentId, context.resourceId, command.id);
+          break;
+        }
+        case 'task.assign-system': {
+          if (!Array.isArray(command.ids) || !command.ids.length || command.ids.length > 1000)
+            throw new Error('请选择 1 至 1000 条任务。');
+          const context = this.ledger.resolveContext({
+            systemId: command.systemId,
+            environmentId: null,
+            resourceId: null,
+          });
+          for (const id of new Set(command.ids)) {
+            if (typeof id !== 'string' || this.task(id).deletedAt !== null)
+              throw new Error('只能调整未删除的任务。');
+            this.db.prepare('UPDATE tasks SET systemId=? WHERE id=?').run(context.systemId, id);
+          }
           break;
         }
         case 'task.complete': {
@@ -437,14 +504,6 @@ export class Store {
             throw new Error('当前任务不能进行此操作。');
           if (command.complete === (old.completedAt !== null) && command.completedAt === undefined)
             break;
-          if (
-            !command.complete &&
-            old.projectId &&
-            this.project(old.projectId).archivedAt !== null
-          ) {
-            if (command.restoreProject !== true) throw new Error('请先恢复项目，再重新打开任务。');
-            this.db.prepare('UPDATE projects SET archivedAt=NULL WHERE id=?').run(old.projectId);
-          }
           const end = command.complete ? (command.completedAt ?? now) : null;
           validateTimes(old.startedAt, end);
           this.db.prepare('UPDATE tasks SET completedAt=? WHERE id=?').run(end, command.id);
@@ -472,21 +531,8 @@ export class Store {
         }
         case 'task.restore': {
           const old = this.task(command.id);
-          let projectId = old.projectId;
           if (old.deletedAt === null) break;
-          if (
-            old.completedAt === null &&
-            projectId &&
-            this.project(projectId).archivedAt !== null
-          ) {
-            if (command.destination === 'unclassified') projectId = null;
-            else if (command.destination === 'original')
-              this.db.prepare('UPDATE projects SET archivedAt=NULL WHERE id=?').run(projectId);
-            else throw new Error('请选择恢复到未分类或同时恢复项目。');
-          }
-          this.db
-            .prepare('UPDATE tasks SET deletedAt=NULL,projectId=? WHERE id=?')
-            .run(projectId, command.id);
+          this.db.prepare('UPDATE tasks SET deletedAt=NULL WHERE id=?').run(command.id);
           break;
         }
         case 'task.purge': {
@@ -522,13 +568,6 @@ export class Store {
         case 'project.archive': {
           this.project(command.id);
           if (typeof command.archived !== 'boolean') throw new Error('项目状态无效。');
-          const pending = this.db
-            .prepare(
-              'SELECT count(*) n FROM tasks WHERE projectId=? AND completedAt IS NULL AND deletedAt IS NULL',
-            )
-            .get(command.id)!;
-          if (command.archived && Number(pending.n) > 0)
-            throw new Error(`还有 ${pending.n} 项工作未完成，请先完成、移出或删除。`);
           this.db
             .prepare('UPDATE projects SET archivedAt=? WHERE id=?')
             .run(command.archived ? now : null, command.id);

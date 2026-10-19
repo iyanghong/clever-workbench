@@ -3,6 +3,8 @@ import { isDeepStrictEqual } from 'node:util';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Store } from './store';
 import type { LedgerCapture } from '../src/ledger-types';
+import type { LedgerBatch } from '../src/ledger-workspace-types';
+import { WorkspaceLedger } from './ledger-workspace';
 import type {
   SecretKind,
   VaultStatus,
@@ -348,6 +350,223 @@ export class Vault {
         if (key) this.writeSecret(accountId, 'password', input.password, key);
       }
       return id;
+    });
+  }
+  captureBatch(input: LedgerBatch) {
+    if (
+      !input ||
+      typeof input !== 'object' ||
+      typeof input.token !== 'string' ||
+      !/^[a-f0-9-]{36}$/i.test(input.token) ||
+      !Array.isArray(input.rows) ||
+      !input.rows.length ||
+      input.rows.length > 200 ||
+      ![
+        'access',
+        'server',
+        'database',
+        'redis',
+        'other',
+        'service',
+        'job',
+        'backup',
+        'account',
+        'node',
+      ].includes(input.kind)
+    )
+      throw new Error('批量录入格式无效，每次最多 200 条。');
+    this.store.ledger.system(input.systemId);
+    if (
+      input.environmentId !== null &&
+      this.store.ledger.environment(input.environmentId).systemId !== input.systemId
+    )
+      throw new Error('请选择本系统环境。');
+    for (const row of input.rows) {
+      if (!row || typeof row !== 'object' || typeof row.name !== 'string' || !row.name.trim())
+        throw new Error('每条记录都需要名称。');
+      for (const key of [
+        'address',
+        'port',
+        'notes',
+        'repository',
+        'username',
+        'password',
+        'accountName',
+        'frequency',
+        'count',
+      ] as const)
+        if (row[key] !== undefined && typeof row[key] !== 'string')
+          throw new Error('批量字段类型无效。');
+      if (
+        (row.username || row.password) &&
+        ['service', 'job', 'backup', 'node'].includes(input.kind)
+      )
+        throw new Error('此类条目不直接保存账号，请单独选择账号录入。');
+    }
+    const completed = this.store.db
+      .prepare('SELECT createdId FROM ledger_batches WHERE token=?')
+      .get(input.token);
+    if (completed)
+      return { createdId: String(completed.createdId), snapshot: this.store.snapshot() };
+    const key = input.rows.some((row) => row.password) ? this.requireKey() : null;
+    return this.copyTransaction(() => {
+      const workspace = new WorkspaceLedger(this.store.db),
+        created: string[] = [],
+        now = Date.now();
+      for (const row of input.rows) {
+        let id: string, accountId: string | undefined;
+        const resources = ['server', 'database', 'redis', 'other'].includes(input.kind);
+        const existing = resources
+          ? this.store.ledger.snapshot().resources.filter((r) => r.systemId === input.systemId)
+          : input.kind === 'access'
+            ? this.store.ledger.accessEntries.list().filter((r) => r.systemId === input.systemId)
+            : [];
+        if (
+          row.confirmDuplicate !== true &&
+          existing.some(
+            (r) =>
+              r.name.toLowerCase() === row.name.trim().toLowerCase() ||
+              (row.address &&
+                ('address' in r
+                  ? r.address === row.address
+                  : r.addresses.some((a) => a.url === row.address))),
+          )
+        )
+          throw new Error('疑似重复记录需要在预览中选择跳过或仍新增。');
+        if (input.kind === 'access')
+          id = this.store.ledger.accessEntries.save(
+            {
+              type: 'access.save',
+              systemId: input.systemId,
+              environmentId: input.environmentId,
+              name: row.name,
+              notes: row.notes,
+              addresses: row.address ? [{ label: '主地址', url: row.address }] : [],
+            },
+            now,
+          );
+        else if (resources)
+          id = this.store.ledger.saveResource(
+            {
+              type: 'resource.save',
+              systemId: input.systemId,
+              environmentId: input.environmentId,
+              kind: input.kind as 'server' | 'database' | 'redis' | 'other',
+              name: row.name,
+              address: row.address,
+              port: row.port,
+              notes: row.notes,
+              fields: row.fields,
+            },
+            now,
+          );
+        else if (input.kind === 'service')
+          id = this.store.ledger.saveService(
+            {
+              type: 'service.save',
+              systemId: input.systemId,
+              name: row.name,
+              repository: row.repository,
+              notes: row.notes,
+            },
+            now,
+          );
+        else if (input.kind === 'job' || input.kind === 'backup')
+          id = workspace.saveOperation({
+            systemId: input.systemId,
+            environmentId: input.environmentId,
+            serviceId: null,
+            resourceId: null,
+            documentId: null,
+            name: row.name,
+            kind: input.kind,
+            frequency: row.frequency ?? '',
+            status: row.status ?? 'unverified',
+            notes: row.notes ?? '',
+          });
+        else if (input.kind === 'node') {
+          if (
+            !input.ownerId ||
+            !input.environmentId ||
+            this.store.ledger.service(input.ownerId).systemId !== input.systemId
+          )
+            throw new Error('请选择本系统服务与部署环境。');
+          id = workspace.saveNode({
+            serviceId: input.ownerId,
+            environmentId: input.environmentId,
+            name: row.name,
+            serverId: null,
+            address: row.address ?? '',
+            port: row.port ?? '',
+            notes: row.notes ?? '',
+            mode: row.mode ?? 'fixed',
+            count: row.count ?? '',
+          });
+        } else {
+          if (
+            !input.ownerId ||
+            !['resource', 'access', 'environment'].includes(input.ownerKind ?? '')
+          )
+            throw new Error('请选择账号所属对象。');
+          const owner =
+            input.ownerKind === 'resource'
+              ? this.store.ledger.resource(input.ownerId)
+              : input.ownerKind === 'access'
+                ? this.store.ledger.accessEntries.get(input.ownerId)
+                : this.store.ledger.environment(input.ownerId);
+          if (owner.systemId !== input.systemId) throw new Error('账号归属必须在本系统内。');
+          const environmentId =
+            'environmentId' in owner ? (owner.environmentId as string | null) : owner.id;
+          if (
+            row.confirmDuplicate !== true &&
+            row.username &&
+            this.store.ledger
+              .snapshot()
+              .accounts.some(
+                (a) =>
+                  a.username === row.username &&
+                  (input.ownerKind === 'resource'
+                    ? a.resourceId === owner.id
+                    : input.ownerKind === 'access'
+                      ? a.accessId === owner.id
+                      : a.environmentId === owner.id && !a.resourceId && !a.accessId),
+              )
+          )
+            throw new Error('疑似重复账号需要确认。');
+          id = this.store.ledger.saveAccount(
+            {
+              type: 'account.save',
+              name: row.name,
+              environmentId,
+              resourceId: input.ownerKind === 'resource' ? owner.id : null,
+              accessId: input.ownerKind === 'access' ? owner.id : null,
+              username: row.username,
+              notes: row.notes,
+            },
+            now,
+          );
+          accountId = id;
+        }
+        if ((resources || input.kind === 'access') && (row.username || row.password))
+          accountId = this.store.ledger.saveAccount(
+            {
+              type: 'account.save',
+              environmentId: input.environmentId,
+              resourceId: resources ? id : null,
+              accessId: input.kind === 'access' ? id : null,
+              name: row.accountName || '默认账号',
+              username: row.username,
+            },
+            now,
+          );
+        if (row.password && accountId && key)
+          this.writeSecret(accountId, 'password', row.password, key);
+        created.push(id);
+      }
+      this.store.db
+        .prepare('INSERT INTO ledger_batches VALUES(?,?,?)')
+        .run(input.token, created[0], now);
+      return created[0];
     });
   }
   read(accountId: string, kind: SecretKind): string {

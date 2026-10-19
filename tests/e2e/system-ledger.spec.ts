@@ -1,24 +1,24 @@
+import { openLedgerRecord } from './ledger-actions';
 import { test, expect } from '@playwright/test';
 import { electron } from './launch';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-for (const kind of ['access', 'server'] as const) {
-  for (const scope of ['all', 'common']) {
-    test(`${kind} 在 ${scope} 筛选下修改环境后继续编辑账号，不丢失待保存输入`, async () => {
-      const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-account-scope-'));
+for (const kind of ['access', 'server'] as const)
+  for (const scope of ['all', 'common'])
+    test(`${kind} 在 ${scope} 范围修改后编辑账号不丢输入`, async () => {
+      const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-scope-edit-'));
       const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
       delete env.ELECTRON_RUN_AS_NODE;
       const app = await electron.launch({ args: ['.'], env });
       try {
         const page = await app.firstWindow();
         const production = await page.evaluate(async (kind) => {
-          const api = window.desktop;
-          const systemId = (await api.mutate({ type: 'system.save', name: '订单平台' })).createdId!;
-          const production = (
-            await api.mutate({ type: 'environment.save', systemId, name: '生产' })
-          ).createdId!;
+          const api = window.desktop,
+            systemId = (await api.mutate({ type: 'system.save', name: '订单平台' })).createdId!,
+            production = (await api.mutate({ type: 'environment.save', systemId, name: '生产' }))
+              .createdId!;
           await api.captureLedger({
             kind,
             systemId,
@@ -37,39 +37,25 @@ for (const kind of ['access', 'server'] as const) {
         }, kind);
         await page.getByRole('button', { name: '台账', exact: true }).click();
         const label = kind === 'access' ? '访问入口' : '服务器';
-        await page.getByRole('tab', { name: label, exact: true }).click();
-        await page.getByLabel(`${label}环境筛选`, { exact: true }).selectOption(scope);
-        await page.getByRole('button', { name: `${label} 待调整记录`, exact: true }).click();
-        await page
-          .getByLabel(kind === 'access' ? '入口所属环境' : '服务器所属环境', { exact: true })
-          .selectOption(production);
+        await page.getByRole('button', { name: label, exact: true }).click();
+        await page.getByLabel('台账环境筛选').selectOption(scope);
+        await openLedgerRecord(page, label, '待调整记录', true);
+        await page.getByLabel('生产', { exact: true }).check();
+        await page.getByRole('button', { name: '完成编辑', exact: true }).click();
+        await page.getByRole('button', { name: '编辑账号', exact: true }).click();
         await page.getByLabel('账号用户名', { exact: true }).fill('after-unsaved');
-        // A busy renderer can let both autosave timers run before the first IPC reply renders.
-        await page.evaluate(() => {
-          const until = performance.now() + 800;
-          while (performance.now() < until) {}
-        });
-        await expect
-          .poll(async () => {
-            const snapshot = await page.evaluate(() => window.desktop.snapshot());
-            return snapshot.accounts
-              .filter((a) => a.username !== 'fallback')
-              .map((a) => ({
-                environmentId: a.environmentId,
-                username: a.username,
-              }));
-          })
-          .toEqual([{ environmentId: production, username: 'after-unsaved' }]);
-        await expect(page.getByLabel('账号用户名', { exact: true })).toHaveValue('after-unsaved');
         await page.getByRole('button', { name: '工作台', exact: true }).click();
         await page.getByRole('button', { name: '台账', exact: true }).click();
-        await page.getByRole('tab', { name: label, exact: true }).click();
-        await page.getByRole('button', { name: `${label} 待调整记录`, exact: true }).click();
+        await page.getByLabel('台账环境筛选').selectOption('all');
+        await openLedgerRecord(page, '账号', '默认账号', true);
         await expect(page.getByLabel('账号用户名', { exact: true })).toHaveValue('after-unsaved');
-        const environment = page.getByLabel(kind === 'access' ? '入口所属环境' : '服务器所属环境', {
-          exact: true,
-        });
-        await environment.selectOption('');
+        const account = (await page.evaluate(() => window.desktop.snapshot())).accounts.find(
+          (a) => a.username === 'after-unsaved',
+        );
+        expect(account?.environmentId).toBe(production);
+        await openLedgerRecord(page, label, '待调整记录', true);
+        await page.getByLabel('生产', { exact: true }).uncheck();
+        await page.getByRole('button', { name: '完成编辑', exact: true }).click();
         await expect
           .poll(
             async () =>
@@ -78,19 +64,13 @@ for (const kind of ['access', 'server'] as const) {
               )?.environmentId,
           )
           .toBeNull();
-        await environment.selectOption(production);
-        await page.getByLabel(`${label}环境筛选`, { exact: true }).selectOption('common');
-        await expect(page.getByLabel('账号用户名', { exact: true })).toHaveValue('fallback');
-        await expect(page.getByLabel(`${label}环境筛选`, { exact: true })).toHaveValue('common');
-        if (kind === 'server')
-          await expect(page.getByLabel('资源类型', { exact: true })).toHaveCount(0);
+        await page.getByLabel('台账环境筛选').selectOption('common');
+        await expect(page.locator('.workspace-list')).toContainText('其他通用记录');
       } finally {
         await app.close();
         await fs.rm(directory, { recursive: true, force: true });
       }
     });
-  }
-}
 
 test('系统通用入口同屏录入地址与密码，服务器不建环境也可记录用途和多账号', async ({}, testInfo) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-system-ledger-ui-'));
@@ -101,7 +81,7 @@ test('系统通用入口同屏录入地址与密码，服务器不建环境也�
     let page = await app.firstWindow();
     await page.evaluate(() => window.desktop.mutate({ type: 'system.save', name: '订单平台' }));
     await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('tab', { name: '访问入口', exact: true }).click();
+    await page.getByRole('button', { name: '访问入口', exact: true }).click();
     await page.getByRole('button', { name: '新增访问入口', exact: true }).click();
     await page.getByLabel('入口名称', { exact: true }).fill('Jenkins');
     await page.getByLabel('登录地址', { exact: true }).fill('https://build.example.test');
@@ -112,9 +92,9 @@ test('系统通用入口同屏录入地址与密码，服务器不建环境也�
     await page.getByLabel('确认主密码', { exact: true }).fill('fictional-ui-master-password');
     await page.getByRole('button', { name: '设置并解锁', exact: true }).click();
     await expect(page.getByRole('dialog', { name: '新增访问入口' })).toHaveCount(0);
-    await expect(page.getByLabel('账号用户名', { exact: true })).toHaveValue('operator');
+    await expect(page.getByText('operator', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: '设为常用访问入口', exact: true }).click();
-    await page.getByRole('tab', { name: '服务器', exact: true }).click();
+    await page.getByRole('button', { name: '服务器', exact: true }).click();
     await page.getByRole('button', { name: '新增服务器', exact: true }).click();
     await page.getByLabel('服务器名称', { exact: true }).fill('应用节点 1');
     await page.getByLabel('服务器 IP', { exact: true }).fill('192.0.2.10');
@@ -125,13 +105,23 @@ test('系统通用入口同屏录入地址与密码，服务器不建环境也�
     await page.getByLabel('服务器内存', { exact: true }).fill('32G');
     await page.getByLabel('服务器硬盘', { exact: true }).fill('500G');
     await page.getByRole('button', { name: '创建服务器', exact: true }).click();
-    await expect(page.getByLabel('服务器用途', { exact: true })).toHaveValue('订单应用与定时任务');
-    await page.getByLabel('新增账号用途').fill('运维');
-    await page.getByLabel('新增账号用途').press('Enter');
-    await page.getByLabel('账号用户名', { exact: true }).fill('deploy');
-    await page.getByLabel('新增账号用途').fill('只读');
-    await page.getByLabel('新增账号用途').press('Enter');
-    await expect(page.getByRole('button', { name: '账号 只读', exact: true })).toBeVisible();
+    await expect(
+      page.locator('.workspace-inspector p').filter({ hasText: '订单应用与定时任务' }),
+    ).toBeVisible();
+    for (const role of ['运维', '只读']) {
+      await openLedgerRecord(page, '服务器', '应用节点 1');
+      await page
+        .getByRole('complementary', { name: '台账详情' })
+        .getByRole('button', { name: '新增账号', exact: true })
+        .click();
+      await page.getByLabel('快速新建账号名称').fill(role);
+      await page.getByRole('button', { name: '创建账号', exact: true }).click();
+    }
+    await page
+      .getByRole('complementary', { name: '台账详情' })
+      .getByRole('button', { name: '编辑', exact: true })
+      .click();
+    await page.getByLabel('账号用户名', { exact: true }).fill('reader');
     await page.screenshot({ path: testInfo.outputPath('system-servers.png') });
     await page.getByRole('button', { name: '工作台', exact: true }).click();
     await expect(
@@ -214,16 +204,34 @@ test('多地址与常用账号可从首页及搜索使用，跨系统复制取�
       };
     });
     await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('tab', { name: '访问入口', exact: true }).click();
-    await page.getByLabel('访问入口环境筛选', { exact: true }).selectOption(ids.production);
-    await expect(page.getByRole('button', { name: '访问入口 Jenkins', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '访问入口', exact: true }).click();
+    await page.getByLabel('台账环境筛选', { exact: true }).selectOption(ids.production);
     await expect(
-      page.getByRole('button', { name: '访问入口 生产 GitLab', exact: true }),
+      page
+        .locator('.workspace-list tbody tr')
+        .filter({ hasText: 'Jenkins' })
+        .locator('td')
+        .first()
+        .getByRole('button'),
     ).toBeVisible();
-    await page.getByLabel('访问入口环境筛选', { exact: true }).selectOption('common');
     await expect(
-      page.getByRole('button', { name: '访问入口 生产 GitLab', exact: true }),
+      page
+        .locator('.workspace-list tbody tr')
+        .filter({ hasText: '生产 GitLab' })
+        .locator('td')
+        .first()
+        .getByRole('button'),
+    ).toBeVisible();
+    await page.getByLabel('台账环境筛选', { exact: true }).selectOption('common');
+    await expect(
+      page
+        .locator('.workspace-list tbody tr')
+        .filter({ hasText: '生产 GitLab' })
+        .locator('td')
+        .first()
+        .getByRole('button'),
     ).toHaveCount(0);
+    await openLedgerRecord(page, '访问入口', 'Jenkins', true);
     await page.getByRole('button', { name: '添加地址', exact: true }).click();
     await page.getByLabel('地址名称 2', { exact: true }).fill('外网');
     await page.getByLabel('登录地址 2', { exact: true }).fill('https://outer.example.test');
@@ -246,10 +254,14 @@ test('多地址与常用账号可从首页及搜索使用，跨系统复制取�
     await page.getByRole('button', { name: '打开网站 Jenkins', exact: true }).click();
     await expect.poll(() => app.evaluate(() => (globalThis as any).openedLinks)).toHaveLength(2);
     await page.getByRole('button', { name: '打开访问入口 Jenkins', exact: true }).click();
-    await expect(page.getByRole('tab', { name: '访问入口', exact: true })).toHaveAttribute(
-      'aria-selected',
+    await expect(page.getByRole('button', { name: '访问入口', exact: true })).toHaveAttribute(
+      'aria-pressed',
       'true',
     );
+    await page
+      .getByRole('complementary', { name: '台账详情' })
+      .getByRole('button', { name: '编辑', exact: true })
+      .click();
     await page.evaluate(() => window.desktop.lockVault());
     await page.getByRole('button', { name: '复制访问入口', exact: true }).click();
     await page.getByLabel('入口副本系统', { exact: true }).selectOption(ids.target);
@@ -264,6 +276,10 @@ test('多地址与常用账号可从首页及搜索使用，跨系统复制取�
     await page.getByLabel('主密码', { exact: true }).fill('fictional-actions-master-password');
     await page.getByRole('button', { name: '解锁', exact: true }).click();
     await expect(page.getByRole('dialog', { name: '复制访问入口', exact: true })).toHaveCount(0);
+    await page
+      .getByRole('complementary', { name: '台账详情' })
+      .getByRole('button', { name: '编辑', exact: true })
+      .click();
     await expect(page.getByLabel('入口名称', { exact: true })).toHaveValue('Jenkins 副本');
     await page.getByRole('button', { name: '删除地址 外网', exact: true }).click();
     await page.getByRole('button', { name: '工作台', exact: true }).click();

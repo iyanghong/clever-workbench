@@ -45,7 +45,6 @@ export function Detail({
   flushRef: React.MutableRefObject<() => Promise<void>>;
   onCommand: (c: Command) => Promise<boolean | undefined>;
 }) {
-  const projects = snapshot.projects;
   const pendingImports = useRef<Promise<void>>(Promise.resolve());
   const form = useAutosave<Draft>(
     task
@@ -53,10 +52,10 @@ export function Detail({
           title: task.title,
           content: task.content,
           markdown: task.markdown,
-          projectId: task.projectId,
+          projectId: null,
           systemId: task.systemId,
-          environmentId: task.environmentId,
-          resourceId: task.resourceId,
+          environmentId: null,
+          resourceId: null,
         }
       : draft,
     async (payload) => {
@@ -75,9 +74,6 @@ export function Detail({
   useEffect(() => {
     setContext({
       systemId: value.systemId,
-      environmentId: value.environmentId,
-      resourceId: value.resourceId,
-      projectId: value.projectId,
     });
   }, [value.systemId, value.environmentId, value.resourceId, value.projectId]);
   const latest = useRef(value);
@@ -126,7 +122,6 @@ export function Detail({
     setEnd(task?.completedAt ? localInput(task.completedAt) : '');
   }, [task?.startedAt, task?.completedAt]);
   const deleted = task?.deletedAt != null;
-  const currentProject = projects.find((p) => p.id === value.projectId);
   return (
     <aside
       className={`detail ${expanded ? 'expanded' : ''}`}
@@ -147,27 +142,6 @@ export function Detail({
         </button>
       </header>
       <div className="detail-content">
-        <div className="detail-meta">
-          <span>项目（可选）</span>
-          <select
-            disabled={deleted}
-            aria-label="所属项目"
-            value={value.projectId ?? ''}
-            onChange={(e) => change({ ...value, projectId: e.target.value || null })}
-          >
-            <option value="">不关联项目</option>
-            {projects
-              .filter((p) => p.archivedAt === null || p.id === value.projectId)
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                  {p.archivedAt ? ' · 已归档' : ''}
-                </option>
-              ))}
-          </select>
-          <span className="dot" style={{ background: currentProject?.color ?? '#9c9ca3' }} />
-          {currentProject?.archivedAt && <span className="tag">已归档</span>}
-        </div>
         <ContextPicker
           mode="system"
           snapshot={snapshot}
@@ -175,28 +149,17 @@ export function Detail({
           disabled={deleted}
           onChange={(context) => change({ ...value, ...context })}
         />
-        <details className="compact-details task-context">
-          <summary>环境与资源{value.systemId ? ` · ${contextLabel(snapshot, value)}` : ''}</summary>
-          <ContextPicker
-            mode="details"
-            snapshot={snapshot}
-            value={value}
-            disabled={deleted}
-            onChange={(context) => change({ ...value, ...context })}
-          />
-          {value.systemId && (
-            <button
-              className="text-button"
-              aria-label="回到关联对象"
-              onClick={() =>
-                void onOpenContext(value.resourceId ?? value.environmentId ?? value.systemId!)
-              }
-            >
-              <ArrowUpRightIcon size={14} />
-              回到台账
-            </button>
-          )}
-        </details>
+        {task?.history && (
+          <details className="compact-details">
+            <summary>任务历史说明</summary>
+            <p>{task.history}</p>
+          </details>
+        )}
+        {value.systemId && (
+          <button className="text-button" onClick={() => void onOpenContext(value.systemId!)}>
+            回到关联的系统台账
+          </button>
+        )}
         <textarea
           disabled={deleted}
           className="detail-title"
@@ -206,7 +169,12 @@ export function Detail({
           value={value.title}
           onChange={(e) => change({ ...value, title: e.target.value.replace(/\n/g, '') })}
         />
-        <button disabled={deleted} className="date-summary" onClick={() => setDates(!dates)}>
+        <button
+          disabled={deleted}
+          className="date-summary"
+          aria-label="修改开始时间"
+          onClick={() => setDates(!dates)}
+        >
           <CalendarBlankIcon size={15} />
           <span>
             {dateLabel(task?.startedAt ?? value.startedAt ?? minute())}

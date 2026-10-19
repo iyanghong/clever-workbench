@@ -33,9 +33,7 @@ function QuickRecord({
     (!needsSystem || systemId) &&
     (!needsEnvironment ||
       environmentId ||
-      (systemId &&
-        ((kind === 'resource' && resourceKind === 'server') ||
-          (kind === 'account' && (resourceId || accessId)))));
+      (systemId && (kind === 'resource' || (kind === 'account' && (resourceId || accessId)))));
   return (
     <form
       onSubmit={(event) => {
@@ -127,9 +125,7 @@ function QuickRecord({
               setAccessId('');
             }}
           >
-            <option value="">
-              {kind === 'account' || resourceKind === 'server' ? '系统通用' : '选择环境'}
-            </option>
+            <option value="">{'系统通用'}</option>
             {environments.map((item) => (
               <option key={item.id} value={item.id}>
                 {snapshot.systems.find((system) => system.id === item.systemId)?.name} / {item.name}
@@ -184,16 +180,10 @@ function QuickRecord({
           >
             <option value="redis">Redis</option>
             <option value="server">服务器</option>
+            <option value="database">数据库</option>
             <option value="other">其他资源</option>
           </select>
         </label>
-      )}
-      {((needsSystem && !snapshot.systems.length) ||
-        (needsEnvironment &&
-          !snapshot.environments.length &&
-          kind !== 'account' &&
-          resourceKind !== 'server')) && (
-        <p className="field-hint">请先建立系统和环境，再记录其中的资料。</p>
       )}
       <div className="modal-actions">
         <button type="button" className="secondary-button" disabled={busy} onClick={cancel}>

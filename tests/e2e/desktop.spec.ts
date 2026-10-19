@@ -22,31 +22,30 @@ test('native desktop capture, editor, completion, archive, recovery and theme', 
       electron: process.versions.electron,
     }));
     console.log('Electron runtime', runtime);
-    await page.getByLabel('新增项目', { exact: true }).click();
-    await page.getByLabel('项目名称', { exact: true }).fill('产品迭代');
-    await page.getByRole('button', { name: '保存项目', exact: true }).click();
-    await page.getByLabel('项目范围', { exact: true }).selectOption({ label: '产品迭代' });
+    const systemId = await page.evaluate(
+      async () =>
+        (await window.desktop.mutate({ type: 'system.save', name: '产品平台' })).createdId!,
+    );
+    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByLabel('系统范围', { exact: true }).selectOption(systemId);
     const quick = page.getByLabel('快速新增任务');
     await quick.fill('修复登录超时');
     await quick.press('Enter');
-    await expect(page.getByRole('button', { name: /修复登录超时.*产品迭代/ })).toBeVisible();
-    await page.getByRole('button', { name: /修复登录超时.*产品迭代/ }).click();
+    await expect(page.getByRole('button', { name: /修复登录超时.*产品平台/ })).toBeVisible();
+    await page.getByRole('button', { name: /修复登录超时.*产品平台/ }).click();
     const editor = page.getByRole('textbox', { name: '工作内容' });
     await editor.fill('已定位问题，补充重试机制。');
     await page.getByLabel('关闭详情').click();
-    await page.getByRole('button', { name: /修复登录超时.*产品迭代/ }).click();
+    await page.getByRole('button', { name: /修复登录超时.*产品平台/ }).click();
     await expect(editor).toContainText('补充重试机制');
     await page.getByRole('button', { name: '标记完成', exact: true }).click();
     await expect(page.getByRole('button', { name: '重新打开', exact: true })).toBeVisible();
     await page.getByLabel('关闭详情').click();
-    await page.getByLabel('项目设置').click();
-    await page.getByRole('button', { name: '归档项目', exact: true }).last().click();
-    await page.getByRole('button', { name: '归档项目', exact: true }).click();
-    await expect(page.locator('.archive-title')).toContainText('产品迭代');
-    await page.getByRole('button', { name: '恢复项目', exact: true }).click();
+    await page.getByRole('button', { name: '工作台', exact: true }).click();
     await page.getByRole('button', { name: '工作任务', exact: false }).first().click();
     await page.getByRole('button', { name: '全部', exact: false }).first().click();
-    await page.getByRole('button', { name: /修复登录超时.*产品迭代/ }).click();
+    await page.getByRole('button', { name: /修复登录超时.*产品平台/ }).click();
     await page.getByLabel('删除任务', { exact: true }).click();
     await page.getByRole('button', { name: '回收站', exact: true }).click();
     await page.getByLabel('恢复 修复登录超时', { exact: true }).click();
@@ -86,7 +85,7 @@ test('pasted images survive immediate close, portable backup and restart', async
     await page.getByRole('button', { name: '工作任务', exact: true }).click();
     await page.getByLabel('快速新增任务').fill('检查截图持久化');
     await page.getByLabel('快速新增任务').press('Enter');
-    await page.getByRole('button', { name: /检查截图持久化.*未分类/ }).click();
+    await page.getByRole('button', { name: /检查截图持久化.*未关联系统/ }).click();
     const editor = page.getByRole('textbox', { name: '工作内容' });
     await editor.fill('这是一条包含本地截图的工作记录。');
     await editor.evaluate((element) => {
@@ -104,7 +103,7 @@ test('pasted images survive immediate close, portable backup and restart', async
     });
     await page.getByLabel('关闭详情').click();
     await expect(page.getByRole('complementary', { name: '任务详情' })).not.toBeVisible();
-    await page.getByRole('button', { name: /检查截图持久化.*未分类/ }).click();
+    await page.getByRole('button', { name: /检查截图持久化.*未关联系统/ }).click();
     await expect(editor.locator('img')).toBeVisible();
     expect(await editor.locator('img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(
       1,
@@ -123,7 +122,7 @@ test('pasted images survive immediate close, portable backup and restart', async
     await page.getByRole('button', { name: '工作任务', exact: false }).first().click();
     await page.getByLabel('快速新增任务').fill('备份后新增');
     await page.getByLabel('快速新增任务').press('Enter');
-    await expect(page.getByRole('button', { name: /备份后新增.*未分类/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /备份后新增.*未关联系统/ })).toBeVisible();
     await page.getByRole('button', { name: '设置', exact: true }).click();
     await application.evaluate(({ dialog }, filename) => {
       (dialog as any).showOpenDialog = async () => ({ canceled: false, filePaths: [filename] });
@@ -135,14 +134,14 @@ test('pasted images survive immediate close, portable backup and restart', async
     await page.getByRole('button', { name: '恢复备份', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: '恢复完成' })).toBeVisible();
     await page.getByRole('button', { name: '工作任务', exact: false }).first().click();
-    await expect(page.getByRole('button', { name: /备份后新增.*未分类/ })).toHaveCount(0);
-    await page.getByRole('button', { name: /检查截图持久化.*未分类/ }).click();
+    await expect(page.getByRole('button', { name: /备份后新增.*未关联系统/ })).toHaveCount(0);
+    await page.getByRole('button', { name: /检查截图持久化.*未关联系统/ }).click();
     await expect(page.getByRole('textbox', { name: '工作内容' }).locator('img')).toBeVisible();
     await application.close();
     application = await electron.launch({ args: ['.'], env: environment });
     page = await application.firstWindow();
     await page.getByRole('button', { name: '工作任务', exact: true }).click();
-    await page.getByRole('button', { name: /检查截图持久化.*未分类/ }).click();
+    await page.getByRole('button', { name: /检查截图持久化.*未关联系统/ }).click();
     await expect(page.getByRole('textbox', { name: '工作内容' })).toContainText('包含本地截图');
     await expect(page.getByRole('textbox', { name: '工作内容' }).locator('img')).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('image-recovery.png') });

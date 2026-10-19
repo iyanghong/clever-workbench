@@ -37,13 +37,26 @@ const DocumentsPage = lazy(() =>
   })),
 );
 const LedgerPage = lazy(() =>
-  import('../features/ledger/LedgerPage').then((module) => ({ default: module.LedgerPage })),
+  import('../features/ledger/LedgerWorkspace').then((module) => ({
+    default: module.LedgerWorkspace,
+  })),
+);
+const ProjectArchiveWorkspace = lazy(() =>
+  import('../features/ledger/LedgerWorkspace').then((module) => ({
+    default: module.ProjectArchiveWorkspace,
+  })),
 );
 const SettingsPage = lazy(() =>
   import('../features/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })),
 );
 
-export type Route = { module: string; project?: string; objectId?: string; trash?: boolean };
+export type Route = {
+  system?: string;
+  module: string;
+  project?: string;
+  objectId?: string;
+  trash?: boolean;
+};
 export type ModuleProps = {
   route: Route;
   navigate: (route: Route) => Promise<void>;
@@ -69,10 +82,10 @@ function TaskModule({ route, navigate, registerFlush, setContext }: ModuleProps)
       onOpenDocuments={(project, trash) => navigate({ module: 'documents', project, trash })}
       onOpenContext={(id) => navigate({ module: 'ledger', objectId: id })}
       initialView={route.module as TaskView}
-      initialProject={route.project}
+      initialSystem={route.system}
       initialTaskId={route.objectId}
       registerFlush={registerFlush}
-      onNavigate={(module, project) => navigate({ module, project })}
+      onNavigate={(module, system) => navigate({ module, system })}
     />
   );
 }
@@ -85,7 +98,16 @@ export const modules: WorkbenchModule[] = [
     icon: StackIcon,
     section: 'workspace',
     Page: LedgerPage,
-    searchKinds: ['system', 'environment', 'service', 'resource', 'account', 'access'],
+    searchKinds: [
+      'system',
+      'environment',
+      'service',
+      'resource',
+      'account',
+      'access',
+      'operation',
+      'deployment',
+    ],
     actions: [
       {
         id: 'new-access',
@@ -197,7 +219,13 @@ export const modules: WorkbenchModule[] = [
     section: 'workspace',
     Page: TaskModule,
   },
-  { id: 'archive', title: '归档项目', icon: ArchiveIcon, section: 'utility', Page: TaskModule },
+  {
+    id: 'archive',
+    title: '项目档案',
+    icon: ArchiveIcon,
+    section: 'utility',
+    Page: ProjectArchiveWorkspace,
+  },
   { id: 'trash', title: '回收站', icon: TrashIcon, section: 'utility', Page: TaskModule },
   { id: 'settings', title: '设置', icon: GearSixIcon, section: 'utility', Page: SettingsPage },
 ];

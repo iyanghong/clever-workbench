@@ -18,7 +18,7 @@ import { RelatedWork } from './RelatedWork';
 import { Accounts, type AccountNavigation } from './Accounts';
 import type { EditorHost } from './Environments';
 
-const kinds = { redis: 'Redis', server: '服务器', other: '其他资源' };
+const kinds = { redis: 'Redis', server: '服务器', database: '数据库', other: '其他资源' };
 export function Resources({
   environment,
   snapshot,
@@ -178,6 +178,7 @@ export function ResourceEditor({
   resource,
   environment,
   serverView = false,
+  scopeManaged = false,
   snapshot,
   flushAll,
   onOpen,
@@ -186,6 +187,7 @@ export function ResourceEditor({
   resource: ResourceRecord;
   environment: EnvironmentRecord | null;
   serverView?: boolean;
+  scopeManaged?: boolean;
   snapshot: Snapshot;
   flushAll: () => Promise<void>;
   onOpen: (id: string) => void;
@@ -208,6 +210,7 @@ export function ResourceEditor({
             id: resource.id,
             systemId: resource.systemId,
             ...value,
+            environmentId: scopeManaged ? resource.environmentId : value.environmentId,
           })
         ).snapshot,
       );
@@ -240,7 +243,11 @@ export function ResourceEditor({
           ? await window.desktop.copyResourceWithSecrets(resource.id, {
               name: copyName,
               systemId: copySystem,
-              environmentId: copyEnvironment || null,
+              environmentId:
+                copySystem === resource.systemId &&
+                (copyEnvironment || null) === resource.environmentId
+                  ? undefined
+                  : copyEnvironment || null,
             })
           : await window.desktop.mutate(
               modal === 'copy'
@@ -249,7 +256,11 @@ export function ResourceEditor({
                     id: resource.id,
                     name: copyName,
                     systemId: copySystem,
-                    environmentId: copyEnvironment || null,
+                    environmentId:
+                      copySystem === resource.systemId &&
+                      (copyEnvironment || null) === resource.environmentId
+                        ? undefined
+                        : copyEnvironment || null,
                   }
                 : { type: 'resource.delete', id: resource.id },
             );
@@ -320,7 +331,7 @@ export function ResourceEditor({
               }
             />
           </label>
-          {serverView && (
+          {serverView && !scopeManaged && (
             <label>
               环境
               <select
@@ -398,6 +409,25 @@ export function ResourceEditor({
                   form.change({
                     ...form.value,
                     fields: { ...form.value.fields, [field]: event.target.value },
+                  })
+                }
+              />
+            </label>
+          ))}
+        </div>
+      )}
+      {resource.kind === 'database' && (
+        <div className="record-fields">
+          {['类型', '版本', '实例', '库名', '主备', '目录', '配置', '日志'].map((field) => (
+            <label key={field}>
+              {field}
+              <input
+                aria-label={`数据库${field}`}
+                value={form.value.fields[field] ?? ''}
+                onChange={(e) =>
+                  form.change({
+                    ...form.value,
+                    fields: { ...form.value.fields, [field]: e.target.value },
                   })
                 }
               />

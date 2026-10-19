@@ -85,7 +85,9 @@ test('统一新建沿用当前系统环境资源，另建任务保留之前的�
     await choose('新系统');
     await page.getByLabel('快速新建系统名称').fill('统一入口平台');
     await page.getByRole('button', { name: '创建系统', exact: true }).click();
-    await expect(page.getByLabel('系统名称', { exact: true })).toHaveValue('统一入口平台');
+    await expect(page.getByRole('button', { name: '切换系统', exact: true })).toContainText(
+      '统一入口平台',
+    );
     const systemId = await page.evaluate(
       async () => (await window.desktop.snapshot()).systems[0].id,
     );
@@ -107,7 +109,7 @@ test('统一新建沿用当前系统环境资源，另建任务保留之前的�
     await expect(page.getByLabel('新账号所属资源')).toHaveValue(resourceId);
     await page.getByLabel('快速新建账号名称').fill('应用连接');
     await page.getByRole('button', { name: '创建账号', exact: true }).click();
-    await expect(page.getByLabel('账号用途', { exact: true })).toHaveValue('应用连接');
+    await expect(page.getByRole('heading', { name: '应用连接', exact: true })).toBeVisible();
     await page.evaluate(() =>
       window.desktop.saveDraft({
         title: '尚未提交的排障记录',
@@ -128,7 +130,7 @@ test('统一新建沿用当前系统环境资源，另建任务保留之前的�
       const task = snapshot.tasks.find((item) => item.title === '排查主缓存')!;
       return { task, draft: snapshot.draft };
     });
-    expect(state.task).toMatchObject({ systemId, environmentId, resourceId });
+    expect(state.task).toMatchObject({ systemId, environmentId: null, resourceId: null });
     expect(state.draft?.markdown).toBe('保留这个草稿正文');
     await page.getByRole('button', { name: '工作台', exact: true }).click();
     await expect(page.getByLabel('快速新增任务')).toHaveValue('尚未提交的排障记录');

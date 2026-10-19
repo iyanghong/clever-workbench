@@ -39,12 +39,12 @@ test('系统跨阶段项目保持身份和历史任务归属，改名与重启�
     expect.objectContaining({ id, name: '智慧园区平台', currentProjectId: b }),
   ]);
   expect(store.snapshot().systemProjects.map((link) => link.projectId)).toEqual([a, b]);
-  expect(store.task(task)).toMatchObject({ systemId: id, projectId: a });
+  expect(store.task(task)).toMatchObject({ systemId: id, projectId: null });
   store.close();
   stores.pop();
   const reopened = new Store(store.root);
   stores.push(reopened);
-  expect(reopened.task(task)).toMatchObject({ systemId: id, projectId: a });
+  expect(reopened.task(task)).toMatchObject({ systemId: id, projectId: null });
   expect(reopened.snapshot().systems[0].currentProjectId).toBe(b);
 });
 
@@ -162,15 +162,13 @@ test('资源可快捷新增并复制到另一环境，复制后的普通资料�
   expect(reopened.snapshot().resources.find((item) => item.id === copy)?.fields).toEqual({
     数据库: '2',
   });
-  expect(() =>
-    reopened.mutate({
-      type: 'resource.save',
-      id,
-      environmentId: staging,
-      kind: 'redis',
-      name: '误移资源',
-    }),
-  ).toThrow('复制');
+  reopened.mutate({
+    type: 'resource.save',
+    id,
+    environmentId: staging,
+    kind: 'redis',
+    name: '调整环境的资源',
+  });
 });
 
 test('环境与资源可各有多个角色账号，空用户名合法，移动与删除保护关联', () => {

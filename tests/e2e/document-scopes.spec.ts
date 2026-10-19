@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-test('任务快录与详情直接选择系统，项目可留空且不会因系统关联自动改写', async () => {
+test('任务快录与详情直接选择系统，只可选关联系统且不显示项目绑定', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-system-task-'));
   const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
   delete env.ELECTRON_RUN_AS_NODE;
@@ -26,16 +26,15 @@ test('任务快录与详情直接选择系统，项目可留空且不会因系�
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByLabel('关联系统', { exact: true })).toBeVisible({ timeout: 2000 });
     await dialog.getByLabel('关联系统', { exact: true }).selectOption(ids.a);
-    await expect(dialog.getByLabel('新任务项目', { exact: true })).toHaveValue('');
+    await expect(dialog.getByLabel('新任务项目', { exact: true })).toHaveCount(0);
     await dialog.getByLabel('快速新建任务标题').fill('整理订单部署说明');
     await dialog.getByRole('button', { name: '创建任务', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
     await expect(page.getByLabel('关联系统', { exact: true })).toBeVisible();
-    await expect(page.getByLabel('所属项目', { exact: true })).toHaveValue('');
-    await page.getByLabel('所属项目', { exact: true }).selectOption(ids.project);
+    await expect(page.getByLabel('所属项目', { exact: true })).toHaveCount(0);
     await page.getByLabel('关联系统', { exact: true }).selectOption(ids.b);
-    await expect(page.getByLabel('所属项目', { exact: true })).toHaveValue(ids.project);
-    await page.getByLabel('所属项目', { exact: true }).selectOption('');
     await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await expect(page.getByLabel('关联系统', { exact: true })).toHaveCount(0);
     const snapshot = await page.evaluate(() => window.desktop.snapshot());
     expect(snapshot.tasks.find((task) => task.title === '整理订单部署说明')).toMatchObject({
       systemId: ids.b,
@@ -70,7 +69,7 @@ test('通用与系统文档分别查看，按范围新建，修改归属和切�
       }
       return { a, b };
     });
-    await page.getByRole('button', { name: '文档', exact: true }).click();
+    await page.getByLabel('文档', { exact: true }).click();
     await page.getByLabel('文档范围', { exact: true }).selectOption('common', { timeout: 2000 });
     await expect(
       page.getByRole('button', { name: '文档 通用排障模板', exact: true }),
@@ -95,7 +94,7 @@ test('通用与系统文档分别查看，按范围新建，修改归属和切�
     await app.close();
     app = await electron.launch({ args: ['.'], env });
     page = await app.firstWindow();
-    await page.getByRole('button', { name: '文档', exact: true }).click();
+    await page.getByLabel('文档', { exact: true }).click();
     await page.getByLabel('文档范围', { exact: true }).selectOption('common');
     await page.getByRole('button', { name: '文档 新排障记录', exact: true }).click();
     await expect(page.getByLabel('关联系统', { exact: true })).toHaveValue('');
