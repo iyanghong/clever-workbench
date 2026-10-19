@@ -1,5 +1,6 @@
-// Acceptance at the installed-app boundary. Transport is a local fixture, NOT GitHub acceptance.
+// Installed-app acceptance. Default: local fixture. --github: real configured GitHub transport.
 // Usage: node scripts/verify-installed-update.mjs /absolute/old.app /absolute/new.zip 0.1.1
+// Real transport: node scripts/verify-installed-update.mjs --github /absolute/old.app 0.1.2
 import { _electron } from '@playwright/test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -9,8 +10,11 @@ import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 
-const [oldApp, zip, nextVersion] = process.argv.slice(2);
-if (process.platform !== 'darwin' || !oldApp || !zip || !nextVersion)
+const realGitHub = process.argv[2] === '--github';
+const [oldApp, zip, nextVersion] = realGitHub
+  ? [process.argv[3], undefined, process.argv[4]]
+  : process.argv.slice(2);
+if (process.platform !== 'darwin' || !oldApp || (!realGitHub && !zip) || !nextVersion)
   throw Error('Supply old .app, new ZIP, next version on macOS');
 const root = await fs.mkdtemp(path.join(os.tmpdir(), 'cwb-installed-update-'));
 const installed = path.join(root, 'Installed.app');
@@ -33,45 +37,55 @@ try {
   const password = 'isolated-update-acceptance-password';
   const assetName = `Clever-Workbench-${nextVersion}-arm64.zip`;
   const releaseRoot = `https://github.com/iyanghong/clever-workbench/releases/download/v${nextVersion}/`;
-  const zipBytes = await fs.readFile(zip);
-  const checksums = `${createHash('sha256').update(zipBytes).digest('hex')}  ${assetName}\n`;
-  const sumsPath = path.join(root, 'SHA256SUMS');
-  await fs.writeFile(sumsPath, checksums);
-  const release = {
-    tag_name: `v${nextVersion}`,
-    draft: false,
-    prerelease: false,
-    published_at: new Date().toISOString(),
-    body: 'Local acceptance transport fixture; not a published release.',
-    assets: [
-      { name: assetName, size: zipBytes.length, browser_download_url: releaseRoot + assetName },
-      {
-        name: 'SHA256SUMS',
-        size: Buffer.byteLength(checksums),
-        browser_download_url: releaseRoot + 'SHA256SUMS',
+  if (!realGitHub) {
+    const zipBytes = await fs.readFile(zip);
+    const checksums = `${createHash('sha256').update(zipBytes).digest('hex')}  ${assetName}\n`;
+    const sumsPath = path.join(root, 'SHA256SUMS');
+    await fs.writeFile(sumsPath, checksums);
+    const release = {
+      tag_name: `v${nextVersion}`,
+      draft: false,
+      prerelease: false,
+      published_at: new Date().toISOString(),
+      body: 'Local acceptance transport fixture; not a published release.',
+      assets: [
+        {
+          name: assetName,
+          size: zipBytes.length,
+          browser_download_url: releaseRoot + assetName,
+          url: 'https://api.github.com/repos/iyanghong/clever-workbench/releases/assets/1',
+        },
+        {
+          name: 'SHA256SUMS',
+          size: Buffer.byteLength(checksums),
+          browser_download_url: releaseRoot + 'SHA256SUMS',
+          url: 'https://api.github.com/repos/iyanghong/clever-workbench/releases/assets/2',
+        },
+      ],
+    };
+    await application.evaluate(
+      ({ net }, fixture) => {
+        const original = net.fetch.bind(net);
+        net.fetch = async (input, options) => {
+          const url = String(input);
+          if (url === 'https://api.github.com/repos/iyanghong/clever-workbench/releases/latest')
+            return Response.json(fixture.release);
+          if (url === fixture.zipUrl || url === fixture.zipApi) return original(fixture.zipFile);
+          if (url === fixture.sumsUrl || url === fixture.sumsApi) return original(fixture.sumsFile);
+          return original(input, options);
+        };
       },
-    ],
-  };
-  await application.evaluate(
-    ({ net }, fixture) => {
-      const original = net.fetch.bind(net);
-      net.fetch = async (input, options) => {
-        const url = String(input);
-        if (url === 'https://api.github.com/repos/iyanghong/clever-workbench/releases/latest')
-          return Response.json(fixture.release);
-        if (url === fixture.zipUrl) return original(fixture.zipFile);
-        if (url === fixture.sumsUrl) return original(fixture.sumsFile);
-        return original(input, options);
-      };
-    },
-    {
-      release,
-      zipUrl: releaseRoot + assetName,
-      sumsUrl: releaseRoot + 'SHA256SUMS',
-      zipFile: pathToFileURL(zip).href,
-      sumsFile: pathToFileURL(sumsPath).href,
-    },
-  );
+      {
+        release,
+        zipUrl: releaseRoot + assetName,
+        sumsUrl: releaseRoot + 'SHA256SUMS',
+        zipApi: 'https://api.github.com/repos/iyanghong/clever-workbench/releases/assets/1',
+        sumsApi: 'https://api.github.com/repos/iyanghong/clever-workbench/releases/assets/2',
+        zipFile: pathToFileURL(zip).href,
+        sumsFile: pathToFileURL(sumsPath).href,
+      },
+    );
+  }
   const waitFor = async (predicate, timeout = 90_000) => {
     const deadline = Date.now() + timeout;
     while (!(await predicate())) {
@@ -85,16 +99,23 @@ try {
   // An initial real startup request can race the transport fixture and hit a rate
   // limit. Advance ONLY the external clock while making the explicit fixture check.
   const initial = await page.evaluate(() => window.desktop.updateSnapshot());
-  await application.evaluate((_, retryAt) => {
-    globalThis.__acceptanceNow = Date.now;
-    const offset = Math.max(0, Date.parse(retryAt || '') - Date.now() + 1) || 0;
-    Date.now = () => globalThis.__acceptanceNow() + offset;
-  }, initial.retryAt);
+  if (!realGitHub)
+    await application.evaluate((_, retryAt) => {
+      globalThis.__acceptanceNow = Date.now;
+      const offset = Math.max(0, Date.parse(retryAt || '') - Date.now() + 1) || 0;
+      Date.now = () => globalThis.__acceptanceNow() + offset;
+    }, initial.retryAt);
   const available = await page.evaluate(() => window.desktop.checkUpdate());
-  await application.evaluate(() => {
-    Date.now = globalThis.__acceptanceNow;
-  });
+  if (!realGitHub)
+    await application.evaluate(() => {
+      Date.now = globalThis.__acceptanceNow;
+    });
   assert.equal(available.status, 'available');
+  assert.equal(
+    available.release.version,
+    nextVersion,
+    'Only the intended Release may be installed',
+  );
   const downloaded = await page.evaluate(() => window.desktop.downloadUpdate());
   assert.equal(downloaded.status, 'ready', JSON.stringify(downloaded));
   await assert.rejects(
@@ -213,7 +234,9 @@ try {
     assert.equal(restored.imageWidth, 1);
     const report = {
       root,
-      transport: 'local fixture of exact fixed GitHub URLs',
+      transport: realGitHub
+        ? 'real GitHub API and Release assets; no transport interception'
+        : 'local fixture of exact fixed GitHub URLs',
       helperPhase,
       health,
       observed,
@@ -221,7 +244,9 @@ try {
       backupRestore: restored,
       quarantine,
       quarantinePreserved: true,
+      gitHubTransportVerified: realGitHub,
       publicGitHubReleaseVerified: false,
+      baselineSource: 'caller-supplied old app; Release origin must be verified separately',
     };
     await fs.writeFile(path.join(root, 'report.json'), JSON.stringify(report, null, 2));
     console.log(JSON.stringify(report, null, 2));

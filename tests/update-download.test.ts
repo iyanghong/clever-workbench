@@ -57,6 +57,107 @@ async function fixture() {
   for await (const chunk of zip.outputStream) chunks.push(Buffer.from(chunk));
   return Buffer.concat(chunks);
 }
+test('private assets use authenticated GitHub API and redirects never forward credentials', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'private-update-'));
+  const zip = await fixture();
+  const name = 'Clever-Workbench-0.2.0-arm64.zip';
+  const sums = Buffer.from(`${createHash('sha256').update(zip).digest('hex')}  ${name}\n`);
+  const api = 'https://api.github.com/repos/iyanghong/clever-workbench/releases/assets/';
+  const cdn = 'https://release-assets.githubusercontent.com/private-update.zip?signed=example';
+  const asset = (name: string, size: number, id: number) => ({
+    name,
+    size,
+    url: api + id,
+    browser_download_url: `https://github.com/iyanghong/clever-workbench/releases/download/v0.2.0/${name}`,
+  });
+  let privateZipRequested = false;
+  let anonymousCdnRequested = false;
+  const updates = new UpdateCoordinator({
+    currentVersion: '0.1.0',
+    packaged: true,
+    platform: 'darwin',
+    arch: 'arm64',
+    stagingDirectory: dir,
+    githubCredential: async () => 'fictional-private-token',
+    fetch: async (input, init) => {
+      const url = String(input),
+        headers = new Headers(init?.headers);
+      if (url.endsWith('/latest'))
+        return Response.json({
+          tag_name: 'v0.2.0',
+          draft: false,
+          prerelease: false,
+          assets: [asset(name, zip.length, 91), asset('SHA256SUMS', sums.length, 92)],
+        });
+      if (url.startsWith(api)) {
+        expect(headers.get('Authorization')).toBe('Bearer fictional-private-token');
+        expect(headers.get('Accept')).toBe('application/octet-stream');
+        if (url === api + '92') return new Response(new Uint8Array(sums));
+        privateZipRequested = true;
+        return new Response(null, { status: 302, headers: { location: cdn } });
+      }
+      if (url === cdn) {
+        expect(headers.has('Authorization')).toBe(false);
+        anonymousCdnRequested = true;
+        return new Response(new Uint8Array(zip));
+      }
+      throw Error('Private browser downloads do not accept anonymous access');
+    },
+    runCommand: async (command) =>
+      command.endsWith('plutil')
+        ? JSON.stringify({
+            CFBundleIdentifier: 'com.cleverworkbench.desktop',
+            CFBundleShortVersionString: '0.2.0',
+            CFBundleExecutable: 'Clever Workbench',
+          })
+        : command.endsWith('lipo')
+          ? 'arm64'
+          : '',
+  });
+  try {
+    await updates.check();
+    expect((await updates.download()).status).toBe('ready');
+    expect(privateZipRequested && anonymousCdnRequested).toBe(true);
+    expect(JSON.stringify(updates.snapshot())).not.toContain('fictional-private-token');
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+test('private release metadata cannot send credentials to another repository asset API', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'private-update-untrusted-'));
+  const seen: string[] = [];
+  const updates = new UpdateCoordinator({
+    currentVersion: '0.1.0',
+    packaged: true,
+    platform: 'darwin',
+    arch: 'arm64',
+    stagingDirectory: dir,
+    githubCredential: async () => 'fictional-repository-token',
+    fetch: async (input) => {
+      seen.push(String(input));
+      return Response.json({
+        tag_name: 'v0.2.0',
+        draft: false,
+        prerelease: false,
+        assets: ['Clever-Workbench-0.2.0-arm64.zip', 'SHA256SUMS'].map((name) => ({
+          name,
+          size: 123,
+          url: 'https://api.github.com/repos/another/repository/releases/assets/1',
+          browser_download_url: `https://github.com/iyanghong/clever-workbench/releases/download/v0.2.0/${name}`,
+        })),
+      });
+    },
+  });
+  try {
+    await updates.check();
+    expect((await updates.download()).status).toBe('error');
+    expect(seen).toEqual([
+      'https://api.github.com/repos/iyanghong/clever-workbench/releases/latest',
+    ]);
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
 async function setup(
   zip: Buffer,
   checksum = createHash('sha256').update(zip).digest('hex'),

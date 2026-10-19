@@ -4,6 +4,8 @@ Clever Workbench 供个人离线使用，不需要注册账号。Mac 使用 Appl
 
 ## 安装和更新
 
+应用更新固定读取 `iyanghong/clever-workbench`。该仓库保持私有时，会使用当前电脑 Git 凭据助手保存的 GitHub HTTPS 登录；账号须有仓库读取权限。若更新提示无法访问，先确认本机 Git 能以已保存的登录访问该仓库，再点击“检查更新”。浏览器登录不会自动共享给 Git；应用不会把访问令牌写入安装包或更新历史。
+
 Mac 打开 DMG，将 Clever Workbench 拖入“应用程序”；Windows 运行安装程序并选择安装位置。Mac 包使用本机 ad-hoc 签名保证资源完整性，没有 Developer ID 签名和公证；Windows 包没有发布者签名，操作系统可能要求确认来源。仅在确认安装包来自自己的项目后按系统提示打开，不需要关闭系统的整体安全保护。
 
 macOS Apple Silicon 安装版可在侧栏底部点击版本徽标，查看固定 GitHub 仓库 `iyanghong/clever-workbench` 的正式 Release。应用启动及每 30 分钟检查一次，也可手动检查。点击“下载更新”，完成校验后点击“重启并更新”；程序先保存资料并创建完整加密备份，再由助手原位替换当前应用并重新启动。需先设置主密码；保存、备份或安装位置检查失败时停止更新。开发模式、Windows 及 Intel Mac 暂不支持此流程。

@@ -24,6 +24,41 @@ const create = (fetcher: typeof fetch = async () => Response.json(release)) =>
     fetch: fetcher,
   });
 describe('application update operations', () => {
+  it('checks the fixed private repository with the local GitHub credential without exposing it in state', async () => {
+    let authorization: string | null = null;
+    const updates = new UpdateCoordinator({
+      currentVersion: '0.9.0',
+      packaged: true,
+      platform: 'darwin',
+      arch: 'arm64',
+      githubCredential: async () => 'fictional-private-release-token',
+      fetch: async (url, init) => {
+        expect(String(url)).toBe(
+          'https://api.github.com/repos/iyanghong/clever-workbench/releases/latest',
+        );
+        authorization = new Headers(init?.headers).get('Authorization');
+        return Response.json(release);
+      },
+    });
+    expect((await updates.check()).status).toBe('available');
+    expect(authorization).toBe('Bearer fictional-private-release-token');
+    expect(JSON.stringify(updates.snapshot())).not.toContain('fictional-private-release-token');
+  });
+  it('reports expired GitHub login without exposing the credential or claiming no update', async () => {
+    const updates = new UpdateCoordinator({
+      currentVersion: '0.9.0',
+      packaged: true,
+      platform: 'darwin',
+      arch: 'arm64',
+      githubCredential: async () => 'fictional-expired-token',
+      fetch: async () => new Response('', { status: 401 }),
+    });
+    expect(await updates.check()).toMatchObject({
+      status: 'error',
+      message: '本机 GitHub 登录已失效，请重新登录后检查更新。',
+    });
+    expect(JSON.stringify(updates.snapshot())).not.toContain('fictional-expired-token');
+  });
   it('resumes startup and periodic checks after health confirmation and keeps its recovery summary', async () => {
     vi.useFakeTimers();
     const updates = create();
@@ -78,12 +113,10 @@ describe('application update operations', () => {
   });
   it('shares concurrent checks and caches their observable result', async () => {
     let resolve!: (response: Response) => void;
-    const updates = create(
-      () =>
-        new Promise((done) => {
-          resolve = done;
-        }),
-    );
+    const response = new Promise<Response>((done) => {
+      resolve = done;
+    });
+    const updates = create(() => response);
     const a = updates.check(),
       b = updates.check();
     resolve(Response.json(release));

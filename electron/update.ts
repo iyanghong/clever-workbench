@@ -14,6 +14,7 @@ interface Options {
   platform: string;
   arch: string;
   fetch?: typeof fetch;
+  githubCredential?: () => Promise<string | undefined>;
   now?: () => number;
 }
 const version = (v: string) =>
@@ -43,7 +44,29 @@ export function trustedAsset(url: string, tag: string) {
     return false;
   }
 }
+function trustedApiAsset(value: string) {
+  try {
+    const url = new URL(value);
+    return (
+      url.origin === 'https://api.github.com' &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash &&
+      /^\/repos\/iyanghong\/clever-workbench\/releases\/assets\/[1-9]\d*$/.test(url.pathname)
+    );
+  } catch {
+    return false;
+  }
+}
 export class UpdateCoordinator {
+  private githubToken?: string;
+  private async readCredential() {
+    const value = await this.options.githubCredential?.();
+    if (value && (value.length > 4096 || /[\s\x00-\x1f\x7f]/.test(value)))
+      throw Error('本机 GitHub 凭据格式无效，请重新登录。');
+    this.githubToken = value || undefined;
+  }
   finishHealthCheck(status: 'success' | 'manual', message: string, enableChecks: boolean) {
     this.setInstallationState({ status, message });
     this.setRecoverySummary(status, message);
@@ -86,6 +109,7 @@ export class UpdateCoordinator {
     let directory: string | undefined;
     this.prepared = undefined;
     try {
+      await this.readCredential();
       await fs.mkdir(this.options.stagingDirectory!, { recursive: true, mode: 0o700 });
       directory = await fs.mkdtemp(path.join(this.options.stagingDirectory!, 'release-'));
       this.set({
@@ -127,13 +151,24 @@ export class UpdateCoordinator {
     filename: string | undefined,
     release: NonNullable<UpdateSnapshot['release']>,
   ): Promise<Buffer> {
-    let url = asset.url;
-    if (!trustedAsset(url, `v${release.version}`)) throw Error('更新来源无效。');
+    if (!trustedAsset(asset.url, `v${release.version}`)) throw Error('更新来源无效。');
+    if (this.githubToken && (!asset.apiUrl || !trustedApiAsset(asset.apiUrl)))
+      throw Error('Release 缺少有效的 GitHub 授权下载地址。');
+    let url = this.githubToken ? asset.apiUrl! : asset.url;
     let response: Response | undefined;
     for (let redirect = 0; redirect < 5; redirect++) {
       response = await (this.options.fetch ?? fetch)(url, {
         redirect: 'manual',
         signal: AbortSignal.timeout(10 * 60 * 1000),
+        ...(trustedApiAsset(url)
+          ? {
+              headers: {
+                Accept: 'application/octet-stream',
+                'User-Agent': 'Clever-Workbench',
+                ...(this.githubToken ? { Authorization: `Bearer ${this.githubToken}` } : {}),
+              },
+            }
+          : {}),
       });
       if (![301, 302, 303, 307, 308].includes(response.status)) break;
       const location = response.headers.get('location');
@@ -143,13 +178,16 @@ export class UpdateCoordinator {
       if (
         next.protocol !== 'https:' ||
         next.username ||
+        next.port ||
         next.password ||
         ![
           'github.com',
+          'api.github.com',
           'release-assets.githubusercontent.com',
           'objects.githubusercontent.com',
         ].includes(next.hostname) ||
-        (next.hostname === 'github.com' && !trustedAsset(next.href, `v${release.version}`))
+        (next.hostname === 'github.com' && !trustedAsset(next.href, `v${release.version}`)) ||
+        (next.hostname === 'api.github.com' && !trustedApiAsset(next.href))
       )
         throw Error('更新下载被重定向到不可信来源。');
       url = next.href;
@@ -251,14 +289,29 @@ export class UpdateCoordinator {
   private async fetchRelease(): Promise<UpdateSnapshot> {
     this.set({ status: 'checking' });
     try {
+      await this.readCredential();
       const response = await (this.options.fetch ?? fetch)(LATEST, {
-        headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Clever-Workbench' },
+        headers: {
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'Clever-Workbench',
+          ...(this.githubToken ? { Authorization: `Bearer ${this.githubToken}` } : {}),
+        },
         redirect: 'error',
         signal: AbortSignal.timeout(15000),
       });
       this.cachedUntil = this.now() + 20 * 60 * 1000;
       if (response.status === 404)
-        return this.set({ status: 'no-release', message: '尚无公开的正式 Release。' });
+        return this.set({
+          status: 'no-release',
+          message: this.githubToken
+            ? '未找到可访问的正式 Release，请确认本机 GitHub 账号有仓库读取权限。'
+            : '尚无可匿名访问的正式 Release。私有仓库请先在本机 Git 中登录 GitHub。',
+        });
+      if (response.status === 401)
+        return this.set({
+          status: 'error',
+          message: '本机 GitHub 登录已失效，请重新登录后检查更新。',
+        });
       if (response.status === 403 || response.status === 429) {
         const seconds = Number(response.headers.get('retry-after'));
         const reset = Number(response.headers.get('x-ratelimit-reset')) * 1000;
@@ -291,6 +344,7 @@ export class UpdateCoordinator {
         name: a.name,
         url: a.browser_download_url,
         size: a.size,
+        ...(typeof a.url === 'string' && trustedApiAsset(a.url) ? { apiUrl: a.url } : {}),
       });
       if (
         release.draft !== false ||

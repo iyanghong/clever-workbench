@@ -47,6 +47,7 @@ export function UpdateDetails({ state }: { state: UpdateSnapshot | null }) {
   return (
     <div className="update-details">
       <strong>Clever Workbench {state ? `v${state.currentVersion}` : ''}</strong>
+      <p>私有仓库更新使用本机 Git 保存的 GitHub 登录；此电脑的账号须有仓库读取权限。</p>
       <p role="status">{state ? labels[state.status] : '正在读取版本…'}</p>
       {state?.progress && (
         <progress

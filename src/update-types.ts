@@ -2,6 +2,7 @@ export interface UpdateAsset {
   name: string;
   url: string;
   size: number;
+  apiUrl?: string;
 }
 export interface UpdateRelease {
   version: string;

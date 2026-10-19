@@ -23,6 +23,7 @@ import { Vault } from './vault';
 import { Backups } from './backup';
 import { SystemExports } from './system-export';
 import { UpdateCoordinator } from './update';
+import { localGitHubCredential } from './update-credential';
 import { UpdateInstallation } from './update-install';
 import { launchUpdateHelper } from './update-launcher';
 import { UpdateJournal, UpdateHealth } from './update-recovery';
@@ -297,6 +298,7 @@ app
       platform: process.platform,
       arch: process.arch,
       fetch: (input, init) => net.fetch(input instanceof URL ? input.href : input, init),
+      githubCredential: () => localGitHubCredential(app.getPath('userData')),
     });
     try {
       updateJournal = await UpdateJournal.open(path.join(app.getPath('userData'), 'updates'));
