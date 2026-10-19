@@ -3,10 +3,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import assert from 'node:assert/strict';
-const source = path.resolve(process.argv[2]);
+const input = path.resolve(process.argv[2]);
 const helper = path.resolve('scripts/macos-update-helper.sh');
 const root = await fs.mkdtemp(path.join(os.tmpdir(), 'update-stage-retry-'));
 const target = path.join(root, 'Installed.app');
+const source = path.join(root, 'Candidate.app');
 const run = (command, args) => execFileSync(command, args, { encoding: 'utf8' }).trim();
 const wait = async (predicate) => {
   const deadline = Date.now() + 30000;
@@ -16,7 +17,10 @@ const wait = async (predicate) => {
   }
 };
 try {
-  run('/usr/bin/ditto', [source, target]);
+  run('/usr/bin/ditto', [input, target]);
+  run('/usr/bin/ditto', [input, source]);
+  run('/usr/bin/xattr', ['-w', 'com.apple.quarantine', '0083;12345678;Clever Workbench;', source]);
+  const quarantine = run('/usr/bin/xattr', ['-px', 'com.apple.quarantine', source]);
   const version = run('/usr/libexec/PlistBuddy', [
     '-c',
     'Print :CFBundleShortVersionString',
@@ -39,12 +43,21 @@ try {
     stdio: 'ignore',
   });
   const firstEnded = new Promise((resolve) => child.once('exit', resolve));
-  await wait(
-    async () =>
-      (await fs.readFile(path.join(failed, 'helper-status'), 'utf8').catch(() => '')).trim() ===
-      'waiting-for-exit',
-  );
-  child.kill('SIGTERM');
+  try {
+    await wait(
+      async () =>
+        (await fs.readFile(path.join(failed, 'helper-status'), 'utf8').catch(() => '')).trim() ===
+        'waiting-for-exit',
+    );
+    assert.equal(
+      run('/usr/bin/xattr', ['-px', 'com.apple.quarantine', target + '.incoming']),
+      quarantine,
+      'staging must preserve quarantine exactly',
+    );
+  } finally {
+    child.kill('SIGTERM');
+    await firstEnded;
+  }
   assert.notEqual(await firstEnded, 0);
   assert.equal(
     await fs.access(target + '.incoming').then(
@@ -64,6 +77,11 @@ try {
       async () =>
         (await fs.readFile(path.join(retry, 'helper-status'), 'utf8').catch(() => '')).trim() ===
         'waiting-for-exit',
+    );
+    assert.equal(
+      run('/usr/bin/xattr', ['-px', 'com.apple.quarantine', target + '.incoming']),
+      quarantine,
+      'retry must preserve quarantine exactly',
     );
   } finally {
     second.kill('SIGTERM');

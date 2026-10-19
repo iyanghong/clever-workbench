@@ -100,6 +100,16 @@ phase 'staging'
 /bin/mkdir "$candidate" || fail 'failed:stage-directory'
 candidate_owned=1
 /usr/bin/ditto "$source_app" "$candidate" || fail 'failed:stage-copy'
+# ditto into our pre-created directory does not copy root xattrs on macOS.
+# Preserve quarantine explicitly in binary-safe hex form; listing/read/write
+# errors stop the transaction instead of treating an unreadable flag as absent.
+source_attributes=$(/usr/bin/xattr "$source_app") || fail 'failed:source-security-attributes'
+if /usr/bin/printf '%s\n' "$source_attributes" | /usr/bin/grep -Fxq 'com.apple.quarantine'; then
+  source_quarantine=$(/usr/bin/xattr -px com.apple.quarantine "$source_app") || fail 'failed:source-quarantine-read'
+  /usr/bin/xattr -wx com.apple.quarantine "$source_quarantine" "$candidate" || fail 'failed:staged-quarantine-write'
+  staged_quarantine=$(/usr/bin/xattr -px com.apple.quarantine "$candidate") || fail 'failed:staged-quarantine-read'
+  [ "$staged_quarantine" = "$source_quarantine" ] || fail 'failed:staged-quarantine-mismatch'
+fi
 /usr/bin/codesign --verify --deep --strict "$candidate" || fail 'failed:staged-signature-invalid'
 [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$candidate/Contents/Info.plist")" = "$candidate_version" ] || fail 'failed:staged-version-changed'
 phase 'waiting-for-exit'
