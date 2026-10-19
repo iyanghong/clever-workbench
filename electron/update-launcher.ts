@@ -54,6 +54,21 @@ export async function launchUpdateHelper(options: {
   await fs.writeFile(path.join(directory, 'transaction.json'), JSON.stringify(transaction), {
     mode: 0o600,
   });
+  await fs.writeFile(
+    path.join(directory, 'RECOVERY.txt'),
+    [
+      'Clever Workbench 更新恢复指引',
+      '如果新应用未能打开，请查看 helper-status 和 helper.log。系统安全拦截应按 macOS 提示处理；不要关闭 Gatekeeper 或移除隔离属性。',
+      `当前应用：${target}`,
+      `保留的旧应用：${target}.previous`,
+      `完整加密备份：${options.backup}`,
+      `更新版本：${options.currentVersion} → ${prepared.version}`,
+      '先保留现有资料。新版本可能已经迁移数据库；不要直接用旧应用打开新数据。需要恢复时，由你明确选择兼容版本和备份，使用备份生成时的主密码。',
+      '更新助手不会自动回退或覆盖数据库。可从 https://github.com/iyanghong/clever-workbench/releases 下载历史安装包。',
+      '',
+    ].join('\n'),
+    { mode: 0o600 },
+  );
   // Shell helper only reads fixed-value files, never sources/evaluates transaction content.
   await fs.writeFile(path.join(directory, 'expected-version'), prepared.version, { mode: 0o600 });
   await fs.writeFile(path.join(directory, 'expected-app-id'), 'com.cleverworkbench.desktop', {

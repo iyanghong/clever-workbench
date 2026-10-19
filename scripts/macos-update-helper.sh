@@ -146,3 +146,31 @@ if ! launch; then
 fi
 # LaunchServices accepting an open request does NOT establish application health.
 phase 'awaiting-health'
+health_attention() {
+  phase "$1"
+  # Reveal the private recovery guide/logs even when application JS never starts.
+  /usr/bin/open "$transaction" || true
+  exit 1
+}
+# Remain outside the application to diagnose Gatekeeper/pre-main failures.
+# This watcher only records a result; it never rolls back data or bypasses OS checks.
+attempt=0
+while [ "$attempt" -lt 60 ]; do
+  receipt="$transaction/health.json"
+  if [ -e "$receipt" ] || [ -L "$receipt" ]; then
+    [ ! -L "$receipt" ] && [ -f "$receipt" ] && [ "$(/usr/bin/stat -f %u "$receipt")" = "$(/usr/bin/id -u)" ] || health_attention 'needs-attention:invalid-health-receipt'
+    outcome=$(/usr/bin/plutil -extract outcome raw -o - "$receipt") || health_attention 'needs-attention:invalid-health-receipt'
+    confirmed_version=$(/usr/bin/plutil -extract version raw -o - "$receipt") || health_attention 'needs-attention:invalid-health-receipt'
+    case "$outcome" in
+      success)
+        [ "$confirmed_version" = "$candidate_version" ] || health_attention 'needs-attention:health-version-mismatch'
+        phase 'completed'
+        exit 0;;
+      manual) health_attention 'needs-attention:health-not-confirmed';;
+      *) health_attention 'needs-attention:invalid-health-receipt';;
+    esac
+  fi
+  attempt=$((attempt + 1))
+  /bin/sleep 1
+done
+health_attention 'needs-attention:health-timeout'

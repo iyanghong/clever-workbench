@@ -39,6 +39,10 @@ app.whenReady().then(async () => {
   await w.loadURL('data:text/html,<h1>Update experiment</h1>');
   const rendered = await w.webContents.executeJavaScript('document.querySelector("h1").textContent');
   fs.writeFileSync(path.join(tx, app.getVersion() + '.json'), JSON.stringify({ version: app.getVersion(), pid: process.pid, executable: process.execPath, rendered, data: app.getPath('userData') }));
+  if (fs.readFileSync(path.join(tx, 'expected-version'), 'utf8').trim() === app.getVersion()) {
+    fs.writeFileSync(path.join(tx, 'health.json.next'), JSON.stringify({ outcome: 'success', version: app.getVersion(), rendered }), {mode: 0o600});
+    fs.renameSync(path.join(tx, 'health.json.next'), path.join(tx, 'health.json'));
+  }
   setTimeout(() => app.quit(), 4000);
 });
 `,
@@ -73,6 +77,11 @@ const worker = spawn('/bin/sh', [helper, String(old.pid), current, staged, trans
 });
 const result = new Promise((resolve) => worker.on('exit', resolve));
 assert.equal(await result, 0, 'helper completes replacement and launch');
+assert.equal(
+  readFileSync(path.join(transaction, 'helper-status'), 'utf8').trim(),
+  'completed',
+  'helper requires a matching application health receipt',
+);
 await waitFor(() => existsSync(path.join(transaction, '0.1.2.json')));
 const next = JSON.parse(readFileSync(path.join(transaction, '0.1.2.json')));
 assert.equal(next.version, '0.1.2');
