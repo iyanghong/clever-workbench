@@ -27,6 +27,7 @@ const env = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: userData };
 delete env.ELECTRON_RUN_AS_NODE;
 delete env.VITE_DEV_SERVER_URL;
 const application = await _electron.launch({ executablePath: executable, args: [], env });
+let launchedTransaction = '';
 try {
   const page = await application.firstWindow();
   const password = 'isolated-update-acceptance-password';
@@ -125,6 +126,7 @@ try {
   await waitFor(async () => (await fs.readdir(txRoot).catch(() => [])).length > 0);
   const [txId] = await fs.readdir(txRoot);
   const transactionDir = path.join(txRoot, txId);
+  launchedTransaction = transactionDir;
   await waitFor(async () => {
     const value = await fs
       .readFile(path.join(transactionDir, 'helper-status'), 'utf8')
@@ -147,18 +149,25 @@ try {
   }, 75_000).catch(() => {});
   assert.ok((await fs.stat(transaction.backup)).isFile());
   assert.ok((await fs.stat(installed + '.previous')).isDirectory());
-  assert.match(
-    run('/usr/bin/xattr', ['-p', 'com.apple.quarantine', installed]),
-    /Clever Workbench/,
-  );
-  const observed = health?.outcome === 'success' ? 'success' : 'manual-or-no-health';
+  // LaunchServices can normalize attribution while preserving quarantine.
+  const quarantine = run('/usr/bin/xattr', ['-p', 'com.apple.quarantine', installed]).trim();
+  assert.match(quarantine, /^[0-9a-f]{4};/i);
+  const observed =
+    health?.outcome === 'success'
+      ? 'success'
+      : health?.outcome === 'manual' || helperPhase === 'needs-attention:launch-failed'
+        ? 'manual'
+        : 'unconfirmed';
 
   // Stop only the disposable newly launched copy before testing recovery separately.
   for (const line of run('/bin/ps', ['-axo', 'pid=,command=']).split('\n')) {
     const match = line.trim().match(/^(\d+)\s+(.*)$/);
     if (
       match &&
-      (match[2].startsWith(executable) || match[2].startsWith('/private' + executable))
+      (match[2].startsWith(executable) ||
+        match[2].startsWith('/private' + executable) ||
+        (match[2].includes('.app/Contents/MacOS/') &&
+          match[2].endsWith(`--clever-update-transaction ${transactionDir}`)))
     ) {
       try {
         process.kill(Number(match[1]), 'SIGTERM');
@@ -183,18 +192,21 @@ try {
         await window.desktop.restoreBackup(info.token);
         const document = await window.desktop.document(id);
         const imageUrl = document.markdown.match(/!\[image\]\(([^)]+)\)/)[1];
-        const image = await fetch(imageUrl);
+        const width = await new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image.naturalWidth);
+          image.onerror = () => reject(Error('Restored attachment did not render'));
+          image.src = imageUrl;
+        });
         return {
           title: document.title,
-          imageStatus: image.status,
-          imageSize: (await image.arrayBuffer()).byteLength,
+          imageWidth: width,
         };
       },
       { password, id },
     );
     assert.equal(restored.title, 'Update acceptance retained document');
-    assert.equal(restored.imageStatus, 200);
-    assert.ok(restored.imageSize > 0);
+    assert.equal(restored.imageWidth, 1);
     const report = {
       root,
       transport: 'local fixture of exact fixed GitHub URLs',
@@ -203,14 +215,35 @@ try {
       observed,
       transaction,
       backupRestore: restored,
+      quarantine,
       quarantinePreserved: true,
       publicGitHubReleaseVerified: false,
     };
     await fs.writeFile(path.join(root, 'report.json'), JSON.stringify(report, null, 2));
     console.log(JSON.stringify(report, null, 2));
+    assert.notEqual(
+      observed,
+      'unconfirmed',
+      'A relocated/blocked launch must have an explicit manual outcome, not silently remain pending',
+    );
   } finally {
     await restoreApp.close();
   }
 } finally {
   await application.close().catch(() => {});
+  // A LaunchServices child may have been translocated. Match this run's private
+  // transaction exactly so even a failed assertion cannot leave its app running.
+  for (const line of run('/bin/ps', ['-axo', 'pid=,command=']).split('\n')) {
+    const match = line.trim().match(/^(\d+)\s+(.*)$/);
+    if (
+      match &&
+      launchedTransaction &&
+      match[2].includes('.app/Contents/MacOS/') &&
+      match[2].endsWith(`--clever-update-transaction ${launchedTransaction}`)
+    ) {
+      try {
+        process.kill(Number(match[1]), 'SIGTERM');
+      } catch {}
+    }
+  }
 }
