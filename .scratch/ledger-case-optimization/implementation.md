@@ -35,6 +35,6 @@ Status: ready-for-human
 
 使用临时隔离资料库与虚构账号，未操作真实应用资料。`npm run build`（含 TypeScript 检查）通过；`npm test` 21 个文件、83 项测试全部通过；`npm run test:e2e` 40 项 Electron 桌面测试全部通过；格式检查及 `git diff --check` 通过。已查看实际台账截图，确认清单／只读详情层次及节点信息布局。
 
-本次未生成新的安装包，未执行 Windows CI 或 Windows 11 实机验收；此前 Windows 验证不能替代本轮变更的实机结论。`docs/资料/` 保持在提交之外。
+已按用户后续要求生成 macOS Apple Silicon DMG 与 ZIP（0.1.0，代码提交 `9dc92de`）；DMG 完整性校验通过，打包后应用的 2 项改造回归测试通过。采用 ad-hoc 签名，未进行 Apple 公证。安装产物保存在本地 `release/`，不纳入 Git。未执行 Windows CI 或 Windows 11 实机验收；此前 Windows 验证不能替代本轮变更的实机结论。`docs/资料/` 保持在提交之外。
 
 实际应用截图：[台账工作区](evidence/ledger-workspace.png)。截图使用虚构资料。
