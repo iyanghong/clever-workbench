@@ -21,3 +21,27 @@ test('development application exposes version details and disables online instal
     await fs.rm(directory, { recursive: true, force: true });
   }
 });
+
+test('installed application exposes its packaged version and update checks', async () => {
+  test.skip(
+    !process.env.CWB_TEST_EXECUTABLE || process.platform !== 'darwin',
+    'Installed macOS check',
+  );
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-update-installed-'));
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env });
+  try {
+    const page = await app.firstWindow();
+    const state = await page.evaluate(() => window.desktop.updateSnapshot());
+    expect(state.status).not.toBe('unsupported');
+    await page.getByRole('button', { name: '应用版本与更新' }).click();
+    await expect(
+      page.getByText(`Clever Workbench v${state.currentVersion}`, { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeVisible();
+  } finally {
+    await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});

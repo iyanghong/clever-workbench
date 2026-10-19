@@ -10,16 +10,17 @@ test.skipIf(!process.env.CWB_UPDATE_ZIP)(
   'real release bundle passes native signature, architecture and identity checks',
   async () => {
     const zip = await fs.readFile(process.env.CWB_UPDATE_ZIP!);
-    const name = 'Clever-Workbench-0.1.0-arm64.zip';
+    const { version } = JSON.parse(await fs.readFile('package.json', 'utf8'));
+    const name = `Clever-Workbench-${version}-arm64.zip`;
     const sums = Buffer.from(`${createHash('sha256').update(zip).digest('hex')}  ${name}\n`);
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'real-update-download-'));
     const asset = (name: string, size: number) => ({
       name,
       size,
-      browser_download_url: `https://github.com/iyanghong/clever-workbench/releases/download/v0.1.0/${name}`,
+      browser_download_url: `https://github.com/iyanghong/clever-workbench/releases/download/v${version}/${name}`,
     });
     const updates = new UpdateCoordinator({
-      currentVersion: '0.0.9',
+      currentVersion: '0.0.0',
       packaged: true,
       platform: 'darwin',
       arch: 'arm64',
@@ -27,7 +28,7 @@ test.skipIf(!process.env.CWB_UPDATE_ZIP)(
       fetch: async (input) =>
         String(input).endsWith('/latest')
           ? Response.json({
-              tag_name: 'v0.1.0',
+              tag_name: `v${version}`,
               draft: false,
               prerelease: false,
               assets: [asset(name, zip.length), asset('SHA256SUMS', sums.length)],
@@ -37,7 +38,7 @@ test.skipIf(!process.env.CWB_UPDATE_ZIP)(
     try {
       await updates.check();
       expect(await updates.download()).toMatchObject({ status: 'ready' });
-      expect(updates.preparedUpdate()?.version).toBe('0.1.0');
+      expect(updates.preparedUpdate()?.version).toBe(version);
     } finally {
       await fs.rm(dir, { recursive: true, force: true });
     }
