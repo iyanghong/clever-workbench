@@ -64,6 +64,8 @@ export function ZipTextPage({ registerFlush }: ToolPageProps) {
     stateRef = useRef<ZipState | null>(null);
   const [error, setError] = useState(''),
     [sending, setSending] = useState(false);
+  const sendingRef = useRef(false),
+    pasteTarget = useRef<HTMLDivElement>(null);
   const [password, setPassword] = useState(''),
     [confirm, setConfirm] = useState('');
   const [visibleCommits, setVisibleCommits] = useState(200),
@@ -71,6 +73,7 @@ export function ZipTextPage({ registerFlush }: ToolPageProps) {
   const [visibleFiles, setVisibleFiles] = useState(200);
   const packing = draft.mode === 'pack' || draft.mode === 'git';
   const busy = sending || !!state?.busy;
+  const pasteShortcut = window.desktop.platform === 'darwin' ? '⌘V' : 'Ctrl+V';
   const update = (patch: Partial<Draft>) =>
     setDraft((current) => {
       remembered = { ...current, ...patch };
@@ -130,6 +133,8 @@ export function ZipTextPage({ registerFlush }: ToolPageProps) {
       update({ branch: state.branch });
   }, [state?.busy, state?.branch, draft.branch, draft.gitSource, draft.source]);
   async function send(command: ZipCommand) {
+    if (sendingRef.current) return false;
+    sendingRef.current = true;
     setSending(true);
     setError('');
     try {
@@ -140,9 +145,52 @@ export function ZipTextPage({ registerFlush }: ToolPageProps) {
       setError(cause instanceof Error ? cause.message : String(cause));
       return false;
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   }
+  useEffect(() => {
+    if (draft.mode !== 'paste') return;
+    if (!document.querySelector('dialog[open]'))
+      pasteTarget.current?.focus({ preventScroll: true });
+    const acceptsPaste = (target: EventTarget | null) => {
+      if (document.querySelector('dialog[open]')) return false;
+      if (!(target instanceof Element)) return false;
+      if (pasteTarget.current?.contains(target)) return true;
+      return !target.closest(
+        'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]',
+      );
+    };
+    const capture = () => {
+      if (!stateRef.current || stateRef.current.busy || sendingRef.current) return;
+      void send({ type: 'paste.capture' });
+    };
+    const keydown = (event: KeyboardEvent) => {
+      if (
+        event.isComposing ||
+        event.altKey ||
+        event.shiftKey ||
+        !(event.metaKey || event.ctrlKey) ||
+        event.key.toLowerCase() !== 'v' ||
+        !acceptsPaste(event.target)
+      )
+        return;
+      // Read large clipboard contents in the worker, before the browser's default paste.
+      event.preventDefault();
+      if (!event.repeat) capture();
+    };
+    const paste = (event: ClipboardEvent) => {
+      if (!acceptsPaste(event.target)) return;
+      event.preventDefault();
+      capture();
+    };
+    window.addEventListener('keydown', keydown, true);
+    window.addEventListener('paste', paste, true);
+    return () => {
+      window.removeEventListener('keydown', keydown, true);
+      window.removeEventListener('paste', paste, true);
+    };
+  }, [draft.mode]);
   const selectedKey = selectionKey(draft.selected);
   useEffect(() => {
     if (draft.mode !== 'git' || !draft.selected.length || stateRef.current?.busy) return;
@@ -553,11 +601,34 @@ export function ZipTextPage({ registerFlush }: ToolPageProps) {
                   </button>
                 </div>
                 <p className="tool-hint">
-                  先复制一个 TXT 的完整内容，再加入分片。顺序不限，每次加入一片。
+                  先复制一个 TXT 的完整内容，再按 {pasteShortcut}{' '}
+                  加入分片。顺序不限，重复会自动跳过。
                 </p>
+                <div
+                  className="tool-paste-target"
+                  ref={pasteTarget}
+                  tabIndex={0}
+                  role="textbox"
+                  aria-label="粘贴分片区域"
+                  aria-readonly="true"
+                  aria-disabled={busy || !state}
+                  aria-keyshortcuts={window.desktop.platform === 'darwin' ? 'Meta+V' : 'Control+V'}
+                  onClick={() => pasteTarget.current?.focus({ preventScroll: true })}
+                >
+                  <ClipboardTextIcon size={24} />
+                  <div>
+                    <strong>按 {pasteShortcut} 粘贴分片</strong>
+                    <span>点击此处后粘贴；每次加入一片，可连续添加。</span>
+                  </div>
+                </div>
                 <p className={state?.partsReady ? 'tool-ready' : 'tool-hint'} role="status">
                   {state?.partsDescription}
                 </p>
+                {state?.notice && (
+                  <p className="tool-ready" role="status">
+                    {state.notice}
+                  </p>
+                )}
                 <div className="tool-parts">
                   {state?.parts.slice(0, visibleParts).map((part) => (
                     <div className="tool-part" key={part.id}>

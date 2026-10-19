@@ -26,6 +26,7 @@ export class ZipTextTool {
     operation: '',
     progress: null,
     error: '',
+    notice: '',
     output: '',
     settings: { ...defaultZipSettings },
     parts: [],
@@ -115,6 +116,7 @@ export class ZipTextTool {
       throw new Error('工具操作无效。');
     if (this.busy) throw new Error('当前工具仍在处理，请完成后再操作。');
     const command = input as ZipCommand;
+    if (command.type !== 'settings') this.state.notice = '';
     const source = (value: unknown) => {
       if (
         typeof value !== 'string' ||
@@ -256,6 +258,18 @@ export class ZipTextTool {
             return { type: 'capture', target: filename };
           },
           async (part) => {
+            const duplicate = this.state.parts.some(
+              (existing) =>
+                existing.id !== command.replaceId &&
+                existing.identity === part.identity &&
+                existing.count === part.count &&
+                existing.index === part.index,
+            );
+            if (duplicate) {
+              await fs.rm(filename, { force: true });
+              this.state.notice = `第 ${part.index} / ${part.count} 片已存在，已自动跳过，保留原分片。`;
+              return;
+            }
             if (command.replaceId) {
               const old = this.files.get(command.replaceId)!;
               await fs.rm(old, { force: true });
@@ -324,6 +338,7 @@ export class ZipTextTool {
     this.files.clear();
     this.failedParts.clear();
     this.state.parts = [];
+    this.state.notice = '';
     this.state.preview = null;
     this.state.commits = [];
     this.state.branches = [];

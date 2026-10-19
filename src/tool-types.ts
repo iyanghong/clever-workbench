@@ -52,6 +52,7 @@ export type ZipState = {
   operation: string;
   progress: ToolProgress | null;
   error: string;
+  notice: string;
   output: string;
   settings: ZipSettings;
   parts: TextPart[];

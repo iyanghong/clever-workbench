@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { randomBytes, createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { encryptPath } from '../../electron/tools/zip-archive';
 
 const state = (page: Page) => page.evaluate(() => window.desktop.tools.state('zip-text'));
 const idle = (page: Page) =>
@@ -12,6 +13,162 @@ const idle = (page: Page) =>
 const sidebar = (page: Page, name: string) =>
   page.getByRole('navigation', { name: '工作空间' }).getByRole('button', { name, exact: true });
 const checksum = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
+const pasteShortcut = process.platform === 'darwin' ? 'Meta+v' : 'Control+v';
+
+test('10 个分片乱序收集，重复项自动跳过并保留原片，收齐后可直接还原', async ({}, info) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-parts-dedupe-'));
+  const source = path.join(root, 'sample.bin'),
+    content = randomBytes(7_000_000);
+  await fs.writeFile(source, content);
+  const partsDirectory = await encryptPath(source, 'test', root, 1);
+  const names = (await fs.readdir(partsDirectory)).sort();
+  expect(names).toHaveLength(10);
+  const env: Record<string, string> = {
+    ...process.env,
+    CLEVER_WORKBENCH_DATA_DIR: path.join(root, 'data'),
+  };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env }),
+    page = await app.firstWindow();
+  const copy = async (index: number) =>
+    app.evaluate(
+      ({ clipboard }, text) => clipboard.writeText(text),
+      await fs.readFile(path.join(partsDirectory, names[index]), 'utf8'),
+    );
+  const add = async () => {
+    await page.getByRole('button', { name: '从剪贴板加入', exact: true }).click();
+    await idle(page);
+  };
+  const pasteTarget = page.getByRole('textbox', { name: '粘贴分片区域' });
+  const paste = async () => {
+    await expect(pasteTarget).toHaveAttribute('aria-disabled', 'false');
+    await page.keyboard.press(pasteShortcut);
+    await idle(page);
+    await expect(pasteTarget).toHaveAttribute('aria-disabled', 'false');
+  };
+  try {
+    await sidebar(page, '工具').click();
+    await page.getByRole('button', { name: '打开工具', exact: true }).click();
+    await page.getByRole('tab', { name: '剪贴板还原', exact: true }).click();
+    await expect(pasteTarget).toBeFocused();
+    await copy(0);
+    await paste();
+    expect((await state(page)).parts).toHaveLength(1);
+    expect((await state(page)).notice).toBe('');
+    await expect(pasteTarget).toBeFocused();
+    const first = (await state(page)).parts;
+    await paste();
+    expect((await state(page)).parts).toEqual(first);
+    expect((await state(page)).error).toBe('');
+    await expect(
+      page.getByRole('status').filter({ hasText: '第 1 / 10 片已存在，已自动跳过，保留原分片。' }),
+    ).toBeVisible();
+    await expect(page.locator('.tool-part')).toHaveCount(1);
+
+    await copy(1);
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.paste());
+    await expect.poll(async () => (await state(page)).parts.length).toBe(2);
+    await idle(page);
+    const pair = (await state(page)).parts;
+    await copy(0);
+    await page.getByRole('button', { name: '替换第 2 片', exact: true }).click();
+    await idle(page);
+    expect((await state(page)).parts).toEqual(pair);
+    expect((await state(page)).error).toBe('');
+    // An explicit replacement of the same slot must still work, including repairing a bad copy.
+    await page.getByRole('button', { name: '替换第 1 片', exact: true }).click();
+    await idle(page);
+    expect((await state(page)).parts.find((part) => part.index === 1)?.id).not.toBe(first[0].id);
+    expect((await state(page)).parts).toHaveLength(2);
+    for (let index = 9; index >= 2; index--) {
+      await copy(index);
+      await paste();
+    }
+    const complete = (await state(page)).parts;
+    await page.getByLabel('输出位置', { exact: true }).fill(root);
+    await page.getByLabel('归档密码', { exact: true }).fill('test');
+    await expect(page.getByRole('button', { name: '开始还原', exact: true })).toBeEnabled();
+    await add();
+    expect((await state(page)).parts).toEqual(complete);
+    expect((await state(page)).partsReady).toBe(true);
+    await expect(page.getByRole('button', { name: '开始还原', exact: true })).toBeEnabled();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await page.screenshot({ path: info.outputPath('duplicate-skipped.png') });
+    expect((await pasteTarget.textContent())!.length).toBeLessThan(100);
+
+    // A matching index from a different archive remains a mixed-archive error, not a duplicate.
+    await app.evaluate(
+      ({ clipboard }, text) => clipboard.writeText(text),
+      await fs.readFile('tests/fixtures/zip-text/legacy-part.txt', 'utf8'),
+    );
+    await add();
+    const mixed = await state(page);
+    expect(mixed.parts).toHaveLength(11);
+    expect(mixed.partsReady).toBe(false);
+    expect(mixed.partsDescription).toContain('不同归档');
+    const extra = mixed.parts.find((part) => !complete.some((old) => old.id === part.id))!;
+    await page.evaluate(
+      (id) => window.desktop.tools.command('zip-text', { type: 'paste.remove', id }),
+      extra.id,
+    );
+    await idle(page);
+    await page.getByRole('button', { name: '开始还原', exact: true }).click();
+    await idle(page);
+    expect((await state(page)).error).toBe('');
+    expect(checksum(await fs.readFile(path.join(root, 'restored', 'sample.bin')))).toBe(
+      checksum(content),
+    );
+  } finally {
+    await idle(page).catch(() => {});
+    await app.evaluate(({ clipboard }) => clipboard.clear());
+    await app.close();
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('粘贴快捷键保留路径、密码、搜索及其他页面的普通文本粘贴', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-paste-focus-'));
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: root };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env }),
+    page = await app.firstWindow();
+  const copy = (text: string) =>
+    app.evaluate(({ clipboard }, value) => clipboard.writeText(value), text);
+  try {
+    await sidebar(page, '工具').click();
+    await page.getByRole('button', { name: '打开工具', exact: true }).click();
+    await page.getByRole('tab', { name: '剪贴板还原', exact: true }).click();
+    for (const [label, text] of [
+      ['输出位置', '/example/output'],
+      ['归档密码', 'fixture-password'],
+    ]) {
+      await copy(text);
+      const input = page.getByLabel(label, { exact: true });
+      await input.focus();
+      await page.keyboard.press(pasteShortcut);
+      await expect(input).toHaveValue(text);
+    }
+    await page.getByRole('button', { name: '全局搜索', exact: true }).click();
+    await copy('search text');
+    await page.getByLabel('搜索工作台内容').focus();
+    await page.keyboard.press(pasteShortcut);
+    await expect(page.getByLabel('搜索工作台内容')).toHaveValue('search text');
+    await page.keyboard.press('Escape');
+    await sidebar(page, '工作台').click();
+    await copy('new task');
+    await page.getByLabel('快速新增任务').focus();
+    await page.keyboard.press(pasteShortcut);
+    await expect(page.getByLabel('快速新增任务')).toHaveValue('new task');
+    const snapshot = await state(page);
+    expect(snapshot.parts).toHaveLength(0);
+    expect(snapshot.error).toBe('');
+    expect(snapshot.operation).toBe('');
+  } finally {
+    await app.evaluate(({ clipboard }) => clipboard.clear());
+    await app.close();
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
 
 test('工具收藏、后台运行与退出保护、目录及剪贴板还原', async ({}, info) => {
   test.setTimeout(120000);
@@ -82,8 +239,12 @@ test('工具收藏、后台运行与退出保护、目录及剪贴板还原', as
     await page.getByRole('tab', { name: '剪贴板还原', exact: true }).click();
     const encoded = await fs.readFile(path.join(packed.output, 'part-000001.txt'), 'utf8');
     await app.evaluate(({ clipboard }, text) => clipboard.writeText(text), ` \n${encoded}\n `);
-    await page.getByRole('button', { name: '从剪贴板加入', exact: true }).click();
+    await page.getByRole('textbox', { name: '粘贴分片区域' }).focus();
+    await page.keyboard.press(pasteShortcut);
+    await page.keyboard.press(pasteShortcut);
     await idle(page);
+    expect((await state(page)).error).toBe('');
+    expect((await state(page)).notice).toBe('');
     await expect(page.getByText(/已收齐 1 片/)).toBeVisible();
     await sidebar(page, '工作台').click();
     await page.getByRole('button', { name: '打开常用工具 ZIP 文本归档', exact: true }).click();
