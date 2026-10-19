@@ -40,6 +40,24 @@ const api: DesktopAPI = {
     choosePath: (kind) => call('tool-path', kind),
     openOutput: (id) => call('tool-open-output', id),
   },
+  updateSnapshot: () => call('update-snapshot'),
+  updateHistory: () => call('update-history'),
+  updateHealthReady: () => call('update-health-ready'),
+  confirmUpdateHealth: (nonce) => call('update-health-confirm', nonce),
+  openUpdateRecovery: (id, kind) => call('update-recovery-open', id, kind),
+  onUpdateHistory(handler) {
+    const listener = () => handler();
+    ipcRenderer.on('update-history-changed', listener);
+    return () => ipcRenderer.removeListener('update-history-changed', listener);
+  },
+  checkUpdate: () => call('update-check'),
+  downloadUpdate: () => call('update-download'),
+  installUpdate: () => call('update-install'),
+  onUpdateState(handler) {
+    const listener = (_: unknown, state: Parameters<typeof handler>[0]) => handler(state);
+    ipcRenderer.on('update-state', listener);
+    return () => ipcRenderer.removeListener('update-state', listener);
+  },
   captureLedgerBatch: (input) => call('ledger-batch', input),
   exportSystem: (options) => call('system-export', options),
   platform: process.platform,

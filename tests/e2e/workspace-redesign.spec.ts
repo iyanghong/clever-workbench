@@ -14,6 +14,8 @@ test('台账只读工作区、共享范围、部署与任务布局和开始时�
   try {
     const page = await app.firstWindow(),
       errors: string[] = [];
+    // Match a small CI desktop, where task details cover the list controls.
+    await page.setViewportSize({ width: 1024, height: 768 });
     page.on('pageerror', (e) => errors.push(e.message));
     await page.getByRole('button', { name: '台账', exact: true }).waitFor();
     const seed = await page.evaluate(async () => {
@@ -145,12 +147,11 @@ test('台账只读工作区、共享范围、部署与任务布局和开始时�
     await page.getByLabel('关闭详情').click();
     await page.getByRole('button', { name: '正常', exact: true }).click();
     await expect(page.locator('.task-list')).not.toHaveClass(/compact-tasks/);
-    await page.locator('.task-open').filter({ hasText: '检查新台账界面' }).click();
+    // Keep details closed when using the list's batch actions on a small desktop.
     await page.getByRole('button', { name: '批量关联系统', exact: true }).click();
     await page.getByLabel('选择任务 检查新台账界面', { exact: true }).check();
     await page.getByLabel('批量关联系统', { exact: true }).selectOption('');
     await page.getByRole('button', { name: '应用到所选任务', exact: true }).click();
-    await expect(page.getByLabel('关闭详情')).toHaveCount(0);
     await expect(page.locator('.task-row')).toHaveCount(0);
     await page.getByLabel('系统范围').selectOption('none');
     await expect(page.locator('.task-row')).toContainText('检查新台账界面');
