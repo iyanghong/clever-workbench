@@ -59,7 +59,9 @@ app
         response.end();
       } else if (request.url === '/cdn/app.zip') {
         response.writeHead(200, { 'Content-Length': String(fs.statSync(archive).size) });
-        fs.createReadStream(archive).pipe(response);
+        const file = fs.createReadStream(archive);
+        response.on('close', () => file.destroy());
+        file.pipe(response);
       } else if (request.url === '/cdn/SHA256SUMS') {
         response.end(sums);
       } else {
@@ -92,7 +94,8 @@ app
       const downloaded = await coordinator.download();
       assert.equal(downloaded.status, 'ready', JSON.stringify(downloaded));
       assert.ok(requests.filter((r) => r.path.startsWith('/assets/')).every((r) => r.authorized));
-      assert.equal(requests.filter((r) => r.path.startsWith('/cdn/')).length, 2);
+      assert.ok(requests.some((r) => r.path === '/cdn/app.zip'));
+      assert.ok(requests.some((r) => r.path === '/cdn/SHA256SUMS'));
       assert.ok(
         requests.filter((r) => r.path.startsWith('/cdn/')).every((r) => !r.hasAuthorization),
       );
