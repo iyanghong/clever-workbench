@@ -1,12 +1,36 @@
 # Installed application acceptance
 
-## Scope
+## Real GitHub Release pair: 2026-10-19
+
+**Completed the real private-repository acceptance, with an explicit manual startup outcome.** Both releases are published in the unchanged private `iyanghong/clever-workbench` repository: [v0.1.1](https://github.com/iyanghong/clever-workbench/releases/tag/v0.1.1) at `709715b` and [v0.1.2](https://github.com/iyanghong/clever-workbench/releases/tag/v0.1.2) at `1f36c04`.
+
+The baseline ZIP was downloaded again from the published v0.1.1 asset API, matched against remote SHA256SUMS and GitHub's digest, extracted, and checked for version 0.1.1 and its native signature. Its SHA-256 is `c2f329d69c539ff411d9dc6793a694e3bb76be39135b3b47b7d8f4e8fee3279a`. Baseline source receipt: `release/acceptance/github/v0.1.1/baseline-origin.json`. The harness directly launches this executable in an isolated copy; this is not proof of initial DMG installation or first-launch Gatekeeper approval.
+
+```sh
+node scripts/verify-installed-update.mjs --github '/Users/kuku/code/9-workbench/release/acceptance/github/v0.1.1/installed/Clever Workbench.app' 0.1.2
+```
+
+The command exited 0. No network responses, release metadata, asset bodies or check times were substituted. It used the installed baseline's normal Git credential provider, GitHub API, authenticated private asset API and credential-free CDN path. The staged target ZIP is 128914853 bytes, SHA-256 `6d2b65e261ac86d0d6ee4e69e6ee57e321e2f5a11d21ad70f5e1bf2793909196`, matching the actually published v0.1.2 asset 656423725. Native HTTP 302 credential separation is also covered by the dedicated Electron regression and the earlier real private-asset preflight; no secret headers are recorded in the full acceptance report.
+
+Verified results:
+
+- Missing master password prevented installation. After initializing the isolated vault, the saved document and image were included in a new full encrypted update backup.
+- The current application location contains 0.1.2, while `.previous` contains 0.1.1. Both native signatures verify.
+- Quarantine remained `0083;6ad62190;Clever Workbench;`; no Gatekeeper setting or security attribute was removed.
+- The new application produced no health receipt. The independent helper recorded `needs-attention:health-timeout`, outcome `manual`, retained the prior application and encrypted backup, and provided readable `RECOVERY.txt` outside the application. This does **not** establish healthy unattended startup.
+- Restoring the encrypted backup through a separate full packaged app returned the exact document title and rendered the attached image with natural width 1. All disposable application processes were stopped.
+
+Raw report: `/var/folders/73/c35nxr410f11hfh3ls36xjlc0000gn/T/cwb-installed-update-Sd7RMK/report.json`. Transaction: `d59b22be-19d3-4f7d-bb5d-7eef650e10fc`. A stable local copy is `release/acceptance/github/v0.1.2/real-upgrade-report.json`; combined baseline, publication, downloaded ZIP, installed versions and recovery proof is `release/acceptance/github/real-upgrade-evidence.json`.
+
+This verifies **authorized private GitHub transport**, not anonymous public download: `gitHubTransportVerified: true`, `publicGitHubReleaseVerified: false`. Full release asset hashes, publication gates and CI limitations are in [GitHub verification](github-verification.md). v0.1.1 passed all CI verification gates before its draft lookup failure was finalized locally; v0.1.2 used locally tested artifacts because account billing/spending limits prevented any CI step from starting. A separate legacy Windows migration fixture comparison still fails. Neither limitation is reported as green CI.
+
+## Historical local fixture scope
 
 This exercises full packaged Clever Workbench applications, not only the small helper fixture. macOS 27.0 (26A428), Apple Silicon, Electron 44.9.0. Both versions use the existing ad-hoc-signing packaging configuration; no Developer ID or notarization is added.
 
-The transport substitutes only Electron `net.fetch` in the external Playwright harness. It maps the exact fixed GitHub API and asset URLs to local responses containing a real packaged ZIP and its SHA-256 checksum. No production alternate-source switch is introduced. An initial real startup request may encounter GitHub rate limiting before the harness attaches; the harness temporarily advances the external clock solely to make its explicit fixture check eligible, then restores it before downloading/installing.
+These earlier runs substituted Electron `net.fetch` in the external Playwright harness. It mapped the exact fixed GitHub API and asset URLs to local responses containing a real packaged ZIP and its SHA-256 checksum. No production alternate-source switch was introduced. An initial real startup request could encounter GitHub rate limiting before the harness attached; the harness temporarily advanced the external clock solely to make its explicit fixture check eligible, then restored it before downloading/installing. The current default fixture additionally handles `net.request` header probes; `--github` bypasses all fixture and clock substitutions.
 
-This is **not public GitHub Release acceptance**. A real published old/new release pair and its public asset download path remain to be exercised. No release is created by the test.
+The following historical fixture evidence is **not GitHub Release acceptance**. At that stage, the published pair and real asset transport remained unverified. The subsequent real private-repository result is recorded above; the harness itself does not create releases.
 
 ## Reproduction
 
@@ -31,7 +55,7 @@ The harness exercises the public bridge to check, download and install. It verif
 
 Local helper happy-path replacement/relaunch and actual rename-failure recovery pass. Full packaged application download, extraction, password prerequisite, data save, encrypted backup, same-location replacement, quarantine preservation, explicit external-helper manual outcome and actual data/image restore pass. Installed application health confirmation also passes when the application can initialize.
 
-On this machine, the real quarantined full application did **not** produce a healthy startup receipt through LaunchServices; the updater correctly retained recovery material and reported manual intervention. This is not proof of unattended successful upgrade of a quarantined app. Public GitHub Release transport and a real published-version pair remain unverified, so ticket 07 is partial rather than fully resolved.
+In these historical local runs, the real quarantined full application did **not** produce a healthy startup receipt through LaunchServices; the updater correctly retained recovery material and reported manual intervention. That did not prove unattended successful upgrade or GitHub transport. Ticket 07 subsequently completed the published private-version pair and real network experiment above, retaining the same explicit manual-outcome limitation.
 
 ## Security and recovery boundaries
 
