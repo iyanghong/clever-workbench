@@ -26,8 +26,8 @@ test('设置更改主密码验证旧密码与新密码确认，取消不变更�
     await page.getByRole('button', { name: '设置', exact: true }).click();
     await page.getByRole('button', { name: '更改主密码', exact: true }).click();
     await page.getByLabel('当前主密码', { exact: true }).fill('fictional-previous-password');
-    await page.getByLabel('新主密码', { exact: true }).fill('fictional-next-password');
-    await page.getByLabel('确认新主密码', { exact: true }).fill('fictional-next-password');
+    await page.getByLabel('新主密码', { exact: true }).fill('next12');
+    await page.getByLabel('确认新主密码', { exact: true }).fill('next12');
     await page.screenshot({ path: testInfo.outputPath('password-change.png') });
     await page.getByRole('button', { name: '取消', exact: true }).click();
     await page.evaluate(() => window.desktop.lockVault());
@@ -35,17 +35,23 @@ test('设置更改主密码验证旧密码与新密码确认，取消不变更�
     await page.getByRole('button', { name: '更改主密码', exact: true }).click();
     await expect(page.getByLabel('当前主密码', { exact: true })).toHaveValue('');
     await page.getByLabel('当前主密码', { exact: true }).fill('wrong-password');
-    await page.getByLabel('新主密码', { exact: true }).fill('fictional-next-password');
+    await page.getByLabel('新主密码', { exact: true }).fill('next12');
     await page.getByLabel('确认新主密码', { exact: true }).fill('different-confirmation');
     await page.getByRole('button', { name: '保存新主密码', exact: true }).click();
     await expect(page.getByRole('dialog').getByRole('alert')).toContainText('不一致');
-    await page.getByLabel('确认新主密码', { exact: true }).fill('fictional-next-password');
+    await page.getByLabel('确认新主密码', { exact: true }).fill('next12');
     await page.getByRole('button', { name: '保存新主密码', exact: true }).click();
     await expect(page.getByRole('dialog').getByRole('alert')).toContainText('当前主密码错误');
     expect(await page.evaluate((id) => window.desktop.readSecret(id, 'password'), accountId)).toBe(
       'fictional-secret',
     );
     await page.getByLabel('当前主密码', { exact: true }).fill('fictional-previous-password');
+    await page.getByLabel('新主密码', { exact: true }).fill('short');
+    await page.getByLabel('确认新主密码', { exact: true }).fill('short');
+    await page.getByRole('button', { name: '保存新主密码', exact: true }).click();
+    await expect(page.getByRole('dialog').getByRole('alert')).toContainText('6 到 1024');
+    await page.getByLabel('新主密码', { exact: true }).fill('next12');
+    await page.getByLabel('确认新主密码', { exact: true }).fill('next12');
     await page.getByRole('button', { name: '保存新主密码', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: '主密码已更改' })).toBeVisible();
     expect((await page.evaluate(() => window.desktop.vaultStatus())).unlocked).toBe(false);
@@ -60,7 +66,7 @@ test('设置更改主密码验证旧密码与新密码确认，取消不变更�
     await app.close();
     app = await electron.launch({ args: ['.'], env });
     page = await app.firstWindow();
-    await page.evaluate(() => window.desktop.unlockVault('fictional-next-password'));
+    await page.evaluate(() => window.desktop.unlockVault('next12'));
     expect(await page.evaluate((id) => window.desktop.readSecret(id, 'password'), accountId)).toBe(
       'fictional-secret',
     );

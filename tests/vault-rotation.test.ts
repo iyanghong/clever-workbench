@@ -7,7 +7,7 @@ import { Vault } from '../electron/vault';
 import { Backups } from '../electron/backup';
 import { derive, keyAad, unseal } from '../electron/vault-crypto';
 const oldPassword = 'fictional-previous-master-password',
-  newPassword = 'fictional-next-master-password';
+  newPassword = 'next12';
 const stores: Store[] = [],
   vaults: Vault[] = [];
 function open(root = fs.mkdtempSync(path.join(os.tmpdir(), 'workbench-rotation-'))) {
@@ -128,7 +128,7 @@ test(
       before = store.db.prepare('SELECT * FROM secrets ORDER BY kind').all(),
       config = vault.config();
     await expect(vault.rotate('wrong-password', newPassword)).rejects.toThrow('密码');
-    await expect(vault.rotate(oldPassword, 'short')).rejects.toThrow('12');
+    await expect(vault.rotate(oldPassword, 'short')).rejects.toThrow('6 到 1024');
     expect(vault.config()).toEqual(config);
     store.db.exec(
       "CREATE TRIGGER test_rotation_failure BEFORE UPDATE ON secrets WHEN OLD.kind='token' BEGIN SELECT RAISE(ABORT,'模拟秘密更新中断'); END",

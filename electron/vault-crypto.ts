@@ -118,8 +118,8 @@ export function backupAad(config: Pick<VaultConfig, 'id' | 'backupPublicKey'>) {
   return `clever-workbench/vault/1/${config.id}/backup-key/${config.backupPublicKey}`;
 }
 export async function newProtection(password: unknown, dataKey: Buffer): Promise<VaultConfig> {
-  if (typeof password !== 'string' || password.length < 12 || password.length > 1024)
-    throw new Error('主密码需为 12 到 1024 个字符。');
+  if (typeof password !== 'string' || password.length < 6 || password.length > 1024)
+    throw new Error('主密码需为 6 到 1024 个字符。');
   const base = {
     version: 1 as const,
     id: randomUUID(),

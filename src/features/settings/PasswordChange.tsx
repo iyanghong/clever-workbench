@@ -37,8 +37,8 @@ export function PasswordChange({
       setError('两次输入的新主密码不一致。');
       return;
     }
-    if (next.length < 12 || next.length > 1024) {
-      setError('新主密码需为 12 到 1024 个字符。');
+    if (next.length < 6 || next.length > 1024) {
+      setError('新主密码需为 6 到 1024 个字符。');
       return;
     }
     working.current = true;
@@ -104,7 +104,7 @@ export function PasswordChange({
             disabled={busy}
           />
         </label>
-        <p className="field-hint">至少 12 个字符。成功后秘密会重新锁定，下次查看时用新密码解锁。</p>
+        <p className="field-hint">至少 6 个字符。成功后秘密会重新锁定，下次查看时用新密码解锁。</p>
         <div className="modal-actions">
           <button type="button" className="secondary-button" onClick={close} disabled={busy}>
             取消

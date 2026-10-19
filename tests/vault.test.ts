@@ -34,6 +34,17 @@ afterEach(() => {
   for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
 });
 
+test('主密码最低 6 个字符，拒绝 5 个字符且不创建保护材料', async () => {
+  const { vault, accountId } = setup();
+  await expect(vault.initialize('test1')).rejects.toThrow('6 到 1024');
+  expect(vault.status()).toEqual({ initialized: false, unlocked: false });
+  await vault.initialize('test12');
+  vault.save(accountId, 'password', 'fixture-secret');
+  vault.lock();
+  await vault.unlock('test12');
+  expect(vault.read(accountId, 'password')).toBe('fixture-secret');
+});
+
 test('秘密使用主密码解锁，重启与锁定撤销访问，快照和落盘数据不含明文', async () => {
   const { store, vault, accountId } = setup();
   const password = 'fictional-master-password-2026',

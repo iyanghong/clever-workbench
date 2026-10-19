@@ -116,7 +116,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           <p>
             {status.initialized
               ? '解锁后可以访问秘密。普通台账与文档始终可用。'
-              : '使用至少 12 个字符的主密码保护秘密与完整备份。忘记主密码且没有可解锁副本时，秘密无法恢复。'}
+              : '使用至少 6 个字符的主密码保护秘密与完整备份。忘记主密码且没有可解锁副本时，秘密无法恢复。'}
           </p>
           <label>
             主密码
@@ -153,7 +153,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
             </button>
             <button
               className="primary-button"
-              disabled={busy || !password || (!status.initialized && password.length < 12)}
+              disabled={busy || !password || (!status.initialized && password.length < 6)}
               onClick={() => void unlock()}
             >
               {busy ? '处理中…' : status.initialized ? '解锁' : '设置并解锁'}

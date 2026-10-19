@@ -28,8 +28,12 @@ test('首次保存秘密设置主密码，手动锁定及重启后按需解锁�
     await page.getByRole('button', { name: '台账', exact: true }).click();
     await openLedgerRecord(page, '账号', undefined, true);
     await page.getByRole('button', { name: '添加密码', exact: true }).click({ timeout: 3000 });
-    await page.getByLabel('主密码', { exact: true }).fill('fictional-master-password-2026');
-    await page.getByLabel('确认主密码').fill('fictional-master-password-2026');
+    await expect(page.getByRole('dialog')).toContainText('至少 6 个字符');
+    await page.getByLabel('主密码', { exact: true }).fill('test1');
+    await page.getByLabel('确认主密码').fill('test1');
+    await expect(page.getByRole('button', { name: '设置并解锁', exact: true })).toBeDisabled();
+    await page.getByLabel('主密码', { exact: true }).fill('test12');
+    await page.getByLabel('确认主密码').fill('test12');
     await page.getByRole('button', { name: '设置并解锁', exact: true }).click();
     await page.getByLabel('秘密内容', { exact: true }).fill('fictional-redis-password');
     await page.getByRole('button', { name: '保存秘密', exact: true }).click();
@@ -43,7 +47,7 @@ test('首次保存秘密设置主密码，手动锁定及重启后按需解锁�
     await page.getByLabel('主密码', { exact: true }).fill('wrong-master-password');
     await page.getByRole('button', { name: '解锁', exact: true }).click();
     await expect(page.getByRole('dialog').getByRole('alert')).toContainText('主密码');
-    await page.getByLabel('主密码', { exact: true }).fill('fictional-master-password-2026');
+    await page.getByLabel('主密码', { exact: true }).fill('test12');
     await page.getByRole('button', { name: '解锁', exact: true }).click();
     await expect(page.getByLabel('已显示的密码')).toHaveValue('fictional-redis-password');
     await app.close();
