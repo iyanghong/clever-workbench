@@ -96,15 +96,17 @@ export function App() {
             <div className="app-mark">
               <SquaresFourIcon weight="fill" size={25} />
             </div>
-            <div>
+            <div className="brand-copy">
               <strong>Clever Workbench</strong>
-              <span>个人工作台</span>
+              <div className="brand-caption">
+                <span>个人工作台</span>
+                <UpdateBadge state={update} />
+              </div>
             </div>
           </div>
           <div className="workspace-label">工作空间</div>
           {navigation('workspace')}
           <div className="sidebar-bottom">
-            <UpdateBadge />
             <VaultControl />
             <div className="local-badge">
               <span className="status-dot saved" />

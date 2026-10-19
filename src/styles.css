@@ -144,17 +144,27 @@ h3 {
   gap: 11px;
   padding: 7px 9px 28px;
 }
-.brand strong {
+.brand-copy > strong {
   font-size: 17px;
   font-weight: 650;
   letter-spacing: -0.45px;
 }
-.brand span {
+.brand-copy {
+  min-width: 0;
+}
+.brand-caption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+  margin-top: 5px;
+}
+.brand-caption > span {
   display: block;
   font-size: 10px;
   color: var(--secondary);
-  margin-top: 5px;
   letter-spacing: 1px;
+  white-space: nowrap;
 }
 .app-mark {
   width: 38px;
@@ -1536,7 +1546,7 @@ h3 {
   .brand {
     gap: 8px;
   }
-  .brand strong {
+  .brand-copy > strong {
     font-size: 16px;
   }
   .breadcrumb > span:first-of-type,
@@ -1649,7 +1659,7 @@ h3 {
 .task-workspace {
   display: contents;
 }
-.brand strong {
+.brand-copy > strong {
   font-size: 14px;
   letter-spacing: -0.3px;
 }
@@ -3867,6 +3877,9 @@ h3 {
 
 /* Shared dialog chrome keeps the exit visible while long forms scroll. */
 .modal.shared-dialog {
+  /* Exclude toolbar drag regions behind top-layer dialogs from native hit testing. */
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
   width: 470px;
   min-width: 0;
   max-width: calc(100vw - 32px);
@@ -4159,7 +4172,6 @@ h3 {
     flex-basis: 100%;
   }
 }
-
 .account-list-heading {
   display: flex;
   justify-content: space-between;
@@ -4350,41 +4362,4 @@ h3 {
 .shared-dialog > .copy-password-option {
   flex-direction: row;
   align-items: center;
-}
-/* Application updates */
-.update-badge {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  padding: 10px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-.update-badge.has-update {
-  color: #bf6b17;
-  background: #c7761014;
-}
-.release-notes {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  max-height: 240px;
-  overflow: auto;
-  font: inherit;
-}
-.update-details {
-  min-width: 0;
-}
-.update-install-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 2147483647;
-  display: grid;
-  place-items: center;
-  background: rgba(30, 34, 40, 0.85);
-  color: white;
 }

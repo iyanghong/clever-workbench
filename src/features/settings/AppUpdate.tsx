@@ -1,6 +1,21 @@
 import { useEffect, useState } from 'react';
+import {
+  ArrowClockwiseIcon,
+  ArrowSquareOutIcon,
+  ArrowsClockwiseIcon,
+  CaretDownIcon,
+  CheckCircleIcon,
+  ClockCounterClockwiseIcon,
+  DownloadSimpleIcon,
+  GithubLogoIcon,
+  InfoIcon,
+  LockKeyIcon,
+  SquaresFourIcon,
+  WarningCircleIcon,
+} from '@phosphor-icons/react';
 import type { UpdateSnapshot, UpdateHistoryEntry } from '../../update-types';
 import { Dialog } from '../../shared/Dialog';
+import './app-update.css';
 
 export function useAppUpdate() {
   const [state, setState] = useState<UpdateSnapshot | null>(null);
@@ -42,120 +57,236 @@ const labels: Record<UpdateSnapshot['status'], string> = {
   available: '有新版本',
   error: '更新失败',
 };
-export function UpdateDetails({ state }: { state: UpdateSnapshot | null }) {
+const descriptions: Partial<Record<UpdateSnapshot['status'], string>> = {
+  'up-to-date': '当前没有需要安装的正式更新。',
+  available: '新版本已发布，下载完成后可自行选择重启时间。',
+  ready: '安装前会保存当前工作，并创建完整加密备份。',
+  checking: '正在连接 GitHub，获取最新版本信息。',
+  downloading: '下载期间可以继续使用工作台。',
+  verifying: '正在检查更新包的完整性与兼容性。',
+  preparing: '正在保存编辑内容并准备完整加密备份。',
+  installing: '更新助手正在替换应用，请稍候。',
+  validating: '正在确认新版本、资料库与窗口是否正常。',
+  success: '新版本与工作空间已通过启动检查。',
+};
+export function UpdateDetails({
+  state,
+  allowCheck = false,
+}: {
+  state: UpdateSnapshot | null;
+  allowCheck?: boolean;
+}) {
   const [error, setError] = useState('');
+  const status = state?.status;
+  const busy =
+    !!status &&
+    ['checking', 'downloading', 'verifying', 'preparing', 'installing', 'validating'].includes(
+      status,
+    );
+  const canDownload = !!state?.release && (status === 'available' || status === 'error');
+  const canInstall = status === 'ready';
+  const tone =
+    status === 'error'
+      ? 'error'
+      : status === 'manual' || status === 'incompatible'
+        ? 'warning'
+        : status === 'success' || status === 'up-to-date'
+          ? 'success'
+          : busy || status === 'available' || canInstall
+            ? 'accent'
+            : 'neutral';
+  const StatusIcon = busy
+    ? ArrowsClockwiseIcon
+    : tone === 'success'
+      ? CheckCircleIcon
+      : tone === 'error' || tone === 'warning'
+        ? WarningCircleIcon
+        : canDownload || canInstall
+          ? DownloadSimpleIcon
+          : InfoIcon;
+  const description =
+    state?.message ||
+    (status && descriptions[status]) ||
+    '在这里检查正式版本，查看更新内容与安装记录。';
+  const progress = state?.progress;
+  const percent =
+    progress && progress.total > 0
+      ? Math.min(100, Math.floor((progress.received / progress.total) * 100))
+      : null;
   return (
-    <div className="update-details">
-      <strong>Clever Workbench {state ? `v${state.currentVersion}` : ''}</strong>
-      <p>私有仓库更新使用本机 Git 保存的 GitHub 登录；此电脑的账号须有仓库读取权限。</p>
-      <p role="status">{state ? labels[state.status] : '正在读取版本…'}</p>
-      {state?.progress && (
-        <progress
-          aria-label="更新下载进度"
-          value={state.progress.received}
-          max={state.progress.total}
-        />
-      )}
-      {state?.message && <p>{state.message}</p>}
-      {state?.recovery && <p role="status">上次更新：{state.recovery.message}</p>}
-      {state?.retryAt && <p>可重试时间：{new Date(state.retryAt).toLocaleString('zh-CN')}</p>}
-      {state?.release && (
-        <>
-          <h4>新版本 v{state.release.version}</h4>
-          <p>
-            {state.release.publishedAt
-              ? new Date(state.release.publishedAt).toLocaleString('zh-CN')
-              : ''}
-          </p>
-          <pre className="release-notes">{state.release.notes || '此版本没有更新说明。'}</pre>
-        </>
-      )}
-      <div className="backup-actions">
-        {state?.release && ['available', 'error'].includes(state.status) && (
-          <button
-            className="primary-button"
-            onClick={() => {
-              setError('');
-              void window.desktop.downloadUpdate().catch(() => setError('下载失败，请重试。'));
-            }}
-          >
-            下载更新
-          </button>
-        )}
-        {state?.status === 'ready' && (
-          <button
-            className="primary-button"
-            onClick={() => {
-              setError('');
-              void window.desktop
-                .installUpdate()
-                .catch((cause) =>
-                  setError(cause instanceof Error ? cause.message : '更新准备失败，请重试。'),
-                );
-            }}
-          >
-            重启并更新
-          </button>
-        )}
-        <button
-          className="secondary-button"
-          disabled={
-            !state ||
-            [
-              'unsupported',
-              'checking',
-              'downloading',
-              'verifying',
-              'ready',
-              'preparing',
-              'installing',
-              'validating',
-            ].includes(state.status)
-          }
-          onClick={() => {
-            setError('');
-            void window.desktop.checkUpdate().catch(() => setError('检查更新失败，请重试。'));
-          }}
-        >
-          检查更新
-        </button>
-        <button
-          className="secondary-button"
-          onClick={() => {
-            void window.desktop
-              .openExternal('https://github.com/iyanghong/clever-workbench/releases')
-              .catch(() => setError('无法打开历史版本页面。'));
-          }}
-        >
-          历史版本
-        </button>
+    <div className="update-details" data-tone={tone}>
+      <div className="update-identity">
+        <div className="app-mark update-app-mark" aria-hidden="true">
+          <SquaresFourIcon weight="fill" size={30} />
+        </div>
+        <div className="update-product">
+          <strong>
+            Clever Workbench <span>{state ? `v${state.currentVersion}` : '正在读取版本…'}</span>
+          </strong>
+          <span className="update-channel">
+            <GithubLogoIcon size={13} aria-hidden="true" /> 正式版本
+          </span>
+        </div>
       </div>
-      {error && <p role="alert">{error}</p>}
-      <UpdateHistory />
+      <section className="update-status-card" aria-label="更新状态">
+        <div className={`update-status-icon ${busy ? 'is-working' : ''}`} aria-hidden="true">
+          <StatusIcon size={25} weight={tone === 'success' ? 'fill' : 'regular'} />
+        </div>
+        <div className="update-status-copy">
+          <h3 role="status">{state ? labels[state.status] : '正在读取版本…'}</h3>
+          <p>{description}</p>
+          {state?.retryAt && <p>可重试时间：{formatDate(state.retryAt)}</p>}
+        </div>
+        {progress && (
+          <div className="update-progress">
+            <div>
+              <span>
+                {formatBytes(progress.received)} / {formatBytes(progress.total)}
+              </span>
+              <strong>{percent === null ? '下载中' : `${percent}%`}</strong>
+            </div>
+            <progress aria-label="更新下载进度" value={progress.received} max={progress.total} />
+          </div>
+        )}
+      </section>
+      {state?.recovery && (
+        <p className="update-notice" role="status">
+          <InfoIcon size={17} aria-hidden="true" />
+          <span>上次更新：{state.recovery.message}</span>
+        </p>
+      )}
+      {state?.release && (
+        <section className="update-release" aria-label="版本说明">
+          <div className="update-release-heading">
+            <h4>新版本 v{state.release.version}</h4>
+            <span>更新内容</span>
+          </div>
+          {state.release.publishedAt && (
+            <p className="update-release-date">发布于 {formatDate(state.release.publishedAt)}</p>
+          )}
+          <pre className="release-notes">{state.release.notes || '此版本没有更新说明。'}</pre>
+        </section>
+      )}
+      {error && (
+        <p role="alert" className="update-notice update-action-error">
+          <WarningCircleIcon size={17} aria-hidden="true" />
+          <span>{error}</span>
+        </p>
+      )}
+      <div className="update-secondary">
+        <details className="update-disclosure update-source">
+          <summary>
+            <LockKeyIcon size={16} aria-hidden="true" />
+            <span>更新来源与访问权限</span>
+            <CaretDownIcon size={13} aria-hidden="true" />
+          </summary>
+          <div className="update-source-content">
+            <strong>iyanghong/clever-workbench</strong>
+            <p>私有仓库更新使用本机 Git 保存的 GitHub 登录；此电脑的账号须有仓库读取权限。</p>
+          </div>
+        </details>
+        <UpdateHistory />
+      </div>
+      <footer className="update-footer">
+        <div className="update-actions">
+          <button
+            className="update-history-link"
+            onClick={() => {
+              void window.desktop
+                .openExternal('https://github.com/iyanghong/clever-workbench/releases')
+                .catch(() => setError('无法打开历史版本页面。'));
+            }}
+          >
+            <ArrowSquareOutIcon size={15} aria-hidden="true" />
+            历史版本
+          </button>
+          <div className="update-primary-actions">
+            {allowCheck && (
+              <button
+                className={canDownload || canInstall ? 'secondary-button' : 'primary-button'}
+                disabled={!state || status === 'unsupported' || busy || canInstall}
+                onClick={() => {
+                  setError('');
+                  void window.desktop.checkUpdate().catch(() => setError('检查更新失败，请重试。'));
+                }}
+              >
+                <ArrowClockwiseIcon size={15} aria-hidden="true" />
+                检查更新
+              </button>
+            )}
+            {canDownload && (
+              <button
+                className="primary-button"
+                onClick={() => {
+                  setError('');
+                  void window.desktop.downloadUpdate().catch(() => setError('下载失败，请重试。'));
+                }}
+              >
+                <DownloadSimpleIcon size={16} aria-hidden="true" />
+                下载更新
+              </button>
+            )}
+            {canInstall && (
+              <button
+                className="primary-button"
+                onClick={() => {
+                  setError('');
+                  void window.desktop
+                    .installUpdate()
+                    .catch((cause) =>
+                      setError(
+                        (cause instanceof Error ? cause.message : '更新准备失败，请重试。').replace(
+                          /^Error: Error invoking remote method '[^']+': Error: /,
+                          '',
+                        ),
+                      ),
+                    );
+                }}
+              >
+                <ArrowClockwiseIcon size={16} aria-hidden="true" />
+                重启并更新
+              </button>
+            )}
+          </div>
+        </div>
+        <p className="update-schedule">
+          {status === 'unsupported'
+            ? '在线更新仅适用于受支持的正式安装版'
+            : '启动时自动检查 · 运行期间每 30 分钟检查一次'}
+        </p>
+      </footer>
     </div>
   );
 }
-export function UpdateBadge() {
-  const state = useAppUpdate();
+export function UpdateBadge({ state }: { state: UpdateSnapshot | null }) {
   const [open, setOpen] = useState(false);
+  const hasUpdate =
+    !!state?.release &&
+    [
+      'available',
+      'downloading',
+      'verifying',
+      'ready',
+      'preparing',
+      'installing',
+      'validating',
+      'error',
+    ].includes(state.status);
   return (
     <>
-      <button
-        className={`update-badge ${state?.status === 'available' ? 'has-update' : ''}`}
-        onClick={() => setOpen(true)}
-        aria-label="应用版本与更新"
-      >
-        <span>{state ? `v${state.currentVersion}` : '应用版本'}</span>
-        <span>
-          {state?.status === 'available'
-            ? '● 有更新'
-            : state?.status === 'unsupported'
-              ? '开发或不支持版本'
-              : '检查更新'}
-        </span>
-      </button>
+      {hasUpdate && (
+        <button
+          className="update-badge"
+          onClick={() => setOpen(true)}
+          aria-label="查看可用更新"
+          title={`新版本 v${state.release!.version} · ${labels[state.status]}`}
+        >
+          <DownloadSimpleIcon size={12} aria-hidden="true" />
+          更新
+        </button>
+      )}
       {open && (
-        <Dialog title="应用更新" onClose={() => setOpen(false)}>
+        <Dialog className="modal update-dialog" title="应用更新" onClose={() => setOpen(false)}>
           <UpdateDetails state={state} />
         </Dialog>
       )}
@@ -163,7 +294,7 @@ export function UpdateBadge() {
   );
 }
 export function AboutUpdate() {
-  return <UpdateDetails state={useAppUpdate()} />;
+  return <UpdateDetails state={useAppUpdate()} allowCheck />;
 }
 
 function UpdateHistory() {
@@ -194,11 +325,15 @@ function UpdateHistory() {
       .catch(() => setError('恢复资料不存在或无法打开，请检查记录中的位置。'));
   };
   return (
-    <details className="update-history">
-      <summary>更新历史（最近 30 次）</summary>
-      {entries.length === 0 && <p>尚无更新记录。</p>}
+    <details className="update-history update-disclosure">
+      <summary>
+        <ClockCounterClockwiseIcon size={16} aria-hidden="true" />
+        <span>更新历史（最近 30 次）</span>
+        <CaretDownIcon size={13} aria-hidden="true" />
+      </summary>
+      {entries.length === 0 && <p className="update-history-empty">尚无更新记录。</p>}
       {entries.map((entry) => (
-        <article key={entry.id}>
+        <article key={entry.id} className="update-history-entry" data-outcome={entry.outcome}>
           <strong>
             v{entry.currentVersion} →{' '}
             {entry.targetVersion ? `v${entry.targetVersion}` : '待确认版本'}
@@ -228,7 +363,7 @@ function UpdateHistory() {
               .join(' · ') || '尚未记录'}
           </p>
           {entry.backup && <p className="path-text">备份：{entry.backup}</p>}
-          <div className="backup-actions">
+          <div className="update-recovery-actions">
             {entry.backup && (
               <button className="secondary-button" onClick={() => reveal(entry.id, 'backup')}>
                 定位备份
@@ -252,7 +387,23 @@ function UpdateHistory() {
           )}
         </article>
       ))}
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p role="alert" className="update-action-error">
+          {error}
+        </p>
+      )}
     </details>
   );
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime())
+    ? date.toLocaleString('zh-CN', { dateStyle: 'medium', timeStyle: 'short' })
+    : '时间暂不可用';
+}
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
 }
