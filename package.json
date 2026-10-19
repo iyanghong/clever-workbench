@@ -29,6 +29,7 @@
       "!node_modules/**/*"
     ],
     "mac": {
+      "artifactName": "Clever-Workbench-${version}-${arch}.${ext}",
       "target": [
         "dmg",
         "zip"

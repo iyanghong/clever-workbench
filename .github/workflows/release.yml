@@ -1,0 +1,72 @@
+name: Publish stable macOS Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: macos-latest
+    timeout-minutes: 35
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Verify stable tag matches application version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node scripts/prepare-release.mjs "$RELEASE_TAG" --check-version
+      - run: npm ci
+      - run: npm run setup:electron
+      - run: npm test
+      - run: npm run build
+      - name: Build matching ZIP and DMG
+        run: npx electron-builder --mac --arm64 --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Validate assets and native bundle
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node scripts/prepare-release.mjs "$RELEASE_TAG"
+          version="${RELEASE_TAG#v}"
+          export CWB_UPDATE_ZIP="$GITHUB_WORKSPACE/release/Clever-Workbench-$version-arm64.zip"
+          npx vitest run tests/update-download.test.ts
+          mkdir -p release/installed
+          ditto -x -k "$CWB_UPDATE_ZIP" release/installed
+          codesign --verify --deep --strict 'release/installed/Clever Workbench.app'
+          echo "CWB_TEST_EXECUTABLE=$GITHUB_WORKSPACE/release/installed/Clever Workbench.app/Contents/MacOS/Clever Workbench" >> "$GITHUB_ENV"
+      - name: Test installed application
+        run: npm run test:e2e
+      - name: Create draft, upload complete assets, then publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$RELEASE_TAG" --json isDraft > release/existing.json; then
+            node -e 'if (!JSON.parse(require("fs").readFileSync("release/existing.json")).isDraft) throw Error("Refusing to overwrite a published release")'
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --draft --title "$RELEASE_TAG" --generate-notes
+          fi
+          version="${RELEASE_TAG#v}"
+          gh release upload "$RELEASE_TAG" "release/Clever-Workbench-$version-arm64.zip" "release/Clever-Workbench-$version-arm64.dmg" release/SHA256SUMS --clobber
+          gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" > release/uploaded.json
+          node scripts/verify-release-upload.mjs "$RELEASE_TAG" release/uploaded.json
+          gh release edit "$RELEASE_TAG" --prerelease=false --draft=false --latest
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-verification
+          if-no-files-found: ignore
+          path: |
+            release/SHA256SUMS
+            release/uploaded.json
+            test-results/
