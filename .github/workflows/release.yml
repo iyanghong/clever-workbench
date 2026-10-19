@@ -60,7 +60,9 @@ jobs:
           fi
           version="${RELEASE_TAG#v}"
           gh release upload "$RELEASE_TAG" "release/Clever-Workbench-$version-arm64.zip" "release/Clever-Workbench-$version-arm64.dmg" release/SHA256SUMS --clobber
-          gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" > release/uploaded.json
+          release_id="$(gh release view "$RELEASE_TAG" --json databaseId --jq .databaseId)"
+          [[ "$release_id" =~ ^[1-9][0-9]*$ ]]
+          gh api "repos/$GH_REPO/releases/$release_id" > release/uploaded.json
           node scripts/verify-release-upload.mjs "$RELEASE_TAG" release/uploaded.json
           gh release edit "$RELEASE_TAG" --prerelease=false --draft=false --latest
       - uses: actions/upload-artifact@v4
