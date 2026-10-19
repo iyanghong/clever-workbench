@@ -131,21 +131,20 @@ try {
     const value = await fs
       .readFile(path.join(transactionDir, 'helper-status'), 'utf8')
       .catch(() => '');
-    return /awaiting-health|needs-attention:launch-failed/.test(value);
+    return /awaiting-health|completed|needs-attention:/.test(value);
   }, 150_000);
   await installRequest;
   const transaction = JSON.parse(
     await fs.readFile(path.join(transactionDir, 'transaction.json'), 'utf8'),
   );
-  const helperPhase = (
-    await fs.readFile(path.join(transactionDir, 'helper-status'), 'utf8')
-  ).trim();
+  let helperPhase = (await fs.readFile(path.join(transactionDir, 'helper-status'), 'utf8')).trim();
   let health = null;
   await waitFor(async () => {
+    helperPhase = (await fs.readFile(path.join(transactionDir, 'helper-status'), 'utf8')).trim();
     health = JSON.parse(
       await fs.readFile(path.join(transactionDir, 'health.json'), 'utf8').catch(() => 'null'),
     );
-    return !!health || helperPhase === 'needs-attention:launch-failed';
+    return !!health || helperPhase.startsWith('needs-attention:');
   }, 75_000).catch(() => {});
   assert.ok((await fs.stat(transaction.backup)).isFile());
   assert.ok((await fs.stat(installed + '.previous')).isDirectory());
@@ -155,9 +154,14 @@ try {
   const observed =
     health?.outcome === 'success'
       ? 'success'
-      : health?.outcome === 'manual' || helperPhase === 'needs-attention:launch-failed'
+      : health?.outcome === 'manual' || helperPhase.startsWith('needs-attention:')
         ? 'manual'
         : 'unconfirmed';
+  if (observed === 'manual')
+    assert.ok(
+      (await fs.readFile(path.join(transactionDir, 'RECOVERY.txt'), 'utf8')).length > 0,
+      'Manual outcome retains readable recovery instructions outside the app',
+    );
 
   // Stop only the disposable newly launched copy before testing recovery separately.
   for (const line of run('/bin/ps', ['-axo', 'pid=,command=']).split('\n')) {
