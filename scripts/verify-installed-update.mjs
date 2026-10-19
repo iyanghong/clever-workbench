@@ -66,6 +66,7 @@ try {
     await application.evaluate(
       ({ net }, fixture) => {
         const original = net.fetch.bind(net);
+        const originalRequest = net.request.bind(net);
         net.fetch = async (input, options) => {
           const url = String(input);
           if (url === 'https://api.github.com/repos/iyanghong/clever-workbench/releases/latest')
@@ -73,6 +74,39 @@ try {
           if (url === fixture.zipUrl || url === fixture.zipApi) return original(fixture.zipFile);
           if (url === fixture.sumsUrl || url === fixture.sumsApi) return original(fixture.sumsFile);
           return original(input, options);
+        };
+        // Newer baselines expose manual 3xx responses through net.request.
+        // Keep this fixture explicit and leave --github entirely unmodified.
+        net.request = (options) => {
+          const url = typeof options === 'string' ? options : options.url;
+          const file =
+            url === fixture.zipUrl || url === fixture.zipApi
+              ? fixture.zipPath
+              : url === fixture.sumsUrl || url === fixture.sumsApi
+                ? fixture.sumsPath
+                : undefined;
+          if (!file) return originalRequest(options);
+          const { EventEmitter } = process.getBuiltinModule('events');
+          const { createReadStream } = process.getBuiltinModule('fs');
+          const request = new EventEmitter();
+          let stream,
+            aborted = false;
+          request.end = () => {
+            queueMicrotask(() => {
+              if (aborted) return;
+              stream = createReadStream(file);
+              stream.statusCode = 200;
+              stream.headers = {};
+              request.emit('response', stream);
+            });
+            return request;
+          };
+          request.abort = () => {
+            aborted = true;
+            stream?.destroy();
+            request.emit('abort');
+          };
+          return request;
         };
       },
       {
@@ -83,6 +117,8 @@ try {
         sumsApi: 'https://api.github.com/repos/iyanghong/clever-workbench/releases/assets/2',
         zipFile: pathToFileURL(zip).href,
         sumsFile: pathToFileURL(sumsPath).href,
+        zipPath: zip,
+        sumsPath,
       },
     );
   }

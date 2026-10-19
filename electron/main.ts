@@ -24,6 +24,7 @@ import { Backups } from './backup';
 import { SystemExports } from './system-export';
 import { UpdateCoordinator } from './update';
 import { localGitHubCredential } from './update-credential';
+import { fetchUpdate } from './update-fetch';
 import { UpdateInstallation } from './update-install';
 import { launchUpdateHelper } from './update-launcher';
 import { UpdateJournal, UpdateHealth } from './update-recovery';
@@ -297,7 +298,7 @@ app
       packaged: app.isPackaged,
       platform: process.platform,
       arch: process.arch,
-      fetch: (input, init) => net.fetch(input instanceof URL ? input.href : input, init),
+      fetch: fetchUpdate,
       githubCredential: () => localGitHubCredential(app.getPath('userData')),
     });
     try {
