@@ -1194,6 +1194,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
       {info && system && (
         <Dialog
           title="系统信息"
+          description="维护系统资料、部署环境与项目沿革。"
           className="modal workspace-config"
           onClose={() => void transition(() => setInfo(false))}
           error={error}
@@ -1234,7 +1235,13 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
         </Dialog>
       )}
       {capture === 'operations' && (
-        <Dialog title="新增运维记录" onClose={() => setCapture(null)} error={error}>
+        <Dialog
+          title="新增运维记录"
+          description="先记下名称，频率、状态和关联对象可以稍后补充。"
+          closeDisabled={busy}
+          onClose={() => !busy && setCapture(null)}
+          error={error}
+        >
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1269,6 +1276,14 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
               />
             </label>
             <div className="modal-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={busy}
+                onClick={() => setCapture(null)}
+              >
+                取消
+              </button>
               <button className="primary-button" disabled={busy || !operationName.trim()}>
                 创建运维记录
               </button>

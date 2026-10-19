@@ -74,6 +74,7 @@ test('台账只读工作区、共享范围、部署与任务布局和开始时�
     await page.getByRole('button', { name: '台账', exact: true }).click();
     await page.getByRole('button', { name: '系统信息', exact: true }).click();
     const info = page.getByRole('dialog', { name: '系统信息' });
+    await info.getByRole('button', { name: '环境管理', exact: true }).click();
     await info.getByLabel('环境名称 生产', { exact: true }).fill('测试');
     await info.getByRole('button', { name: '完成', exact: true }).click();
     await expect(info).toBeVisible();

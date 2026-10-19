@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Snapshot } from '../../types';
 import type { LedgerBatch } from '../../ledger-workspace-types';
 import { parseClipboardTable, parseTsv, type PastedTable } from '../../shared/paste-table';
@@ -91,6 +91,14 @@ export function PasteLedger({
     [busy, setBusy] = useState(false),
     [leaving, setLeaving] = useState(false),
     [result, setResult] = useState<{ count: number; skipped: number } | null>(null);
+  const continueButton = useRef<HTMLButtonElement>(null);
+  function focusExitChoice() {
+    continueButton.current?.scrollIntoView({ block: 'center' });
+    continueButton.current?.focus({ preventScroll: true });
+  }
+  useEffect(() => {
+    if (leaving) focusExitChoice();
+  }, [leaving]);
   const token = useRef(crypto.randomUUID()),
     vault = useVault();
   function shape(data: PastedTable, layout = mode, hasHeader = header) {
@@ -284,21 +292,33 @@ export function PasteLedger({
   }
   function close() {
     if (busy) return;
-    if (!result && (source || text.trim())) setLeaving(true);
-    else onClose();
+    if (!result && (source || text.trim())) {
+      setLeaving(true);
+      if (leaving) focusExitChoice();
+    } else onClose();
   }
   return (
     <Dialog
       title="粘贴表格 · 校对后新增"
       className="modal paste-ledger"
+      description="从 Word 或 Excel 复制表格，校对字段后一次录入。"
+      closeDisabled={busy}
       error={error}
       onClose={close}
     >
       {leaving && (
-        <div role="alert">
+        <div className="paste-leave-notice" role="alert">
           <p>这些资料尚未提交，离开将丢弃本次粘贴内容。</p>
-          <button onClick={() => setLeaving(false)}>继续校对</button>
-          <button onClick={onClose}>放弃并离开</button>
+          <button
+            ref={continueButton}
+            className="secondary-button"
+            onClick={() => setLeaving(false)}
+          >
+            继续校对
+          </button>
+          <button className="text-button" onClick={onClose}>
+            放弃并离开
+          </button>
         </div>
       )}
       {result ? (
@@ -318,7 +338,7 @@ export function PasteLedger({
               token.current = crypto.randomUUID();
             }}
           >
-            <div className="workspace-query">
+            <div className="paste-setup">
               <label>
                 条目类型
                 <select
@@ -401,13 +421,15 @@ export function PasteLedger({
                 </label>
               )}
             </div>
-            <label className="field-label">
-              从 Word／Excel 复制后粘贴
+            <label className="field-label paste-source">
+              粘贴内容
               <textarea
                 aria-label="粘贴表格"
-                rows={3}
+                rows={7}
                 value={text}
-                placeholder="粘贴清单，或字段／值资料卡"
+                placeholder={
+                  '在这里粘贴表格…\n支持清单和“字段／值”资料卡，粘贴后可预览并调整字段。'
+                }
                 onChange={(e) => setText(e.target.value)}
                 onPaste={(e) => {
                   try {

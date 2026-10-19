@@ -21,6 +21,7 @@ import {
 } from '@phosphor-icons/react';
 import type { Command, Draft, Snapshot, Task } from '../../types';
 import { dateLabel, emptyContent } from '../../domain';
+import { Dialog } from '../../shared/Dialog';
 import { Detail } from '../../components/Detail';
 import { Timeline } from '../../components/Timeline';
 import { useVirtual } from '../../useVirtual';
@@ -101,7 +102,6 @@ export function TaskWorkspace({
     quickPending = useRef<Promise<void>>(Promise.resolve()),
     quickDirty = useRef(false),
     searchRef = useRef<HTMLInputElement>(null),
-    dialogRef = useRef<HTMLDialogElement>(null),
     creating = useRef(false);
   useEffect(() => {
     localStorage.setItem(
@@ -178,9 +178,6 @@ export function TaskWorkspace({
     const timer = setTimeout(() => setNotice(null), 8000);
     return () => clearTimeout(timer);
   }, [notice]);
-  useEffect(() => {
-    if (confirm) dialogRef.current?.showModal();
-  }, [confirm]);
   async function flushQuick() {
     if (quickTimer.current) {
       clearTimeout(quickTimer.current);
@@ -869,15 +866,7 @@ export function TaskWorkspace({
         </div>
       )}
       {confirm && (
-        <dialog
-          ref={dialogRef}
-          className="modal"
-          onCancel={(e) => {
-            e.preventDefault();
-            answer(null);
-          }}
-        >
-          <h2>{confirm.title}</h2>
+        <Dialog title={confirm.title} onClose={() => answer(null)}>
           <p className="multiline">{confirm.body}</p>
           <div className="modal-actions">
             {confirm.cancel !== '取消' && (
@@ -896,7 +885,7 @@ export function TaskWorkspace({
               {confirm.confirm}
             </button>
           </div>
-        </dialog>
+        </Dialog>
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { MagnifyingGlassIcon, XIcon, ArrowUpRightIcon, CopyIcon } from '@phosphor-icons/react';
+import { MagnifyingGlassIcon, ArrowUpRightIcon, CopyIcon } from '@phosphor-icons/react';
 import { Dialog } from '../../shared/Dialog';
 import { routeForHit, type ModuleProps } from '../../app/modules';
 import { searchKindLabels, type SearchHit } from '../../search-types';
@@ -121,17 +121,11 @@ export function GlobalSearch({
       {open && (
         <Dialog
           title="搜索工作台"
+          closeLabel="关闭全局搜索"
           className="modal search-dialog"
           onClose={() => setOpen(false)}
           error={error}
         >
-          <button
-            className="search-close icon-button"
-            aria-label="关闭全局搜索"
-            onClick={() => setOpen(false)}
-          >
-            <XIcon size={18} />
-          </button>
           <label className="search-input">
             <MagnifyingGlassIcon size={21} />
             <input

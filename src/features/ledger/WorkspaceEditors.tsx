@@ -486,8 +486,11 @@ export function ProjectManager({
     }
   }
   return (
-    <section>
-      <h3>项目档案</h3>
+    <section className="project-manager">
+      <div className="config-section-heading">
+        <h3>项目档案</h3>
+        <p>管理阶段项目；归档后仍保留系统关联历史。</p>
+      </div>
       <form
         className="ledger-quick"
         onSubmit={(e) => {
@@ -515,7 +518,9 @@ export function ProjectManager({
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
-        <button disabled={!name.trim()}>{editing ? '保存' : '新增项目'}</button>
+        <button className="secondary-button" disabled={!name.trim()}>
+          {editing ? '保存' : '新增项目'}
+        </button>
       </form>
       {snapshot.projects.map((p) => (
         <div className="workspace-management-row" key={p.id}>
@@ -604,7 +609,8 @@ export function SystemConfiguration({
       ),
     host.onError,
   );
-  const [environment, setEnvironment] = useState('');
+  const [environment, setEnvironment] = useState(''),
+    [section, setSection] = useState<'basic' | 'environments' | 'projects'>('basic');
   useEffect(() => host.registerFlush(form.flush), [host.registerFlush, form.flush]);
   async function mutate(command: Command) {
     try {
@@ -617,95 +623,133 @@ export function SystemConfiguration({
     }
   }
   return (
-    <div className="workspace-fields">
-      <label className="field-label">
-        系统名称
-        <input
-          aria-label="系统名称"
-          value={form.value.name}
-          onChange={(e) => form.change({ ...form.value, name: e.target.value })}
-        />
-      </label>
-      <label className="field-label">
-        登录地址
-        <input
-          aria-label="系统登录地址"
-          value={form.value.url}
-          onChange={(e) => form.change({ ...form.value, url: e.target.value })}
-        />
-      </label>
-      <label className="field-label">
-        当前项目
-        <select
-          aria-label="当前项目"
-          value={form.value.projectId ?? ''}
-          onChange={(e) => form.change({ ...form.value, projectId: e.target.value || null })}
-        >
-          <option value="">暂不关联</option>
-          {snapshot.projects
-            .filter((p) => !p.archivedAt)
-            .map((p) => (
-              <option value={p.id} key={p.id}>
-                {p.name}
-              </option>
-            ))}
-        </select>
-      </label>
-      <label className="field-label">
-        系统说明
-        <textarea
-          aria-label="系统说明"
-          value={form.value.notes}
-          onChange={(e) => form.change({ ...form.value, notes: e.target.value })}
-        />
-      </label>
-      <button
-        className="save-indicator"
-        onClick={() => void form.flush().catch((e) => host.onError(String(e)))}
-      >
-        {form.status}
-      </button>
-      <h3>项目沿革</h3>
-      {snapshot.systemProjects
-        .filter((link) => link.systemId === id)
-        .map((link) => (
-          <p key={link.projectId}>
-            {snapshot.projects.find((p) => p.id === link.projectId)?.name} ·{' '}
-            {link.projectId === system.currentProjectId ? '当前' : '历史'}
-          </p>
+    <div className="system-configuration">
+      <nav className="config-tabs" aria-label="系统信息分区">
+        {(
+          [
+            ['basic', '基本信息'],
+            ['environments', '环境管理'],
+            ['projects', '项目档案'],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={section === key}
+            onClick={() => setSection(key)}
+          >
+            {label}
+          </button>
         ))}
-      <h3>环境管理</h3>
-      {snapshot.environments
-        .filter((e) => e.systemId === id)
-        .map((e) => (
-          <div className="workspace-management-row" key={e.id}>
-            <EnvironmentEditor environment={e} host={host} />
-            <button
-              className="text-button"
-              onClick={() => void mutate({ type: 'environment.delete', id: e.id })}
+      </nav>
+      <section className="config-panel" hidden={section !== 'basic'} aria-label="基本信息">
+        <div className="config-grid">
+          <label className="field-label">
+            系统名称
+            <input
+              aria-label="系统名称"
+              value={form.value.name}
+              onChange={(e) => form.change({ ...form.value, name: e.target.value })}
+            />
+          </label>
+          <label className="field-label">
+            登录地址
+            <input
+              aria-label="系统登录地址"
+              value={form.value.url}
+              onChange={(e) => form.change({ ...form.value, url: e.target.value })}
+            />
+          </label>
+          <label className="field-label">
+            当前项目
+            <select
+              aria-label="当前项目"
+              value={form.value.projectId ?? ''}
+              onChange={(e) => form.change({ ...form.value, projectId: e.target.value || null })}
             >
-              删除
-            </button>
-          </div>
-        ))}
-      <form
-        className="ledger-quick"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void mutate({ type: 'environment.save', systemId: id, name: environment }).then((ok) => {
-            if (ok) setEnvironment('');
-          });
-        }}
-      >
-        <input
-          aria-label="新环境名称"
-          placeholder="生产、测试…"
-          value={environment}
-          onChange={(e) => setEnvironment(e.target.value)}
-        />
-        <button disabled={!environment.trim()}>新增环境</button>
-      </form>
-      <ProjectManager snapshot={snapshot} onSnapshot={host.onSnapshot} onError={host.onError} />
+              <option value="">暂不关联</option>
+              {snapshot.projects
+                .filter((p) => !p.archivedAt)
+                .map((p) => (
+                  <option value={p.id} key={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label className="field-label">
+            系统说明
+            <textarea
+              aria-label="系统说明"
+              value={form.value.notes}
+              onChange={(e) => form.change({ ...form.value, notes: e.target.value })}
+            />
+          </label>
+        </div>
+        <button
+          className="save-indicator"
+          onClick={() => void form.flush().catch((e) => host.onError(String(e)))}
+        >
+          {form.status}
+        </button>
+        <section className="config-history">
+          <h3>项目沿革</h3>
+          {!snapshot.systemProjects.some((link) => link.systemId === id) && (
+            <p className="secondary-copy">尚未关联项目，可随时补充。</p>
+          )}
+          {snapshot.systemProjects
+            .filter((link) => link.systemId === id)
+            .map((link) => (
+              <p className="config-history-row" key={link.projectId}>
+                {snapshot.projects.find((p) => p.id === link.projectId)?.name} ·{' '}
+                {link.projectId === system.currentProjectId ? '当前' : '历史'}
+              </p>
+            ))}
+        </section>
+      </section>
+      <section className="config-panel" hidden={section !== 'environments'} aria-label="环境管理">
+        <div className="config-section-heading">
+          <h3>部署环境</h3>
+          <p>按实际部署划分环境，地点与网络可用标签补充。</p>
+        </div>
+        {snapshot.environments
+          .filter((e) => e.systemId === id)
+          .map((e) => (
+            <div className="workspace-management-row" key={e.id}>
+              <EnvironmentEditor environment={e} host={host} />
+              <button
+                className="text-button"
+                onClick={() => void mutate({ type: 'environment.delete', id: e.id })}
+              >
+                删除
+              </button>
+            </div>
+          ))}
+        <form
+          className="ledger-quick"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void mutate({ type: 'environment.save', systemId: id, name: environment }).then(
+              (ok) => {
+                if (ok) setEnvironment('');
+              },
+            );
+          }}
+        >
+          <input
+            aria-label="新环境名称"
+            placeholder="生产、测试…"
+            value={environment}
+            onChange={(e) => setEnvironment(e.target.value)}
+          />
+          <button className="secondary-button" disabled={!environment.trim()}>
+            新增环境
+          </button>
+        </form>
+      </section>
+      <section className="config-panel" hidden={section !== 'projects'} aria-label="项目档案">
+        <ProjectManager snapshot={snapshot} onSnapshot={host.onSnapshot} onError={host.onError} />
+      </section>
     </div>
   );
 }

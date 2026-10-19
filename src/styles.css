@@ -2738,11 +2738,6 @@ h3 {
   font-size: 14px;
   margin-bottom: 18px;
 }
-.search-close {
-  position: absolute;
-  top: 16px;
-  right: 17px;
-}
 .search-dialog > .search-input {
   display: flex;
   flex-direction: row;
@@ -3868,4 +3863,299 @@ h3 {
 .task-list.compact-tasks .task-subtitle {
   max-width: 45%;
   overflow: hidden;
+}
+
+/* Shared dialog chrome keeps the exit visible while long forms scroll. */
+.modal.shared-dialog {
+  width: 470px;
+  min-width: 0;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 48px);
+  padding: 24px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  position: sticky;
+  z-index: 3;
+  top: -24px;
+  margin: -24px -24px 22px;
+  padding: 22px 24px 18px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.dialog-header > div {
+  min-width: 0;
+}
+.dialog-header h2 {
+  font-size: 19px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  margin: 0;
+}
+.dialog-header p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--secondary);
+  margin: 6px 0 0;
+}
+.dialog-header .dialog-close {
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--secondary);
+  background: var(--hover);
+}
+.dialog-header .dialog-close:hover {
+  color: var(--text);
+  background: var(--selected);
+}
+.shared-dialog .field-label {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  color: var(--secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  min-width: 0;
+}
+.shared-dialog .field-label :is(input:not([type='checkbox']):not([type='radio']), select, textarea),
+.shared-dialog .workspace-management-row > input,
+.paste-setup select,
+.paste-mapping select {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  margin: 0;
+  padding: 9px 12px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.shared-dialog .field-label textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+.shared-dialog .modal-actions {
+  position: sticky;
+  bottom: -24px;
+  z-index: 2;
+  margin: 24px -24px -24px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+  flex-wrap: wrap;
+}
+.shared-dialog .modal-actions > button {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.shared-dialog .modal-actions > span {
+  margin-right: auto;
+  color: var(--secondary);
+  font-size: 12px;
+}
+.modal.shared-dialog.workspace-config {
+  width: 660px;
+}
+.modal.shared-dialog.search-dialog {
+  width: 720px;
+}
+.modal.shared-dialog.favorite-dialog {
+  width: 550px;
+}
+.config-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--hover);
+  border-radius: 9px;
+  margin-bottom: 24px;
+}
+.config-tabs button {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--secondary);
+  white-space: nowrap;
+}
+.config-tabs button[aria-pressed='true'] {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 1px 4px #0000000d;
+  font-weight: 550;
+}
+.config-panel {
+  min-height: 300px;
+}
+.config-panel[hidden] {
+  display: none;
+}
+.config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.config-grid > label:nth-child(2),
+.config-grid > label:nth-child(4) {
+  grid-column: 1 / -1;
+}
+.config-grid > label:first-child {
+  grid-column: 1;
+  grid-row: 1;
+}
+.config-grid > label:nth-child(3) {
+  grid-column: 2;
+  grid-row: 1;
+}
+.config-panel .save-indicator {
+  margin-top: 8px;
+}
+.config-history {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.config-history h3,
+.config-section-heading h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 7px;
+}
+.config-history-row {
+  font-size: 13px;
+  color: var(--secondary);
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg);
+  margin: 10px 0 0;
+}
+.config-section-heading {
+  margin-bottom: 18px;
+}
+.config-section-heading p {
+  font-size: 12px;
+  color: var(--secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+.system-configuration .ledger-quick,
+.project-manager .ledger-quick {
+  display: flex;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  margin: 16px 0;
+  min-height: 0;
+}
+.system-configuration .ledger-quick input,
+.project-manager .ledger-quick input {
+  flex: 1;
+  min-width: 0;
+  width: 0;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 10px 12px;
+  font-size: 13px;
+}
+.system-configuration .ledger-quick button,
+.project-manager .ledger-quick button {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.config-panel .workspace-management-row {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.config-panel .workspace-management-row > span {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.config-panel .workspace-management-row > button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.config-panel .workspace-management-row .save-indicator {
+  margin: 0;
+  font-size: 11px;
+}
+.modal.shared-dialog.paste-ledger {
+  width: 900px;
+}
+.paste-setup {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.paste-setup > label,
+.paste-mapping > label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--secondary);
+  min-width: 0;
+}
+.shared-dialog .paste-source textarea {
+  min-height: 180px;
+  padding: 16px;
+  line-height: 1.8;
+  background: var(--bg);
+}
+.shared-dialog .paste-source textarea::placeholder {
+  color: var(--muted);
+}
+.paste-leave-notice {
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: 9px;
+  font-size: 13px;
+}
+.paste-leave-notice p {
+  margin: 0 0 12px;
+}
+.paste-leave-notice > button + button {
+  margin-left: 14px;
+}
+@media (max-width: 600px) {
+  .modal.shared-dialog {
+    max-height: calc(100dvh - 24px);
+  }
+  .config-grid,
+  .paste-setup {
+    grid-template-columns: 1fr;
+  }
+  .config-grid > label {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+  }
+  .config-panel .workspace-management-row {
+    flex-wrap: wrap;
+  }
+  .config-panel .workspace-management-row > span {
+    flex-basis: 100%;
+  }
 }
