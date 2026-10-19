@@ -1,3 +1,4 @@
+import { collectLedgerCopy, prepareLedgerCopy } from './ledger-copy';
 import {
   app,
   BrowserWindow,
@@ -279,6 +280,19 @@ app
     secureHandler('secret-copy', (id, kind) => {
       writable();
       return secretClipboard.copy(id, kind);
+    });
+    secureHandler('ledger-copy-preview', (selection) => {
+      writable();
+      const { text: _text, ...preview } = collectLedgerCopy(store.snapshot(), selection);
+      return preview;
+    });
+    secureHandler('ledger-copy', (request) => {
+      const generation = store.generation;
+      writable(generation);
+      return secretClipboard.copyPrepared(() => {
+        writable(generation);
+        return prepareLedgerCopy(store.snapshot(), request, (id) => vault.read(id, 'password'));
+      });
     });
     secureHandler('account-copy-text', (id) => {
       writable();

@@ -103,7 +103,9 @@ test('台账只读工作区、共享范围、部署与任务布局和开始时�
       .toBe(2);
     await detail.getByRole('button', { name: '返回清单', exact: true }).click();
     await page.getByLabel('台账环境筛选').selectOption(seed.testing);
-    await expect(page.getByRole('button', { name: /应用节点 01/ })).toBeVisible();
+    await expect(
+      page.locator('.workspace-list td:first-child').getByRole('button', { name: /应用节点 01/ }),
+    ).toBeVisible();
     await page.getByRole('button', { name: '应用部署', exact: true }).click();
     await page.getByRole('button', { name: /协作 API.*系统通用/ }).click();
     await page.getByRole('button', { name: '新增节点', exact: true }).click();

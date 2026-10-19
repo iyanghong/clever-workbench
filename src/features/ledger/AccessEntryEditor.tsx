@@ -228,6 +228,10 @@ export function AccessEntryEditor({
                 />
               </button>
               <CopyValue
+                resolveValue={async () => {
+                  await flushAll();
+                  return address.url;
+                }}
                 value={address.url}
                 label={`地址 ${address.label}`}
                 onError={host.onError}

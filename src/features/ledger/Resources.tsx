@@ -364,7 +364,15 @@ export function ResourceEditor({
               value={form.value.address}
               onChange={(event) => form.change({ ...form.value, address: event.target.value })}
             />
-            <CopyValue value={form.value.address} label="资源地址" onError={host.onError} />
+            <CopyValue
+              resolveValue={async () => {
+                await flushAll();
+                return form.value.address;
+              }}
+              value={form.value.address}
+              label="资源地址"
+              onError={host.onError}
+            />
             {/^https?:\/\//i.test(form.value.address) && (
               <button
                 className="icon-button"
@@ -392,7 +400,15 @@ export function ResourceEditor({
               value={form.value.port}
               onChange={(event) => form.change({ ...form.value, port: event.target.value })}
             />
-            <CopyValue value={form.value.port} label="资源端口" onError={host.onError} />
+            <CopyValue
+              resolveValue={async () => {
+                await flushAll();
+                return form.value.port;
+              }}
+              value={form.value.port}
+              label="资源端口"
+              onError={host.onError}
+            />
           </div>
         </label>
       </div>
@@ -460,7 +476,15 @@ export function ResourceEditor({
                   }
                 />
               </label>
-              <CopyValue value={value} label={key} onError={host.onError} />
+              <CopyValue
+                resolveValue={async () => {
+                  await flushAll();
+                  return value;
+                }}
+                value={value}
+                label={key}
+                onError={host.onError}
+              />
               <button
                 className="icon-button"
                 aria-label={`删除字段 ${key}`}

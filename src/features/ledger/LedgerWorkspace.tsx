@@ -1,3 +1,11 @@
+import {
+  LedgerCopyProvider,
+  LedgerCopyActions,
+  LedgerCopyCheckbox,
+  LedgerCopySelectionBar,
+  CopyableField,
+} from './LedgerCopy';
+import type { LedgerCopyRef } from '../../ledger-copy-types';
 import { QuickTask } from '../tasks/QuickTask';
 import { PasteLedger } from './PasteLedger';
 import { useEffect, useRef, useState } from 'react';
@@ -119,6 +127,50 @@ type Row = {
 };
 const stateName = { active: '在用', inactive: '停用', unverified: '待确认' };
 
+function currentRecord<T extends { id: string }>(records: T[], id: string): T {
+  const record = records.find((r) => r.id === id);
+  if (!record) throw new Error('记录或关联资料已不存在，请刷新后重新选择。');
+  return record;
+}
+function currentNodeAddress(snapshot: Snapshot, id: string) {
+  const n = currentRecord(snapshot.deploymentNodes, id);
+  const server = n.serverId ? currentRecord(snapshot.resources, n.serverId) : undefined;
+  const address = n.address || server?.address || '';
+  return address + (address && n.port ? `:${n.port}` : '');
+}
+function currentRowValue(snapshot: Snapshot, row: Row): string {
+  if (row.kind === 'accounts') return currentRecord(snapshot.accounts, row.id).username;
+  const record =
+    row.kind === 'services'
+      ? snapshot.services.find((r) => r.id === row.id)
+      : row.kind === 'operations'
+        ? snapshot.operations.find((r) => r.id === row.id)
+        : row.kind === 'access'
+          ? snapshot.accessEntries.find((r) => r.id === row.id)
+          : snapshot.resources.find((r) => r.id === row.id);
+  if (!record) throw new Error('记录已不存在，请刷新后重新选择。');
+  if ('repository' in record) return record.repository;
+  if ('frequency' in record) return record.frequency;
+  if ('addresses' in record)
+    return (
+      (record.addresses.find((a) => a.id === record.preferredAddressId) ?? record.addresses[0])
+        ?.url ?? ''
+    );
+  return record.address + (record.port ? `:${record.port}` : '');
+}
+function copyRef(row: Row): LedgerCopyRef | null {
+  const kind =
+    row.kind === 'servers' || row.kind === 'resources'
+      ? 'resource'
+      : row.kind === 'services'
+        ? 'service'
+        : row.kind === 'operations'
+          ? 'operation'
+          : row.kind === 'access'
+            ? 'access'
+            : null;
+  return kind ? { kind, id: row.id } : null;
+}
 export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: ModuleProps) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
     [systemId, setSystemId] = useState(''),
@@ -541,7 +593,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
       </div>
     );
   }
-  return (
+  const content = (
     <main className="main ledger-workspace">
       <header className="window-toolbar ledger-workspace-header">
         <div className="breadcrumb">
@@ -684,7 +736,17 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
           <div className={`workspace-browser ${picked ? 'show-inspector' : ''}`}>
             <section className="workspace-results">
               {view.category !== 'accounts' && (
-                <div className="workspace-result-count">{visible.length} 条记录</div>
+                <div className="workspace-result-count">
+                  {visible.length} 条记录
+                  {view.category !== 'documents' && (
+                    <LedgerCopySelectionBar
+                      objects={visible.flatMap((row) => {
+                        const ref = copyRef(row);
+                        return ref ? [ref] : [];
+                      })}
+                    />
+                  )}
+                </div>
               )}
               <div
                 className="workspace-list"
@@ -713,7 +775,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                     onError={setError}
                   />
                 ) : (
-                  <table>
+                  <table className="ledger-object-table">
                     <thead>
                       <tr>
                         <th>名称</th>
@@ -726,16 +788,37 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                       {visible.map((row) => (
                         <tr key={row.id} className={selected === row.id ? 'selected' : ''}>
                           <td>
+                            {copyRef(row) && (
+                              <LedgerCopyCheckbox object={copyRef(row)!} name={row.name} />
+                            )}
                             <button onClick={() => openRow(row)}>
                               <strong>{row.name}</strong>
                               <small>{scopeLabel(row)}</small>
                             </button>
                           </td>
                           <td>
-                            <span className="workspace-value">{row.address || '—'}</span>
+                            {copyRef(row) ? (
+                              <CopyableField
+                                value={row.address}
+                                currentValue={(snapshot) => currentRowValue(snapshot, row)}
+                                label={
+                                  row.kind === 'services'
+                                    ? '代码仓库'
+                                    : row.kind === 'operations'
+                                      ? '频率'
+                                      : '地址'
+                                }
+                                onError={setError}
+                              />
+                            ) : (
+                              <span className="workspace-value">{row.address || '—'}</span>
+                            )}
                           </td>
                           <td>{row.extra || '—'}</td>
                           <td className="workspace-row-actions">
+                            {copyRef(row) && (
+                              <LedgerCopyActions objects={[copyRef(row)!]} name={row.name} />
+                            )}
                             {row.kind === 'access' && row.address ? (
                               <button
                                 className="text-button"
@@ -795,10 +878,27 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                   {categories.find((c) => c[0] === picked.kind)?.[1]}
                 </small>
                 <h2>{picked.name}</h2>
-                <p className="workspace-address">
-                  {picked.address}
-                  <CopyValue value={picked.address} label="地址或用户名" onError={setError} />
-                </p>
+                {copyRef(picked) && (
+                  <LedgerCopyActions objects={[copyRef(picked)!]} name={picked.name} />
+                )}
+                {!editing && (
+                  <p className="workspace-address">
+                    <CopyableField
+                      value={picked.address}
+                      currentValue={(s) => currentRowValue(s, picked)}
+                      label={
+                        picked.kind === 'services'
+                          ? '代码仓库'
+                          : picked.kind === 'operations'
+                            ? '频率'
+                            : picked.kind === 'accounts'
+                              ? '用户名'
+                              : '地址'
+                      }
+                      onError={setError}
+                    />
+                  </p>
+                )}
                 <p className="secondary-copy">{scopeLabel(picked)}</p>
                 {editing ? (
                   <div className="workspace-edit-form">
@@ -930,6 +1030,14 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                             </button>
                             <CopyValue
                               value={address.url}
+                              resolveValue={async () => {
+                                await saves.flush();
+                                const current = await window.desktop.snapshot();
+                                return currentRecord(
+                                  currentRecord(current.accessEntries, access.id).addresses,
+                                  address.id,
+                                ).url;
+                              }}
                               label={address.label}
                               onError={setError}
                             />
@@ -978,11 +1086,27 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                         <summary>基本信息与配置</summary>
                         <dl className="workspace-properties">
                           <dt>端口</dt>
-                          <dd>{resource.port || '—'}</dd>
+                          <dd>
+                            <CopyableField
+                              value={resource.port}
+                              currentValue={(s) => currentRecord(s.resources, resource.id).port}
+                              label="端口"
+                              onError={setError}
+                            />
+                          </dd>
                           {Object.entries(resource.fields).map(([key, value]) => (
                             <div key={key}>
                               <dt>{key}</dt>
-                              <dd>{value || '—'}</dd>
+                              <dd>
+                                <CopyableField
+                                  value={value}
+                                  currentValue={(s) =>
+                                    currentRecord(s.resources, resource.id).fields[key] ?? ''
+                                  }
+                                  label={key}
+                                  onError={setError}
+                                />
+                              </dd>
                             </div>
                           ))}
                         </dl>
@@ -1006,15 +1130,17 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                           .filter(
                             (n) =>
                               n.serviceId === service.id &&
-                              (view.environment === 'all' ||
-                                view.environment === 'common' ||
-                                n.environmentId === view.environment),
+                              (view.environment === 'all' || n.environmentId === view.environment),
                           )
                           .map((n) => {
                             const server = snapshot.resources.find((r) => r.id === n.serverId);
                             return (
                               <div className="workspace-node" key={n.id}>
                                 <strong>{n.name}</strong>
+                                <LedgerCopyActions
+                                  objects={[{ kind: 'node', id: n.id }]}
+                                  name={n.name}
+                                />
                                 <p>
                                   {
                                     snapshot.environments.find((e) => e.id === n.environmentId)
@@ -1025,10 +1151,15 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                                     ? `按需调度 ${n.count}`
                                     : (server?.name ?? '服务器待补充')}
                                 </p>
-                                <code>
-                                  {n.address || server?.address || '地址待补充'}
-                                  {n.port ? `:${n.port}` : ''}
-                                </code>
+                                <CopyableField
+                                  value={
+                                    (n.address || server?.address || '') +
+                                    (n.port ? `:${n.port}` : '')
+                                  }
+                                  currentValue={(s) => currentNodeAddress(s, n.id)}
+                                  label="节点地址"
+                                  onError={setError}
+                                />
                                 {!n.address && server && <small>地址来自服务器</small>}
                                 <p>{n.notes}</p>
                                 <button className="text-button" onClick={() => setNode(n)}>
@@ -1049,7 +1180,16 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                       <section>
                         <dl className="workspace-properties">
                           <dt>频率</dt>
-                          <dd>{operation.frequency || '待补充'}</dd>
+                          <dd>
+                            <CopyableField
+                              value={operation.frequency}
+                              currentValue={(s) =>
+                                currentRecord(s.operations, operation.id).frequency
+                              }
+                              label="频率"
+                              onError={setError}
+                            />
+                          </dd>
                           <dt>状态</dt>
                           <dd>{stateName[operation.status]}</dd>
                           <dt>关联对象</dt>
@@ -1354,6 +1494,25 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
         </div>
       )}
     </main>
+  );
+  return (
+    <LedgerCopyProvider
+      scopeKey={JSON.stringify([
+        systemId,
+        view.category,
+        view.environment,
+        view.tag,
+        view.query,
+        view.operationKind,
+        view.operationStatus,
+      ])}
+      systemId={systemId}
+      environment={view.environment}
+      beforeCopy={saves.flush}
+      onError={setError}
+    >
+      {content}
+    </LedgerCopyProvider>
   );
 }
 

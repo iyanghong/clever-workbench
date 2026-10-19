@@ -5,10 +5,12 @@ export function CopyValue({
   value,
   label,
   onError,
+  resolveValue,
 }: {
   value: string;
   label: string;
   onError: (message: string) => void;
+  resolveValue?: () => Promise<string>;
 }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -21,7 +23,7 @@ export function CopyValue({
       onBlur={() => setCopied(false)}
       onClick={async () => {
         try {
-          await window.desktop.copyText(value);
+          await window.desktop.copyText(resolveValue ? await resolveValue() : value);
           setCopied(true);
         } catch (cause) {
           onError(`复制失败：${String(cause)}`);

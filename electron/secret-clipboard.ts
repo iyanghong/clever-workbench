@@ -32,7 +32,10 @@ export class SecretClipboard {
   copyAccount(accountId: string) {
     return this.copyProtected(() => this.vault.accountText(accountId));
   }
-  private copyProtected(read: () => { value: string; sensitive: boolean }) {
+  copyPrepared(read: () => { value: string; sensitive: boolean }) {
+    return this.copyProtected(read, false);
+  }
+  private copyProtected(read: () => { value: string; sensitive: boolean }, expirePlain = true) {
     const generation = this.generation;
     return this.enqueue(async () => {
       if (generation !== this.generation) throw new Error('复制已取消，请重新解锁。');
@@ -43,9 +46,11 @@ export class SecretClipboard {
         throw new Error('秘密已锁定，复制已取消。');
       }
       this.stopTimer();
-      this.owned = value;
-      this.timer = setTimeout(() => void this.clearOwned(), 30_000);
-      this.timer.unref?.();
+      this.owned = sensitive || expirePlain ? value : null;
+      if (sensitive || expirePlain) {
+        this.timer = setTimeout(() => void this.clearOwned(), 30_000);
+        this.timer.unref?.();
+      }
     });
   }
   copyText(value: string) {
