@@ -34,6 +34,13 @@ const call = async (channel: string, ...args: unknown[]) => {
   return ipcRenderer.invoke(channel, await expected, ...args);
 };
 const api: DesktopAPI = {
+  updateSnapshot: () => call('update-snapshot'),
+  checkUpdate: () => call('update-check'),
+  onUpdateState(handler) {
+    const listener = (_: unknown, state: Parameters<typeof handler>[0]) => handler(state);
+    ipcRenderer.on('update-state', listener);
+    return () => ipcRenderer.removeListener('update-state', listener);
+  },
   captureLedgerBatch: (input) => call('ledger-batch', input),
   exportSystem: (options) => call('system-export', options),
   platform: process.platform,

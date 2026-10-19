@@ -3869,3 +3869,8 @@ h3 {
   max-width: 45%;
   overflow: hidden;
 }
+/* Application updates */
+.update-badge { display: flex; justify-content: space-between; gap: 8px; width: 100%; padding: 10px; border: 0; border-radius: 8px; background: transparent; color: inherit; font-size: 12px; cursor: pointer; }
+.update-badge.has-update { color: #bf6b17; background: #c7761014; }
+.release-notes { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto; font: inherit; }
+.update-details { min-width: 0; }
