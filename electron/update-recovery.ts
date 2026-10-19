@@ -236,7 +236,8 @@ export class UpdateHealth {
         if (
           tx.id !== id ||
           tx.userDataDirectory !== this.options.userDataDirectory ||
-          tx.target !== this.options.target ||
+          (tx.target !== this.options.target &&
+            !this.options.target.includes('/AppTranslocation/')) ||
           typeof tx.targetVersion !== 'string' ||
           typeof tx.currentVersion !== 'string' ||
           typeof tx.backup !== 'string' ||
@@ -265,7 +266,11 @@ export class UpdateHealth {
       await this.journal.attach(latest.directory, latest.tx);
       await this.journal.observe({ currentVersion: this.options.version, status: 'validating' });
       this.options.status?.('validating', '正在确认新版本、资料库和窗口状态。');
-      if (latest.tx.targetVersion !== this.options.version)
+      if (this.options.target.includes('/AppTranslocation/'))
+        await this.fail(
+          '系统从隔离位置启动了新版，无法确认原位置更新成功。请按 macOS 提示将应用安装到可写目录并重新打开；保留备份和旧应用。',
+        );
+      else if (latest.tx.targetVersion !== this.options.version)
         await this.fail('运行版本与更新目标不一致，请查看恢复材料。');
       else if (this.now() - Date.parse(latest.tx.createdAt) > 10 * 60 * 1000)
         await this.fail('上次更新未及时完成启动确认，请检查恢复材料。');

@@ -44,6 +44,11 @@ export function trustedAsset(url: string, tag: string) {
   }
 }
 export class UpdateCoordinator {
+  finishHealthCheck(status: 'success' | 'manual', message: string, enableChecks: boolean) {
+    this.setInstallationState({ status, message });
+    this.setRecoverySummary(status, message);
+    if (enableChecks) this.start();
+  }
   private recovery?: UpdateSnapshot['recovery'];
   setRecoverySummary(outcome: string, message: string) {
     this.recovery = { outcome, message };

@@ -6,8 +6,43 @@ import path from 'node:path';
 import { Store } from '../electron/store';
 import { Vault } from '../electron/vault';
 import { Backups } from '../electron/backup';
+import { launchUpdateHelper } from '../electron/update-launcher';
 
 describe('update installation operation', () => {
+  it('never arms an installer when durable transaction bookkeeping fails', async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'cwb-launch-bookkeeping-'));
+    const target = path.join(directory, 'Installed.app'),
+      backup = path.join(directory, 'backup.cwb'),
+      helper = path.join(directory, 'helper.sh'),
+      marker = path.join(directory, 'armed');
+    fs.mkdirSync(path.join(target, 'Contents/MacOS'), { recursive: true });
+    fs.writeFileSync(backup, 'archive');
+    fs.writeFileSync(helper, `#!/bin/sh\n/usr/bin/touch '${marker}'\n`);
+    try {
+      await expect(
+        launchUpdateHelper({
+          prepared: {
+            appPath: path.join(directory, 'Candidate.app'),
+            stageDirectory: directory,
+            version: '0.2.0',
+          },
+          backup,
+          executable: path.join(target, 'Contents/MacOS/App'),
+          currentVersion: '0.1.0',
+          userDataDirectory: directory,
+          transactionsDirectory: path.join(directory, 'transactions'),
+          helperSource: helper,
+          beforeLaunch: async () => {
+            throw Error('history disk full');
+          },
+        }),
+      ).rejects.toThrow('history disk full');
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      expect(fs.existsSync(marker)).toBe(false);
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
   it('creates a recoverable encrypted backup of the final saved edit even with a recent automatic backup', async () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'cwb-install-data-'));
     const store = new Store(directory);

@@ -17,6 +17,7 @@ export interface InstallationTransaction {
 }
 
 export async function launchUpdateHelper(options: {
+  beforeLaunch?: (directory: string, transaction: InstallationTransaction) => Promise<void>;
   historyId?: string;
   prepared: PreparedUpdate;
   backup: string;
@@ -64,6 +65,9 @@ export async function launchUpdateHelper(options: {
   const helper = path.join(directory, 'helper.sh');
   await fs.copyFile(options.helperSource, helper, fs.constants.COPYFILE_EXCL);
   await fs.chmod(helper, 0o700);
+  // Complete every fallible history write before the detached helper can become
+  // armed. Once it is ready, the caller must only proceed to exit.
+  await options.beforeLaunch?.(directory, transaction);
   const child = spawn(
     '/bin/sh',
     [helper, String(process.pid), target, prepared.appPath, directory],

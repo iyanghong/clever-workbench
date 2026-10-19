@@ -134,3 +134,21 @@ test('database startup failure is recorded outside the database', async () => {
     await fs.rm(f.userData, { recursive: true, force: true });
   }
 });
+test('a quarantined app launched through AppTranslocation records manual recovery instead of ignoring the pending update', async () => {
+  const f = await pendingFixture();
+  try {
+    const health = new UpdateHealth(f.journal, {
+      version: '0.2.0',
+      target: '/private/var/folders/test/AppTranslocation/nonce/d/Clever Workbench.app',
+      userDataDirectory: f.userData,
+    });
+    await health.discover();
+    expect(f.journal.list()[0]).toMatchObject({
+      outcome: 'manual',
+      backup: path.join(f.userData, 'backup.cwb'),
+    });
+    expect(health.challenge).toBeUndefined();
+  } finally {
+    await fs.rm(f.userData, { recursive: true, force: true });
+  }
+});

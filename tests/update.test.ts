@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { UpdateCoordinator } from '../electron/update';
 
 const asset = (name: string) => ({
@@ -24,6 +24,25 @@ const create = (fetcher: typeof fetch = async () => Response.json(release)) =>
     fetch: fetcher,
   });
 describe('application update operations', () => {
+  it('resumes startup and periodic checks after health confirmation and keeps its recovery summary', async () => {
+    vi.useFakeTimers();
+    const updates = create();
+    try {
+      updates.setInstallationState({ status: 'validating' });
+      updates.finishHealthCheck('success', 'Healthy', true);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(updates.snapshot()).toMatchObject({
+        status: 'available',
+        recovery: { outcome: 'success', message: 'Healthy' },
+      });
+      const checked = updates.snapshot().checkedAt;
+      await vi.advanceTimersByTimeAsync(30 * 60 * 1000);
+      expect(updates.snapshot().checkedAt).not.toBe(checked);
+    } finally {
+      updates.stop();
+      vi.useRealTimers();
+    }
+  });
   it('keeps network and rate limit failures distinct and respects retry time even on manual checks', async () => {
     let online = false;
     let now = 1000000;

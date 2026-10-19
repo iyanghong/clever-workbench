@@ -305,8 +305,10 @@ app
         target: path.resolve(app.getPath('exe'), '../../..'),
         userDataDirectory: app.getPath('userData'),
         status: (status, message) => {
-          updates.setInstallationState({ status, message });
-          updates.setRecoverySummary(status, message);
+          if (status === 'validating') {
+            updates.setInstallationState({ status, message });
+            updates.setRecoverySummary(status, message);
+          } else updates.finishHealthCheck(status, message, updaterAvailable);
         },
       });
       if (app.isPackaged) await updateHealth.discover();
@@ -315,6 +317,7 @@ app
         updates.setRecoverySummary(previous.outcome, previous.message ?? '请查看上次更新记录。');
     } catch {
       updaterAvailable = false;
+      updates.stop();
       updates.setInstallationState({
         status: 'manual',
         message: '更新记录无法读取，在线更新暂不可用；本地工作空间仍可使用。',
@@ -403,7 +406,10 @@ app
       },
       launch: async (prepared, backup) => {
         await updateJournal?.flush();
-        const directory = await launchUpdateHelper({
+        await launchUpdateHelper({
+          beforeLaunch: async (directory, transaction) => {
+            await updateJournal?.attach(directory, transaction);
+          },
           historyId: updateJournal?.activeId,
           prepared,
           backup,
@@ -413,10 +419,6 @@ app
           transactionsDirectory: path.join(app.getPath('userData'), 'updates', 'transactions'),
           helperSource: path.join(__dirname, 'macos-update-helper.sh'),
         });
-        const transaction = JSON.parse(
-          await fs.readFile(path.join(directory, 'transaction.json'), 'utf8'),
-        );
-        await updateJournal?.attach(directory, transaction);
       },
       quit: () => {
         vault.lock();

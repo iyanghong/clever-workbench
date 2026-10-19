@@ -46,7 +46,18 @@ if ! /bin/mkdir "$lock" 2>/dev/null; then
 fi
 /usr/bin/printf '%s\n' "$$" > "$lock/pid"
 /usr/bin/printf '%s\n' "$transaction" > "$lock/transaction"
-trap '/bin/rm -f "$lock/pid" "$lock/transaction"; /bin/rmdir "$lock" 2>/dev/null || true' EXIT
+candidate_owned=0
+replacement_started=0
+cleanup() {
+  # Only this process-created, owned staging directory is removable. Never clean
+  # unknown pre-existing candidates, or recovery material after replacement began.
+  if [ "$candidate_owned" -eq 1 ] && [ "$replacement_started" -eq 0 ] && [ -d "$candidate" ] && [ ! -L "$candidate" ] && [ "$(/usr/bin/stat -f %u "$candidate")" = "$(/usr/bin/id -u)" ]; then
+    /bin/rm -rf "$candidate" || true
+  fi
+  /bin/rm -f "$lock/pid" "$lock/transaction"
+  /bin/rmdir "$lock" 2>/dev/null || true
+}
+trap cleanup EXIT
 trap 'phase "needs-attention:helper-interrupted"; exit 1' TERM INT HUP
 [ ! -L "$target" ] && [ ! -L "$source_app" ] || fail 'needs-attention:symlink-app'
 if [ ! -e "$target" ] && [ -d "$previous" ] && [ ! -L "$previous" ]; then
@@ -86,6 +97,8 @@ if [ -e "$previous" ]; then
   /bin/mv "$previous" "$retired" || fail 'failed:previous-app-retention'
 fi
 phase 'staging'
+/bin/mkdir "$candidate" || fail 'failed:stage-directory'
+candidate_owned=1
 /usr/bin/ditto "$source_app" "$candidate" || fail 'failed:stage-copy'
 /usr/bin/codesign --verify --deep --strict "$candidate" || fail 'failed:staged-signature-invalid'
 [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$candidate/Contents/Info.plist")" = "$candidate_version" ] || fail 'failed:staged-version-changed'
@@ -106,6 +119,7 @@ while /usr/sbin/lsof -t +D "$target" > /dev/null 2>&1; do
 done
 phase 'backing-up-app'
 /bin/mv "$target" "$previous" || fail 'failed:backup-app'
+replacement_started=1
 phase 'replacing-app'
 if ! /bin/mv "$candidate" "$target"; then
   if [ ! -e "$target" ] && /bin/mv "$previous" "$target"; then
