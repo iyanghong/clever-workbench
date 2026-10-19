@@ -287,6 +287,7 @@ h3 {
 }
 .window-toolbar button,
 .window-toolbar input,
+.window-toolbar select,
 .window-toolbar label {
   -webkit-app-region: no-drag;
   app-region: no-drag;
