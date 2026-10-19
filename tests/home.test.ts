@@ -62,3 +62,20 @@ test('独立快速新建不会消费已有任务草稿', () => {
   });
   expect(store.snapshot().draft).toEqual(draft);
 });
+
+test('常用工具与已有入口共同排序，重启保留且失效工具自动隐藏', () => {
+  store = new Store(fs.mkdtempSync(path.join(os.tmpdir(), 'workbench-tool-favorite-')));
+  const id = store.mutate({ type: 'system.save', name: '系统' }).createdId!;
+  store.mutate({ type: 'favorite.set', kind: 'system', id, pinned: true });
+  store.mutate({ type: 'favorite.set', kind: 'tool', id: 'zip-text', pinned: true });
+  store.mutate({ type: 'favorite.move', kind: 'tool', id: 'zip-text', direction: -1 });
+  const root = store.root;
+  store.close();
+  store = new Store(root);
+  expect(store.snapshot().favorites[0]).toEqual({ kind: 'tool', id: 'zip-text' });
+  expect(() =>
+    store!.mutate({ type: 'favorite.set', kind: 'tool', id: 'unknown', pinned: true }),
+  ).toThrow('工具不存在');
+  store.set('favorites', [{ kind: 'tool', id: 'retired' }, ...store.snapshot().favorites]);
+  expect(store.snapshot().favorites).toHaveLength(2);
+});

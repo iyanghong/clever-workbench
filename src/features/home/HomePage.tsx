@@ -23,6 +23,7 @@ import { CopyValue } from '../../shared/CopyValue';
 import { SecretCopyButton } from '../vault/SecretCopyButton';
 import { Dialog } from '../../shared/Dialog';
 import { AccessActions } from '../ledger/AccessActions';
+import { findTool, registeredTools } from '../tools/registry';
 
 export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
@@ -100,6 +101,10 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
   }
   function favoriteInfo(item: Favorite) {
     if (!snapshot) return null;
+    if (item.kind === 'tool') {
+      const tool = findTool(item.id);
+      return tool ? { title: tool.title, context: '本地工具', account: null, access: null } : null;
+    }
     if (item.kind === 'system') {
       const system = snapshot.systems.find((value) => value.id === item.id);
       return system
@@ -151,6 +156,7 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
         ...snapshot.systems.map((item) => ({ kind: 'system' as const, id: item.id })),
         ...snapshot.accounts.map((item) => ({ kind: 'account' as const, id: item.id })),
         ...snapshot.accessEntries.map((item) => ({ kind: 'access' as const, id: item.id })),
+        ...registeredTools.map((item) => ({ kind: 'tool' as const, id: item.id })),
       ]
     : [];
   return (
@@ -280,14 +286,23 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
             {snapshot?.favorites.map((item, index) => {
               const info = favoriteInfo(item);
               if (!info) return null;
+              const ToolIcon = item.kind === 'tool' ? findTool(item.id)?.Icon : undefined;
               return (
                 <div className="favorite-row" key={`${item.kind}:${item.id}`}>
                   <button
                     className="favorite-open"
-                    aria-label={`打开常用${item.kind === 'system' ? '系统' : item.kind === 'access' ? '访问入口' : '账号'} ${info.title}`}
-                    onClick={() => void navigate(routeForHit(item))}
+                    aria-label={`打开常用${item.kind === 'tool' ? '工具' : item.kind === 'system' ? '系统' : item.kind === 'access' ? '访问入口' : '账号'} ${info.title}`}
+                    onClick={() =>
+                      void navigate(
+                        item.kind === 'tool'
+                          ? { module: 'tools', objectId: item.id }
+                          : routeForHit({ kind: item.kind, id: item.id }),
+                      )
+                    }
                   >
-                    {item.kind === 'system' ? (
+                    {ToolIcon ? (
+                      <ToolIcon size={22} weight="duotone" />
+                    ) : item.kind === 'system' ? (
                       <StackIcon size={22} weight="duotone" />
                     ) : item.kind === 'access' ? (
                       <GlobeIcon size={22} />
@@ -359,7 +374,7 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
             {!snapshot?.favorites.length && (
               <div className="home-favorites-empty">
                 <StackIcon size={33} weight="duotone" />
-                <p>把常用系统、访问入口和账号放在这里。</p>
+                <p>把常用系统、访问入口、账号和工具放在这里。</p>
                 <button
                   className="secondary-button"
                   onClick={() => {
@@ -386,7 +401,7 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
             <input
               autoFocus
               aria-label="筛选常用对象"
-              placeholder="系统、环境或账号"
+              placeholder="系统、环境、账号或工具"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />

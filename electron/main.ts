@@ -22,6 +22,7 @@ import { SecretClipboard } from './secret-clipboard';
 import { Vault } from './vault';
 import { Backups } from './backup';
 import { SystemExports } from './system-export';
+import { Tools } from './tools';
 import { exportScheme, renderExportDocument } from './export-native';
 
 protocol.registerSchemesAsPrivileged([
@@ -37,6 +38,7 @@ let window: BrowserWindow | null = null,
   store: Store,
   backups: Backups,
   systemExports: SystemExports,
+  tools: Tools,
   vault: Vault,
   secretClipboard: SecretClipboard,
   restoring = false,
@@ -183,6 +185,7 @@ function createWindow() {
     closePending = true;
     void (async () => {
       try {
+        if (tools.busy) throw new Error('工具任务尚未完成，请等待完成后再退出。');
         if (restoring || rotatingProtection)
           throw new Error('资料保护操作正在进行，请完成后再关闭窗口。');
         await backups.whenIdle();
@@ -192,6 +195,8 @@ function createWindow() {
         await backups.whenIdle();
         vault?.lock();
         await systemExports.whenIdle();
+        if (tools.busy) throw new Error('工具任务尚未完成，请等待完成后再退出。');
+        await tools.dispose();
         allowClose = true;
         if (quitting) app.quit();
         else window?.close();
@@ -225,6 +230,28 @@ app
   .then(() => {
     store = new Store(path.join(app.getPath('userData'), 'data'));
     backups = new Backups(store);
+    tools = new Tools(store, __dirname);
+    secureHandler('tool-state', (id) => tools.get(id).snapshot());
+    secureHandler('tool-command', (id, command) => {
+      writable();
+      if (closePending && command?.type !== 'settings')
+        throw new Error('窗口正在关闭，请稍后重试。');
+      return tools.get(id).command(command);
+    });
+    secureHandler('tool-path', async (kind) => {
+      if (!['file', 'directory', 'output'].includes(kind)) throw new Error('路径选择类型无效。');
+      const selected = await dialog.showOpenDialog(window!, {
+        title: kind === 'output' ? '选择输出位置' : '选择工具输入',
+        properties: kind === 'file' ? ['openFile'] : ['openDirectory', 'createDirectory'],
+      });
+      return selected.canceled ? null : (selected.filePaths[0] ?? null);
+    });
+    secureHandler('tool-open-output', async (id) => {
+      const output = tools.get(id).snapshot().output;
+      if (!output) throw new Error('尚无已完成的输出。');
+      const error = await shell.openPath(output);
+      if (error) throw new Error(error);
+    });
     secureHandler('data-generation', () => store.generation);
     secureHandler('system-appearance', systemAppearance);
     nativeTheme.on('updated', () => {
@@ -418,13 +445,16 @@ app
       await backups.discard(token);
     });
     secureHandler('restore-backup', async (token) => {
+      if (tools.busy) throw new Error('请先等待工具任务完成，再恢复工作台备份。');
       vault.lock();
       text(token);
       await flushRenderer();
       writable();
+      if (tools.busy) throw new Error('请先等待工具任务完成，再恢复工作台备份。');
       restoring = true;
       try {
         const result = await backups.restore(token);
+        await tools.dispose();
         window?.webContents.send('data-restored', store.generation);
         return result;
       } finally {

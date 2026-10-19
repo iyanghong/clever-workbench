@@ -25,6 +25,7 @@ import {
   TrashIcon,
   GearSixIcon,
   StackIcon,
+  WrenchIcon,
   type Icon,
 } from '@phosphor-icons/react';
 import type { TaskView } from '../features/tasks/TaskWorkspace';
@@ -48,6 +49,9 @@ const ProjectArchiveWorkspace = lazy(() =>
 );
 const SettingsPage = lazy(() =>
   import('../features/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })),
+);
+const ToolsPage = lazy(() =>
+  import('../features/tools/ToolsPage').then((module) => ({ default: module.ToolsPage })),
 );
 
 export type Route = {
@@ -211,6 +215,13 @@ export const modules: WorkbenchModule[] = [
         },
       },
     ],
+  },
+  {
+    id: 'tools',
+    title: '工具',
+    icon: WrenchIcon,
+    section: 'workspace',
+    Page: ToolsPage,
   },
   {
     id: 'review',

@@ -143,6 +143,7 @@ export type BackupInfo = {
   secrets: number;
 };
 export interface DesktopAPI {
+  tools: import('./tool-types').ToolsAPI;
   captureLedgerBatch(input: LedgerBatch): Promise<MutationResult>;
   exportSystem(options: SystemExportOptions): Promise<SystemExportResult | null>;
   captureLedger(input: LedgerCapture): Promise<MutationResult>;

@@ -123,6 +123,8 @@ async function fixture() {
     markdown: `草稿\n\n![现场](${image.src})`,
   });
   store.mutate({ type: 'favorite.set', kind: 'account', id: accountId, pinned: true });
+  store.mutate({ type: 'favorite.set', kind: 'tool', id: 'zip-text', pinned: true });
+  store.set('zipTextSettings', { source: '/example/source', outputDir: '', partSizeMB: 75 });
   store.mutate({ type: 'system.save', id: systemId, name: '长期平台', projectId: nextProject });
   store.mutate({
     type: 'settings',
@@ -159,6 +161,11 @@ test(
     fs.writeFileSync(source.filename, 'replaced after preview');
     await backups.restore(info.token);
     const actual = store.snapshot();
+    expect(store.get('zipTextSettings', null)).toEqual({
+      source: '/example/source',
+      outputDir: '',
+      partSizeMB: 75,
+    });
     for (const key of [
       'projects',
       'tasks',

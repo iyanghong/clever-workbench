@@ -17,6 +17,7 @@ import type {
 } from '../src/types';
 import { minute, validateTimes } from '../src/domain';
 import { validateFavorites } from './favorites';
+import { toolCatalog } from '../src/tool-types';
 import { searchWorkspace } from './search';
 import { initializeVault } from './vault';
 import { Documents, initializeDocuments } from './documents';
@@ -208,11 +209,13 @@ export class Store {
     const favorites = this.get<unknown>('favorites', []);
     validateFavorites(favorites);
     return favorites.filter((item) =>
-      this.db
-        .prepare(
-          `SELECT 1 FROM ${item.kind === 'system' ? 'systems' : item.kind === 'access' ? 'access_entries' : 'accounts'} WHERE id=?`,
-        )
-        .get(item.id),
+      item.kind === 'tool'
+        ? toolCatalog.some((tool) => tool.id === item.id)
+        : this.db
+            .prepare(
+              `SELECT 1 FROM ${item.kind === 'system' ? 'systems' : item.kind === 'access' ? 'access_entries' : 'accounts'} WHERE id=?`,
+            )
+            .get(item.id),
     );
   }
   snapshot(): Snapshot {
@@ -318,9 +321,12 @@ export class Store {
         }
         case 'favorite.set':
         case 'favorite.move': {
-          if (!['system', 'account', 'access'].includes(command.kind))
+          if (!['system', 'account', 'access', 'tool'].includes(command.kind))
             throw new Error('常用对象类型无效。');
-          if (command.kind === 'system') this.ledger.system(command.id);
+          if (command.kind === 'tool') {
+            if (!toolCatalog.some((tool) => tool.id === command.id))
+              throw new Error('工具不存在。');
+          } else if (command.kind === 'system') this.ledger.system(command.id);
           else if (command.kind === 'access') this.ledger.accessEntries.get(command.id);
           else this.ledger.account(command.id);
           const favorites = this.favorites(),

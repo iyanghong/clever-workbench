@@ -34,6 +34,12 @@ const call = async (channel: string, ...args: unknown[]) => {
   return ipcRenderer.invoke(channel, await expected, ...args);
 };
 const api: DesktopAPI = {
+  tools: {
+    state: (id) => call('tool-state', id),
+    command: (id, command) => call('tool-command', id, command),
+    choosePath: (kind) => call('tool-path', kind),
+    openOutput: (id) => call('tool-open-output', id),
+  },
   captureLedgerBatch: (input) => call('ledger-batch', input),
   exportSystem: (options) => call('system-export', options),
   platform: process.platform,
