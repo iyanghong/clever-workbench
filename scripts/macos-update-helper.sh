@@ -84,8 +84,8 @@ candidate_version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionStrin
 [ -f "$transaction/expected-version" ] && [ "$candidate_version" = "$(/bin/cat "$transaction/expected-version")" ] || fail 'failed:unexpected-version'
 /usr/bin/codesign --verify --deep --strict "$source_app" || fail 'failed:bundle-signature-invalid'
 retired="$target.previous-retired"
-# Keep at most two prior apps after installation. Only discard old, owned app bundles
-# with the exact expected identity; unknown paths are left for human recovery.
+# Keep recovery copies until health is confirmed. Only rotate owned app bundles
+# with the expected identity; unknown paths are left for human recovery.
 if [ -e "$previous" ]; then
   for prior in "$previous" "$retired"; do
     if [ -e "$prior" ]; then
@@ -152,6 +152,69 @@ health_attention() {
   /usr/bin/open "$transaction" || true
   exit 1
 }
+# Runs only after a matching healthy launch, while this helper still owns the
+# installation lock. Never sweep arbitrary downloads, backups or transaction logs.
+unused_directory() {
+  if /usr/sbin/lsof -t +D "$1" > "$transaction/cleanup-open-files" 2> "$transaction/cleanup-lsof-errors"; then
+    return 1
+  else
+    result=$?
+    [ "$result" -eq 1 ] && [ ! -s "$transaction/cleanup-open-files" ] &&
+      [ ! -s "$transaction/cleanup-lsof-errors" ]
+  fi
+}
+cleanup_completed_update() {
+  previous_removed=true
+  retired_removed=true
+  stage_removed=false
+  for prior in "$previous" "$retired"; do
+    removed=true
+    if [ -e "$prior" ] || [ -L "$prior" ]; then
+      if [ ! -L "$prior" ] && [ -d "$prior" ] &&
+        [ "$(/usr/bin/stat -f %u "$prior")" = "$(/usr/bin/id -u)" ] &&
+        [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$prior/Contents/Info.plist" 2>/dev/null)" = "$installed_id" ] &&
+        unused_directory "$prior"; then
+        /bin/rm -rf "$prior" || removed=false
+      else
+        removed=false
+        /usr/bin/printf 'Cleanup refused unknown or in-use application: %s\n' "$prior"
+      fi
+    fi
+    if [ "$removed" = false ]; then
+      if [ "$prior" = "$previous" ]; then previous_removed=false; else retired_removed=false; fi
+    fi
+  done
+  stage=$(/usr/bin/dirname "$source_app")
+  stage_name=$(/usr/bin/basename "$stage")
+  if [ -f "$transaction/user-data-directory" ]; then
+    profile=$(/bin/cat "$transaction/user-data-directory")
+    staging_root="$profile/updates/staging"
+    # The exact source must be in a private mkdtemp directory beneath our own
+    # staging root. Canonical comparisons reject symlinked ancestors as well.
+    if [ ! -L "$profile/updates" ] && [ ! -L "$staging_root" ] &&
+      [ ! -L "$stage" ] && [ -d "$stage" ] &&
+      [ "$(/usr/bin/stat -f %u "$stage")" = "$(/usr/bin/id -u)" ] &&
+      [ "$(/usr/bin/stat -f %Lp "$stage")" = 700 ] &&
+      [ "$(/usr/bin/dirname "$stage")" = "$staging_root" ] &&
+      [ "$(cd "$stage" && /bin/pwd -P)" = "$(cd "$profile" && /bin/pwd -P)/updates/staging/$stage_name" ]; then
+      case "$stage_name" in
+        release-??????)
+          case "$target/" in
+            "$stage/"*) ;;
+            *)
+              if unused_directory "$stage"; then
+                if /bin/rm -rf "$stage"; then stage_removed=true; fi
+              fi;;
+          esac;;
+      esac
+    fi
+  fi
+  if [ "$stage_removed" = false ]; then
+    /usr/bin/printf 'Download cleanup deferred; directory is unknown, unavailable or in use: %s\n' "$stage"
+  fi
+  /usr/bin/printf '{"previousRemoved":%s,"retiredRemoved":%s,"stageRemoved":%s}\n' "$previous_removed" "$retired_removed" "$stage_removed" > "$transaction/cleanup.json.next"
+  /bin/mv -f "$transaction/cleanup.json.next" "$transaction/cleanup.json"
+}
 # Remain outside the application to diagnose Gatekeeper/pre-main failures.
 # This watcher only records a result; it never rolls back data or bypasses OS checks.
 attempt=0
@@ -164,6 +227,12 @@ while [ "$attempt" -lt 60 ]; do
     case "$outcome" in
       success)
         [ "$confirmed_version" = "$candidate_version" ] || health_attention 'needs-attention:health-version-mismatch'
+        # Recheck the running replacement before discarding any recovery copy.
+        [ ! -L "$target" ] &&
+          [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$target/Contents/Info.plist")" = "$installed_id" ] &&
+          [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$target/Contents/Info.plist")" = "$candidate_version" ] ||
+          health_attention 'needs-attention:installed-app-changed'
+        cleanup_completed_update
         phase 'completed'
         exit 0;;
       manual) health_attention 'needs-attention:health-not-confirmed';;

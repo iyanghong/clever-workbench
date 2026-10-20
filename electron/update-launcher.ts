@@ -78,6 +78,7 @@ export async function launchUpdateHelper(options: {
       '如果新应用未能打开，请查看 helper-status 和 helper.log。系统安全拦截应按 macOS 提示处理；不要关闭 Gatekeeper 或移除隔离属性。',
       `当前应用：${target}`,
       `保留的旧应用：${target}.previous`,
+      '旧应用和本次下载目录仅在新版健康启动确认前保留；确认成功后自动清理，完整加密备份和本目录日志继续保留。',
       `完整加密备份：${options.backup}`,
       `更新版本：${options.currentVersion} → ${prepared.version}`,
       '先保留现有资料。新版本可能已经迁移数据库；不要直接用旧应用打开新数据。需要恢复时，由你明确选择兼容版本和备份，使用备份生成时的主密码。',

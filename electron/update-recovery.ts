@@ -156,6 +156,57 @@ export class UpdateJournal {
     }
     await this.save();
   }
+  async refreshCleanup() {
+    let changed = false;
+    for (const entry of this.entries) {
+      if (entry.outcome !== 'success' || entry.cleanup || !entry.transactionDirectory) continue;
+      const directory = entry.transactionDirectory;
+      const id = path.basename(directory);
+      if (
+        !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(id) ||
+        directory !== path.join(this.root, 'transactions', id)
+      )
+        continue;
+      try {
+        const file = path.join(directory, 'cleanup.json');
+        const stat = await fs.lstat(file);
+        if (
+          stat.isSymbolicLink() ||
+          !stat.isFile() ||
+          stat.size > 1024 ||
+          stat.uid !== process.getuid?.() ||
+          stat.mode & 0o022 ||
+          (await fs.realpath(directory)) !==
+            path.join(await fs.realpath(this.root), 'transactions', id)
+        )
+          continue;
+        const result = JSON.parse(await fs.readFile(file, 'utf8'));
+        if (
+          typeof result.previousRemoved !== 'boolean' ||
+          typeof result.retiredRemoved !== 'boolean' ||
+          typeof result.stageRemoved !== 'boolean'
+        )
+          continue;
+        entry.cleanup =
+          result.previousRemoved && result.retiredRemoved && result.stageRemoved
+            ? 'complete'
+            : 'incomplete';
+        if (result.previousRemoved && entry.previousApp) {
+          const removedPath = entry.previousApp;
+          for (const older of this.entries) {
+            if (older.previousApp === removedPath && older.createdAt <= entry.createdAt)
+              delete older.previousApp;
+          }
+        }
+        changed = true;
+      } catch {
+        // The detached helper may still be cleaning up. Missing or untrusted
+        // receipts never imply deletion or change the recorded health result.
+      }
+    }
+    if (changed) await this.save();
+    return changed;
+  }
   async importHelperTimings(directory: string) {
     const entry = this.entries.find((e) => e.transactionDirectory === directory);
     if (!entry) return;
@@ -191,6 +242,7 @@ export class UpdateHealth {
   private ipc = false;
   private started = 0;
   private polling = false;
+  private cleanupUntil = 0;
   constructor(
     private journal: UpdateJournal,
     private options: HealthOptions,
@@ -276,6 +328,7 @@ export class UpdateHealth {
         await this.fail('上次更新未及时完成启动确认，请检查恢复材料。');
     }
     await this.journal.settleInterrupted();
+    await this.journal.refreshCleanup();
   }
   databaseReady() {
     this.database = true;
@@ -308,9 +361,11 @@ export class UpdateHealth {
     await this.journal.observe({ currentVersion: this.options.version, status: outcome, message });
     this.transaction = undefined;
     this.nonce = undefined;
+    if (outcome === 'success') this.cleanupUntil = this.now() + 60000;
     this.options.status?.(outcome, message);
   }
   async poll() {
+    if (!this.transaction && this.now() < this.cleanupUntil) return this.journal.refreshCleanup();
     if (!this.transaction || this.polling) return;
     this.polling = true;
     try {

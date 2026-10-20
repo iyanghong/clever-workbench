@@ -116,7 +116,13 @@ test('private assets use authenticated GitHub API and redirects never forward cr
   });
   try {
     await updates.check();
-    expect((await updates.download()).status).toBe('ready');
+    const ready = await updates.download();
+    expect(ready.status).toBe('ready');
+    expect(ready.preparedId).toEqual(expect.any(String));
+    expect(updates.setInstallationState({ status: 'preparing' }).preparedId).toBe(ready.preparedId);
+    expect(updates.setInstallationState({ status: 'ready', message: '保存失败' }).preparedId).toBe(
+      ready.preparedId,
+    );
     expect(privateZipRequested && anonymousCdnRequested).toBe(true);
     expect(JSON.stringify(updates.snapshot())).not.toContain('fictional-private-token');
   } finally {

@@ -1,7 +1,7 @@
 import type { UpdateSnapshot, UpdateAsset } from '../src/update-types';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { extractBundle, runCommand, type RunCommand } from './update-package';
 
 export const RELEASES_URL = 'https://github.com/iyanghong/clever-workbench/releases';
@@ -136,7 +136,7 @@ export class UpdateCoordinator {
         this.options.runCommand ?? runCommand,
       );
       this.prepared = { appPath, version: release.version, stageDirectory: directory };
-      return this.set({ status: 'ready', release });
+      return this.set({ status: 'ready', release, preparedId: randomUUID() });
     } catch (error) {
       if (directory) await fs.rm(directory, { recursive: true, force: true }).catch(() => {});
       return this.set({
