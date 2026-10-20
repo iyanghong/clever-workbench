@@ -1,6 +1,6 @@
 {
   "name": "clever-workbench",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "private": true,
   "description": "个人技术台账、工作任务与方案工作台",
   "type": "module",
