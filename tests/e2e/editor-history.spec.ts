@@ -81,6 +81,21 @@ test('IR 快速撤销保留连续输入分组，中文组合、重做、语法�
     await expect(editor.locator('[data-type="strong"]')).not.toHaveClass(/vditor-ir__node--expand/);
     await page.screenshot({ path: testInfo.outputPath('ir-production.png') });
 
+    editor = await sample(page, '[参考资料](https://example.com/editor-reference)\n\n继续记录');
+    await app.evaluate(({ shell }) => {
+      const recorded = Object.assign(shell, { openedUrls: [] as string[] });
+      shell.openExternal = async (url) => {
+        recorded.openedUrls.push(url);
+      };
+    });
+    await editor.locator('p').last().click();
+    await editor.locator('[data-type="a"]').click();
+    await expect
+      .poll(() =>
+        app.evaluate(({ shell }) => (shell as typeof shell & { openedUrls: string[] }).openedUrls),
+      )
+      .toEqual(['https://example.com/editor-reference']);
+
     editor = await sample(page, '保存：');
     await page.getByRole('button', { name: '文字格式', exact: true }).click();
     await editor.click();

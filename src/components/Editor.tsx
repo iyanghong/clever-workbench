@@ -241,7 +241,14 @@ export function Editor({
         render: { media: { enable: false } },
       },
       hint: { emoji: {}, parse: false },
-      link: { isOpen: false },
+      link: {
+        isOpen: false,
+        click: (element: Element) => {
+          void window.desktop
+            .openExternal(element.textContent ?? '')
+            .catch((cause) => error.current(cause.message));
+        },
+      },
       image: { isPreview: false },
       input: () => {
         if (!disposed) captureRef.current();
