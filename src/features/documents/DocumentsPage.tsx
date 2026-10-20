@@ -288,6 +288,7 @@ function DocumentEditor({
   onError: (message: string) => void;
   onDocument: (document: DocumentRecord | null) => void;
 }) {
+  const editorFlush = useRef(() => {});
   const pending = useRef<Promise<void>>(Promise.resolve());
   const form = useAutosave<DocumentEdit>(
     {
@@ -307,6 +308,7 @@ function DocumentEditor({
     },
     onError,
     pending,
+    editorFlush,
   );
   useEffect(() => {
     setContext({
@@ -415,6 +417,7 @@ function DocumentEditor({
       <Editor
         markdown={form.value.markdown}
         readOnly={deleted}
+        flushRef={editorFlush}
         pendingRef={pending}
         onChange={(content, markdown) => {
           const value = { ...latest.current, content, markdown };

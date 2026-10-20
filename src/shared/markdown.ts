@@ -70,7 +70,7 @@ function safeTokens(value: unknown): boolean {
 }
 // Compare rendered semantics, not Markdown punctuation. Nothing here is inserted into a DOM.
 // Whitespace between block tags and tight/loose list wrappers can be normalized safely.
-function meaning(markdown: string) {
+export function markdownMeaning(markdown: string) {
   return (standard.parse(markdown, { async: false }) as string)
     .replace(/\r\n/g, '\n')
     .replace(/>\s+</g, '><')
@@ -105,18 +105,28 @@ export function loadMarkdown(markdown: string): MarkdownBody {
     mode: 'source',
     reason,
   });
-  if (/(^|\n)\s*\$\$|\[\^[^\]]+\]/.test(markdown))
-    return fallback('这段正文含有暂不支持的公式或脚注，已保留源码。');
+  const reason = markdownSourceReason(markdown);
+  if (reason) return fallback(reason);
   try {
-    if (!safeTokens(standard.lexer(markdown)))
-      return fallback('这段正文含有不支持的结构或外部图片，已保留源码。图片请先导入本地。');
     const parsed = manager.parse(markdown);
     const content = parsed.content?.length ? parsed : empty();
     const serialized = writeMarkdown(content);
-    if (meaning(markdown) !== meaning(serialized))
+    if (markdownMeaning(markdown) !== markdownMeaning(serialized))
       return fallback('转换会改变部分内容，已保留源码；可以继续编辑原文。');
     return { markdown, content, mode: 'rich' };
   } catch {
     return fallback('暂时无法安全转换这段正文，已保留源码。');
+  }
+}
+
+// IR accepts safe GFM, including inline images that the legacy JSON schema cannot represent.
+export function markdownSourceReason(markdown: string): string | undefined {
+  if (/(^|\n)\s*\$\$|\[\^[^\]]+\]/.test(markdown))
+    return '这段正文含有暂不支持的公式或脚注，已保留源码。';
+  try {
+    if (!safeTokens(standard.lexer(markdown)))
+      return '这段正文含有不支持的结构或外部图片，已保留源码。图片请先导入本地。';
+  } catch {
+    return '暂时无法安全转换这段正文，已保留源码。';
   }
 }

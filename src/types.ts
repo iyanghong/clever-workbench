@@ -21,7 +21,7 @@ import type {
   AccessCopyTarget,
 } from './vault-types';
 import type { DocumentCommand, DocumentRecord, DocumentSummary } from './document-types';
-import type { JSONContent } from '@tiptap/react';
+import type { JSONContent } from '@tiptap/core';
 import type {
   LedgerCommand,
   SystemRecord,

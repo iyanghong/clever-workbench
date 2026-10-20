@@ -1,4 +1,4 @@
-import type { JSONContent } from '@tiptap/react';
+import type { JSONContent } from '@tiptap/core';
 import type { ObjectContext } from './ledger-types';
 export type DocumentSummary = ObjectContext & {
   id: string;

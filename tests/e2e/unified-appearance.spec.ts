@@ -122,7 +122,9 @@ test('全站共享外观在深浅主题和最小窗口可操作，长内容与�
       }
       await page.getByRole('button', { name: '工作任务', exact: true }).click();
       await page.locator('.task-open').first().click();
+      await page.locator('.task-properties > summary').click();
       await expect(page.getByLabel('预计完成日期', { exact: true })).toBeVisible();
+      await page.locator('.task-properties > summary').click();
       await page.screenshot({
         path: testInfo.outputPath(`${theme}-${width}-任务详情.png`),
         animations: 'disabled',

@@ -28,6 +28,7 @@ test('任务可选保存预计完成日期，按创建月份归类，编辑正�
     await page.getByRole('button', { name: '工作任务', exact: true }).click();
     await expect(page.locator('[data-task-group]')).toHaveCount(1);
     await page.locator('.task-open').filter({ hasText: '计划上线' }).click();
+    await page.locator('.task-properties > summary').click();
     await expect(page.getByLabel('预计完成日期', { exact: true })).toBeVisible({ timeout: 3000 });
     await page.getByLabel('预计完成日期', { exact: true }).fill('2026-10-23');
     await expect
@@ -130,6 +131,7 @@ test('自定义临期在指定时刻生效，清除后恢复默认规则', async
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
     await expect(page.locator('.task-row')).toHaveAttribute('data-urgency', 'near');
     await page.locator('.task-open').click();
+    await page.locator('.task-properties > summary').click();
     await page.getByRole('button', { name: '清除临期开始时间', exact: true }).click();
     await page.getByLabel('关闭详情').click();
     await expect(page.locator('.task-row')).toHaveAttribute('data-urgency', 'normal');
@@ -201,6 +203,7 @@ test('管理共用标签并组合筛选，优先区不能绕过标签条件', as
     await page.getByLabel('标签匹配方式').selectOption('all');
     await expect(page.locator('.task-title')).toHaveText(['两类任务']);
     await page.locator('.task-open').click();
+    await page.locator('.task-properties > summary').click();
     await page.getByLabel('标签 本周', { exact: true }).uncheck();
     await page.getByLabel('关闭详情').click();
     await expect(page.locator('.task-title')).toHaveCount(0);

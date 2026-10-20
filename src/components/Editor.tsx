@@ -1,25 +1,13 @@
-import { useEditor, EditorContent, type JSONContent } from '@tiptap/react';
-import { Markdown } from '@tiptap/markdown';
-import { Extension } from '@tiptap/core';
-import { Plugin } from '@tiptap/pm/state';
-import Placeholder from '@tiptap/extension-placeholder';
-import {
-  TextBIcon,
-  TextItalicIcon,
-  ListBulletsIcon,
-  ListChecksIcon,
-  CodeIcon,
-  ImageIcon,
-  QuotesIcon,
-  TextHOneIcon,
-  TableIcon,
-} from '@phosphor-icons/react';
+import type { JSONContent } from '@tiptap/core';
+import Vditor from 'vditor';
+import 'vditor/dist/index.css';
+import { ImageIcon, TextAaIcon } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
 import {
   loadMarkdown,
-  markdownExtensions,
   writeMarkdown,
-  supportsMarkdownTables,
+  markdownSourceReason,
+  markdownMeaning,
 } from '../shared/markdown';
 import { emptyContent } from '../domain';
 import type { Asset } from '../types';
@@ -30,255 +18,411 @@ export function Editor({
   onError,
   readOnly = false,
   pendingRef,
+  flushRef,
 }: {
   markdown: string;
   onChange: (content: JSONContent, markdown: string) => void;
   onError: (message: string) => void;
   readOnly?: boolean;
   pendingRef: React.MutableRefObject<Promise<void>>;
+  flushRef: React.MutableRefObject<() => void>;
 }) {
-  const [initial] = useState(() => loadMarkdown(markdown));
+  const [initial] = useState(() => {
+    const reason = markdownSourceReason(markdown);
+    return { mode: reason ? ('source' as const) : ('rich' as const), reason };
+  });
   const [mode, setMode] = useState(initial.mode),
     [source, setSource] = useState(markdown),
-    [notice, setNotice] = useState(initial.reason ?? '');
-  const latest = useRef(markdown),
+    [notice, setNotice] = useState(initial.reason ?? ''),
+    [formatting, setFormatting] = useState(false),
+    [importing, setImporting] = useState(false),
+    [ready, setReady] = useState(false),
+    [preview, setPreview] = useState<string | null>(null);
+  const host = useRef<HTMLDivElement>(null),
+    sourceInput = useRef<HTMLTextAreaElement>(null),
+    previewDialog = useRef<HTMLDialogElement>(null),
+    editor = useRef<Vditor | null>(null),
+    latest = useRef(markdown),
+    normalized = useRef(''),
+    composing = useRef(false),
+    importingRef = useRef(false),
+    locked = useRef(readOnly),
     modeRef = useRef(mode),
-    sourceInput = useRef<HTMLTextAreaElement>(null);
-  modeRef.current = mode;
-  const [preview, setPreview] = useState<string | null>(null),
-    [importing, setImporting] = useState(0);
-  const previewDialog = useRef<HTMLDialogElement>(null);
-  const change = useRef(onChange),
+    change = useRef(onChange),
     error = useRef(onError);
   change.current = onChange;
   error.current = onError;
-  useEffect(() => {
-    if (preview) previewDialog.current?.showModal();
-  }, [preview]);
-  function changed(content: JSONContent, text: string) {
+  modeRef.current = mode;
+  locked.current = readOnly;
+
+  function changed(text: string, content = loadMarkdown(text).content) {
     latest.current = text;
     setSource(text);
     change.current(content, text);
   }
-  function changeSource(text: string) {
-    changed(emptyContent(), text);
+  function capture() {
+    const current = editor.current;
+    if (!current || modeRef.current !== 'rich' || composing.current || locked.current) return;
+    const text = current.getValue();
+    // Opening a record or moving its caret must not rewrite its original Markdown.
+    if (text !== normalized.current) {
+      normalized.current = text;
+      changed(text);
+    }
   }
-  const editor = useEditor({
-    extensions: [
-      ...markdownExtensions(),
-      Extension.create({
-        name: 'markdownTableGuard',
-        addProseMirrorPlugins: () => [
-          new Plugin({
-            filterTransaction(transaction) {
-              if (!transaction.docChanged || supportsMarkdownTables(transaction.doc.toJSON()))
-                return true;
-              setNotice(
-                '表格单元格支持单段文字和行内格式；用 Tab 移动到下一格，代码块、列表和多段内容请放在表格外。',
-              );
-              return false;
-            },
-          }),
-        ],
-      }),
-      Markdown,
-      Placeholder.configure({
-        placeholder: '写下过程、结论，或直接粘贴截图…\n支持 Markdown、表格和勾选清单。',
-      }),
-    ],
-    content: initial.content,
-    editable: !readOnly,
-    onUpdate: ({ editor }) => {
-      try {
-        changed(editor.getJSON(), writeMarkdown(editor.getJSON()));
-      } catch {
-        error.current('无法转换当前排版，请保留编辑窗口并重试。');
-      }
-    },
-    editorProps: {
-      attributes: {
-        role: 'textbox',
-        'aria-label': '工作内容',
-        'aria-multiline': 'true',
-        spellcheck: 'false',
-      },
-      handlePaste: (_view, event) => {
-        if (readOnly) return true;
-        const files = Array.from(event.clipboardData?.files ?? []);
-        if (files.length) {
-          event.preventDefault();
-          void importFiles(files);
-          return true;
-        }
-        const raw = event.clipboardData?.getData('text/plain') ?? '';
-        if (!raw) return Boolean(event.clipboardData?.getData('text/html'));
-        event.preventDefault();
-        const parsed = loadMarkdown(raw);
-        if (parsed.mode === 'rich') editor?.commands.insertContent(parsed.content.content ?? []);
-        else {
-          const body = `${latest.current}${latest.current ? '\n\n' : ''}${raw}`;
-          changeSource(body);
-          setMode('source');
-          setNotice(`${parsed.reason} 粘贴内容已放在源码末尾。`);
-        }
-        return true;
-      },
-      handleDrop: (_view, event, _slice, moved) => {
-        if (readOnly) return true;
-        if (moved) return false;
-        const files = Array.from(event.dataTransfer?.files ?? []);
-        if (files.length) {
-          event.preventDefault();
-          void importFiles(files);
-          return true;
-        }
-        return false;
-      },
-      handleClick: (_view, _pos, event) => {
-        const image = (event.target as HTMLElement).closest('img');
-        if (image) {
-          setPreview(image.src);
-          return false;
-        }
-        const link = (event.target as HTMLElement).closest('a');
-        if (link) {
-          event.preventDefault();
-          void window.desktop
-            .openExternal(link.href)
-            .catch((cause) => error.current(cause.message));
-          return true;
-        }
-        return false;
-      },
-    },
-  });
+  const captureRef = useRef(capture);
+  captureRef.current = capture;
+  flushRef.current = () => {
+    if (composing.current) throw new Error('中文输入尚未完成，请先确认候选词。');
+    captureRef.current();
+  };
   useEffect(() => {
-    editor?.setEditable(!readOnly, false);
-  }, [editor, readOnly]);
+    if (preview) previewDialog.current?.showModal();
+  }, [preview]);
+  useEffect(() => {
+    const current = editor.current;
+    if (!current) return;
+    if (readOnly || importing) current.disabled();
+    else current.enable();
+    current.vditor.ir!.element.setAttribute('aria-readonly', String(readOnly || importing));
+    current.vditor.ir!.element.querySelectorAll<HTMLInputElement>('input').forEach((input) => {
+      input.disabled = readOnly || importing;
+    });
+  }, [readOnly, importing, ready]);
+
   async function switchMode(next: 'rich' | 'source') {
     try {
       await pendingRef.current;
+      flushRef.current();
       if (next === 'rich') {
-        const parsed = loadMarkdown(latest.current);
-        if (parsed.mode === 'source') {
-          setNotice(parsed.reason!);
-          return;
-        }
-        editor?.commands.setContent(parsed.content, { emitUpdate: false });
+        const reason = markdownSourceReason(latest.current);
+        if (reason) return setNotice(reason);
       }
       setNotice('');
       setMode(next);
     } catch (cause) {
-      error.current(String(cause));
+      error.current(cause instanceof Error ? cause.message : String(cause));
     }
-  }
-  function insertAsset(asset: Asset) {
-    if (modeRef.current === 'source') {
-      const start = sourceInput.current?.selectionStart ?? latest.current.length,
-        end = sourceInput.current?.selectionEnd ?? start;
-      const image = writeMarkdown({
-        type: 'doc',
-        content: [{ type: 'image', attrs: { src: asset.src, alt: asset.name } }],
-      });
-      changeSource(`${latest.current.slice(0, start)}\n\n${image}\n\n${latest.current.slice(end)}`);
-    } else if (editor && !editor.isDestroyed)
-      editor.chain().focus().setImage({ src: asset.src, alt: asset.name }).run();
   }
   function track(job: Promise<void>) {
     pendingRef.current = Promise.all([pendingRef.current, job]).then(() => undefined);
     return job;
   }
-  function importFiles(files: File[]) {
-    return track(importBatch(files));
-  }
-  async function importBatch(files: File[]) {
-    if (readOnly) return;
-    setImporting((count) => count + files.length);
-    for (const file of files) {
-      try {
-        if (file.size > 20 * 1024 * 1024) throw new Error('单张图片不能超过 20 MB');
-        insertAsset(
-          await window.desktop.importImage(new Uint8Array(await file.arrayBuffer()), file.name),
-        );
-      } catch (cause) {
-        error.current(`${file.name}：${cause instanceof Error ? cause.message : String(cause)}`);
-      } finally {
-        setImporting((count) => count - 1);
-      }
-    }
-  }
-  async function pickBatch() {
-    if (readOnly) return;
-    setImporting((count) => count + 1);
+  async function insertImages(load: () => Promise<{ assets: Asset[]; errors: string[] }>) {
+    if (locked.current || importingRef.current || composing.current) return;
+    const current = editor.current;
+    const selection = window.getSelection();
+    const range =
+      selection?.rangeCount && host.current?.contains(selection.anchorNode)
+        ? selection.getRangeAt(0).cloneRange()
+        : null;
+    const start = sourceInput.current?.selectionStart ?? latest.current.length;
+    const end = sourceInput.current?.selectionEnd ?? start;
+    importingRef.current = true;
+    setImporting(true);
+    // Freeze this local import briefly so its insertion point cannot drift to another edit.
+    current?.vditor.undo!.addToUndoStack(current.vditor);
+    current?.disabled();
     try {
-      const { assets, errors } = await window.desktop.chooseImages();
-      assets.forEach(insertAsset);
+      const { assets, errors } = await load();
+      if (assets.length) {
+        const text = assets
+          .map((asset) =>
+            writeMarkdown({
+              type: 'doc',
+              content: [{ type: 'image', attrs: { src: asset.src, alt: asset.name } }],
+            }),
+          )
+          .join('\n\n');
+        if (modeRef.current === 'source') {
+          changed(
+            `${latest.current.slice(0, start)}\n\n${text}\n\n${latest.current.slice(end)}`,
+            emptyContent(),
+          );
+        } else if (current && editor.current === current) {
+          current.enable();
+          current.focus();
+          const insertion = range?.startContainer.isConnected ? range : document.createRange();
+          if (insertion !== range) {
+            insertion.selectNodeContents(current.vditor.ir!.element);
+            insertion.collapse(false);
+          }
+          selection?.removeAllRanges();
+          selection?.addRange(insertion);
+          current.insertMD(`\n\n${text}\n\n`);
+          captureRef.current();
+        }
+      }
       if (errors.length) error.current(errors.join('\n'));
     } catch (cause) {
-      error.current(String(cause));
+      error.current(cause instanceof Error ? cause.message : String(cause));
     } finally {
-      setImporting((count) => count - 1);
+      importingRef.current = false;
+      if (!locked.current) current?.enable();
+      setImporting(false);
     }
   }
-  if (!editor) return null;
-  const tools = [
-    {
-      name: '标题',
-      icon: TextHOneIcon,
-      action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
-      active: editor.isActive('heading'),
-    },
-    {
-      name: '加粗',
-      icon: TextBIcon,
-      action: () => editor.chain().focus().toggleBold().run(),
-      active: editor.isActive('bold'),
-    },
-    {
-      name: '斜体',
-      icon: TextItalicIcon,
-      action: () => editor.chain().focus().toggleItalic().run(),
-      active: editor.isActive('italic'),
-    },
-    {
-      name: '无序列表',
-      icon: ListBulletsIcon,
-      action: () => editor.chain().focus().toggleBulletList().run(),
-      active: editor.isActive('bulletList'),
-    },
-    {
-      name: '清单',
-      icon: ListChecksIcon,
-      action: () => editor.chain().focus().toggleTaskList().run(),
-      active: editor.isActive('taskList'),
-    },
-    {
-      name: '引用',
-      icon: QuotesIcon,
-      action: () => editor.chain().focus().toggleBlockquote().run(),
-      active: editor.isActive('blockquote'),
-    },
-    {
-      name: '代码块',
-      icon: CodeIcon,
-      action: () => editor.chain().focus().toggleCodeBlock().run(),
-      active: editor.isActive('codeBlock'),
-    },
-    {
-      name: '插入表格',
-      icon: TableIcon,
-      action: () =>
-        editor.chain().focus().insertTable({ rows: 3, cols: 2, withHeaderRow: true }).run(),
-      active: editor.isActive('table'),
-    },
-  ];
+  function importFiles(files: File[]) {
+    return track(
+      insertImages(async () => {
+        const assets: Asset[] = [],
+          errors: string[] = [];
+        for (const file of files) {
+          try {
+            if (file.size > 20 * 1024 * 1024) throw new Error('单张图片不能超过 20 MB');
+            assets.push(
+              await window.desktop.importImage(new Uint8Array(await file.arrayBuffer()), file.name),
+            );
+          } catch (cause) {
+            errors.push(`${file.name}：${cause instanceof Error ? cause.message : String(cause)}`);
+          }
+        }
+        return { assets, errors };
+      }),
+    );
+  }
+  const importRef = useRef(importFiles);
+  importRef.current = importFiles;
+
+  useEffect(() => {
+    if (mode !== 'rich') return;
+    const element = host.current!;
+    const sharedIcons = document.getElementById('vditorIconScript');
+    let disposed = false;
+    const toolbarState = new MutationObserver(() => {
+      element.querySelectorAll<HTMLButtonElement>('.vditor-toolbar button').forEach((button) => {
+        button.disabled = button.classList.contains('vditor-menu--disabled');
+        button.setAttribute(
+          'aria-pressed',
+          String(button.classList.contains('vditor-menu--current')),
+        );
+      });
+    });
+    setReady(false);
+    const current = new Vditor(element, {
+      value: latest.current,
+      mode: 'ir',
+      cdn: new URL('./editor-vendor', document.baseURI).href,
+      cache: { enable: false },
+      undoDelay: 200,
+      minHeight: 280,
+      placeholder: '写下过程、结论，或直接粘贴截图…',
+      toolbar: [
+        'headings',
+        'bold',
+        'italic',
+        'strike',
+        '|',
+        'list',
+        'ordered-list',
+        'check',
+        'quote',
+        'code',
+        'inline-code',
+        'table',
+        '|',
+        'undo',
+        { name: 'redo', hotkey: '⇧⌘Z' },
+      ],
+      toolbarConfig: { pin: false },
+      preview: {
+        hljs: { enable: false },
+        theme: { current: '' },
+        markdown: {
+          autoSpace: false,
+          fixTermTypo: false,
+          sanitize: true,
+          footnotes: false,
+          toc: false,
+          inlineMath: false,
+          mathBlockPreview: false,
+          codeBlockPreview: false,
+        },
+        render: { media: { enable: false } },
+      },
+      hint: { emoji: {}, parse: false },
+      link: { isOpen: false },
+      image: { isPreview: false },
+      input: () => {
+        if (!disposed) captureRef.current();
+      },
+      after: () => {
+        if (disposed) {
+          dispose();
+          return;
+        }
+        editor.current = current;
+        normalized.current = current.getValue();
+        if (markdownMeaning(latest.current) !== markdownMeaning(normalized.current)) {
+          setNotice('转换会改变部分内容，已保留源码；可以继续编辑原文。');
+          setMode('source');
+          return;
+        }
+        current.clearStack();
+        const input = current.vditor.ir!.element;
+        input.setAttribute('aria-label', '工作内容');
+        input.setAttribute('role', 'textbox');
+        input.setAttribute('aria-multiline', 'true');
+        input.setAttribute('spellcheck', 'false');
+        const names: Record<string, string> = {
+          headings: '标题',
+          bold: '加粗',
+          italic: '斜体',
+          list: '无序列表',
+          check: '清单',
+          quote: '引用',
+          code: '代码块',
+          table: '插入表格',
+          undo: '撤销',
+          redo: '重做',
+        };
+        for (const [type, name] of Object.entries(names)) {
+          const button = element.querySelector(`[data-type="${type}"]`);
+          button?.setAttribute('aria-label', name);
+          button?.setAttribute('title', name);
+        }
+        toolbarState.observe(current.vditor.toolbar!.element!, {
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['class'],
+        });
+        setReady(true);
+        if (locked.current) current.disabled();
+      },
+    });
+    function dispose() {
+      toolbarState.disconnect();
+      clearTimeout(current.vditor.ir?.processTimeoutId);
+      clearTimeout(current.vditor.ir?.hlToolbarTimeoutId);
+      current.destroy();
+      if (sharedIcons && !sharedIcons.isConnected) document.head.appendChild(sharedIcons);
+    }
+    const input = () =>
+      queueMicrotask(() => {
+        if (!disposed) captureRef.current();
+      });
+    const startComposition = () => {
+      composing.current = true;
+    };
+    const endComposition = () => {
+      composing.current = false;
+      input();
+    };
+    const paste = (event: ClipboardEvent) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (locked.current || importingRef.current) return;
+      const files = Array.from(event.clipboardData?.files ?? []);
+      if (files.length) {
+        void importRef.current(files);
+        return;
+      }
+      const text = event.clipboardData?.getData('text/plain') ?? '';
+      if (!text) return;
+      const reason = markdownSourceReason(text);
+      if (reason) {
+        captureRef.current();
+        changed(`${latest.current}${latest.current ? '\n\n' : ''}${text}`, emptyContent());
+        setNotice(`${reason} 粘贴内容已放在源码末尾。`);
+        setMode('source');
+      } else {
+        current.insertMD(text);
+        captureRef.current();
+      }
+    };
+    const drop = (event: DragEvent) => {
+      if (!event.dataTransfer?.files.length) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!locked.current) void importRef.current(Array.from(event.dataTransfer.files));
+    };
+    const click = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if ((locked.current || importingRef.current) && target.closest('input')) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
+      const image = target.closest('img');
+      if (image?.src.startsWith('workbench-asset://image/')) setPreview(image.src);
+      const link = target.closest('a');
+      if (link) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        void window.desktop.openExternal(link.href).catch((cause) => error.current(cause.message));
+      }
+      input();
+    };
+    const keydown = (event: KeyboardEvent) => {
+      const node = window.getSelection()?.anchorNode;
+      const cell = (node instanceof HTMLElement ? node : node?.parentElement)?.closest('td, th');
+      if (cell && event.key === 'Enter' && event.shiftKey && !event.isComposing) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        setNotice('表格单元格支持单段文字和行内格式；用 Tab 移动到下一格，多段内容请放在表格外。');
+      }
+      input();
+    };
+    element.addEventListener('input', input);
+    element.addEventListener('compositionstart', startComposition, true);
+    element.addEventListener('compositionend', endComposition);
+    element.addEventListener('paste', paste, true);
+    element.addEventListener('drop', drop, true);
+    element.addEventListener('click', click, true);
+    element.addEventListener('keydown', keydown, true);
+    return () => {
+      disposed = true;
+      editor.current = null;
+      composing.current = false;
+      element.removeEventListener('input', input);
+      element.removeEventListener('compositionstart', startComposition, true);
+      element.removeEventListener('compositionend', endComposition);
+      element.removeEventListener('paste', paste, true);
+      element.removeEventListener('drop', drop, true);
+      element.removeEventListener('click', click, true);
+      element.removeEventListener('keydown', keydown, true);
+      if (current.vditor?.ir) dispose();
+    };
+  }, [mode]);
+
   return (
-    <div className="editor-wrap">
-      <div className="editor-mode" role="group" aria-label="编辑模式">
-        <button aria-pressed={mode === 'rich'} onClick={() => void switchMode('rich')}>
+    <div className={`editor-wrap ${formatting ? 'format-open' : ''}`}>
+      <div className="editor-actions" role="group" aria-label="编辑模式">
+        {mode === 'rich' && (
+          <button
+            type="button"
+            aria-label="文字格式"
+            aria-expanded={formatting}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => setFormatting(!formatting)}
+          >
+            <TextAaIcon size={17} />
+            格式
+          </button>
+        )}
+        <button
+          type="button"
+          aria-label="插入图片"
+          title="插入图片"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => void track(insertImages(() => window.desktop.chooseImages()))}
+          disabled={readOnly || importing || (mode === 'rich' && !ready)}
+        >
+          <ImageIcon size={17} />
+        </button>
+        <span className="spacer" />
+        <button
+          type="button"
+          aria-pressed={mode === 'rich'}
+          onClick={() => void switchMode('rich')}
+        >
           即时排版
         </button>
-        <button aria-pressed={mode === 'source'} onClick={() => void switchMode('source')}>
+        <button
+          type="button"
+          aria-pressed={mode === 'source'}
+          onClick={() => void switchMode('source')}
+        >
           Markdown 源码
         </button>
       </div>
@@ -287,99 +431,6 @@ export function Editor({
           {notice}
         </p>
       )}
-      <div className="editor-tools" role="toolbar" aria-label="文字格式">
-        {mode === 'rich' &&
-          tools.map((item) => (
-            <button
-              key={item.name}
-              type="button"
-              title={item.name}
-              aria-label={item.name}
-              aria-pressed={item.active}
-              disabled={
-                readOnly || (editor.isActive('table') && !['加粗', '斜体'].includes(item.name))
-              }
-              onClick={item.action}
-            >
-              <item.icon size={17} />
-            </button>
-          ))}
-        {mode === 'rich' && <i />}
-        {mode === 'rich' && editor.isActive('image') && (
-          <button
-            title="移除图片"
-            aria-label="移除图片"
-            disabled={readOnly}
-            onClick={() => editor.chain().focus().deleteSelection().run()}
-          >
-            ×
-          </button>
-        )}
-        <button
-          title="插入图片"
-          aria-label="插入图片"
-          onClick={() => void track(pickBatch())}
-          disabled={readOnly}
-        >
-          <ImageIcon size={18} />
-        </button>
-        <span className="editor-format">
-          {mode === 'source' ? '图片会插入本地引用' : 'Markdown'}
-        </span>
-      </div>
-      {mode === 'rich' && editor.isActive('table') && !readOnly && (
-        <div className="table-tools" role="toolbar" aria-label="表格操作">
-          <button onClick={() => editor.chain().focus().addRowAfter().run()}>添加行</button>
-          <button onClick={() => editor.chain().focus().addColumnAfter().run()}>添加列</button>
-          <button onClick={() => editor.chain().focus().deleteRow().run()}>删除行</button>
-          <button onClick={() => editor.chain().focus().deleteColumn().run()}>删除列</button>
-          <button onClick={() => editor.chain().focus().deleteTable().run()}>删除表格</button>
-        </div>
-      )}
-      {mode === 'rich' && editor.isActive('codeBlock') && (
-        <div className="code-language">
-          <label>
-            代码语言{' '}
-            <select
-              aria-label="代码语言"
-              disabled={readOnly}
-              value={editor.getAttributes('codeBlock').language ?? ''}
-              onChange={(event) =>
-                editor
-                  .chain()
-                  .focus()
-                  .updateAttributes('codeBlock', { language: event.target.value })
-                  .run()
-              }
-            >
-              <option value="">纯文本</option>
-              {[
-                'javascript',
-                'typescript',
-                'json',
-                'css',
-                'html',
-                'python',
-                'bash',
-                'sql',
-                'rust',
-                'go',
-              ].map((language) => (
-                <option key={language}>{language}</option>
-              ))}
-            </select>
-          </label>
-          <button
-            onClick={() =>
-              void window.desktop
-                .copyText(editor.state.selection.$from.parent.textContent)
-                .catch((cause) => error.current(cause.message))
-            }
-          >
-            复制代码
-          </button>
-        </div>
-      )}
       {mode === 'source' ? (
         <textarea
           ref={sourceInput}
@@ -387,16 +438,22 @@ export function Editor({
           aria-label="Markdown 源码内容"
           value={source}
           spellCheck={false}
-          readOnly={readOnly}
+          readOnly={readOnly || importing}
+          onCompositionStart={() => {
+            composing.current = true;
+          }}
+          onCompositionEnd={() => {
+            composing.current = false;
+          }}
           onChange={(event) => {
             setNotice('');
-            changeSource(event.target.value);
+            changed(event.target.value, emptyContent());
           }}
           onPaste={(event) => {
             const files = Array.from(event.clipboardData.files);
-            if (files.length && !readOnly) {
+            if (files.length) {
               event.preventDefault();
-              void importFiles(files);
+              if (!readOnly) void importFiles(files);
             }
           }}
           onDragOver={(event) => {
@@ -404,16 +461,16 @@ export function Editor({
           }}
           onDrop={(event) => {
             const files = Array.from(event.dataTransfer.files);
-            if (files.length && !readOnly) {
+            if (files.length) {
               event.preventDefault();
-              void importFiles(files);
+              if (!readOnly) void importFiles(files);
             }
           }}
         />
       ) : (
-        <EditorContent editor={editor} />
+        <div ref={host} className="workbench-vditor" aria-busy={!ready} />
       )}
-      {importing > 0 && (
+      {importing && (
         <div className="save-indicator" role="status">
           正在导入图片…
         </div>

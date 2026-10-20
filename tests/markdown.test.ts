@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { loadMarkdown, writeMarkdown } from '../src/shared/markdown';
+import { loadMarkdown, writeMarkdown, markdownSourceReason } from '../src/shared/markdown';
 
 const image = `workbench-asset://image/${'a'.repeat(64)}.png`;
 test('表格、代码语言、勾选状态及本地图片在源码往返后保留语义', () => {
@@ -45,6 +45,7 @@ test.each([
   '[危险链接](javascript:alert(1))',
   '正文[^note]\n\n[^note]: 脚注内容',
 ])('不安全转换保留源码且不生成可执行或外部加载内容：%s', (source) => {
+  expect(markdownSourceReason(source)).toBeTruthy();
   const loaded = loadMarkdown(source);
   expect(loaded.mode).toBe('source');
   expect(loaded.markdown).toBe(source);
@@ -87,4 +88,10 @@ test.each(
     ],
   };
   expect(() => writeMarkdown(content)).toThrow('表格');
+});
+
+test('IR 安全检查允许文字内的本地图片，旧 JSON 缓存仍可使用空正文兜底', () => {
+  const source = `现场说明![截图](${image})继续排查`;
+  expect(markdownSourceReason(source)).toBeUndefined();
+  expect(loadMarkdown(source).markdown).toBe(source);
 });

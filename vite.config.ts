@@ -1,11 +1,13 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type IndexHtmlTransformContext } from 'vite';
 import react from '@vitejs/plugin-react';
-export default defineConfig({
+import { buildVditor } from './scripts/vditor.ts';
+export default defineConfig(async () => ({
+  resolve: { alias: [{ find: /^vditor$/, replacement: await buildVditor(import.meta.dirname) }] },
   plugins: [
     react(),
     {
       name: 'development-csp',
-      transformIndexHtml(html, context) {
+      transformIndexHtml(html: string, context: IndexHtmlTransformContext) {
         return context.server
           ? html.replace("script-src 'self'", "script-src 'self' 'unsafe-inline'")
           : html;
@@ -34,4 +36,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

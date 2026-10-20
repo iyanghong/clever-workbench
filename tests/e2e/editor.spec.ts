@@ -242,6 +242,7 @@ test('表格内不可逆格式不可执行，拒绝换行后仍能保存并重�
       .fill('| 项目 | 结果 |\n| --- | --- |\n| 连接 | 正常 |');
     await page.getByRole('button', { name: '即时排版', exact: true }).click();
     const editor = page.getByRole('textbox', { name: '工作内容' });
+    await page.getByRole('button', { name: '文字格式', exact: true }).click();
     await editor.locator('td').first().click();
     await expect(page.getByRole('button', { name: '代码块', exact: true })).toBeDisabled();
     await expect(page.getByRole('button', { name: '标题', exact: true })).toBeDisabled();
