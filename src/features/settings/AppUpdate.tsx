@@ -236,7 +236,7 @@ export function UpdateDetails({
                     .catch((cause) =>
                       setError(
                         (cause instanceof Error ? cause.message : '更新准备失败，请重试。').replace(
-                          /^Error: Error invoking remote method '[^']+': Error: /,
+                          /^(?:Error: )?Error invoking remote method '[^']+': (?:Error: )?/,
                           '',
                         ),
                       ),

@@ -67,6 +67,10 @@ CWB_UPDATE_ZIP="$PWD/release/Clever-Workbench-0.2.0-arm64.zip" npx vitest run te
 
 macOS 维持 ad-hoc 签名，不需要 Apple Developer ID。默认 Electron 打包权限包含 JIT 和 disable-library-validation；实际签名和启动必须由打包测试验证。下载资产经过 SHA-256 完整性校验，但该校验不等同于开发者身份证明。安装助手不会清除 quarantine 或关闭 Gatekeeper；系统要求授权时用户按系统提示处理。
 
+如果安装更新时提示只读隔离位置（`AppTranslocation`），说明 macOS 正在临时隔离副本中运行应用；即使 `/Applications` 中已经有同名应用，也可能出现这种情况。退出工作台，打开正式 DMG，通过 Finder 将其中的应用拷贝到“应用程序”并替换，再从“应用程序”打开。保留原有资料目录、完整备份和旧应用，系统要求授权时按提示处理。依据：[Apple 关于 Gatekeeper 隔离运行的说明](https://developer.apple.com/documentation/fileprovider/nsfileprovidererror/code/providertranslocated?language=objc)。
+
+安装入口先检查运行位置、所有权和父目录写权限，再保存、冻结写入和创建完整备份；启动独立助手前再次检查。位置检查失败时保持应用运行，给出具体安装步骤。通过 Finder 恢复后仍保留上次失败记录；人工安装恢复不代表已验证无人值守升级成功。
+
 首个真实版本发布后，必须在隔离资料目录完成“旧安装版经 GitHub 下载 → 保存和备份 → 原位置替换 → 新版健康确认或符合规格的明确人工处理结果”的验收；人工处理不能记为健康成功，本地包和 HTTP fixture 测试不能代替真实网络验收。保留上一安装包和备份，迁移后的资料不应自动交给旧版读取。
 
 真实网络模式不拦截请求、不替换 Release 元数据，也不修改检查时间。旧安装版须来自已发布资产，并单独保留下载和校验来源证明；命令本身只声明该次更新的真实网络经过，不自动证明调用方提供的旧应用来源。

@@ -28,7 +28,7 @@ import { UpdateCoordinator } from './update';
 import { localGitHubCredential } from './update-credential';
 import { fetchUpdate } from './update-fetch';
 import { UpdateInstallation } from './update-install';
-import { launchUpdateHelper } from './update-launcher';
+import { launchUpdateHelper, resolveUpdateTarget } from './update-launcher';
 import { UpdateJournal, UpdateHealth } from './update-recovery';
 import { exportScheme, renderExportDocument } from './export-native';
 
@@ -392,6 +392,9 @@ app
     });
     installation = new UpdateInstallation({
       prepared: () => updates.preparedUpdate(),
+      preflight: async () => {
+        await resolveUpdateTarget(app.getPath('exe'));
+      },
       status: (state) =>
         updates.setInstallationState(
           state as Parameters<UpdateCoordinator['setInstallationState']>[0],

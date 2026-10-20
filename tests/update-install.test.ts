@@ -6,9 +6,63 @@ import path from 'node:path';
 import { Store } from '../electron/store';
 import { Vault } from '../electron/vault';
 import { Backups } from '../electron/backup';
-import { launchUpdateHelper } from '../electron/update-launcher';
+import { launchUpdateHelper, resolveUpdateTarget } from '../electron/update-launcher';
 
 describe('update installation operation', () => {
+  it.skipIf(process.platform === 'win32')(
+    'explains App Translocation without confusing it with a mounted disk image',
+    async () => {
+      await expect(
+        launchUpdateHelper({
+          prepared: { appPath: '/stage/New.app', version: '0.2.0', stageDirectory: '/stage' },
+          backup: '/backup.cwb',
+          executable:
+            '/private/var/folders/test/AppTranslocation/nonce/d/Clever Workbench.app/Contents/MacOS/Clever Workbench',
+          currentVersion: '0.1.0',
+          userDataDirectory: '/data',
+          transactionsDirectory: '/transactions',
+          helperSource: '/helper.sh',
+        }),
+      ).rejects.toThrow(/macOS.*隔离.*Finder.*应用程序/);
+    },
+  );
+  it.skipIf(process.platform === 'win32')(
+    'checks the installation location before saving, freezing or creating a backup',
+    async () => {
+      const calls: string[] = [];
+      const installation = new UpdateInstallation({
+        prepared: () => ({ appPath: '/stage/New.app', version: '0.2.0', stageDirectory: '/stage' }),
+        preflight: async () => {
+          await resolveUpdateTarget(
+            '/private/var/folders/test/AppTranslocation/nonce/d/Clever Workbench.app/Contents/MacOS/Clever Workbench',
+          );
+        },
+        eligible: () => {},
+        status: () => {},
+        flush: async () => {
+          calls.push('flush');
+        },
+        freeze: (value) => {
+          if (value) calls.push('freeze');
+        },
+        idle: async () => {
+          calls.push('idle');
+        },
+        backup: async () => {
+          calls.push('backup');
+          return '/backup.cwb';
+        },
+        launch: async () => {
+          calls.push('launch');
+        },
+        quit: () => {
+          calls.push('quit');
+        },
+      });
+      await expect(installation.install()).rejects.toThrow(/macOS.*隔离/);
+      expect(calls).toEqual([]);
+    },
+  );
   // The shell launcher trusts POSIX ownership and is only used by the macOS updater.
   it.skipIf(process.platform === 'win32')(
     'never arms an installer when durable transaction bookkeeping fails',

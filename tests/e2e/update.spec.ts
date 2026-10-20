@@ -6,6 +6,42 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { UpdateSnapshot } from '../../src/update-types';
 
+test('安装失败只显示可操作的原因，不泄露 IPC 错误包装', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-update-location-'));
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env });
+  const message =
+    'macOS 正在从只读隔离位置运行此应用。请退出应用，通过 Finder 安装到“应用程序”后重新打开。';
+  try {
+    const page = await app.firstWindow();
+    await page.getByRole('button', { name: '设置', exact: true }).click();
+    const { currentVersion } = await page.evaluate(() => window.desktop.updateSnapshot());
+    await expect(
+      page.getByText(`Clever Workbench v${currentVersion}`, { exact: true }),
+    ).toBeVisible();
+    await expect
+      .poll(async () => (await page.evaluate(() => window.desktop.updateSnapshot())).status)
+      .not.toBe('checking');
+    await app.evaluate(({ BrowserWindow, ipcMain }, reason) => {
+      ipcMain.removeHandler('update-install');
+      ipcMain.handle('update-install', () => {
+        throw Error(reason);
+      });
+      BrowserWindow.getAllWindows()[0].webContents.send('update-state', {
+        status: 'ready',
+        currentVersion: '0.1.4',
+      } satisfies UpdateSnapshot);
+    }, message);
+    await page.getByRole('button', { name: '重启并更新', exact: true }).click();
+    await expect(page.getByRole('alert')).toHaveText(message);
+    await expect(page.getByRole('button', { name: '工作台', exact: true })).toBeEnabled();
+  } finally {
+    await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('更新弹窗支持鼠标关闭，重新打开后仍能按 Esc 关闭', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-update-close-'));
   const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };

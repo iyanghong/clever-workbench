@@ -7,6 +7,7 @@ export interface PreparedUpdate {
 }
 interface InstallationOptions {
   prepared(): PreparedUpdate | undefined;
+  preflight?(): Promise<void>;
   status(value: { status: UpdateSnapshot['status']; message?: string }): void;
   eligible(): void;
   flush(): Promise<void>;
@@ -34,6 +35,7 @@ export class UpdateInstallation {
     const prepared = this.options.prepared();
     if (!prepared) throw Error('请先下载并校验更新。');
     try {
+      await this.options.preflight?.();
       this.options.eligible();
       this.options.status({ status: 'preparing' });
       // Let already-started imports/protection operations settle while writable,

@@ -16,6 +16,29 @@ export interface InstallationTransaction {
   userDataDirectory: string;
 }
 
+export async function resolveUpdateTarget(executable: string) {
+  const target = path.resolve(executable, '../../..');
+  if (target.includes('/AppTranslocation/'))
+    throw Error(
+      'macOS 正在从只读隔离位置运行此应用。请退出应用，通过 Finder 将正式安装包中的应用拖到“应用程序”，替换现有副本后重新打开，再检查更新。',
+    );
+  if (!target.endsWith('.app'))
+    throw Error('当前运行位置不是完整的 macOS 应用，请通过 Finder 安装到“应用程序”后重新打开。');
+  const stat = await fs.lstat(target);
+  if (!stat.isDirectory() || stat.isSymbolicLink() || stat.uid !== process.getuid?.())
+    throw Error('当前应用位置或所有权不允许自动更新，请手动安装。');
+  try {
+    await fs.access(path.dirname(target), fs.constants.W_OK);
+  } catch (error) {
+    if (['EACCES', 'EPERM', 'EROFS'].includes((error as NodeJS.ErrnoException).code ?? ''))
+      throw Error(
+        '当前应用所在目录不可写。请退出应用，通过 Finder 安装到可写目录后重新打开；不要直接从磁盘映像中运行。',
+      );
+    throw error;
+  }
+  return target;
+}
+
 export async function launchUpdateHelper(options: {
   beforeLaunch?: (directory: string, transaction: InstallationTransaction) => Promise<void>;
   historyId?: string;
@@ -28,13 +51,7 @@ export async function launchUpdateHelper(options: {
   helperSource: string;
 }) {
   const { prepared } = options;
-  const target = path.resolve(options.executable, '../../..');
-  if (!target.endsWith('.app') || target.includes('/AppTranslocation/'))
-    throw Error('请将应用安装到可写目录后再更新，不能直接更新磁盘映像中的应用。');
-  const stat = await fs.lstat(target);
-  if (!stat.isDirectory() || stat.isSymbolicLink() || stat.uid !== process.getuid?.())
-    throw Error('当前应用位置或所有权不允许自动更新，请手动安装。');
-  await fs.access(path.dirname(target), fs.constants.W_OK);
+  const target = await resolveUpdateTarget(options.executable);
   if (!(await fs.stat(options.backup)).isFile()) throw Error('完整备份不存在，安装已停止。');
   const id = randomUUID();
   await fs.mkdir(options.transactionsDirectory, { recursive: true, mode: 0o700 });
