@@ -4,9 +4,10 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { createHash } from 'node:crypto';
 const run = promisify(execFile);
 const script = path.resolve('scripts/prepare-release.mjs');
-test('upload verification refuses publishing until all expected assets have matching sizes', async () => {
+test('upload verification requires matching sizes and GitHub SHA-256 digests', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'release-upload-'));
   const verify = path.resolve('scripts/verify-release-upload.mjs');
   try {
@@ -20,7 +21,7 @@ test('upload verification refuses publishing until all expected assets have matc
     await fs.writeFile(path.join(root, 'uploaded.json'), JSON.stringify({ assets: [] }));
     await expect(
       run(process.execPath, [verify, 'v0.2.0', 'uploaded.json'], { cwd: root }),
-    ).rejects.toThrow('上传资产缺失或大小不匹配');
+    ).rejects.toThrow('远程发布资产数量不匹配');
     await fs.writeFile(
       path.join(root, 'uploaded.json'),
       JSON.stringify({
@@ -28,12 +29,23 @@ test('upload verification refuses publishing until all expected assets have matc
           'Clever-Workbench-0.2.0-arm64.zip',
           'Clever-Workbench-0.2.0-arm64.dmg',
           'SHA256SUMS',
-        ].map((name) => ({ name, size: 3, state: 'uploaded' })),
+        ].map((name) => ({
+          name,
+          size: 3,
+          state: 'uploaded',
+          digest: `sha256:${createHash('sha256').update('123').digest('hex')}`,
+        })),
       }),
     );
     await expect(
       run(process.execPath, [verify, 'v0.2.0', 'uploaded.json'], { cwd: root }),
     ).resolves.toMatchObject({ stdout: 'All release assets uploaded; ready to publish\n' });
+    const metadata = JSON.parse(await fs.readFile(path.join(root, 'uploaded.json'), 'utf8'));
+    metadata.assets[0].digest = `sha256:${'0'.repeat(64)}`;
+    await fs.writeFile(path.join(root, 'uploaded.json'), JSON.stringify(metadata));
+    await expect(
+      run(process.execPath, [verify, 'v0.2.0', 'uploaded.json'], { cwd: root }),
+    ).rejects.toThrow('SHA-256 不匹配');
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }

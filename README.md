@@ -39,6 +39,8 @@ npm run dist:win -- --publish never
 
 Mac 打包目标为 arm64，Windows 为 x64。打包输出在 `release/`；macOS 使用 ad-hoc 签名，没有 Developer ID 或公证。macOS 安装版从固定 GitHub 仓库检查正式 Release；开发模式禁用在线更新。对已安装应用运行桌面测试时，将 `CWB_TEST_EXECUTABLE` 指向其可执行文件，随后运行 `npm run test:e2e`；测试使用独立临时资料目录，保留原应用数据。维护者发布流程见[Release 说明](docs/releases.md)。
 
+维护者可在 macOS 双击根目录 `发布新版本.command`：预览远端主分支相对最新正式版的提交，确认后由 GitHub Actions 测试、打包并发布 macOS 新版本。支持 `./发布新版本.command --dry-run` 只读预览；本地未提交和未推送内容不纳入发布。
+
 运行时可用 `CLEVER_WORKBENCH_DATA_DIR` 指定隔离的资料位置。该目录下的 `data/` 包含数据库分代、附件和默认备份目录；日常迁移优先使用应用内完整备份，不直接拼接数据库文件。
 
 ## 添加内置模块

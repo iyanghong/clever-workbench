@@ -8,6 +8,34 @@
 
 Electron 的 `net.fetch` 在手动重定向时会报 `Redirect was cancelled`，不能用 Node.js 的 fetch 测试结果替代原生验证。更新传输先用 `net.request` 取得单跳响应头并终止请求，将 3xx 交给协调器验证。非重定向地址会多一次只读取响应头的 GET；正文由禁止重定向的原生 fetch 流读取，避免将整个 ZIP 排队在主进程内存。两次请求之间若目标行为变化，下载会失败，不能自动跟随。依据：[Electron 原生问题记录](https://github.com/electron/electron/issues/43715)、[ClientRequest API](https://www.electronjs.org/docs/latest/api/client-request)。
 
+## macOS 双击发布
+
+维护者在 Finder 中双击仓库根目录的 **`发布新版本.command`**，终端会读取远端 `origin/master`，列出最新正式 Release 之后的全部提交（包含文档提交），建议新版本号，并展示本地 Git 提交身份。输入一次 `yes` 确认发布计划后，脚本在隔离目录准备版本提交、原子推送 master 和注释 tag，等待 GitHub Actions 完成验证并发布。
+
+本轮自动发布只生成 **macOS Apple Silicon ZIP、DMG 和 SHA256SUMS**。构建在 GitHub 的 macOS runner 上执行，维护者电脑不需要本地打包 Electron，也不需要安装 `gh`。
+
+前提条件：
+
+- 本机安装 Git、curl 和 Node.js 24.15 或更新版本（建议 24 LTS）。双击入口补充常见 Homebrew PATH，并按脚本自身位置定位仓库。
+- 本功能的脚本与工作流已提交并推送到远端 master，GitHub Actions 已启用。
+- 本地 Git 已配置本人 `user.name` 和 `user.email`。提交作者与提交者必须一致，标题和正文使用中文；身份覆盖、缺失或异常时停止，不自动修改原仓库身份。
+- 现有 Git HTTPS 凭据助手已保存具有仓库推送权限的 GitHub 登录。fine-grained token 需要 Contents 写权限，以及用于读取、重试和触发工作流的 Actions 写权限；直接在 Git 凭据助手中配置，不填入脚本或日志。使用 SSH origin 时，推送仍使用原 SSH 配置，API 读取使用本机保存的 GitHub HTTPS 登录。
+
+版本号默认在最新正式版上递增补丁号。已被 tag 占用的版本会跳过，远端应用版本更高时建议不低于该版本的新号；也可输入更高的 `vX.Y.Z`。没有新提交时直接结束。脚本只打包远端已推送内容，本地未提交、未跟踪文件和未推送提交均不纳入；版本准备只修改 `package.json`、`package-lock.json`，当前工作目录和分支保持原状。
+
+可先在终端只读预览：
+
+```sh
+./发布新版本.command --dry-run
+./发布新版本.command --dry-run --version v0.1.5
+```
+
+预览不创建提交、tag、草稿或云端任务。脚本自动复用 HTTPS_PROXY／Git 代理配置，macOS 上也读取已启用的系统 HTTP(S) 代理，不写死代理地址。
+
+每次运行日志位于 `release/publish-logs/`；当前发布状态保存在 Git 元数据目录的 `workbench-release-state.json`。同一仓库已有脚本或云端发布运行时，提示等待并提供任务链接，不自动中断现有任务。发布失败后保留已推送版本与云端日志，重新双击可恢复远端 master 上同一源码的未完成版本，并重跑对应工作流；源码已继续变化则重新规划并使用未占用的更高版本。已公开版本、tag 和资产不会覆盖。
+
+终端关闭或等待超时不表示云端任务已取消，请先通过任务链接确认结果。双击入口在成功或失败后等待回车，便于查看结果。GitHub 的分支保护或权限规则导致推送失败时，按提示处理仓库设置或采用原有维护者流程；脚本不强制推送。
+
 ## 本地验证
 
 使用 Node.js 24 LTS，在 macOS Apple Silicon 上执行。先更新应用和 lockfile 版本（例如 `npm version 0.2.0 --no-git-tag-version`），提交审阅后再发布对应 tag。
@@ -31,7 +59,9 @@ CWB_UPDATE_ZIP="$PWD/release/Clever-Workbench-0.2.0-arm64.zip" npx vitest run te
 
 推送正式版本 tag 会启动 `Publish stable macOS Release`。工作流先校验 tag 与应用版本，运行单元测试、打包、原生包校验及已安装应用桌面测试。全部通过后创建 Draft，上传 ZIP、DMG、SHA256SUMS，通过 Release 数字 ID 读取草稿，核对远程资产名称、大小和上传状态，最后发布为 latest。中途失败保留 Draft，客户端无法发现半成品。私有仓库发布后仍仅对有权限的用户可读。
 
-工作流用 GitHub Actions 自带的短期 token 和 job 级 `contents: write` 权限；客户端不含任何发布令牌。不覆盖已经公开的 Release。修正失败后重跑只允许更新尚未公开的 Draft；已经公开的版本应通过新版本号修复。只有维护者明确准备公开时才推送版本 tag。
+工作流用 GitHub Actions 自带的短期 token 和 job 级 `contents: write` 权限；客户端不含任何发布令牌。源码版本提交来自维护者的本地 Git 账号，Actions 只构建和发布，不创建机器人源码提交。不覆盖已经公开的 Release。修正失败后重跑只允许更新尚未公开的 Draft；已经公开的版本应通过新版本号修复。只有维护者明确准备公开时才推送版本 tag。
+
+发布工作流使用仓库级并发组串行执行，且不取消正在运行的发布。`workflow_dispatch` 的 tag 输入仅用于恢复尚未公开的既有版本。完整历史用于生成中文章节的提交说明：保留提交原始标题和链接，标明基准 Release、业务源码、版本提交及构建记录。发布前逐个核对上传状态、大小和 GitHub 计算的 SHA-256，再下载远程 SHA256SUMS 比对；同一草稿中已匹配的资产可复用，未匹配的本次资产只在草稿阶段替换。
 
 若云端因账单或额度未能启动，可在维护者已授权发布的前提下使用同一 tag 的本机已验证产物。记录本机完整测试、真实包验证、产物来源及云端未运行的原因；先上传 Draft 的完整 ZIP、DMG、SHA256SUMS，重新核对远程大小、上传状态、GitHub 计算的散列和下载回来的校验清单，全部匹配后才发布。此类记录须明确属于人工完成发布，不能将失败或未运行的 Actions 标为通过。
 

@@ -2,10 +2,16 @@ name: Publish stable macOS Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '重试尚未公开的正式版本 tag（vX.Y.Z）'
+        required: true
+        type: string
 permissions:
   contents: read
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.repository }}
   cancel-in-progress: false
 jobs:
   release:
@@ -13,15 +19,21 @@ jobs:
     timeout-minutes: 35
     permissions:
       contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
+      - name: Validate requested tag
+        run: '[[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]'
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
       - name: Verify stable tag matches application version
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
         run: node scripts/prepare-release.mjs "$RELEASE_TAG" --check-version
       - run: npm ci
       - run: npm run setup:electron
@@ -32,8 +44,6 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - name: Validate assets and native bundle
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
         run: |
           node scripts/prepare-release.mjs "$RELEASE_TAG"
           version="${RELEASE_TAG#v}"
@@ -41,6 +51,7 @@ jobs:
           npx vitest run tests/update-download.test.ts
           node scripts/verify-electron-update-extraction.mjs "$CWB_UPDATE_ZIP"
           node scripts/verify-electron-update-transport.mjs "$CWB_UPDATE_ZIP"
+          hdiutil verify "release/Clever-Workbench-$version-arm64.dmg"
           mkdir -p release/installed
           ditto -x -k "$CWB_UPDATE_ZIP" release/installed
           codesign --verify --deep --strict 'release/installed/Clever Workbench.app'
@@ -50,21 +61,7 @@ jobs:
       - name: Create draft, upload complete assets, then publish
         env:
           GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          if gh release view "$RELEASE_TAG" --json isDraft > release/existing.json; then
-            node -e 'if (!JSON.parse(require("fs").readFileSync("release/existing.json")).isDraft) throw Error("Refusing to overwrite a published release")'
-          else
-            gh release create "$RELEASE_TAG" --verify-tag --draft --title "$RELEASE_TAG" --generate-notes
-          fi
-          version="${RELEASE_TAG#v}"
-          gh release upload "$RELEASE_TAG" "release/Clever-Workbench-$version-arm64.zip" "release/Clever-Workbench-$version-arm64.dmg" release/SHA256SUMS --clobber
-          release_id="$(gh release view "$RELEASE_TAG" --json databaseId --jq .databaseId)"
-          [[ "$release_id" =~ ^[1-9][0-9]*$ ]]
-          gh api "repos/$GH_REPO/releases/$release_id" > release/uploaded.json
-          node scripts/verify-release-upload.mjs "$RELEASE_TAG" release/uploaded.json
-          gh release edit "$RELEASE_TAG" --prerelease=false --draft=false --latest
+        run: node scripts/publish-release-cloud.mjs "$RELEASE_TAG"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -73,4 +70,5 @@ jobs:
           path: |
             release/SHA256SUMS
             release/uploaded.json
+            release/verification.json
             test-results/

@@ -11,6 +11,8 @@ test('密码列显隐、当前范围批量展示与整行复制沿用解锁和�
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
+    // This case exercises list and inspector together; CI desktops can clamp native windows.
+    await page.setViewportSize({ width: 1380, height: 850 });
     await page.getByRole('button', { name: '台账', exact: true }).waitFor();
     const ids = await page.evaluate(async () => {
       const api = window.desktop;

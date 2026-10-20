@@ -11,6 +11,8 @@ test('台账资料单条、多选、附账号与编辑保存失败不覆盖剪�
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
+    // This case exercises list and inspector together; narrow navigation is tested separately.
+    await page.setViewportSize({ width: 1380, height: 850 });
     await page.getByRole('button', { name: '台账', exact: true }).waitFor();
     const ids = await page.evaluate(async () => {
       const a = window.desktop;
