@@ -1,0 +1,114 @@
+Window: "CWB 临时验收窗口", App: Clever Workbench.
+0 标准窗口 CWB 临时验收窗口, Secondary Actions: Raise
+	1 container CWB 临时验收窗口
+		2 container
+			3 HTML 内容 Clever Workbench, URL: file:///private/tmp/clever-workbench-native-final-20261020/mac-arm64/Clever%20Workbench.app/Contents/Resources/app.asar/dist/index.html
+				4 container
+					5 图像
+					6 文本 Clever Workbench
+					7 文本 个人工作台
+					8 文本 工作空间
+					9 container 工作空间
+						10 按钮 工作台
+							11 图像
+							12 文本 工作台
+						13 按钮 台账
+							14 图像
+							15 文本 台账
+						16 按钮 工作任务
+							17 图像
+							18 文本 任务
+						19 按钮 文档
+							20 图像
+							21 文本 文档
+						22 按钮 工具
+							23 图像
+							24 文本 工具
+						25 按钮 工作回顾
+							26 图像
+							27 文本 工作回顾
+					28 container 系统加密保护
+						29 图像
+						30 文本 系统加密保护
+					31 text 本地工作空间 离线可用
+					32 container 辅助功能
+						33 按钮 项目档案
+							34 图像
+							35 文本 项目档案
+						36 按钮 回收站
+							37 图像
+							38 文本 回收站
+						39 按钮 设置
+							40 图像
+							41 文本 设置
+					42 按钮 全局搜索
+						43 图像
+						44 文本 搜索系统、账号、任务与文档
+						45 container
+							46 text ⌘  K
+					47 按钮 快速新建
+						48 图像
+						49 文本 新建
+					50 container
+						51 图像
+						52 按钮 切换系统
+							53 文本 原生交互验收
+							54 图像
+						55 按钮 系统信息
+						56 按钮 相关工作
+						57 按钮 导出资料
+						58 按钮 Description: 设为常用系统, Help: 设为常用
+							59 图像
+						60 按钮 新增系统
+							61 图像
+							62 文本 新增系统
+					63 container 系统资料类型
+						64 切换按钮 访问入口, Value: 1
+						65 切换按钮 账号, Value: 0
+						66 切换按钮 服务器, Value: 0
+						67 切换按钮 数据库／中间件, Value: 0
+						68 切换按钮 应用部署, Value: 0
+						69 切换按钮 运行维护, Value: 0
+						70 切换按钮 文档, Value: 0
+					71 container
+						72 图像
+						73 文本栏 (settable) Description: 搜索台账清单, Placeholder: 搜索访问入口…
+					74 弹出式按钮 Description: 台账环境筛选, Value: 全部环境
+						75 (selected) 全部环境
+					76 弹出式按钮 Description: 台账标签筛选, Value: 全部标签
+						77 (selected) 全部标签
+					78 按钮 粘贴表格
+					79 按钮 新增访问入口
+						80 图像
+						81 文本 新增
+						82 文本 访问入口
+					83 container
+						84 text 0  条记录
+						85 复选框 (disabled) Description: 选择当前资料结果, Value: 0
+						86 text 选择当前结果 已选  0  项
+						87 按钮 (disabled) 复制所选资料
+						88 按钮 (disabled) 所选资料包含账号…
+						89 表格
+							90 row
+								91 列标题
+									92 文本 名称
+								93 列标题
+									94 文本 地址／信息
+								95 列标题
+									96 文本 说明
+								97 列标题
+									98 文本 快捷操作
+						99 标题 这里还没有符合条件的记录, Value: 3
+							100 文本 这里还没有符合条件的记录
+						101 文本 可快速新建，或调整环境与标签筛选。
+	102 关闭按钮
+	103 全屏幕按钮 Help: 此按钮也可以执行缩放窗口的操作, Secondary Actions: 缩放窗口
+	104 最小化按钮
+105 menu bar
+	106 Clever Workbench
+	107 文件
+	108 编辑
+	109 视图
+	110 窗口
+
+The focused UI element is 78 按钮 粘贴表格
