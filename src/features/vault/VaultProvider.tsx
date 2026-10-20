@@ -5,6 +5,8 @@ import { Dialog } from '../../shared/Dialog';
 type VaultContextValue = {
   status: VaultStatus;
   ensureUnlocked: () => Promise<boolean>;
+  ensureBackup: (change?: boolean) => Promise<boolean>;
+  enableMaster: () => Promise<boolean>;
   lock: () => Promise<void>;
 };
 const VaultContext = createContext<VaultContextValue | null>(null);
@@ -21,10 +23,20 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     [confirmation, setConfirmation] = useState(''),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
+  const [backupOpen, setBackupOpen] = useState(false),
+    [backupPassword, setBackupPassword] = useState(''),
+    [backupConfirmation, setBackupConfirmation] = useState(''),
+    [backupError, setBackupError] = useState(''),
+    [backupBusy, setBackupBusy] = useState(false);
   const request = useRef<{ promise: Promise<boolean>; resolve: (value: boolean) => void } | null>(
       null,
     ),
     attempt = useRef(0);
+  const backupRequest = useRef<{
+    promise: Promise<boolean>;
+    resolve: (value: boolean) => void;
+  } | null>(null);
+  const backupAttempt = useRef(0);
   function finish(value: boolean) {
     request.current?.resolve(value);
     request.current = null;
@@ -32,6 +44,14 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     setPassword('');
     setConfirmation('');
     setError('');
+  }
+  function finishBackup(value: boolean) {
+    backupRequest.current?.resolve(value);
+    backupRequest.current = null;
+    setBackupOpen(false);
+    setBackupPassword('');
+    setBackupConfirmation('');
+    setBackupError('');
   }
   useEffect(() => {
     void window.desktop
@@ -44,6 +64,9 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         attempt.current++;
         finish(false);
         setBusy(false);
+        backupAttempt.current++;
+        finishBackup(false);
+        setBackupBusy(false);
       }
     });
   }, []);
@@ -65,6 +88,14 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     const current = await window.desktop.vaultStatus();
     setStatus(current);
     if (current.unlocked) return true;
+    if (current.mode === 'system') {
+      await window.desktop.unlockSystemVault();
+      setStatus(await window.desktop.vaultStatus());
+      return true;
+    }
+    return requestPassword();
+  }
+  function requestPassword() {
     if (request.current) return request.current.promise;
     let resolve!: (value: boolean) => void;
     const promise = new Promise<boolean>((done) => {
@@ -74,6 +105,53 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     setOpen(true);
     setError('');
     return promise;
+  }
+  async function enableMaster() {
+    const current = await window.desktop.vaultStatus();
+    setStatus(current);
+    if (current.initialized) return true;
+    return requestPassword();
+  }
+  async function ensureBackup(change = false) {
+    const current = await window.desktop.vaultStatus();
+    setStatus(current);
+    if (current.backupConfigured && !change) return true;
+    if (!(await ensureUnlocked())) return false;
+    if (backupRequest.current) return backupRequest.current.promise;
+    let resolve!: (value: boolean) => void;
+    const promise = new Promise<boolean>((done) => {
+      resolve = done;
+    });
+    backupRequest.current = { promise, resolve };
+    setBackupOpen(true);
+    return promise;
+  }
+  async function cancelBackupSetup() {
+    backupAttempt.current++;
+    finishBackup(false);
+    setBackupBusy(false);
+    await window.desktop.lockVault();
+  }
+  async function saveBackupPassword() {
+    if (backupBusy) return;
+    if (backupPassword !== backupConfirmation) {
+      setBackupError('两次备份密码不一致。');
+      return;
+    }
+    const attempt = ++backupAttempt.current;
+    setBackupBusy(true);
+    setBackupError('');
+    try {
+      await window.desktop.configureBackup(backupPassword);
+      if (attempt !== backupAttempt.current) return;
+      setStatus(await window.desktop.vaultStatus());
+      finishBackup(true);
+    } catch (cause) {
+      if (attempt === backupAttempt.current)
+        setBackupError(String(cause).replace(/^Error:.*?Error: /, ''));
+    } finally {
+      if (attempt === backupAttempt.current) setBackupBusy(false);
+    }
   }
   async function cancel() {
     attempt.current++;
@@ -104,7 +182,13 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   }
   return (
     <VaultContext.Provider
-      value={{ status, ensureUnlocked, lock: () => window.desktop.lockVault() }}
+      value={{
+        status,
+        ensureUnlocked,
+        ensureBackup,
+        enableMaster,
+        lock: () => window.desktop.lockVault(),
+      }}
     >
       {children}
       {open && (
@@ -116,7 +200,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           <p>
             {status.initialized
               ? '解锁后可以访问秘密。普通台账与文档始终可用。'
-              : '使用至少 6 个字符的主密码保护秘密与完整备份。忘记主密码且没有可解锁副本时，秘密无法恢复。'}
+              : '主密码用于本机凭据解锁，至少 6 个字符。备份密码单独管理。忘记主密码时可用完整备份恢复凭据。'}
           </p>
           <label>
             主密码
@@ -161,11 +245,66 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           </div>
         </Dialog>
       )}
+      {backupOpen && (
+        <Dialog
+          title={status.backupConfigured ? '更改备份密码' : '设置备份密码'}
+          onClose={() => void cancelBackupSetup()}
+          error={backupError}
+        >
+          <p>
+            备份密码用于恢复全部资料，日常使用和自动备份无需输入。更改后仅影响新备份，旧备份仍使用生成时的密码。
+          </p>
+          <label>
+            备份密码
+            <input
+              type="password"
+              aria-label="备份密码"
+              autoFocus
+              autoComplete="new-password"
+              value={backupPassword}
+              onChange={(event) => setBackupPassword(event.target.value)}
+            />
+          </label>
+          <label>
+            确认备份密码
+            <input
+              type="password"
+              aria-label="确认备份密码"
+              autoComplete="new-password"
+              value={backupConfirmation}
+              onChange={(event) => setBackupConfirmation(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.nativeEvent.isComposing)
+                  void saveBackupPassword();
+              }}
+            />
+          </label>
+          <div className="modal-actions">
+            <button className="secondary-button" onClick={() => void cancelBackupSetup()}>
+              取消
+            </button>
+            <button
+              className="primary-button"
+              disabled={backupBusy || backupPassword.length < 6}
+              onClick={() => void saveBackupPassword()}
+            >
+              {backupBusy ? '正在保护备份…' : '保存并继续'}
+            </button>
+          </div>
+        </Dialog>
+      )}
     </VaultContext.Provider>
   );
 }
 export function VaultControl() {
   const { status, lock, ensureUnlocked } = useVault();
+  if (status.mode === 'system')
+    return (
+      <div className="vault-control" aria-label="系统加密保护">
+        <LockKeyIcon size={15} />
+        <span>系统加密保护</span>
+      </div>
+    );
   return (
     <button
       className="vault-control"

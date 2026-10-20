@@ -2,34 +2,20 @@
   min-width: 0;
 }
 .tools-content {
-  padding: 34px 38px 54px;
+  padding: var(--page-padding);
   overflow: auto;
   flex: 1;
   min-height: 0;
 }
-.tools-heading {
-  margin-bottom: 26px;
-}
-.tools-heading h1 {
-  font-size: 28px;
-  letter-spacing: -0.5px;
-  margin: 8px 0 10px;
-}
-.tools-heading p {
-  color: var(--secondary);
-  font-size: 14px;
-  line-height: 1.7;
-  margin: 0;
-}
 .tool-directory {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-  gap: 18px;
+  gap: var(--space-5);
 }
 .tool-card {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 24px;
+  border: var(--border);
+  border-radius: var(--radius-panel);
+  padding: var(--space-6);
   background: var(--panel);
 }
 .tool-card-top {
@@ -39,31 +25,31 @@
   color: var(--accent);
 }
 .tool-card h2 {
-  font-size: 18px;
-  margin: 22px 0 9px;
+  font-size: var(--font-subheading);
+  margin: var(--space-6) 0 var(--space-2);
 }
 .tool-card p {
   color: var(--secondary);
-  line-height: 1.7;
+  line-height: var(--leading-reading);
   min-height: 48px;
-  margin: 0 0 22px;
-  font-size: 13px;
+  margin: 0 0 var(--space-6);
+  font-size: var(--font-body);
 }
 .tool-card .text-button {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
 }
 .tool-tabs {
   display: flex;
-  gap: 5px;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 28px;
+  gap: var(--space-1);
+  border-bottom: var(--border);
+  margin-bottom: var(--space-6);
   overflow-x: auto;
 }
 .tool-tabs button {
   flex-shrink: 0;
-  padding: 12px 17px;
+  padding: var(--space-3) var(--space-4);
   background: transparent;
   border: 0;
   border-bottom: 2px solid transparent;
@@ -78,7 +64,7 @@
 .tool-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 240px;
-  gap: 32px;
+  gap: var(--space-8);
   align-items: start;
 }
 .tool-form {
@@ -96,10 +82,10 @@
 .tool-field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  font-size: 13px;
+  gap: var(--space-2);
+  font-size: var(--font-body);
   font-weight: 500;
-  margin: 0 0 18px;
+  margin: 0 0 var(--space-5);
   min-width: 0;
 }
 .tool-field > label {
@@ -108,14 +94,6 @@
 .tool-field :is(input:not([type='checkbox']), select) {
   width: 100%;
   min-width: 0;
-  height: 38px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 7px 10px;
-  background: var(--panel);
-  color: var(--text);
-  font: inherit;
-  font-weight: 400;
 }
 .tool-field :is(input, select):focus-visible {
   outline: 2px solid var(--accent);
@@ -123,7 +101,7 @@
 }
 .tool-path {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
 }
 .tool-path input {
@@ -139,22 +117,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: var(--space-2);
 }
 .tool-fields-two {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: var(--space-4);
 }
 .tool-hint,
 .tool-field small {
-  font-size: 12px;
-  line-height: 1.7;
+  font-size: var(--font-small);
+  line-height: var(--leading-reading);
   color: var(--secondary);
   font-weight: 400;
 }
 .tool-hint {
-  margin: -7px 0 19px;
+  margin: -7px 0 var(--space-5);
 }
 .tool-field .tool-hint {
   margin: 0;
@@ -162,67 +140,67 @@
 .tool-inline {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
 }
 .tool-part-size {
   max-width: 220px;
-  margin-top: 22px;
+  margin-top: var(--space-6);
 }
 .tool-part-size input {
   max-width: 125px;
 }
 .tool-run {
-  border-top: 1px solid var(--line);
-  padding-top: 20px;
+  border-top: var(--border);
+  padding-top: var(--space-5);
   display: flex;
-  gap: 16px;
+  gap: var(--space-4);
   align-items: center;
   flex-wrap: wrap;
 }
 .tool-run span {
-  font-size: 12px;
+  font-size: var(--font-small);
   color: var(--secondary);
 }
 .tool-status {
-  border-left: 1px solid var(--line);
-  padding: 2px 0 0 25px;
+  border-left: var(--border);
+  padding: 2px 0 0 var(--space-6);
   min-width: 0;
   position: sticky;
   top: 0;
 }
 .tool-status h2 {
-  font-size: 15px;
-  margin: 0 0 18px;
+  font-size: var(--font-reading);
+  margin: 0 0 var(--space-5);
 }
 .tool-status p {
-  font-size: 12px;
+  font-size: var(--font-small);
   color: var(--secondary);
-  line-height: 1.8;
+  line-height: var(--leading-reading);
 }
 .tool-status-icon {
   color: var(--secondary);
   opacity: 0.6;
-  margin-top: 10px;
+  margin-top: var(--space-3);
 }
 .tool-status-note {
-  margin-top: 30px;
-  padding-top: 15px;
-  border-top: 1px solid var(--line);
+  margin-top: var(--space-8);
+  padding-top: var(--space-4);
+  border-top: var(--border);
 }
 .tool-status-note p {
-  margin: 5px 0;
+  margin: var(--space-1) 0;
 }
 .tool-progress strong {
-  font-size: 13px;
+  font-size: var(--font-body);
 }
 .tool-progress progress {
   width: 100%;
   height: 8px;
   accent-color: var(--accent);
-  margin: 13px 0 7px;
+  margin: var(--space-3) 0 var(--space-2);
 }
 .tool-progress small {
-  font-size: 11px;
+  font-size: var(--font-caption);
   color: var(--secondary);
 }
 .tool-progress p {
@@ -233,7 +211,7 @@
 .tool-result {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-3);
   align-items: start;
   color: var(--accent);
 }
@@ -242,46 +220,46 @@
 }
 .tool-result code {
   color: var(--secondary);
-  font-size: 11px;
+  font-size: var(--font-caption);
   overflow-wrap: anywhere;
-  line-height: 1.7;
-  margin-bottom: 10px;
+  line-height: var(--leading-reading);
+  margin-bottom: var(--space-3);
 }
 .tool-error {
-  color: var(--danger, #bf3333);
+  color: var(--danger);
   border-left: 3px solid currentColor;
-  padding: 10px 13px;
-  background: color-mix(in srgb, var(--danger, #bf3333) 7%, transparent);
-  font-size: 13px;
-  line-height: 1.7;
+  padding: var(--space-3) var(--space-3);
+  background: color-mix(in srgb, var(--danger) 7%, transparent);
+  font-size: var(--font-body);
+  line-height: var(--leading-reading);
   overflow-wrap: anywhere;
 }
 .tool-section-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
 }
 .tool-section-title h2 {
-  font-size: 15px;
+  font-size: var(--font-reading);
   margin: 0;
 }
 .tool-git,
 .tool-paste {
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  padding: 22px 0;
-  margin: 22px 0;
+  border-top: var(--border);
+  border-bottom: var(--border);
+  padding: var(--space-6) 0;
+  margin: var(--space-6) 0;
 }
 .tool-date-presets,
 .tool-selection-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin: 14px 0;
-  font-size: 12px;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  font-size: var(--font-small);
 }
 .tool-selection-actions span {
   color: var(--secondary);
@@ -290,13 +268,13 @@
 .tool-commits {
   max-height: 300px;
   overflow: auto;
-  margin: 15px 0;
+  margin: var(--space-4) 0;
 }
 .tool-commit {
   display: flex;
-  gap: 11px;
-  padding: 12px 3px;
-  border-bottom: 1px solid var(--line);
+  gap: var(--space-3);
+  padding: var(--space-3) 3px;
+  border-bottom: var(--border);
   cursor: pointer;
   align-items: start;
 }
@@ -309,47 +287,47 @@
 }
 .tool-commit strong {
   display: block;
-  font-size: 12px;
+  font-size: var(--font-small);
   font-weight: 500;
   overflow-wrap: anywhere;
-  line-height: 1.5;
+  line-height: var(--leading-normal);
 }
 .tool-commit small {
   display: block;
   color: var(--secondary);
-  font-size: 11px;
-  margin-top: 5px;
+  font-size: var(--font-caption);
+  margin-top: var(--space-1);
 }
 .tool-preview {
-  margin-top: 20px;
-  font-size: 12px;
+  margin-top: var(--space-5);
+  font-size: var(--font-small);
 }
 .tool-preview h3 {
-  font-size: 13px;
+  font-size: var(--font-body);
 }
 .tool-preview ul {
   max-height: 170px;
   overflow: auto;
-  padding-left: 20px;
+  padding-left: var(--space-5);
   color: var(--secondary);
   overflow-wrap: anywhere;
-  line-height: 1.8;
+  line-height: var(--leading-reading);
 }
 .tool-preview summary {
   cursor: pointer;
-  padding: 5px 0;
+  padding: var(--space-1) 0;
 }
 .tool-parts {
-  margin: 18px 0;
+  margin: var(--space-5) 0;
 }
 .tool-paste-target {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 15px 17px;
-  margin-bottom: 18px;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4);
+  margin-bottom: var(--space-5);
   border: 1px dashed var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: var(--hover);
   cursor: text;
 }
@@ -359,62 +337,62 @@
   border-color: var(--accent);
 }
 .tool-paste-target strong {
-  font-size: 13px;
+  font-size: var(--font-body);
   font-weight: 500;
 }
 .tool-paste-target span {
   display: block;
-  margin-top: 5px;
-  font-size: 12px;
+  margin-top: var(--space-1);
+  font-size: var(--font-small);
   color: var(--secondary);
 }
 .tool-part {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 0;
-  border-top: 1px solid var(--line);
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  border-top: var(--border);
 }
 .tool-part > div {
   flex: 1;
   min-width: 0;
 }
 .tool-part strong {
-  font-size: 13px;
+  font-size: var(--font-body);
 }
 .tool-part small {
-  font-size: 11px;
+  font-size: var(--font-caption);
   color: var(--secondary);
-  margin-left: 10px;
+  margin-left: var(--space-3);
 }
 .tool-part code {
   display: block;
-  font-size: 10px;
+  font-size: var(--font-caption);
   color: var(--secondary);
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-top: 7px;
+  margin-top: var(--space-2);
 }
 .tool-ready {
   color: var(--accent);
-  font-size: 12px;
+  font-size: var(--font-small);
 }
 @media (max-width: 1120px) {
   .tools-content {
-    padding: 26px 25px 42px;
+    padding: var(--space-6) var(--space-6) var(--space-10);
   }
   .tool-workspace {
     grid-template-columns: minmax(0, 1fr);
-    gap: 28px;
+    gap: var(--space-6);
   }
   .tool-status {
     position: static;
     border-left: 0;
-    border-top: 1px solid var(--line);
-    padding: 22px 0 0;
+    border-top: var(--border);
+    padding: var(--space-6) 0 0;
   }
   .tool-status-note {
-    margin-top: 20px;
+    margin-top: var(--space-5);
   }
 }
 @media (max-width: 850px) {
@@ -423,6 +401,6 @@
     gap: 0;
   }
   .tool-tabs button {
-    padding: 12px;
+    padding: var(--space-3);
   }
 }

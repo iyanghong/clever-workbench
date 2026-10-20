@@ -214,7 +214,10 @@ export function Timeline({
                   title={`${t.title}\n${dateLabel(t.startedAt, true)} → ${t.completedAt ? dateLabel(t.completedAt, true) : '截至现在'}`}
                 >
                   <span className="timeline-name">
-                    <span className="dot" style={{ background: p ? '#007aff' : '#92929a' }} />
+                    <span
+                      className="dot"
+                      style={{ background: p ? 'var(--accent)' : 'var(--muted)' }}
+                    />
                     {t.title}
                   </span>
                   <span
@@ -232,7 +235,7 @@ export function Timeline({
                       style={{
                         left: `${left}%`,
                         width: `max(9px, ${Math.max(0, right - left)}%)`,
-                        backgroundColor: p ? '#007aff' : '#7c8799',
+                        backgroundColor: p ? 'var(--accent-fill)' : 'var(--secondary)',
                       }}
                     >
                       {right - left > 16 ? <span>{p?.name ?? '未关联系统'}</span> : null}

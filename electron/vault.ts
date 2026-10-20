@@ -22,6 +22,30 @@ import {
   validateSealed,
   type VaultConfig,
 } from './vault-crypto';
+import {
+  backupProtection,
+  newBackupProtection,
+  portableProtection,
+  recoverBackupKey,
+  validateBackupConfig,
+  type BackupConfig,
+} from './backup-crypto';
+import {
+  protectSystemKey,
+  recoverSystemKey,
+  validateSystemProtection,
+  type SystemKeyStore,
+  type SystemProtection,
+} from './system-protection';
+
+export type RestoreProtection = {
+  apply: (
+    db: DatabaseSync,
+    sourceKey: Buffer,
+    backup: BackupConfig,
+  ) => { key: Buffer; backup: BackupConfig };
+  dispose: () => void;
+};
 
 export function initializeVault(db: DatabaseSync) {
   db.exec(`CREATE TABLE IF NOT EXISTS secrets(
@@ -31,9 +55,12 @@ export function initializeVault(db: DatabaseSync) {
 }
 export function validateVault(db: DatabaseSync) {
   const row = db.prepare("SELECT value FROM preferences WHERE key='vaultConfig'").get();
-  if (row) validateConfig(JSON.parse(String(row.value)));
+  const system = db.prepare("SELECT value FROM preferences WHERE key='systemProtection'").get();
+  if (row) validateBackupConfig(JSON.parse(String(row.value)));
+  if (system) validateSystemProtection(JSON.parse(String(system.value)));
+  if (row && system) throw new Error('凭据保护方式冲突。');
   const secrets = db.prepare('SELECT * FROM secrets').all();
-  if (secrets.length && !row) throw new Error('秘密缺少主密码保护材料。');
+  if (secrets.length && !row && !system) throw new Error('秘密缺少保护材料。');
   for (const item of secrets) {
     if (
       !['password', 'token', 'privateKey'].includes(String(item.kind)) ||
@@ -47,20 +74,36 @@ export function validateVault(db: DatabaseSync) {
 }
 const secretAad = (accountId: string, kind: SecretKind) =>
   `clever-workbench/secret/1/${accountId}/${kind}`;
+function reencryptSecrets(db: DatabaseSync, sourceKey: Buffer, targetKey: Buffer) {
+  for (const row of db.prepare('SELECT accountId,kind,value FROM secrets').all()) {
+    const aad = secretAad(String(row.accountId), row.kind as SecretKind);
+    const plain = unseal(JSON.parse(String(row.value)), sourceKey, aad, 256_000);
+    try {
+      db.prepare('UPDATE secrets SET value=? WHERE accountId=? AND kind=?').run(
+        JSON.stringify(seal(plain, targetKey, aad)),
+        row.accountId,
+        row.kind,
+      );
+    } finally {
+      plain.fill(0);
+    }
+  }
+}
 export async function verifyVaultIntegrity(
   db: DatabaseSync,
   password: unknown,
-  expected: VaultConfig,
+  expected: BackupConfig,
 ) {
   validateVault(db);
   const row = db.prepare("SELECT value FROM preferences WHERE key='vaultConfig'").get();
-  if (!row) return; // A recovery copy of an uninitialized workspace has no secrets.
-  const config = JSON.parse(String(row.value)) as VaultConfig;
-  if (!isDeepStrictEqual(config, expected)) throw new Error('备份内外的秘密保护材料不一致。');
-  const wrapping = await derive(password, config.kdf);
+  if (row && !isDeepStrictEqual(JSON.parse(String(row.value)), expected))
+    throw new Error('备份内外的秘密保护材料不一致。');
+  const backup = db.prepare("SELECT value FROM preferences WHERE key='backupConfig'").get();
+  if (backup && !isDeepStrictEqual(JSON.parse(String(backup.value)), expected))
+    throw new Error('备份内外的恢复保护材料不一致。');
   let key: Buffer | undefined;
   try {
-    key = unseal(config.key, wrapping, keyAad(config), 32);
+    key = await recoverBackupKey(expected, password);
     if (key.length !== 32) throw new Error();
     for (const secret of db.prepare('SELECT accountId,kind,value FROM secrets').iterate()) {
       const bytes = unseal(
@@ -71,10 +114,10 @@ export async function verifyVaultIntegrity(
       );
       bytes.fill(0);
     }
+    return Buffer.from(key);
   } catch {
     throw new Error('备份中的秘密保护材料或密文校验失败，当前资料未修改。');
   } finally {
-    wrapping.fill(0);
     key?.fill(0);
   }
 }
@@ -89,13 +132,46 @@ export class Vault {
   constructor(
     private store: Store,
     private onStatus: (status: VaultStatus) => void = () => {},
+    private system?: SystemKeyStore,
   ) {
     this.initialized = store.get('vaultConfig', null) !== null;
+    if (!store.get('localProtectionVersion', null)) {
+      const legacy = store.get<VaultConfig | null>('vaultConfig', null);
+      if (legacy || system) {
+        store.db.exec('BEGIN IMMEDIATE');
+        try {
+          if (legacy) store.set('backupConfig', legacy);
+          store.set('localProtectionVersion', 2);
+          store.markChanged();
+          store.db.exec('COMMIT');
+        } catch (cause) {
+          store.db.exec('ROLLBACK');
+          throw cause;
+        }
+      }
+    }
   }
   status(): VaultStatus {
     this.checkIdle();
     this.initialized = this.store.get('vaultConfig', null) !== null;
-    return { initialized: this.initialized, unlocked: this.key !== null };
+    return {
+      initialized: this.initialized,
+      unlocked: this.key !== null,
+      mode: this.mode(),
+      backupConfigured: backupProtection(this.store.db) !== null,
+      systemAvailable: this.system?.available() ?? false,
+    };
+  }
+  private mode(): NonNullable<VaultStatus['mode']> {
+    if (this.store.get('vaultConfig', null)) return 'password';
+    return this.system || this.store.get('systemProtection', null) ? 'system' : 'unconfigured';
+  }
+  private currentProtectionId() {
+    return (
+      this.store.get<VaultConfig | null>('vaultConfig', null)?.id ??
+      this.store.get<SystemProtection | null>('systemProtection', null)?.id ??
+      null
+    );
   }
   config(): VaultConfig {
     const config = this.store.get<unknown>('vaultConfig', null);
@@ -108,14 +184,14 @@ export class Vault {
     this.key = null;
     this.dataGeneration = null;
     this.protectionId = null;
-    this.onStatus({ initialized: this.initialized, unlocked: false });
+    if (this.store.db.isOpen) this.onStatus(this.status());
   }
   checkIdle() {
     if (
       this.key &&
       (Date.now() - this.lastActivity >= 15 * 60_000 ||
         this.dataGeneration !== this.store.generation ||
-        this.protectionId !== this.store.get<VaultConfig | null>('vaultConfig', null)?.id)
+        this.protectionId !== this.currentProtectionId())
     )
       this.lock();
   }
@@ -125,9 +201,97 @@ export class Vault {
   }
   private requireKey() {
     this.checkIdle();
+    if (!this.key && this.mode() === 'system') this.unlockSystem();
     if (!this.key) throw new Error('请先解锁秘密。');
     this.lastActivity = Date.now();
     return this.key;
+  }
+  unlockSystem() {
+    if (this.mode() !== 'system') throw new Error('当前凭据需要使用主密码解锁。');
+    const current = this.store.get<SystemProtection | null>('systemProtection', null);
+    if (!current && this.store.db.prepare('SELECT 1 FROM secrets LIMIT 1').get())
+      throw new Error('秘密缺少保护材料，请从完整备份恢复。');
+    let key: Buffer | undefined;
+    try {
+      key = current ? recoverSystemKey(current, this.system) : randomBytes(32);
+      const config = current ?? protectSystemKey(key, this.system);
+      if (!current) {
+        this.store.db.exec('BEGIN IMMEDIATE');
+        try {
+          this.store.set('systemProtection', config);
+          this.store.set('localProtectionVersion', 2);
+          this.store.markChanged();
+          this.store.db.exec('COMMIT');
+        } catch (cause) {
+          this.store.db.exec('ROLLBACK');
+          throw cause;
+        }
+      }
+      this.generation++;
+      this.key?.fill(0);
+      this.key = Buffer.from(key);
+      this.dataGeneration = this.store.generation;
+      this.protectionId = config.id;
+      this.lastActivity = Date.now();
+      this.onStatus(this.status());
+    } finally {
+      key?.fill(0);
+    }
+  }
+  async configureBackup(password: unknown) {
+    const key = Buffer.from(this.requireKey());
+    try {
+      await this.exclusive(async (assertCurrent) => {
+        const protection = await newBackupProtection(password, key);
+        assertCurrent();
+        this.store.db.exec('BEGIN IMMEDIATE');
+        try {
+          this.store.set('backupConfig', protection);
+          this.store.markChanged();
+          this.store.db.exec('COMMIT');
+        } catch (cause) {
+          this.store.db.exec('ROLLBACK');
+          throw cause;
+        }
+        this.onStatus(this.status());
+      });
+    } finally {
+      key.fill(0);
+    }
+  }
+  recoveryProtection(backup: BackupConfig) {
+    return portableProtection(backup, this.requireKey());
+  }
+  prepareRestore(): RestoreProtection {
+    const current = this.mode() === 'password' ? this.config() : null;
+    const targetKey = current ? Buffer.from(this.requireKey()) : null;
+    const generation = this.store.generation;
+    return {
+      apply: (db, sourceKey, backup) => {
+        if (this.store.generation !== generation) throw new Error('资料已切换，请重新预检备份。');
+        const set = (name: string, value: unknown) =>
+          db
+            .prepare(
+              'INSERT INTO preferences(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+            )
+            .run(name, JSON.stringify(value));
+        let restoredBackup = backup;
+        if (current && targetKey) {
+          reencryptSecrets(db, sourceKey, targetKey);
+          set('vaultConfig', current);
+          db.prepare("DELETE FROM preferences WHERE key='systemProtection'").run();
+          restoredBackup = portableProtection(backup, targetKey);
+          set('backupConfig', restoredBackup);
+        } else {
+          set('systemProtection', protectSystemKey(sourceKey, this.system));
+          db.prepare("DELETE FROM preferences WHERE key='vaultConfig'").run();
+          set('backupConfig', backup);
+        }
+        set('localProtectionVersion', 2);
+        return { key: Buffer.from(targetKey ?? sourceKey), backup: restoredBackup };
+      },
+      dispose: () => targetKey?.fill(0),
+    };
   }
   authorizeSecretOperation() {
     this.requireKey();
@@ -147,51 +311,108 @@ export class Vault {
       throw new Error('秘密目标无效。');
     this.store.ledger.account(accountId);
   }
-  private async exclusive(operation: (assertCurrent: () => void) => Promise<void>) {
-    if (this.busy) throw new Error('正在处理主密码，请稍后再试。');
+  protectionGuard() {
     this.checkIdle();
-    this.busy = true;
     const generation = this.generation;
     const dataGeneration = this.store.generation;
-    const protectionId = this.store.get<VaultConfig | null>('vaultConfig', null)?.id;
+    const protectionId = this.currentProtectionId();
+    return () => {
+      if (
+        generation !== this.generation ||
+        dataGeneration !== this.store.generation ||
+        protectionId !== this.currentProtectionId()
+      )
+        throw new Error('操作已取消，请重新解锁。');
+    };
+  }
+  private async exclusive(operation: (assertCurrent: () => void) => Promise<void>) {
+    if (this.busy) throw new Error('正在处理凭据保护，请稍后再试。');
+    const assertCurrent = this.protectionGuard();
+    this.busy = true;
     try {
-      await operation(() => {
-        if (
-          generation !== this.generation ||
-          dataGeneration !== this.store.generation ||
-          protectionId !== this.store.get<VaultConfig | null>('vaultConfig', null)?.id
-        )
-          throw new Error('操作已取消，请重新解锁。');
-      });
+      await operation(assertCurrent);
     } finally {
       this.busy = false;
     }
   }
   async initialize(password: unknown) {
-    return this.exclusive(async (assertCurrent) => {
-      if (this.status().initialized) throw new Error('主密码已设置，请解锁。');
-      if (this.store.db.prepare('SELECT 1 FROM secrets LIMIT 1').get())
-        throw new Error('秘密缺少保护材料，请从完整备份恢复。');
-      const key = randomBytes(32);
+    if (this.status().initialized) throw new Error('主密码已设置，请解锁。');
+    const previous = this.store.get('systemProtection', null)
+      ? Buffer.from(this.requireKey())
+      : null;
+    if (!previous && this.store.db.prepare('SELECT 1 FROM secrets LIMIT 1').get())
+      throw new Error('秘密缺少保护材料，请从完整备份恢复。');
+    try {
+      await this.exclusive(async (assertCurrent) => {
+        const backup = backupProtection(this.store.db);
+        const key = randomBytes(32);
+        try {
+          const config = await newProtection(password, key);
+          assertCurrent();
+          this.store.db.exec('BEGIN IMMEDIATE');
+          try {
+            if (previous) reencryptSecrets(this.store.db, previous, key);
+            this.store.set('vaultConfig', config);
+            if (backup) this.store.set('backupConfig', portableProtection(backup, key));
+            else if (!this.store.get('localProtectionVersion', null))
+              this.store.set('backupConfig', config);
+            this.store.set('localProtectionVersion', 2);
+            this.store.db.prepare("DELETE FROM preferences WHERE key='systemProtection'").run();
+            this.store.markChanged();
+            this.store.db.exec('COMMIT');
+          } catch (cause) {
+            this.store.db.exec('ROLLBACK');
+            throw cause;
+          }
+          this.generation++;
+          this.key?.fill(0);
+          this.key = Buffer.from(key);
+          this.dataGeneration = this.store.generation;
+          this.protectionId = config.id;
+          this.lastActivity = Date.now();
+          this.onStatus(this.status());
+        } finally {
+          key.fill(0);
+        }
+      });
+    } finally {
+      previous?.fill(0);
+    }
+  }
+  async disableMaster(password: unknown) {
+    await this.exclusive(async (assertCurrent) => {
+      const current = this.config(),
+        wrapping = await derive(password, current.kdf);
+      let previous: Buffer | undefined, next: Buffer | undefined;
       try {
-        const config = await newProtection(password, key);
+        try {
+          previous = unseal(current.key, wrapping, keyAad(current), 32);
+        } catch {
+          throw new Error('当前主密码错误或保护材料损坏。');
+        }
+        if (previous.length !== 32) throw new Error('主密码保护材料无效。');
         assertCurrent();
+        next = randomBytes(32);
+        const system = protectSystemKey(next, this.system);
+        const backup = backupProtection(this.store.db);
         this.store.db.exec('BEGIN IMMEDIATE');
         try {
-          this.store.set('vaultConfig', config);
+          reencryptSecrets(this.store.db, previous, next);
+          this.store.set('systemProtection', system);
+          this.store.db.prepare("DELETE FROM preferences WHERE key='vaultConfig'").run();
+          if (backup) this.store.set('backupConfig', portableProtection(backup, next));
+          this.store.set('localProtectionVersion', 2);
           this.store.markChanged();
           this.store.db.exec('COMMIT');
         } catch (cause) {
           this.store.db.exec('ROLLBACK');
           throw cause;
         }
-        this.key = Buffer.from(key);
-        this.dataGeneration = this.store.generation;
-        this.protectionId = config.id;
-        this.lastActivity = Date.now();
-        this.onStatus(this.status());
+        this.lock();
       } finally {
-        key.fill(0);
+        wrapping.fill(0);
+        previous?.fill(0);
+        next?.fill(0);
       }
     });
   }
@@ -223,6 +444,7 @@ export class Vault {
   async rotate(currentPassword: unknown, nextPassword: unknown) {
     return this.exclusive(async (assertCurrent) => {
       const current = this.config();
+      const backup = backupProtection(this.store.db);
       const wrapping = await derive(currentPassword, current.kdf);
       let oldKey: Buffer | undefined, nextKey: Buffer | undefined;
       try {
@@ -238,24 +460,9 @@ export class Vault {
         assertCurrent();
         this.store.db.exec('BEGIN IMMEDIATE');
         try {
-          for (const row of this.store.db.prepare('SELECT accountId,kind FROM secrets').all()) {
-            const accountId = String(row.accountId),
-              kind = row.kind;
-            this.account(accountId, kind);
-            const bytes = this.decrypt(accountId, kind, oldKey);
-            try {
-              this.store.db
-                .prepare('UPDATE secrets SET value=? WHERE accountId=? AND kind=?')
-                .run(
-                  JSON.stringify(seal(bytes, nextKey, secretAad(accountId, kind))),
-                  accountId,
-                  kind,
-                );
-            } finally {
-              bytes.fill(0);
-            }
-          }
+          reencryptSecrets(this.store.db, oldKey, nextKey);
           this.store.set('vaultConfig', next);
+          if (backup) this.store.set('backupConfig', portableProtection(backup, nextKey));
           this.store.markChanged();
           this.store.db.exec('COMMIT');
         } catch (cause) {

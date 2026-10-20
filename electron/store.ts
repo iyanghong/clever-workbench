@@ -1,5 +1,10 @@
 import { WorkspaceLedger } from './ledger-workspace';
 import { migrateWorkbench } from './workbench-migration';
+import { migrateTaskPlanning } from './task-migration';
+import { validateTaskPlanning, validateTaskPlanningShape } from '../src/task-time';
+import { isDeepStrictEqual } from 'node:util';
+import { validateTagIds } from '../src/task-tags';
+import { TaskTags } from './task-tags';
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,7 +29,7 @@ import { Documents, initializeDocuments } from './documents';
 import { Ledger, initializeLedger } from './ledger';
 import { migrateSystemLedger } from './ledger-migration';
 
-export const schemaVersion = 9;
+export const schemaVersion = 12;
 export const schemaTables = [
   'projects',
   'tasks',
@@ -43,6 +48,8 @@ export const schemaTables = [
   'ledger_batches',
   'documents',
   'secrets',
+  'task_tags',
+  'task_tag_links',
 ];
 
 export function atomicWrite(filename: string, bytes: string | Uint8Array) {
@@ -135,8 +142,20 @@ export function validateDraftFields(draft: Draft) {
   text(draft.title, 1000);
   if (draft.history !== undefined) text(draft.history, 5000);
   if (draft.startedAt !== undefined) validateTimes(draft.startedAt, null);
+  validateTaskPlanningShape(draft.dueAt, draft.urgentAt);
+  validateTagIds(draft.tagIds);
   text(draft.markdown, 10_000_000);
   validateContent(draft.content);
+}
+function validateChangedPlanning(draft: Draft, previous?: Draft | null) {
+  // Local calendar dates can change order against absolute times after a timezone change.
+  if (
+    !isDeepStrictEqual(
+      [draft.dueAt ?? null, draft.urgentAt ?? null],
+      [previous?.dueAt ?? null, previous?.urgentAt ?? null],
+    )
+  )
+    validateTaskPlanning(draft.dueAt, draft.urgentAt);
 }
 export class Store {
   ledger!: Ledger;
@@ -177,6 +196,7 @@ export class Store {
     initializeDocuments(db);
     initializeVault(db);
     migrateWorkbench(db);
+    migrateTaskPlanning(db);
     db.exec(`PRAGMA user_version=${schemaVersion}`);
     this.ledger = new Ledger(db);
     this.documents = new Documents(db, this.ledger, (value) => this.validateDraft(value));
@@ -219,16 +239,25 @@ export class Store {
     );
   }
   snapshot(): Snapshot {
+    const tags = new TaskTags(this.db),
+      assignments = tags.assignments();
     return {
+      taskTags: tags.list(),
       ...this.ledger.snapshot(),
       ...new WorkspaceLedger(this.db).snapshot(),
       favorites: this.favorites(),
       documents: this.documents.snapshot(),
       tasks: this.db
         .prepare(
-          'SELECT id,title,projectId,systemId,environmentId,resourceId,createdAt,startedAt,completedAt,deletedAt,history FROM tasks',
+          'SELECT id,title,projectId,systemId,environmentId,resourceId,createdAt,startedAt,completedAt,deletedAt,history,dueAt,urgentAt FROM tasks',
         )
-        .all() as unknown as TaskSummary[],
+        .all()
+        .map((row) => ({
+          ...row,
+          tagIds: assignments.get(String(row.id)) ?? [],
+          dueAt: row.dueAt ? JSON.parse(String(row.dueAt)) : null,
+          urgentAt: row.urgentAt ? JSON.parse(String(row.urgentAt)) : null,
+        })) as unknown as TaskSummary[],
       projects: this.db
         .prepare('SELECT * FROM projects ORDER BY name COLLATE NOCASE')
         .all() as unknown as Project[],
@@ -239,7 +268,13 @@ export class Store {
   task(id: string): Task {
     const row = this.db.prepare('SELECT * FROM tasks WHERE id=?').get(text(id));
     if (!row) throw new Error('任务不存在。');
-    return { ...row, content: JSON.parse(row.content as string) } as unknown as Task;
+    return {
+      ...row,
+      tagIds: new TaskTags(this.db).idsForTask(id),
+      dueAt: row.dueAt ? JSON.parse(String(row.dueAt)) : null,
+      urgentAt: row.urgentAt ? JSON.parse(String(row.urgentAt)) : null,
+      content: JSON.parse(row.content as string),
+    } as unknown as Task;
   }
   document(id: string) {
     return this.documents.get(id);
@@ -262,6 +297,7 @@ export class Store {
   }
   validateDraft(draft: Draft) {
     validateDraftFields(draft);
+    new TaskTags(this.db).validateIds(draft.tagIds);
     this.checkAssets(draft.content);
     this.checkAssets(draft.markdown);
     if (draft.projectId !== null) this.project(draft.projectId);
@@ -276,6 +312,7 @@ export class Store {
       draft = { ...taskDraft, projectId: null };
       this.ledger.resolveContext(draft);
       this.validateDraft(draft);
+      validateChangedPlanning(draft, this.get<Draft | null>('draft', null));
     }
     this.set('draft', draft);
     this.markChanged();
@@ -296,6 +333,18 @@ export class Store {
     try {
       const now = minute();
       switch (command.type) {
+        case 'task-tag.save': {
+          const id = new TaskTags(this.db).save(command);
+          if (!command.id) createdId = id;
+          break;
+        }
+        case 'task-tag.delete': {
+          new TaskTags(this.db).delete(command.id);
+          const draft = this.get<Draft | null>('draft', null);
+          if (draft?.tagIds)
+            this.set('draft', { ...draft, tagIds: draft.tagIds.filter((id) => id !== command.id) });
+          break;
+        }
         case 'scope.save':
         case 'node.save':
         case 'node.delete':
@@ -431,6 +480,7 @@ export class Store {
             resourceId: null,
           };
           this.validateDraft(d);
+          validateChangedPlanning(d, this.get<Draft | null>('draft', null));
           const context = this.ledger.resolveContext(d);
 
           const start = d.startedAt ?? now;
@@ -456,6 +506,14 @@ export class Store {
             );
           if (d.history)
             this.db.prepare('UPDATE tasks SET history=? WHERE id=?').run(d.history, createdId);
+          this.db
+            .prepare('UPDATE tasks SET dueAt=?,urgentAt=? WHERE id=?')
+            .run(
+              d.dueAt ? JSON.stringify(d.dueAt) : null,
+              d.urgentAt ? JSON.stringify(d.urgentAt) : null,
+              createdId,
+            );
+          new TaskTags(this.db).assign(createdId, d.tagIds ?? []);
           if (command.consumeDraft !== undefined && typeof command.consumeDraft !== 'boolean')
             throw new Error('草稿处理方式无效。');
           if (command.consumeDraft !== false) this.set('draft', null);
@@ -464,12 +522,32 @@ export class Store {
         case 'task.edit': {
           const old = this.task(command.id);
           if (old.deletedAt !== null) throw new Error('请先恢复此任务。');
+          const planning = {
+            dueAt: command.dueAt === undefined ? old.dueAt : command.dueAt,
+            urgentAt:
+              command.dueAt === null
+                ? null
+                : command.urgentAt === undefined
+                  ? old.urgentAt
+                  : command.urgentAt,
+          };
           this.validateDraft({
             ...command,
+            ...planning,
             projectId: null,
             environmentId: null,
             resourceId: null,
           });
+          validateChangedPlanning({ ...command, ...planning }, old);
+          this.db
+            .prepare('UPDATE tasks SET dueAt=?,urgentAt=? WHERE id=?')
+            .run(
+              planning.dueAt ? JSON.stringify(planning.dueAt) : null,
+              planning.urgentAt ? JSON.stringify(planning.urgentAt) : null,
+              command.id,
+            );
+          if (command.tagIds !== undefined)
+            new TaskTags(this.db).assign(command.id, command.tagIds);
           this.db
             .prepare('UPDATE tasks SET title=?,content=?,markdown=?,projectId=? WHERE id=?')
             .run(

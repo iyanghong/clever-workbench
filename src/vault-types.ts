@@ -1,5 +1,11 @@
 export type SecretKind = 'password' | 'token' | 'privateKey';
-export type VaultStatus = { initialized: boolean; unlocked: boolean };
+export type VaultStatus = {
+  initialized: boolean;
+  unlocked: boolean;
+  mode?: 'system' | 'password' | 'unconfigured';
+  backupConfigured?: boolean;
+  systemAvailable?: boolean;
+};
 export const secretLabels: Record<SecretKind, string> = {
   password: '密码',
   token: 'Token',

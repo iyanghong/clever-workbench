@@ -26,6 +26,66 @@ afterEach(() => {
   vault = undefined;
 });
 
+test('跨时区恢复保留混合日期与时刻的计划，时区反转不阻断恢复或无关编辑', async () => {
+  const previous = process.env.TZ;
+  try {
+    process.env.TZ = 'Asia/Shanghai';
+    const { store, backups } = await setup();
+    const draft = {
+      title: '跨时区计划',
+      projectId: null,
+      content: emptyContent(),
+      markdown: '',
+      dueAt: { kind: 'time' as const, value: Date.parse('2026-10-23T00:00:00Z') },
+      urgentAt: { kind: 'date' as const, value: '2026-10-23' },
+    };
+    const id = store.mutate({ type: 'task.create', draft }).createdId!;
+    store.saveDraft(draft);
+    const archive = path.join(store.root, 'timezone.cwb');
+    await backups.create(archive);
+    process.env.TZ = 'America/Los_Angeles';
+    await backups.restore((await backups.inspect(archive, password)).token);
+    expect(store.task(id)).toMatchObject(draft);
+    store.mutate({ ...store.task(id), type: 'task.edit', title: '只改标题' });
+    store.saveDraft({ ...draft, title: '继续填写草稿' });
+    expect(store.snapshot().draft?.urgentAt).toEqual(draft.urgentAt);
+    expect(() =>
+      store.mutate({
+        ...store.task(id),
+        type: 'task.edit',
+        urgentAt: { kind: 'date', value: '2026-10-24' },
+      }),
+    ).toThrow('临期');
+  } finally {
+    if (previous === undefined) delete process.env.TZ;
+    else process.env.TZ = previous;
+  }
+});
+
+test('任务计划日期和自定义临期起点随完整备份恢复，实际记录时间保持不变', async () => {
+  const { store, backups } = await setup();
+  const tag = store.mutate({ type: 'task-tag.save', name: '发布', color: 'blue' }).createdId!;
+  const id = store.mutate({
+    type: 'task.create',
+    draft: {
+      title: '发布计划',
+      projectId: null,
+      content: emptyContent(),
+      markdown: '',
+      dueAt: { kind: 'date', value: '2026-10-23' },
+      urgentAt: { kind: 'time', value: Date.parse('2026-10-20T03:00:00Z') },
+      tagIds: [tag],
+    },
+  }).createdId!;
+  const before = store.task(id);
+  const filename = path.join(store.root, 'task-planning.cwb');
+  await backups.create(filename);
+  store.mutate({ ...before, type: 'task.edit', id, dueAt: null });
+  await backups.restore((await backups.inspect(filename, password)).token);
+  expect(store.task(id)).toEqual(before);
+  expect(store.snapshot().taskTags).toContainEqual({ id: tag, name: '发布', color: 'blue' });
+});
+
 test('秘密锁定时完整导出整体密文，密码预检覆盖正文草稿图片及秘密且不改变当前资料', async () => {
   const { store, vault, backups } = await setup();
   const systemId = store.mutate({
@@ -114,10 +174,10 @@ test('预检目录写入失败后释放操作状态，原资料保留且可重�
   await backups.discard(info.token);
 });
 
-test('未设置主密码不导出，密文篡改、截断和不兼容格式均拒绝且清理预检目录', async () => {
+test('未设置备份保护不导出，密文篡改、截断和不兼容格式均拒绝且清理预检目录', async () => {
   const { store, vault, backups } = await setup(false);
   const filename = path.join(store.root, 'protected.cwb');
-  await expect(backups.create(filename)).rejects.toThrow('主密码');
+  await expect(backups.create(filename)).rejects.toThrow('备份密码');
   expect(fs.existsSync(filename)).toBe(false);
   await vault.initialize(password);
   await backups.create(filename);
@@ -192,11 +252,11 @@ test('预检拒绝已损坏的资料密钥，以及正常写入不接受的草�
     tag = Buffer.from(changed.key.tag, 'base64');
   tag[0] ^= 1;
   changed.key.tag = tag.toString('base64');
-  store.set('vaultConfig', changed);
+  store.set('backupConfig', changed);
   const filename = path.join(store.root, 'bad-material.cwb');
   await backups.create(filename);
   await expect(backups.inspect(filename, password)).rejects.toThrow('校验');
-  store.set('vaultConfig', original);
+  store.set('backupConfig', original);
   const draft = {
     title: '损坏的草稿',
     markdown: '',

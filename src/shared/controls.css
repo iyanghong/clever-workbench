@@ -1,0 +1,340 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  overflow: hidden;
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+  color: inherit;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+button,
+input,
+textarea,
+select {
+  outline: none;
+}
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 3px;
+}
+button {
+  border: 0;
+  background: none;
+}
+input,
+textarea,
+select {
+  color: var(--text);
+}
+:where(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not(
+      [type='file']
+    ),
+  select,
+  textarea
+) {
+  min-width: 0;
+  min-height: var(--control-height);
+  padding: 6px var(--space-2);
+  border: var(--border);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  font-size: var(--font-body);
+  line-height: var(--leading-normal);
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--accent-fill);
+}
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.6;
+}
+:where(code, pre, kbd) {
+  font-family: var(--font-mono);
+}
+:where(time, input[type='date'], input[type='time'], input[type='datetime-local']) {
+  font-variant-numeric: tabular-nums;
+}
+a {
+  color: var(--accent);
+}
+::selection {
+  background: var(--selected);
+}
+button,
+input,
+select {
+  transition:
+    background var(--duration),
+    color var(--duration),
+    box-shadow var(--duration);
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+h1 {
+  font-size: var(--font-title);
+  letter-spacing: -0.5px;
+  font-weight: 600;
+  line-height: var(--leading-tight);
+}
+h2 {
+  font-size: var(--font-heading);
+  letter-spacing: -0.5px;
+}
+h3 {
+  font-size: var(--font-reading);
+  font-weight: 600;
+}
+.icon-button {
+  width: var(--control-height);
+  height: var(--control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-control);
+  color: var(--secondary);
+  flex-shrink: 0;
+}
+.icon-button:hover {
+  background: var(--hover);
+}
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--radius-control);
+  background: var(--hover);
+  gap: 2px;
+  flex-shrink: 0;
+}
+.segmented button {
+  min-height: 28px;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-small);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-small);
+  color: var(--secondary);
+  white-space: nowrap;
+}
+.segmented button span {
+  font-size: var(--font-caption);
+  color: var(--muted);
+  margin-left: 3px;
+}
+.segmented button.active {
+  background: var(--panel);
+  box-shadow: var(--shadow-control);
+  color: var(--text);
+}
+.primary-button,
+.secondary-button,
+.danger-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 6px var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font-size: var(--font-small);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.primary-button {
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  box-shadow: var(--shadow-control);
+}
+.primary-button:hover {
+  filter: brightness(1.04);
+}
+.secondary-button {
+  background: var(--panel);
+  border: var(--border);
+  box-shadow: var(--shadow-control);
+}
+.secondary-button:hover {
+  background: var(--hover);
+}
+.danger-button {
+  background: var(--danger-fill);
+  color: var(--on-accent);
+}
+.primary-button:active:not(:disabled),
+.secondary-button:active:not(:disabled),
+.danger-button:active:not(:disabled),
+.icon-button:active:not(:disabled) {
+  filter: brightness(0.93);
+}
+.small-button {
+  padding: var(--space-1) var(--space-2);
+  border: var(--border);
+  border-radius: var(--radius-small);
+  background: var(--panel);
+  font-size: var(--font-small);
+}
+.text-button {
+  font-size: var(--font-small);
+  padding: var(--space-2);
+  border-radius: var(--radius-control);
+}
+.text-button:hover {
+  background: var(--hover);
+}
+.danger-text,
+.danger-hover:hover,
+.error-text {
+  color: var(--danger) !important;
+}
+.modal {
+  color: var(--text);
+  background: var(--panel);
+  border: var(--border);
+  border-radius: var(--radius-overlay);
+  padding: var(--space-6);
+  min-width: 360px;
+  max-width: 470px;
+  box-shadow: var(--shadow-overlay);
+}
+.modal::backdrop {
+  background: var(--scrim);
+  backdrop-filter: blur(5px);
+}
+.modal > p {
+  font-size: var(--font-small);
+  color: var(--secondary);
+  line-height: var(--leading-reading);
+  margin: var(--space-4) 0 var(--space-6);
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-3);
+}
+.modal-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);
+}
+.modal > label,
+.modal > form > label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
+  font-size: var(--font-small);
+  color: var(--secondary);
+}
+.modal.shared-dialog {
+  /* Exclude toolbar drag regions behind top-layer dialogs from native hit testing. */
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
+  width: 470px;
+  min-width: 0;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 48px);
+  padding: var(--space-6);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+  position: sticky;
+  z-index: var(--layer-header);
+  top: calc(-1 * var(--space-6));
+  margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-6)) var(--space-5);
+  padding: var(--space-5) var(--space-6) var(--space-4);
+  background: var(--panel);
+  border-bottom: var(--border);
+}
+.dialog-header > div {
+  min-width: 0;
+}
+.dialog-header h2 {
+  font-size: var(--font-subheading);
+  line-height: var(--leading-tight);
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  margin: 0;
+}
+.dialog-header p {
+  font-size: var(--font-small);
+  line-height: var(--leading-normal);
+  color: var(--secondary);
+  margin: var(--space-2) 0 0;
+}
+.dialog-header .dialog-close {
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--secondary);
+  background: var(--hover);
+}
+.dialog-header .dialog-close:hover {
+  color: var(--text);
+  background: var(--selected);
+}
+.shared-dialog .field-label {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  color: var(--secondary);
+  font-size: var(--font-small);
+  line-height: var(--leading-normal);
+  min-width: 0;
+}
+.shared-dialog .modal-actions {
+  position: sticky;
+  bottom: calc(-1 * var(--space-6));
+  z-index: var(--layer-sticky);
+  margin: var(--space-6) calc(-1 * var(--space-6)) calc(-1 * var(--space-6));
+  padding: var(--space-4) var(--space-6);
+  border-top: var(--border);
+  background: var(--panel);
+  flex-wrap: wrap;
+}
+.shared-dialog .modal-actions > button {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.shared-dialog .modal-actions > span {
+  margin-right: auto;
+  color: var(--secondary);
+  font-size: var(--font-small);
+}

@@ -6,6 +6,9 @@ import path from 'node:path';
 
 // All accounts, passwords, addresses and images here are fictional test fixtures.
 const password = 'fictional-migration-master-password';
+const masterPassword = 'fictional-target-local-master';
+const protectionMode = process.env.CWB_VERIFY_PROTECTION ?? 'system';
+assert(['system', 'password'].includes(protectionMode));
 const [executable, outputName, inputName] = process.argv.slice(2);
 if (!executable || !outputName)
   throw new Error(
@@ -50,10 +53,18 @@ async function capture(page) {
 }
 try {
   let page = await launch();
+  if (protectionMode === 'password')
+    await page.evaluate((password) => window.desktop.initializeVault(password), masterPassword);
   if (input) {
     const expected = JSON.parse(await fs.readFile(`${input}.json`, 'utf8'));
     // Schema 7 fixtures gain explicit system ownership without changing their original identities.
     expected.workspace.data.accessEntries ??= [];
+    expected.workspace.data.taskTags ??= [];
+    for (const task of [...expected.workspace.data.tasks, ...expected.workspace.taskBodies]) {
+      task.dueAt ??= null;
+      task.urgentAt ??= null;
+      task.tagIds ??= [];
+    }
     const systemByEnvironment = new Map(
       expected.workspace.data.environments.map((item) => [item.id, item.systemId]),
     );
@@ -95,7 +106,11 @@ try {
     await page.evaluate((token) => window.desktop.restoreBackup(token), token);
     assert.deepEqual(await capture(page), expected.workspace);
     assert.equal((await page.evaluate(() => window.desktop.vaultStatus())).unlocked, false);
-    await page.evaluate((password) => window.desktop.unlockVault(password), password);
+    await page.evaluate(async (password) => {
+      if ((await window.desktop.vaultStatus()).mode === 'password')
+        await window.desktop.unlockVault(password);
+      else await window.desktop.unlockSystemVault();
+    }, masterPassword);
     for (const secret of expected.secrets)
       assert.equal(
         await page.evaluate(
@@ -210,7 +225,7 @@ try {
           username: 'deploy',
         })
       ).createdId;
-      await api.initializeVault(password);
+      await api.configureBackup(password);
       await api.captureLedger({
         kind: 'access',
         systemId,
@@ -321,7 +336,11 @@ try {
   await application.close();
   page = await launch();
   assert.equal((await page.evaluate(() => window.desktop.vaultStatus())).unlocked, false);
-  await page.evaluate((password) => window.desktop.unlockVault(password), password);
+  await page.evaluate(async (password) => {
+    if ((await window.desktop.vaultStatus()).mode === 'password')
+      await window.desktop.unlockVault(password);
+    else await window.desktop.unlockSystemVault();
+  }, masterPassword);
   const workspace = await capture(page),
     secrets = [];
   for (const account of workspace.data.accounts)
@@ -359,6 +378,7 @@ try {
   assert(runtime.packaged);
   const evidence = {
     runtime,
+    protectionMode,
     os: { type: os.type(), release: os.release(), version: os.version() },
     createdAt: new Date().toISOString(),
     source: input ? path.basename(input) : null,
@@ -368,7 +388,7 @@ try {
   };
   await fs.writeFile(`${output}.json`, JSON.stringify(evidence, null, 2));
   const encrypted = await fs.readFile(`${output}.cwb`);
-  assert.equal(encrypted.subarray(0, 8).toString(), 'CWBK0001');
+  assert.equal(encrypted.subarray(0, 8).toString(), 'CWBK0002');
   for (const secret of secrets) assert.equal(encrypted.includes(Buffer.from(secret.value)), false);
   console.log(
     JSON.stringify(

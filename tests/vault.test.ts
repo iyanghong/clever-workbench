@@ -37,7 +37,7 @@ afterEach(() => {
 test('主密码最低 6 个字符，拒绝 5 个字符且不创建保护材料', async () => {
   const { vault, accountId } = setup();
   await expect(vault.initialize('test1')).rejects.toThrow('6 到 1024');
-  expect(vault.status()).toEqual({ initialized: false, unlocked: false });
+  expect(vault.status()).toMatchObject({ initialized: false, unlocked: false });
   await vault.initialize('test12');
   vault.save(accountId, 'password', 'fixture-secret');
   vault.lock();
@@ -49,7 +49,7 @@ test('秘密使用主密码解锁，重启与锁定撤销访问，快照和落�
   const { store, vault, accountId } = setup();
   const password = 'fictional-master-password-2026',
     secret = 'fictional-redis-secret-unique-9472';
-  expect(vault.status()).toEqual({ initialized: false, unlocked: false });
+  expect(vault.status()).toMatchObject({ initialized: false, unlocked: false });
   await vault.initialize(password);
   vault.save(accountId, 'password', secret);
   expect(vault.read(accountId, 'password')).toBe(secret);
@@ -65,7 +65,7 @@ test('秘密使用主密码解锁，重启与锁定撤销访问，快照和落�
   stores.push(reopened);
   const next = new Vault(reopened);
   vaults.push(next);
-  expect(next.status()).toEqual({ initialized: true, unlocked: false });
+  expect(next.status()).toMatchObject({ initialized: true, unlocked: false });
   await next.unlock(password);
   expect(next.read(accountId, 'password')).toBe(secret);
   next.save(accountId, 'password', 'replaced-fictional-secret');

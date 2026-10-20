@@ -88,9 +88,6 @@ test('系统通用入口同屏录入地址与密码，服务器不建环境也�
     await page.getByLabel('首个账号用户名', { exact: true }).fill('operator');
     await page.getByLabel('首个账号密码', { exact: true }).fill('fictional-jenkins-secret');
     await page.getByRole('button', { name: '创建访问入口', exact: true }).click();
-    await page.getByLabel('主密码', { exact: true }).fill('fictional-ui-master-password');
-    await page.getByLabel('确认主密码', { exact: true }).fill('fictional-ui-master-password');
-    await page.getByRole('button', { name: '设置并解锁', exact: true }).click();
     await expect(page.getByRole('dialog', { name: '新增访问入口' })).toHaveCount(0);
     await expect(page.getByText('operator', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: '设为常用访问入口', exact: true }).click();

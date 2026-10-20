@@ -24,8 +24,10 @@ test('安装失败只显示可操作的原因，不泄露 IPC 错误包装', asy
       .poll(async () => (await page.evaluate(() => window.desktop.updateSnapshot())).status)
       .not.toBe('checking');
     await app.evaluate(({ BrowserWindow, ipcMain }, reason) => {
+      (globalThis as any).installAttempts = 0;
       ipcMain.removeHandler('update-install');
       ipcMain.handle('update-install', () => {
+        (globalThis as any).installAttempts++;
         throw Error(reason);
       });
       BrowserWindow.getAllWindows()[0].webContents.send('update-state', {
@@ -34,6 +36,14 @@ test('安装失败只显示可操作的原因，不泄露 IPC 错误包装', asy
       } satisfies UpdateSnapshot);
     }, message);
     await page.getByRole('button', { name: '重启并更新', exact: true }).click();
+    const backup = page.getByRole('dialog', { name: '设置备份密码', exact: true });
+    await expect(backup).toBeVisible();
+    await backup.getByRole('button', { name: '取消', exact: true }).click();
+    expect(await app.evaluate(() => (globalThis as any).installAttempts)).toBe(0);
+    await page.getByRole('button', { name: '重启并更新', exact: true }).click();
+    await backup.getByLabel('备份密码', { exact: true }).fill('fixture-update-backup');
+    await backup.getByLabel('确认备份密码', { exact: true }).fill('fixture-update-backup');
+    await backup.getByRole('button', { name: '保存并继续', exact: true }).click();
     await expect(page.getByRole('alert')).toHaveText(message);
     await expect(page.getByRole('button', { name: '工作台', exact: true })).toBeEnabled();
   } finally {
