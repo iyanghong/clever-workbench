@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowClockwiseIcon,
   ArrowSquareOutIcon,
@@ -263,6 +263,19 @@ export function UpdateDetails({
 }
 export function UpdateBadge({ state }: { state: UpdateSnapshot | null }) {
   const [open, setOpen] = useState(false);
+  const [prompt, setPrompt] = useState(false);
+  const notified = useRef<string | undefined>(undefined);
+  const version = state?.release?.version;
+  const preparedId = state?.preparedId ?? version;
+  useEffect(() => {
+    if (state?.status === 'downloading') notified.current = undefined;
+    if (state && !['ready', 'preparing', 'installing'].includes(state.status)) setPrompt(false);
+    if (state?.status === 'ready' && version && notified.current !== preparedId) {
+      notified.current = preparedId;
+      setOpen(false);
+      setPrompt(true);
+    }
+  }, [state?.status, version, preparedId]);
   const hasUpdate =
     !!state?.release &&
     [
@@ -280,7 +293,10 @@ export function UpdateBadge({ state }: { state: UpdateSnapshot | null }) {
       {hasUpdate && (
         <button
           className="update-badge"
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            if (state.status === 'ready') setPrompt(true);
+            else setOpen(true);
+          }}
           aria-label="查看可用更新"
           title={`新版本 v${state.release!.version} · ${labels[state.status]}`}
         >
@@ -288,12 +304,69 @@ export function UpdateBadge({ state }: { state: UpdateSnapshot | null }) {
           更新
         </button>
       )}
-      {open && (
+      {open && !prompt && (
         <Dialog className="modal update-dialog" title="应用更新" onClose={() => setOpen(false)}>
           <UpdateDetails state={state} />
         </Dialog>
       )}
+      {prompt && state?.status === 'ready' && (
+        <UpdateRestartPrompt state={state} onClose={() => setPrompt(false)} />
+      )}
     </>
+  );
+}
+
+function UpdateRestartPrompt({ state, onClose }: { state: UpdateSnapshot; onClose: () => void }) {
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  return (
+    <Dialog
+      className="modal update-restart-dialog"
+      title="更新已准备好"
+      description={`v${state.release?.version} 已下载并通过校验`}
+      onClose={onClose}
+      closeDisabled={busy}
+    >
+      <div className="update-restart-copy">
+        <div className="update-restart-icon" aria-hidden="true">
+          <ArrowClockwiseIcon size={28} />
+        </div>
+        <p>现在重启以安装新版本？重启前会保存当前工作，并创建完整加密备份。</p>
+        <p>选择稍后重启可继续工作，准备好后点击品牌旁的更新按钮即可。</p>
+        {(error || state.message) && (
+          <p role="alert" className="error-text">
+            {error || state.message}
+          </p>
+        )}
+      </div>
+      <footer className="update-restart-actions">
+        <button className="secondary-button" disabled={busy} onClick={onClose}>
+          稍后重启
+        </button>
+        <button
+          className="primary-button"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            setError('');
+            void window.desktop
+              .installUpdate()
+              .catch((cause) => {
+                setError(
+                  (cause instanceof Error ? cause.message : '更新准备失败，请重试。').replace(
+                    /^(?:Error: )?Error invoking remote method '[^']+': (?:Error: )?/,
+                    '',
+                  ),
+                );
+              })
+              .finally(() => setBusy(false));
+          }}
+        >
+          <ArrowClockwiseIcon size={16} aria-hidden="true" />
+          {busy ? '正在准备…' : '立即重启并更新'}
+        </button>
+      </footer>
+    </Dialog>
   );
 }
 export function AboutUpdate() {
@@ -356,6 +429,13 @@ function UpdateHistory() {
             }
           </p>
           {entry.message && <p>{entry.message}</p>}
+          {entry.cleanup && (
+            <p>
+              {entry.cleanup === 'complete'
+                ? '旧应用和本次下载文件已清理；完整加密备份与更新日志已保留。'
+                : '更新已成功，部分旧文件未能清理。请查看日志，确认文件未被占用后再处理。'}
+            </p>
+          )}
           <p>
             阶段耗时：
             {Object.entries(entry.durations)

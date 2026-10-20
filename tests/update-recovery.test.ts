@@ -58,6 +58,89 @@ posixTest(
     }
   },
 );
+
+posixTest.each([
+  { previousRemoved: true, retiredRemoved: true, stageRemoved: true },
+  { previousRemoved: false, retiredRemoved: true, stageRemoved: true },
+  { previousRemoved: true, retiredRemoved: false, stageRemoved: true },
+  { previousRemoved: true, retiredRemoved: true, stageRemoved: false },
+])(
+  'cleanup receipts update recovery links without changing health or deleting data: %j',
+  async (result) => {
+    const f = await pendingFixture();
+    try {
+      const health = new UpdateHealth(f.journal, {
+        version: '0.2.0',
+        target: f.target,
+        userDataDirectory: f.userData,
+      });
+      await health.discover();
+      health.databaseReady();
+      health.windowReady();
+      await fs.writeFile(path.join(f.directory, 'helper-status'), 'awaiting-health');
+      await health.confirm(health.challenge!);
+      expect(f.journal.list()[0].previousApp).toBe(f.target + '.previous');
+      await fs.writeFile(path.join(f.userData, 'backup.cwb'), 'retained backup');
+      await fs.writeFile(path.join(f.directory, 'cleanup.json'), JSON.stringify(result), {
+        mode: 0o600,
+      });
+      expect(await health.poll()).toBe(true);
+      const entry = (await UpdateJournal.open(f.journal.root)).list()[0];
+      expect(entry.outcome).toBe('success');
+      expect(entry.cleanup).toBe(
+        result.previousRemoved && result.retiredRemoved && result.stageRemoved
+          ? 'complete'
+          : 'incomplete',
+      );
+      expect(entry.previousApp).toBe(result.previousRemoved ? undefined : f.target + '.previous');
+      expect(entry.backup).toBe(path.join(f.userData, 'backup.cwb'));
+      expect(await fs.readFile(entry.backup!, 'utf8')).toBe('retained backup');
+      expect(await health.poll()).toBe(false);
+    } finally {
+      await fs.rm(f.userData, { recursive: true, force: true });
+    }
+  },
+);
+
+posixTest(
+  'missing, malformed and symlink cleanup receipts never claim old files were removed',
+  async () => {
+    const f = await pendingFixture();
+    try {
+      const health = new UpdateHealth(f.journal, {
+        version: '0.2.0',
+        target: f.target,
+        userDataDirectory: f.userData,
+      });
+      await health.discover();
+      health.databaseReady();
+      health.windowReady();
+      await fs.writeFile(path.join(f.directory, 'helper-status'), 'awaiting-health');
+      await health.confirm(health.challenge!);
+      expect(await health.poll()).toBe(false);
+      const file = path.join(f.directory, 'cleanup.json');
+      await fs.writeFile(
+        file,
+        '{"previousRemoved":"true","retiredRemoved":true,"stageRemoved":true}',
+        { mode: 0o600 },
+      );
+      expect(await health.poll()).toBe(false);
+      await fs.rm(file);
+      const outside = path.join(f.userData, 'untrusted.json');
+      await fs.writeFile(
+        outside,
+        '{"previousRemoved":true,"retiredRemoved":true,"stageRemoved":true}',
+        { mode: 0o600 },
+      );
+      await fs.symlink(outside, file);
+      expect(await health.poll()).toBe(false);
+      expect(f.journal.list()[0].cleanup).toBeUndefined();
+      expect(f.journal.list()[0].previousApp).toBe(f.target + '.previous');
+    } finally {
+      await fs.rm(f.userData, { recursive: true, force: true });
+    }
+  },
+);
 test('update attempts including failed downloads survive restart and retain only the latest 30', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'update-history-'));
   try {

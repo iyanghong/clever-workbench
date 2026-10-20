@@ -21,7 +21,9 @@ test('安装失败只显示可操作的原因，不泄露 IPC 错误包装', asy
       page.getByText(`Clever Workbench v${currentVersion}`, { exact: true }),
     ).toBeVisible();
     await expect
-      .poll(async () => (await page.evaluate(() => window.desktop.updateSnapshot())).status)
+      .poll(async () => (await page.evaluate(() => window.desktop.updateSnapshot())).status, {
+        timeout: 30000,
+      })
       .not.toBe('checking');
     await app.evaluate(({ BrowserWindow, ipcMain }, reason) => {
       (globalThis as any).installAttempts = 0;
@@ -232,9 +234,15 @@ test('手动检查仅在设置中，新版按钮显示在品牌旁并保留下�
     await badge.click();
     await expect(dialog.getByText('50%', { exact: true })).toBeVisible();
     await show({ status: 'ready', currentVersion, release });
-    await expect(dialog.getByRole('button', { name: '重启并更新', exact: true })).toBeInViewport();
+    const restart = page.getByRole('dialog', { name: '更新已准备好', exact: true });
+    await expect(
+      restart.getByRole('button', { name: '立即重启并更新', exact: true }),
+    ).toBeInViewport();
+    await expect(dialog).toHaveCount(0);
+    await restart.getByRole('button', { name: '稍后重启', exact: true }).click();
     await expect(badge).toBeVisible();
     await show({ status: 'error', currentVersion, release, message: '下载中断，请重试。' });
+    await badge.click();
     await expect(dialog.getByRole('button', { name: '下载更新', exact: true })).toBeEnabled();
     await expect(badge).toBeVisible();
     await show({ status: 'manual', currentVersion, message: '新版启动确认超时，请查看恢复说明。' });
@@ -261,6 +269,111 @@ test('手动检查仅在设置中，新版按钮显示在品牌旁并保留下�
     await show({ status: 'up-to-date', currentVersion });
     await expect(settings.getByRole('status')).toHaveText('已是最新版本');
     await expect(badge).toHaveCount(0);
+  } finally {
+    await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('下载校验后主动询问重启，稍后不打断工作且再次打开无需滚动', async ({}, info) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-update-prompt-'));
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env });
+  try {
+    const page = await app.firstWindow();
+    await expect(page.getByRole('button', { name: '工作台', exact: true })).toBeVisible();
+    await expect
+      .poll(async () => (await page.evaluate(() => window.desktop.updateSnapshot())).status, {
+        timeout: 30000,
+      })
+      .not.toBe('checking');
+    const { currentVersion } = await page.evaluate(() => window.desktop.updateSnapshot());
+    const release: NonNullable<UpdateSnapshot['release']> = {
+      version: '0.2.0',
+      notes: '很长的版本说明。\n'.repeat(500),
+      publishedAt: '',
+      pageUrl: 'https://github.com/iyanghong/clever-workbench/releases/tag/v0.2.0',
+      zip: {
+        name: 'update.zip',
+        size: 1,
+        url: 'https://github.com/iyanghong/clever-workbench/releases/download/v0.2.0/update.zip',
+      },
+      checksums: {
+        name: 'SHA256SUMS',
+        size: 1,
+        url: 'https://github.com/iyanghong/clever-workbench/releases/download/v0.2.0/SHA256SUMS',
+      },
+    };
+    const show = (status: UpdateSnapshot['status'], preparedId = 'first-download') =>
+      app.evaluate(
+        ({ BrowserWindow }, state) => {
+          BrowserWindow.getAllWindows()[0].webContents.send('update-state', state);
+        },
+        { status, currentVersion, release, preparedId },
+      );
+    await app.evaluate(({ ipcMain }) => {
+      (globalThis as any).updateInstallRequests = 0;
+      ipcMain.removeHandler('update-install');
+      ipcMain.handle('update-install', () => {
+        (globalThis as any).updateInstallRequests++;
+        throw Error('备份目录不可写，请在设置中更换目录后重试。');
+      });
+    });
+    const requests = () => app.evaluate(() => (globalThis as any).updateInstallRequests);
+    const prompt = page.getByRole('dialog', { name: '更新已准备好', exact: true });
+    const badge = page.getByRole('button', { name: '查看可用更新', exact: true });
+    await show('downloading');
+    await show('verifying');
+    await expect(prompt).toHaveCount(0);
+    await show('ready');
+    await expect(prompt).toBeVisible();
+    await expect(prompt.getByText('v0.2.0 已下载并通过校验')).toBeVisible();
+    await expect(prompt.getByRole('button', { name: '稍后重启', exact: true })).toBeInViewport();
+    await expect(
+      prompt.getByRole('button', { name: '立即重启并更新', exact: true }),
+    ).toBeInViewport();
+    await page.screenshot({ path: info.outputPath('restart-prompt-light.png') });
+    await prompt.getByRole('button', { name: '稍后重启', exact: true }).click();
+    await expect(prompt).toHaveCount(0);
+    expect(await requests()).toBe(0);
+    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await show('ready');
+    await expect(prompt).toHaveCount(0);
+    await page.evaluate(() =>
+      window.desktop.mutate({
+        type: 'settings',
+        theme: 'dark',
+        reduceMotion: true,
+        reduceTransparency: true,
+        highContrast: true,
+      }),
+    );
+    await app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0].setContentSize(850, 620),
+    );
+    await badge.click();
+    await expect(
+      prompt.getByRole('button', { name: '立即重启并更新', exact: true }),
+    ).toBeInViewport();
+    expect(await prompt.evaluate((el) => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+    await page.screenshot({ path: info.outputPath('restart-prompt-dark-narrow.png') });
+    await page.keyboard.press('Escape');
+    await expect(prompt).toHaveCount(0);
+    await expect(badge).toBeFocused();
+    await badge.click();
+    await prompt.getByRole('button', { name: '立即重启并更新', exact: true }).click();
+    await expect(prompt.getByRole('alert')).toHaveText(
+      '备份目录不可写，请在设置中更换目录后重试。',
+    );
+    expect(await requests()).toBe(1);
+    await prompt.getByRole('button', { name: '关闭更新已准备好', exact: true }).click();
+    await expect(prompt).toHaveCount(0);
+    await show('ready');
+    await expect(prompt).toHaveCount(0);
+    await show('downloading');
+    await show('ready', 'second-download');
+    await expect(prompt).toBeVisible();
   } finally {
     await app.close();
     await fs.rm(directory, { recursive: true, force: true });
@@ -349,6 +462,22 @@ test('installed updated application confirms a private pending transaction only 
       .toBe('success');
     await page.getByRole('button', { name: '设置', exact: true }).click();
     await expect(page.getByText('上次更新：新版本、资料库、窗口与通信检查通过。')).toBeVisible();
+    await page.getByText('更新历史（最近 30 次）', { exact: true }).click();
+    await expect(page.getByRole('button', { name: '定位旧应用', exact: true })).toBeVisible();
+    await fs.writeFile(
+      path.join(tx, 'cleanup.json'),
+      JSON.stringify({
+        previousRemoved: true,
+        retiredRemoved: true,
+        stageRemoved: true,
+      }),
+      { mode: 0o600 },
+    );
+    await expect(
+      page.getByText('旧应用和本次下载文件已清理；完整加密备份与更新日志已保留。'),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: '定位旧应用', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '定位备份', exact: true })).toBeVisible();
   } finally {
     await app.close();
     await fs.rm(directory, { recursive: true, force: true });

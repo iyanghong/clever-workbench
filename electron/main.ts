@@ -393,7 +393,10 @@ app
       if (!updaterAvailable) throw Error('更新记录不可写，请检查更新目录。');
       return updates.download();
     });
-    secureHandler('update-history', () => updateJournal?.list() ?? []);
+    secureHandler('update-history', async () => {
+      await updateJournal?.refreshCleanup();
+      return updateJournal?.list() ?? [];
+    });
     secureHandler('update-health-ready', () => updateHealth?.challenge ?? null);
     secureHandler('update-health-confirm', async (nonce) => {
       if (typeof nonce === 'string') await updateHealth?.confirm(nonce);
@@ -483,9 +486,14 @@ app
     });
     if (updaterAvailable && !updateHealth?.pending) updates.start();
     setInterval(() => {
-      void updateHealth?.poll().catch(() => {
-        disableUpdates();
-      });
+      void updateHealth
+        ?.poll()
+        .then((changed) => {
+          if (changed) window?.webContents.send('update-history-changed');
+        })
+        .catch(() => {
+          disableUpdates();
+        });
     }, 1000).unref();
     secureHandler('data-generation', () => store.generation);
     secureHandler('system-appearance', systemAppearance);

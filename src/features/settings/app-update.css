@@ -1,6 +1,46 @@
 .modal.shared-dialog.update-dialog {
   width: 560px;
 }
+.modal.shared-dialog.update-restart-dialog {
+  width: 440px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.update-restart-dialog .dialog-header,
+.update-restart-actions {
+  flex-shrink: 0;
+}
+.update-restart-copy {
+  overflow: auto;
+  min-height: 0;
+  color: var(--secondary);
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.update-restart-copy p + p {
+  margin-top: 10px;
+}
+.update-restart-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  color: var(--accent);
+  background: var(--selected);
+}
+.update-restart-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 22px;
+}
+.update-restart-actions button {
+  min-height: 36px;
+}
 .update-details {
   --update-status-color: var(--secondary);
   --update-status-surface: var(--bg);

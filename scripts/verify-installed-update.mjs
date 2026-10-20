@@ -204,7 +204,6 @@ try {
     return !!health || helperPhase.startsWith('needs-attention:');
   }, 75_000).catch(() => {});
   assert.ok((await fs.stat(transaction.backup)).isFile());
-  assert.ok((await fs.stat(installed + '.previous')).isDirectory());
   // LaunchServices can normalize attribution while preserving quarantine.
   const quarantine = run('/usr/bin/xattr', ['-p', 'com.apple.quarantine', installed]).trim();
   assert.match(quarantine, /^[0-9a-f]{4};/i);
@@ -214,11 +213,48 @@ try {
       : health?.outcome === 'manual' || helperPhase.startsWith('needs-attention:')
         ? 'manual'
         : 'unconfirmed';
-  if (observed === 'manual')
+  if (observed === 'success') {
+    await waitFor(
+      async () =>
+        (await fs.readFile(path.join(transactionDir, 'helper-status'), 'utf8')).trim() ===
+        'completed',
+    );
+    const cleanup = JSON.parse(
+      await fs.readFile(path.join(transactionDir, 'cleanup.json'), 'utf8').catch(() => 'null'),
+    );
+    // Old published baselines may carry the helper that retained application
+    // copies. Only a receipt from the new helper establishes cleanup coverage.
+    if (cleanup) {
+      assert.deepEqual(cleanup, {
+        previousRemoved: true,
+        retiredRemoved: true,
+        stageRemoved: true,
+      });
+      assert.equal(
+        await fs.access(installed + '.previous').then(
+          () => true,
+          () => false,
+        ),
+        false,
+      );
+      assert.equal(
+        await fs.access(transaction.stageDirectory).then(
+          () => true,
+          () => false,
+        ),
+        false,
+      );
+    }
+    console.log(JSON.stringify({ stage: 'cleanup', verified: !!cleanup, transactionDir }));
+  }
+  if (observed === 'manual') {
+    assert.ok((await fs.stat(installed + '.previous')).isDirectory());
+    assert.ok((await fs.stat(transaction.stageDirectory)).isDirectory());
     assert.ok(
       (await fs.readFile(path.join(transactionDir, 'RECOVERY.txt'), 'utf8')).length > 0,
       'Manual outcome retains readable recovery instructions outside the app',
     );
+  }
 
   // Stop only the disposable newly launched copy before testing recovery separately.
   for (const line of run('/bin/ps', ['-axo', 'pid=,command=']).split('\n')) {
@@ -237,7 +273,7 @@ try {
   }
   const restoredData = path.join(root, 'restored-data');
   const restoreApp = await _electron.launch({
-    executablePath: path.join(installed + '.previous', 'Contents/MacOS', binary),
+    executablePath: path.join(oldApp, 'Contents/MacOS', binary),
     args: [],
     env: { ...env, CLEVER_WORKBENCH_DATA_DIR: restoredData },
   });
