@@ -103,6 +103,7 @@ test('粘贴分片流式去空白、乱序收齐，识别重复、混包及截�
     }
     const target = path.join(root, `paste-${index}`);
     collected.push({ ...(await storePart(chunks(), target, () => {})), id: String(index) });
+    expect(collected.at(-1)!.preview).toBe(text.subarray(0, 512).toString('ascii'));
     await expect(storePart(chunks(), target, () => {})).rejects.toMatchObject({ code: 'EEXIST' });
     expect((await fs.stat(target)).size).toBe(text.length);
   }

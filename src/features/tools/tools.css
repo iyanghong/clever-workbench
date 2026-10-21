@@ -369,6 +369,7 @@
   display: block;
   font-size: var(--font-caption);
   color: var(--secondary);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   margin-top: var(--space-2);

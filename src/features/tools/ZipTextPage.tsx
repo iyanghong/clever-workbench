@@ -638,7 +638,7 @@ export function ZipTextPage({ registerFlush }: ToolPageProps) {
                           第 {part.index} / {part.count} 片
                         </strong>
                         <small>{(part.size / 1_000_000).toFixed(2)} MB</small>
-                        <code>{part.preview.slice(0, 48)}…</code>
+                        <code>{part.preview}…</code>
                         {part.error && <p className="tool-error">{part.error}</p>}
                       </div>
                       <button

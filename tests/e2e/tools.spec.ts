@@ -57,6 +57,37 @@ test('10 个分片乱序收集，重复项自动跳过并保留原片，收齐�
     expect((await state(page)).notice).toBe('');
     await expect(pasteTarget).toBeFocused();
     const first = (await state(page)).parts;
+    const preview = page.locator('.tool-part code').first();
+    await expect(preview).toHaveText(`${first[0].preview}…`);
+    for (const theme of ['light', 'dark'] as const) {
+      await page.evaluate((theme) => window.desktop.mutate({ type: 'settings', theme }), theme);
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      for (const width of [1800, 850]) {
+        await page.setViewportSize({ width, height: 900 });
+        await preview.scrollIntoViewIfNeeded();
+        const bounds = await preview.evaluate((element) => ({
+          width: element.clientWidth,
+          contentWidth: element.scrollWidth,
+          right: element.getBoundingClientRect().right,
+        }));
+        expect(bounds.width).toBeGreaterThan(0);
+        expect(bounds.contentWidth).toBeGreaterThan(bounds.width);
+        const replace = page.getByRole('button', { name: '替换第 1 片', exact: true });
+        const remove = page.getByRole('button', { name: '移除第 1 片', exact: true });
+        await expect(replace).toBeInViewport();
+        await expect(remove).toBeInViewport();
+        expect((await replace.boundingBox())!.x - bounds.right).toBeLessThan(20);
+        expect((await replace.boundingBox())!.x).toBeGreaterThan(bounds.right);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+          true,
+        );
+        await page.screenshot({ path: info.outputPath(`part-preview-${theme}-${width}.png`) });
+      }
+    }
+    await page.getByRole('button', { name: '替换第 1 片', exact: true }).focus();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: '移除第 1 片', exact: true })).toBeFocused();
+    await pasteTarget.focus();
     await paste();
     expect((await state(page)).parts).toEqual(first);
     expect((await state(page)).error).toBe('');

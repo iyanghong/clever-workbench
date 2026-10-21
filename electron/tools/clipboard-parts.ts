@@ -127,7 +127,7 @@ export async function storePart(
         throw new Error('不是有效 Base64，请复制完整的单个分片。');
       if (!meta) {
         meta = parsePart(decodePart(block));
-        preview = text.slice(0, 96);
+        preview = text.slice(0, 512);
       }
     };
     for await (const chunk of createReadStream(target, { highWaterMark: 1024 * 1024 })) {
