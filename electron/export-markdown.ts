@@ -25,13 +25,22 @@ const titleSuffix = (title: string | null | undefined) =>
 
 // Render Markdown from parsed nodes so a password or code example can never be
 // mistaken for an image destination. Reference images become portable inline images.
-export function portableMarkdown(markdown: string, imagePrefix: string) {
+export function portableMarkdown(
+  markdown: string,
+  imagePath: string | ((name: string) => string),
+  preserveHtml = false,
+) {
   const parser = new Marked({ gfm: true, async: false });
   parser.use({
     renderer: {
       space: ({ raw }) => raw,
       def: () => '',
-      code: ({ raw }) => raw + '\n',
+      code: ({ text, lang }) => {
+        const fence = '`'.repeat(
+          Math.max(3, ...[...text.matchAll(/`+/g)].map((m) => m[0].length + 1)),
+        );
+        return `${fence}${lang || ''}\n${text}\n${fence}\n\n`;
+      },
       heading(token) {
         return `${'#'.repeat(token.depth)} ${this.parser.parseInline(token.tokens)}\n\n`;
       },
@@ -57,6 +66,7 @@ export function portableMarkdown(markdown: string, imagePrefix: string) {
       hr: () => '\n---\n\n',
       html: ({ text }) => {
         if (/^<br\s*\/?\s*>$/i.test(text.trim())) return '<br>';
+        if (preserveHtml) return text;
         throw new Error(
           'Markdown 导出无法安全保留原始 HTML，请将其放入代码块，或仅选择 Word／PDF。',
         );
@@ -120,7 +130,7 @@ export function portableMarkdown(markdown: string, imagePrefix: string) {
       image({ href, title, text }) {
         const name = localImage(href);
         return name
-          ? `![${plain(decodeHTML(text))}](${imagePrefix}${name}${titleSuffix(title)})`
+          ? `![${plain(decodeHTML(text))}](${typeof imagePath === 'string' ? imagePath + name : imagePath(name)}${titleSuffix(title)})`
           : plain(`外部图片：${decodeHTML(text)} ${href}`);
       },
     },

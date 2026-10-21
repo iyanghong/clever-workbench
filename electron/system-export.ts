@@ -16,7 +16,7 @@ import {
 import { secretLabels } from '../src/vault-types';
 import type { ObjectContext } from '../src/ledger-types';
 import { scopeFor, type ScopeKind } from '../src/ledger-workspace-types';
-import type { TaskTime } from '../src/task-time';
+import { taskTimeBoundary, validateTaskTime, type TaskTime } from '../src/task-time';
 
 type ExportDocument = { name: string; markdown: string };
 export type DocumentRenderer = (
@@ -91,6 +91,28 @@ export class SystemExports {
       options.secretKinds.some((kind) => !['password', 'token', 'privateKey'].includes(kind))
     )
       throw new Error('请选择需要导出的秘密类型。');
+    if (typeof options.includeDocuments !== 'boolean' || typeof options.includeTasks !== 'boolean')
+      throw new Error('请选择是否导出文档和任务。');
+    for (const value of [options.taskStartDate, options.taskEndDate]) {
+      if (value === undefined) continue;
+      if (typeof value !== 'string') throw new Error('任务筛选日期无效。');
+      if (value) validateTaskTime({ kind: 'date', value });
+    }
+    if (options.taskStartDate && options.taskEndDate && options.taskStartDate > options.taskEndDate)
+      throw new Error('开始日期不能晚于结束日期。');
+  }
+
+  fileExtension(options: SystemExportOptions) {
+    const hasDocuments =
+      options.includeDocuments &&
+      this.store
+        .snapshot()
+        .documents.some((item) => item.systemId === options.systemId && item.deletedAt === null);
+    return options.formats.length === 1 && !hasDocuments
+      ? options.formats[0] === 'markdown'
+        ? 'md'
+        : options.formats[0]
+      : 'zip';
   }
 
   private collect(options: SystemExportOptions) {
@@ -141,13 +163,24 @@ export class SystemExports {
       ['资源', snapshot.resources.find((item) => item.id === value.resourceId)?.name ?? '—'],
     ];
     const documents: ExportDocument[] = [];
+    const first = options.taskStartDate
+      ? taskTimeBoundary({ kind: 'date', value: options.taskStartDate })
+      : -Infinity;
+    const last = options.taskEndDate
+      ? taskTimeBoundary({ kind: 'date', value: options.taskEndDate }, true)
+      : Infinity;
     const tasks = snapshot.tasks.filter(
-      (item) => item.systemId === system.id && item.deletedAt === null,
+      (item) =>
+        options.includeTasks &&
+        item.systemId === system.id &&
+        item.deletedAt === null &&
+        item.startedAt >= first &&
+        item.startedAt < last,
     );
     const records = snapshot.documents.filter(
-      (item) => item.systemId === system.id && item.deletedAt === null,
+      (item) => options.includeDocuments && item.systemId === system.id && item.deletedAt === null,
     );
-    let overview = `# ${heading(system.name)} 系统总览\n\n本资料包包含该系统的技术台账、关联任务和文档。导出时间采用 UTC。\n\n`;
+    let overview = `# ${heading(system.name)} 系统总览\n\n本资料包含该系统的完整台账及所选任务、文档。导出时间采用 UTC。\n\n`;
     if (hasSecrets) overview += '**包含明文秘密，请妥善保存和交接。**\n\n';
     overview += table([
       ['系统', system.name],
@@ -156,6 +189,12 @@ export class SystemExports {
       ['创建时间', date(system.createdAt)],
       ['更新时间', date(system.updatedAt)],
       ['导出时间', date(Date.now())],
+      [
+        '任务范围',
+        options.includeTasks
+          ? `按开始日期（本机时区）：${options.taskStartDate || '不限'} 至 ${options.taskEndDate || '不限'}，共 ${tasks.length} 项`
+          : '未选择导出任务',
+      ],
       ['说明', system.notes],
     ]);
     if (links.length) overview += '## 项目关联\n\n';
@@ -295,38 +334,41 @@ export class SystemExports {
           ['说明', operation.notes],
         ]);
     if (tasks.length) overview += '## 关联任务\n\n';
-    for (const [index, task] of tasks.entries()) {
-      const name = `任务/${filename(task.title, index)}.md`;
-      overview += `- [${heading(task.title)}](${fileLink(name)}) · ${task.completedAt === null ? '未完成' : '已完成'}\n`;
-      documents.push({
-        name,
-        markdown:
-          `# ${heading(task.title)}\n\n` +
-          table([
-            ['系统', system.name],
-            ['历史说明', task.history ?? ''],
-            ['创建时间', date(task.createdAt)],
-            ['开始时间', date(task.startedAt)],
-            ['完成时间', date(task.completedAt)],
-            ['预计完成时间', plannedDate(task.dueAt)],
-            [
-              '临期开始时间',
-              task.urgentAt
-                ? plannedDate(task.urgentAt)
-                : task.dueAt
-                  ? '预计完成前 24 小时'
-                  : '未设置',
-            ],
-            [
-              '任务颜色标签',
-              (snapshot.taskTags ?? [])
-                .filter((tag) => task.tagIds?.includes(tag.id))
-                .map((tag) => tag.name)
-                .join('、'),
-            ],
-          ]) +
-          this.store.task(task.id).markdown,
-      });
+    for (const task of tasks) {
+      // Resolve each task's reference links before combining their Markdown scopes.
+      const body = portableMarkdown(
+        this.store.task(task.id).markdown,
+        'workbench-asset://image/',
+        true,
+      );
+      overview +=
+        `### ${heading(task.title)}\n\n` +
+        table([
+          ['系统', system.name],
+          ['状态', task.completedAt === null ? '未完成' : '已完成'],
+          ['历史说明', task.history ?? ''],
+          ['创建时间', date(task.createdAt)],
+          ['开始时间', date(task.startedAt)],
+          ['完成时间', date(task.completedAt)],
+          ['预计完成时间', plannedDate(task.dueAt)],
+          [
+            '临期开始时间',
+            task.urgentAt
+              ? plannedDate(task.urgentAt)
+              : task.dueAt
+                ? '预计完成前 24 小时'
+                : '未设置',
+          ],
+          [
+            '任务颜色标签',
+            (snapshot.taskTags ?? [])
+              .filter((tag) => task.tagIds?.includes(tag.id))
+              .map((tag) => tag.name)
+              .join('、'),
+          ],
+        ]) +
+        body +
+        '\n\n';
     }
     if (records.length) overview += '\n## 技术文档\n\n';
     for (const [index, record] of records.entries()) {
@@ -356,7 +398,7 @@ export class SystemExports {
           }
         }
       }
-    return { documents, assets, assertCurrent, hasSecrets };
+    return { documents, assets, assertCurrent };
   }
 
   async write(options: SystemExportOptions, target: string): Promise<SystemExportResult> {
@@ -366,7 +408,36 @@ export class SystemExports {
     let stream: Readable | undefined;
     let writing: Promise<void> | undefined;
     try {
-      const { documents, assets, assertCurrent, hasSecrets } = this.collect(options);
+      const { documents, assets, assertCurrent } = this.collect(options);
+      const singleDocument = documents.length === 1;
+      const render = async (format: ExportFormat, document: ExportDocument) => {
+        assertCurrent();
+        let bytes: Buffer;
+        if (format === 'markdown') {
+          const prefix = document.name.includes('/') ? '../图片/' : '图片/';
+          bytes = Buffer.from(
+            portableMarkdown(
+              document.markdown,
+              singleDocument
+                ? (name) =>
+                    `data:image/${path.extname(name).slice(1).replace('jpg', 'jpeg')};base64,${assets.get(name)!.toString('base64')}`
+                : prefix,
+            ),
+          );
+        } else {
+          if (!this.renderDocument) throw new Error('当前环境无法生成所选文档格式。');
+          bytes = await this.renderDocument(format, document.markdown, assets);
+        }
+        assertCurrent();
+        return bytes;
+      };
+      if (singleDocument && options.formats.length === 1) {
+        const bytes = await render(options.formats[0], documents[0]);
+        await fs.promises.writeFile(temporary, bytes, { flag: 'wx', mode: 0o600 });
+        assertCurrent();
+        fs.renameSync(temporary, target);
+        return { path: target, files: 1 };
+      }
       const zip = new ZipFile();
       stream = zip.outputStream as Readable;
       zip.on('error', (error) => stream?.destroy(error));
@@ -375,33 +446,18 @@ export class SystemExports {
       void writing.catch((error) => {
         writeError = error;
       });
-      let fileCount = 1;
-      zip.addBuffer(
-        Buffer.from(
-          `系统资料包\n\n请按格式目录打开系统总览及各份文档。${hasSecrets ? '\n包含明文秘密，请妥善保存和交接。' : ''}\n`,
-        ),
-        '阅读说明.txt',
-      );
+      let fileCount = 0;
       for (const format of options.formats) {
         for (const document of documents) {
           if (writeError) throw writeError;
-          assertCurrent();
-          let bytes: Buffer;
-          if (format === 'markdown') {
-            const prefix = document.name.includes('/') ? '../图片/' : '图片/';
-            bytes = Buffer.from(portableMarkdown(document.markdown, prefix));
-          } else {
-            if (!this.renderDocument) throw new Error('当前环境无法生成所选文档格式。');
-            bytes = await this.renderDocument(format, document.markdown, assets);
-          }
-          assertCurrent();
+          const bytes = await render(format, document);
           zip.addBuffer(
             bytes,
             `${exportFormatLabels[format]}/${document.name.replace(/\.md$/, format === 'markdown' ? '.md' : `.${format}`)}`,
           );
           fileCount++;
         }
-        if (format === 'markdown')
+        if (format === 'markdown' && !singleDocument)
           for (const [name, bytes] of assets) {
             zip.addBuffer(bytes, `Markdown/图片/${name}`);
             fileCount++;

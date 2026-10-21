@@ -10,5 +10,9 @@ export type SystemExportOptions = {
   systemId: string;
   formats: ExportFormat[];
   secretKinds: SecretKind[];
+  includeDocuments: boolean;
+  includeTasks: boolean;
+  taskStartDate?: string;
+  taskEndDate?: string;
 };
 export type SystemExportResult = { path: string; files: number };
