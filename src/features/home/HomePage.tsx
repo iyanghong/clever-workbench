@@ -170,7 +170,7 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
       ]
     : [];
   return (
-    <main className="main home-page">
+    <main className="main home-page" aria-busy={!snapshot}>
       <header className="window-toolbar">
         <div className="breadcrumb">
           <StackIcon size={17} />

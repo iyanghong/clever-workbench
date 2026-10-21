@@ -33,6 +33,7 @@ import { UpdateInstallation } from './update-install';
 import { launchUpdateHelper, resolveUpdateTarget } from './update-launcher';
 import { UpdateJournal, UpdateHealth } from './update-recovery';
 import { exportScheme, renderExportDocument } from './export-native';
+import { GuidanceDevice, readBundledGuidance } from './guidance';
 
 protocol.registerSchemesAsPrivileged([
   { scheme: exportScheme, privileges: { standard: true, secure: true } },
@@ -64,10 +65,12 @@ function disableUpdates() {
   updates.setRecoverySummary('manual', '更新记录无法写入，在线更新已暂停；本地工作空间仍可使用。');
 }
 let installation: UpdateInstallation;
+let guidanceDevice: GuidanceDevice | undefined;
 let updateFrozen = false;
 const activeOperations = new Set<Promise<unknown>>();
 const updateReadChannels = new Set([
   'guidance-availability',
+  'guidance-versions',
   'update-history',
   'update-health-ready',
   'update-health-confirm',
@@ -284,6 +287,7 @@ function createWindow() {
         await systemExports.whenIdle();
         if (tools.busy) throw new Error('工具任务尚未完成，请等待完成后再退出。');
         await tools.dispose();
+        await guidanceDevice?.whenIdle();
         allowClose = true;
         if (quitting) app.quit();
         else window?.close();
@@ -510,6 +514,22 @@ app
       return busy
         ? { available: false, reason: '请等待当前保存、文件选择、备份或安装操作完成。' }
         : { available: true };
+    });
+    guidanceDevice = await GuidanceDevice.open(path.join(app.getPath('userData'), 'guidance'));
+    const guidanceCatalog = await readBundledGuidance(path.join(__dirname, 'guidance'));
+    secureHandler('guidance-versions', () => ({
+      currentVersion: app.getVersion(),
+      releases: guidanceCatalog.releases,
+    }));
+    secureHandler('guidance-state', () => {
+      writable();
+      return guidanceDevice!.observe(app.getVersion());
+    });
+    secureHandler('guidance-acknowledge', (version) => {
+      writable();
+      if (version !== app.getVersion()) throw Error('只能确认当前正在运行版本的指引。');
+      if (closePending || quitting) throw Error('应用正在关闭，尚未确认的指引将在下次启动时保留。');
+      return guidanceDevice!.acknowledge(version);
     });
     secureHandler('data-generation', () => store.generation);
     secureHandler('system-appearance', systemAppearance);

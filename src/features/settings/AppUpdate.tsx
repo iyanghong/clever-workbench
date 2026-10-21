@@ -279,7 +279,6 @@ export function UpdateBadge({ state }: { state: UpdateSnapshot | null }) {
     if (state?.status === 'downloading') notified.current = undefined;
     if (state && !['ready', 'preparing', 'installing'].includes(state.status)) setPrompt(false);
     if (state?.status === 'ready' && version && notified.current !== preparedId) {
-      notified.current = preparedId;
       setOpen(false);
       setPrompt(true);
     }
@@ -318,13 +317,27 @@ export function UpdateBadge({ state }: { state: UpdateSnapshot | null }) {
         </Dialog>
       )}
       {prompt && state?.status === 'ready' && (
-        <UpdateRestartPrompt state={state} onClose={() => setPrompt(false)} />
+        <UpdateRestartPrompt
+          state={state}
+          onClose={() => setPrompt(false)}
+          onShown={() => {
+            notified.current = preparedId;
+          }}
+        />
       )}
     </>
   );
 }
 
-function UpdateRestartPrompt({ state, onClose }: { state: UpdateSnapshot; onClose: () => void }) {
+function UpdateRestartPrompt({
+  state,
+  onClose,
+  onShown,
+}: {
+  state: UpdateSnapshot;
+  onClose: () => void;
+  onShown: () => void;
+}) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   return (
@@ -334,6 +347,8 @@ function UpdateRestartPrompt({ state, onClose }: { state: UpdateSnapshot; onClos
       description={`v${state.release?.version} 已下载并通过校验`}
       onClose={onClose}
       closeDisabled={busy}
+      exclusive
+      onShown={onShown}
     >
       <div className="update-restart-copy">
         <div className="update-restart-icon" aria-hidden="true">
