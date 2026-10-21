@@ -10,22 +10,17 @@ import {
 } from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
 import { Transform, type Readable } from 'node:stream';
-import {
-  backupAad,
-  decode,
-  derive,
-  unseal,
-  validateConfig,
-  type VaultConfig,
-} from './vault-crypto';
+import { backupAad, decode, derive, unseal } from './vault-crypto';
+import { validateBackupConfig, type BackupConfig } from './backup-crypto';
 
 const magic = Buffer.from('CWBK0001');
+const portableMagic = Buffer.from('CWBK0002');
 const maxHeader = 16 * 1024,
   maxFile = 10 * 1024 ** 3;
 type Header = {
-  version: 1;
+  version: 1 | 2;
   algorithm: 'RSA-OAEP-SHA256/AES-256-GCM';
-  protection: VaultConfig;
+  protection: BackupConfig;
   wrappedKey: string;
   iv: string;
 };
@@ -44,8 +39,12 @@ async function envelope(handle: fsp.FileHandle) {
   if (!stat.isFile() || stat.size < 28 || stat.size > maxFile)
     throw new Error('备份格式无效或文件超过容量。');
   const lead = await exact(handle, 12, 0);
-  if (!lead.subarray(0, 8).equals(magic))
-    throw new Error('备份格式或版本不兼容，需要 Clever Workbench 加密备份。');
+  const version = lead.subarray(0, 8).equals(magic)
+    ? 1
+    : lead.subarray(0, 8).equals(portableMagic)
+      ? 2
+      : null;
+  if (!version) throw new Error('备份格式或版本不兼容，需要 Clever Workbench 加密备份。');
   const length = lead.readUInt32BE(8);
   if (length < 2 || length > maxHeader || stat.size < 12 + length + 16)
     throw new Error('备份头部大小无效。');
@@ -56,9 +55,10 @@ async function envelope(handle: fsp.FileHandle) {
   } catch {
     throw new Error('备份头部格式无效。');
   }
-  if (!header || header.version !== 1 || header.algorithm !== 'RSA-OAEP-SHA256/AES-256-GCM')
+  if (!header || header.version !== version || header.algorithm !== 'RSA-OAEP-SHA256/AES-256-GCM')
     throw new Error('备份加密版本不兼容。');
-  validateConfig(header.protection);
+  validateBackupConfig(header.protection);
+  if (header.protection.version !== version) throw new Error('备份保护版本不一致。');
   decode(header.wrappedKey, 384, 384);
   decode(header.iv, 12, 12);
   return {
@@ -77,8 +77,8 @@ export async function checkEncryptedArchive(filename: string) {
     await handle.close();
   }
 }
-export async function encryptArchive(input: Readable, filename: string, protection: VaultConfig) {
-  validateConfig(protection);
+export async function encryptArchive(input: Readable, filename: string, protection: BackupConfig) {
+  validateBackupConfig(protection);
   const key = randomBytes(32),
     iv = randomBytes(12);
   try {
@@ -93,7 +93,7 @@ export async function encryptArchive(input: Readable, filename: string, protecti
       key,
     );
     const header: Header = {
-      version: 1,
+      version: protection.version,
       algorithm: 'RSA-OAEP-SHA256/AES-256-GCM',
       protection,
       wrappedKey: wrapped.toString('base64'),
@@ -102,7 +102,7 @@ export async function encryptArchive(input: Readable, filename: string, protecti
     const raw = Buffer.from(JSON.stringify(header));
     if (raw.length > maxHeader) throw new Error('备份保护材料过大。');
     const lead = Buffer.alloc(12);
-    magic.copy(lead);
+    (protection.version === 1 ? magic : portableMagic).copy(lead);
     lead.writeUInt32BE(raw.length, 8);
     const prefix = Buffer.concat([lead, raw]);
     const cipher = createCipheriv('aes-256-gcm', key, iv, { authTagLength: 16 });
@@ -132,7 +132,7 @@ export async function decryptArchive(
   filename: string,
   destination: string,
   password: unknown,
-): Promise<VaultConfig> {
+): Promise<BackupConfig> {
   const handle = await fsp.open(filename, 'r');
   let wrapping: Buffer | undefined, privateKey: Buffer | undefined, key: Buffer | undefined;
   try {

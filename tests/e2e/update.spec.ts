@@ -26,8 +26,10 @@ test('安装失败只显示可操作的原因，不泄露 IPC 错误包装', asy
       })
       .not.toBe('checking');
     await app.evaluate(({ BrowserWindow, ipcMain }, reason) => {
+      (globalThis as any).installAttempts = 0;
       ipcMain.removeHandler('update-install');
       ipcMain.handle('update-install', () => {
+        (globalThis as any).installAttempts++;
         throw Error(reason);
       });
       BrowserWindow.getAllWindows()[0].webContents.send('update-state', {
@@ -36,6 +38,14 @@ test('安装失败只显示可操作的原因，不泄露 IPC 错误包装', asy
       } satisfies UpdateSnapshot);
     }, message);
     await page.getByRole('button', { name: '重启并更新', exact: true }).click();
+    const backup = page.getByRole('dialog', { name: '设置备份密码', exact: true });
+    await expect(backup).toBeVisible();
+    await backup.getByRole('button', { name: '取消', exact: true }).click();
+    expect(await app.evaluate(() => (globalThis as any).installAttempts)).toBe(0);
+    await page.getByRole('button', { name: '重启并更新', exact: true }).click();
+    await backup.getByLabel('备份密码', { exact: true }).fill('fixture-update-backup');
+    await backup.getByLabel('确认备份密码', { exact: true }).fill('fixture-update-backup');
+    await backup.getByRole('button', { name: '保存并继续', exact: true }).click();
     await expect(page.getByRole('alert')).toHaveText(message);
     await expect(page.getByRole('button', { name: '工作台', exact: true })).toBeEnabled();
   } finally {
@@ -89,10 +99,24 @@ test('更新弹窗支持鼠标关闭，重新打开后仍能按 Esc 关闭', asy
     await expect(dialog).toBeVisible();
     const close = dialog.getByRole('button', { name: '关闭应用更新', exact: true });
     const closeBounds = await close.boundingBox();
-    const toolbar = await page.locator('.window-toolbar').boundingBox();
-    const closeCenter = closeBounds!.y + closeBounds!.height / 2;
-    expect(closeCenter).toBeGreaterThanOrEqual(toolbar!.y);
-    expect(closeCenter).toBeLessThan(toolbar!.y + toolbar!.height);
+    const overlapsDragRegion = await page.locator('.command-bar, .window-toolbar').evaluateAll(
+      (toolbars, point) =>
+        toolbars.some((toolbar) => {
+          const bounds = toolbar.getBoundingClientRect();
+          return (
+            getComputedStyle(toolbar).getPropertyValue('app-region') === 'drag' &&
+            point.x >= bounds.left &&
+            point.x < bounds.right &&
+            point.y >= bounds.top &&
+            point.y < bounds.bottom
+          );
+        }),
+      {
+        x: closeBounds!.x + closeBounds!.width / 2,
+        y: closeBounds!.y + closeBounds!.height / 2,
+      },
+    );
+    expect(overlapsDragRegion).toBe(true);
     // Browser automation bypasses Electron's native drag hit testing. The modal
     // must exclude the toolbar drag region even when its close button overlaps it.
     await expect

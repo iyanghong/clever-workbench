@@ -12,6 +12,7 @@ import {
   nativeImage,
   clipboard,
   powerMonitor,
+  safeStorage,
 } from 'electron';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -22,6 +23,7 @@ import { checkEncryptedArchive } from './encrypted-archive';
 import { SecretClipboard } from './secret-clipboard';
 import { Vault } from './vault';
 import { Backups } from './backup';
+import { backupProtection } from './backup-crypto';
 import { SystemExports } from './system-export';
 import { Tools } from './tools';
 import { UpdateCoordinator } from './update';
@@ -139,8 +141,22 @@ function secureHandler(channel: string, handler: (...args: any[]) => any) {
 function writable(generation = store.generation) {
   if (updateFrozen) throw new Error('正在准备安装更新，请等待完成。');
   if (restoring) throw new Error('正在恢复数据，请稍候。');
-  if (rotatingProtection) throw new Error('正在变更主密码，请稍候。');
+  if (rotatingProtection) throw new Error('正在变更凭据保护，请稍候。');
   if (generation !== store.generation) throw new Error('资料已切换，旧操作已取消。');
+}
+async function changeProtection(operation: () => Promise<void>) {
+  const generation = store.generation,
+    assertCurrent = vault.protectionGuard();
+  await flushRenderer();
+  writable(generation);
+  assertCurrent();
+  if (backups.busy) throw new Error('请等待备份或恢复完成后再变更凭据保护。');
+  rotatingProtection = true;
+  try {
+    await operation();
+  } finally {
+    rotatingProtection = false;
+  }
 }
 function importLocalImage(bytes: Uint8Array, name: string) {
   if (!(bytes instanceof Uint8Array) || !bytes.length || bytes.length > 20 * 1024 * 1024)
@@ -335,7 +351,7 @@ app
     store = new Store(path.join(app.getPath('userData'), 'data'));
     store.snapshot();
     updateHealth?.databaseReady();
-    backups = new Backups(store);
+    backups = new Backups(store, () => vault);
     tools = new Tools(store, __dirname);
     secureHandler('tool-state', (id) => tools.get(id).snapshot());
     secureHandler('tool-command', (id, command) => {
@@ -409,8 +425,8 @@ app
         if (restoring || rotatingProtection || closePending)
           throw Error('请等待资料保护或关闭操作完成后再更新。');
         if (tools.busy) throw Error('工具任务尚未完成，请等待完成后再更新。');
-        if (!store.get('vaultConfig', null))
-          throw Error('请先设置主密码，以便更新前创建完整加密备份。');
+        if (!backupProtection(store.db))
+          throw Error('请先设置独立备份密码，以便更新前创建完整加密备份。');
       },
       flush: flushRenderer,
       freeze: (value) => {
@@ -485,10 +501,18 @@ app
       applyWindowMaterial();
       window?.webContents.send('system-appearance', systemAppearance());
     });
-    vault = new Vault(store, (status) => {
-      if (!status.unlocked) void secretClipboard?.clearOwned();
-      window?.webContents.send('vault-status', status);
-    });
+    vault = new Vault(
+      store,
+      (status) => {
+        if (!status.unlocked) void secretClipboard?.clearOwned();
+        window?.webContents.send('vault-status', status);
+      },
+      {
+        available: () => safeStorage.isEncryptionAvailable(),
+        encrypt: (value) => safeStorage.encryptString(value),
+        decrypt: (value) => safeStorage.decryptString(value),
+      },
+    );
     secretClipboard = new SecretClipboard(vault, clipboard);
     systemExports = new SystemExports(store, vault, renderExportDocument);
     powerMonitor.on('lock-screen', () => vault.lock());
@@ -533,27 +557,30 @@ app
       return vault.copyResource(id, target);
     });
     secureHandler('vault-status', () => vault.status());
-    secureHandler('vault-initialize', async (password) => {
-      writable();
-      await vault.initialize(password);
-    });
+    secureHandler('vault-initialize', (password) =>
+      changeProtection(async () => {
+        await vault.initialize(password);
+        await secretClipboard.clearOwned();
+      }),
+    );
     secureHandler('vault-unlock', async (password) => {
       writable();
       await vault.unlock(password);
     });
-    secureHandler('vault-lock', () => vault.lock());
-    secureHandler('vault-rotate', async (currentPassword, nextPassword) => {
-      const generation = store.generation;
-      await flushRenderer();
-      writable(generation);
-      if (backups.busy) throw new Error('备份或恢复正在进行，请完成后再变更主密码。');
-      rotatingProtection = true;
-      try {
-        await vault.rotate(currentPassword, nextPassword);
-      } finally {
-        rotatingProtection = false;
-      }
+    secureHandler('vault-system-unlock', () => {
+      writable();
+      vault.unlockSystem();
     });
+    secureHandler('backup-configure', (password) =>
+      changeProtection(() => vault.configureBackup(password)),
+    );
+    secureHandler('vault-lock', () => vault.lock());
+    secureHandler('vault-disable', (password) =>
+      changeProtection(() => vault.disableMaster(password)),
+    );
+    secureHandler('vault-rotate', (currentPassword, nextPassword) =>
+      changeProtection(() => vault.rotate(currentPassword, nextPassword)),
+    );
     secureHandler('secret-read', (accountId, kind) => {
       writable();
       return vault.read(accountId, kind);
@@ -690,7 +717,6 @@ app
     });
     secureHandler('restore-backup', async (token) => {
       if (tools.busy) throw new Error('请先等待工具任务完成，再恢复工作台备份。');
-      vault.lock();
       text(token);
       await flushRenderer();
       writable();

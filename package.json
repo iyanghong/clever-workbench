@@ -1,6 +1,6 @@
 {
   "name": "clever-workbench",
-  "version": "0.1.7",
+  "version": "0.1.9",
   "private": true,
   "description": "个人技术台账、工作任务与方案工作台",
   "type": "module",
@@ -53,14 +53,13 @@
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
+    "@tiptap/core": "^3.32.0",
     "@tiptap/extension-code-block-lowlight": "^3.32.0",
     "@tiptap/extension-image": "^3.32.0",
-    "@tiptap/extension-placeholder": "^3.32.0",
     "@tiptap/extension-table": "^3.32.0",
     "@tiptap/extension-task-item": "^3.32.0",
     "@tiptap/extension-task-list": "^3.32.0",
     "@tiptap/markdown": "^3.32.0",
-    "@tiptap/react": "^3.32.0",
     "@tiptap/starter-kit": "^3.32.0",
     "docx": "^9.12.0",
     "entities": "^8.1.0",
@@ -68,6 +67,7 @@
     "marked": "^17.0.6",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "vditor": "4.0.1",
     "yauzl": "^3.4.0",
     "yazl": "^3.3.1"
   },

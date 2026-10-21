@@ -36,7 +36,7 @@ test('台账弹窗有固定关闭入口，表单统一且退出保留保存与�
           .getByLabel('当前项目', { exact: true })
           .evaluate((el) => el.getBoundingClientRect().height),
       )
-      .toBeGreaterThanOrEqual(36);
+      .toBeGreaterThanOrEqual(32);
     await system.getByLabel('系统说明', { exact: true }).fill('保持简单、快速查询。');
     await page.screenshot({ animations: 'disabled', path: info.outputPath('system-info.png') });
     await system.getByLabel('系统名称', { exact: true }).fill('');

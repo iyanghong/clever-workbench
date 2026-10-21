@@ -16,6 +16,9 @@ import { dateLabel, localInput, minute, validateTimes } from '../domain';
 import { ContextPicker, contextLabel } from '../shared/ContextPicker';
 import { useAutosave } from '../shared/useAutosave';
 import { Editor } from './Editor';
+import { TaskTimeField } from '../shared/TaskTimeField';
+import { TaskTagPicker, TaskTagChips } from '../features/tasks/TaskTags';
+import { taskTimeBoundary } from '../task-time';
 export function Detail({
   task,
   draft,
@@ -45,6 +48,7 @@ export function Detail({
   flushRef: React.MutableRefObject<() => Promise<void>>;
   onCommand: (c: Command) => Promise<boolean | undefined>;
 }) {
+  const editorFlush = useRef(() => {});
   const pendingImports = useRef<Promise<void>>(Promise.resolve());
   const form = useAutosave<Draft>(
     task
@@ -56,6 +60,9 @@ export function Detail({
           systemId: task.systemId,
           environmentId: null,
           resourceId: null,
+          dueAt: task.dueAt,
+          urgentAt: task.urgentAt,
+          tagIds: task.tagIds,
         }
       : draft,
     async (payload) => {
@@ -69,6 +76,7 @@ export function Detail({
     },
     onError,
     pendingImports,
+    editorFlush,
   );
   const { value, status, flush: save } = form;
   useEffect(() => {
@@ -93,6 +101,13 @@ export function Detail({
     form.change(next);
     if (!task) onDraft(next);
   }
+  useEffect(() => {
+    if (!snapshot.taskTags || !latest.current.tagIds?.length) return;
+    const ids = latest.current.tagIds.filter((id) =>
+      snapshot.taskTags!.some((tag) => tag.id === id),
+    );
+    if (ids.length !== latest.current.tagIds.length) change({ ...latest.current, tagIds: ids });
+  }, [snapshot.taskTags]);
   async function create() {
     if (busy) return;
     setBusy(true);
@@ -142,6 +157,16 @@ export function Detail({
         </button>
       </header>
       <div className="detail-content">
+        <textarea
+          disabled={deleted}
+          className="detail-title"
+          aria-label="任务标题"
+          rows={1}
+          placeholder="这次，完成什么？"
+          value={value.title}
+          onChange={(e) => change({ ...value, title: e.target.value.replace(/\n/g, '') })}
+        />
+
         <ContextPicker
           mode="system"
           snapshot={snapshot}
@@ -160,15 +185,6 @@ export function Detail({
             回到关联的系统台账
           </button>
         )}
-        <textarea
-          disabled={deleted}
-          className="detail-title"
-          aria-label="任务标题"
-          rows={2}
-          placeholder="这次，完成什么？"
-          value={value.title}
-          onChange={(e) => change({ ...value, title: e.target.value.replace(/\n/g, '') })}
-        />
         <button
           disabled={deleted}
           className="date-summary"
@@ -238,7 +254,52 @@ export function Detail({
             </div>
           </div>
         )}
+        <details className="task-properties">
+          <summary>
+            <span>计划与标签</span>
+            {value.dueAt && (
+              <span className="muted">
+                {value.dueAt.kind === 'date' ? value.dueAt.value : dateLabel(value.dueAt.value)}{' '}
+                完成
+              </span>
+            )}
+            <TaskTagChips tags={snapshot.taskTags} ids={value.tagIds} />
+          </summary>
+          <TaskTimeField
+            label="预计完成"
+            value={value.dueAt}
+            disabled={deleted}
+            onChange={(dueAt) =>
+              change({ ...latest.current, dueAt, urgentAt: dueAt ? latest.current.urgentAt : null })
+            }
+          />
+          {value.dueAt && (
+            <>
+              <TaskTimeField
+                label="临期开始"
+                value={value.urgentAt}
+                disabled={deleted}
+                onChange={(urgentAt) => change({ ...latest.current, urgentAt })}
+              />
+              <p className="muted">未设置临期开始时间时，默认在预计完成前 24 小时突出显示。</p>
+              {value.urgentAt &&
+                taskTimeBoundary(value.urgentAt) > taskTimeBoundary(value.dueAt, true) && (
+                  <p className="error-text" role="status">
+                    当前时区下，临期开始晚于预计完成时间。已保留原计划，请调整日期。
+                  </p>
+                )}
+            </>
+          )}
+          <TaskTagPicker
+            snapshot={snapshot}
+            ids={value.tagIds}
+            disabled={deleted}
+            onChange={(tagIds) => change({ ...latest.current, tagIds })}
+            onSnapshot={onSnapshot}
+          />
+        </details>
         <Editor
+          flushRef={editorFlush}
           pendingRef={pendingImports}
           readOnly={deleted}
           markdown={value.markdown}

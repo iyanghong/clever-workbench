@@ -115,9 +115,9 @@ test('pasted images survive immediate close, portable backup and restart', async
       (dialog as any).showSaveDialog = async () => ({ canceled: false, filePath: filename });
     }, archive);
     await page.getByRole('button', { name: '导出完整备份', exact: true }).click();
-    await page.getByLabel('主密码', { exact: true }).fill('fictional-image-backup-password');
-    await page.getByLabel('确认主密码').fill('fictional-image-backup-password');
-    await page.getByRole('button', { name: '设置并解锁', exact: true }).click();
+    await page.getByLabel('备份密码', { exact: true }).fill('fictional-image-backup-password');
+    await page.getByLabel('确认备份密码').fill('fictional-image-backup-password');
+    await page.getByRole('button', { name: '保存并继续', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: '备份已保存' })).toBeVisible();
     await page.getByRole('button', { name: '工作任务', exact: false }).first().click();
     await page.getByLabel('快速新增任务').fill('备份后新增');

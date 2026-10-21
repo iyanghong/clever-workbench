@@ -191,7 +191,7 @@ test(
       highContrast: true,
       reduceTransparency: true,
     });
-    expect(vault.status()).toEqual({ initialized: true, unlocked: false });
+    expect(vault.status()).toMatchObject({ initialized: true, unlocked: false });
     await vault.unlock(password);
     expect(vault.read(source.accountId, 'password')).toBe('fictional-resource-secret');
     vault.lock();

@@ -13,7 +13,7 @@ test('备份正在写入时关闭会等候完成，不弹出阻止退出的确�
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await page.evaluate(() => window.desktop.initializeVault('fictional-close-backup-password'));
+    await page.evaluate(() => window.desktop.configureBackup('fictional-close-backup-password'));
     await app.evaluate(({ dialog, BrowserWindow }) => {
       const files = process.getBuiltinModule('fs/promises') as typeof import('node:fs/promises');
       const rename = files.rename;
@@ -63,7 +63,7 @@ test('设置目录与自动策略持久化，失败重试保留已有副本，�
   let app = await electron.launch({ args: ['.'], env });
   try {
     let page = await app.firstWindow();
-    await page.evaluate(() => window.desktop.initializeVault('fictional-automatic-ui-password'));
+    await page.evaluate(() => window.desktop.configureBackup('fictional-automatic-ui-password'));
     await page.getByRole('button', { name: '设置', exact: true }).click();
     await page.getByRole('switch', { name: '自动备份' }).uncheck();
     await app.evaluate(({ dialog }, folder) => {

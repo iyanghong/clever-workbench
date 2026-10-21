@@ -269,7 +269,7 @@ test('工具收藏、后台运行与退出保护、目录及剪贴板还原', as
       .poll(() =>
         page.locator('#zip-output').evaluate((input) => getComputedStyle(input).backgroundColor),
       )
-      .toBe('rgb(37, 38, 42)');
+      .toBe('rgb(40, 43, 48)');
     await page.setViewportSize({ width: 850, height: 740 });
     await page.screenshot({ path: info.outputPath('zip-dark-narrow.png') });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(

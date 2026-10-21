@@ -51,7 +51,7 @@ afterEach(() => {
 });
 
 test(
-  '主密码变更轮换真实秘密与备份密钥，旧材料无法解当前密文，旧备份仍可恢复再变更',
+  '主密码变更轮换秘密密钥并保持独立备份密码，旧资料密钥无法解当前密文',
   { timeout: 20_000 },
   async () => {
     const { store, vault, backups, accountId } = await setup();
@@ -68,7 +68,6 @@ test(
     const nextConfig = vault.config();
     expect(nextConfig.id).not.toBe(previousConfig.id);
     expect(nextConfig.kdf.salt).not.toBe(previousConfig.kdf.salt);
-    expect(nextConfig.backupPublicKey).not.toBe(previousConfig.backupPublicKey);
     const oldWrapping = await derive(oldPassword, previousConfig.kdf),
       newWrapping = await derive(newPassword, nextConfig.kdf);
     const oldKey = unseal(previousConfig.key, oldWrapping, keyAad(previousConfig)),
@@ -102,8 +101,8 @@ test(
       fs.readdirSync(store.settings().backupDir)[0],
     );
     expect(vault.status().unlocked).toBe(false);
-    await expect(backups.inspect(newest, oldPassword)).rejects.toThrow('密码');
-    expect(await backups.inspect(newest, newPassword)).toMatchObject({ secrets: 3 });
+    await expect(backups.inspect(newest, newPassword)).rejects.toThrow('密码');
+    expect(await backups.inspect(newest, oldPassword)).toMatchObject({ secrets: 3 });
     await expect(backups.inspect(oldFile, newPassword)).rejects.toThrow('密码');
     await backups.restore((await backups.inspect(oldFile, oldPassword)).token);
     await expect(vault.unlock(newPassword)).rejects.toThrow('密码');

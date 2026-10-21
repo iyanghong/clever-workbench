@@ -1,3 +1,4 @@
+import { PageHeading, SegmentedControl } from '../../shared/WorkspaceUI';
 import { useEffect, useRef, useState } from 'react';
 import {
   GearSixIcon,
@@ -24,7 +25,7 @@ export function SettingsPage({ setContext }: ModuleProps) {
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
     [busy, setBusy] = useState('');
-  const [changingPassword, setChangingPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState<'change' | 'disable' | null>(null);
   const [selection, setSelection] = useState<BackupSelection | null>(null),
     [password, setPassword] = useState(''),
     [preview, setPreview] = useState<BackupInfo | null>(null),
@@ -82,12 +83,19 @@ export function SettingsPage({ setContext }: ModuleProps) {
   }
   async function exportBackup() {
     await run('正在生成加密备份…', async () => {
-      if (!(await window.desktop.vaultStatus()).initialized && !(await vault.ensureUnlocked()))
-        return;
+      if (!(await vault.ensureBackup())) return;
       const file = await window.desktop.backup();
       if (file) setNotice(`备份已保存：${file}`);
       setSnapshot(await window.desktop.snapshot());
     });
+  }
+  async function automaticBackup(enabled: boolean) {
+    try {
+      if (enabled && !vault.status.backupConfigured && !(await vault.ensureBackup())) return;
+      await update({ type: 'settings', autoBackup: enabled });
+    } catch (cause) {
+      setError(message(cause));
+    }
   }
   async function chooseBackup() {
     await run('', async () => {
@@ -143,6 +151,7 @@ export function SettingsPage({ setContext }: ModuleProps) {
     setBusy('正在保留当前副本并恢复…');
     setDialogError('');
     try {
+      if (vault.status.mode === 'password' && !(await vault.ensureUnlocked())) return;
       const next = await window.desktop.restoreBackup(preview.token);
       activeTokens.current.delete(preview.token);
       setSnapshot(next);
@@ -164,9 +173,11 @@ export function SettingsPage({ setContext }: ModuleProps) {
         </div>
       </header>
       <section className="settings-page">
-        <span className="eyebrow">CLEVER WORKBENCH</span>
-        <h1>你的工作空间</h1>
-        <p className="page-description">外观、秘密保护和本地资料备份。</p>
+        <PageHeading
+          title="你的工作空间"
+          eyebrow="CLEVER WORKBENCH"
+          description="外观、秘密保护和本地资料备份。"
+        />
         {snapshot && (
           <>
             <h3>外观</h3>
@@ -175,26 +186,41 @@ export function SettingsPage({ setContext }: ModuleProps) {
                 <strong>界面主题</strong>
                 <p>跟随系统，或选择固定外观</p>
               </div>
-              <div className="segmented">
-                {(
-                  [
-                    { id: 'light', name: '浅色', Icon: SunIcon },
-                    { id: 'dark', name: '深色', Icon: MoonIcon },
-                    { id: 'system', name: '系统', Icon: DesktopIcon },
-                  ] as const
-                ).map((theme) => (
-                  <button
-                    key={theme.id}
-                    aria-pressed={snapshot.settings.theme === theme.id}
-                    className={snapshot.settings.theme === theme.id ? 'active' : ''}
-                    disabled={Boolean(busy)}
-                    onClick={() => void update({ type: 'settings', theme: theme.id })}
-                  >
-                    <theme.Icon size={16} />
-                    {theme.name}
-                  </button>
-                ))}
-              </div>
+              <SegmentedControl
+                label="界面主题"
+                value={snapshot.settings.theme}
+                disabled={Boolean(busy)}
+                options={[
+                  {
+                    value: 'light',
+                    label: (
+                      <>
+                        <SunIcon size={16} />
+                        浅色
+                      </>
+                    ),
+                  },
+                  {
+                    value: 'dark',
+                    label: (
+                      <>
+                        <MoonIcon size={16} />
+                        深色
+                      </>
+                    ),
+                  },
+                  {
+                    value: 'system',
+                    label: (
+                      <>
+                        <DesktopIcon size={16} />
+                        系统
+                      </>
+                    ),
+                  },
+                ]}
+                onChange={(theme) => void update({ type: 'settings', theme })}
+              />
             </div>
             <h3>可访问性</h3>
             {(
@@ -237,63 +263,102 @@ export function SettingsPage({ setContext }: ModuleProps) {
             <h3>秘密保护</h3>
             <div className="setting-row">
               <div>
-                <strong>{vault.status.initialized ? '主密码已设置' : '尚未设置主密码'}</strong>
-                <p>普通资料可直接查看，秘密按需解锁。</p>
+                <strong>{vault.status.initialized ? '主密码已设置' : '系统加密保护'}</strong>
+                <p>
+                  {vault.status.initialized
+                    ? '普通资料可直接查看，秘密按需解锁。'
+                    : '凭据由当前系统账户加密保管，日常无需应用主密码。'}
+                </p>
               </div>
-              <button
-                className="secondary-button"
-                onClick={() =>
-                  void (vault.status.unlocked ? vault.lock() : vault.ensureUnlocked()).catch(
-                    (cause) => setError(message(cause)),
-                  )
-                }
-              >
-                <LockKeyIcon size={15} />
-                {vault.status.unlocked
-                  ? '立即锁定'
-                  : vault.status.initialized
-                    ? '解锁秘密'
-                    : '设置主密码'}
-              </button>
+              {vault.status.initialized && (
+                <button
+                  className="secondary-button"
+                  onClick={() =>
+                    void (vault.status.unlocked ? vault.lock() : vault.ensureUnlocked()).catch(
+                      (cause) => setError(message(cause)),
+                    )
+                  }
+                >
+                  <LockKeyIcon size={15} />
+                  {vault.status.unlocked
+                    ? '立即锁定'
+                    : vault.status.initialized
+                      ? '解锁秘密'
+                      : '设置主密码'}
+                </button>
+              )}
+              {!vault.status.initialized && (
+                <button
+                  className="secondary-button"
+                  disabled={Boolean(busy)}
+                  onClick={() =>
+                    void vault.enableMaster().catch((cause) => setError(message(cause)))
+                  }
+                >
+                  启用主密码
+                </button>
+              )}
             </div>
             {vault.status.initialized && (
               <div className="setting-row">
                 <div>
                   <strong>更改主密码</strong>
-                  <p>当前资料使用新密码，已有备份保留原密码。</p>
+                  <p>只更改本机解锁密码，独立备份密码保持不变。</p>
                 </div>
-                <button
-                  className="secondary-button"
-                  disabled={Boolean(busy)}
-                  onClick={() => {
-                    setNotice('');
-                    setError('');
-                    setChangingPassword(true);
-                  }}
-                >
-                  更改主密码
-                </button>
+                <div className="setting-actions">
+                  <button
+                    className="secondary-button"
+                    disabled={Boolean(busy)}
+                    onClick={() => {
+                      setNotice('');
+                      setError('');
+                      setChangingPassword('change');
+                    }}
+                  >
+                    更改主密码
+                  </button>
+                  <button
+                    className="secondary-button"
+                    disabled={Boolean(busy)}
+                    onClick={() => setChangingPassword('disable')}
+                  >
+                    关闭主密码
+                  </button>
+                </div>
               </div>
             )}
             <h3>备份与迁移</h3>
             <div className="setting-row">
               <div>
+                <strong>独立备份密码</strong>
+                <p>配置一次，恢复时使用。与本机主密码分别管理。</p>
+              </div>
+              <button
+                className="secondary-button"
+                disabled={Boolean(busy)}
+                onClick={() =>
+                  void vault.ensureBackup(true).catch((cause) => setError(message(cause)))
+                }
+              >
+                {vault.status.backupConfigured ? '更改备份密码' : '设置备份密码'}
+              </button>
+            </div>
+            <div className="setting-row">
+              <div>
                 <strong>自动加密备份</strong>
                 <p>
-                  {vault.status.initialized
+                  {vault.status.backupConfigured
                     ? '有变更时每日备份一次，保留最近 7 份。锁定秘密时也可运行。'
-                    : '未启用：设置主密码后，才能生成完整加密备份。'}
+                    : '未启用：首次备份时设置独立备份密码。'}
                 </p>
               </div>
               <input
                 role="switch"
                 aria-label="自动备份"
                 type="checkbox"
-                disabled={!vault.status.initialized || Boolean(busy)}
-                checked={vault.status.initialized && snapshot.settings.autoBackup}
-                onChange={(event) =>
-                  void update({ type: 'settings', autoBackup: event.target.checked })
-                }
+                disabled={Boolean(busy)}
+                checked={Boolean(vault.status.backupConfigured && snapshot.settings.autoBackup)}
+                onChange={(event) => void automaticBackup(event.target.checked)}
               />
             </div>
             <div className="setting-row">
@@ -320,7 +385,7 @@ export function SettingsPage({ setContext }: ModuleProps) {
                 <p>
                   {snapshot.settings.lastBackupAt
                     ? dateLabel(snapshot.settings.lastBackupAt, true)
-                    : vault.status.initialized
+                    : vault.status.backupConfigured
                       ? '尚未生成，应用运行时会自动检查。'
                       : '尚未启用'}
                 </p>
@@ -328,7 +393,7 @@ export function SettingsPage({ setContext }: ModuleProps) {
                   <p className="error-text">{snapshot.settings.lastBackupError}</p>
                 )}
               </div>
-              {vault.status.initialized && (
+              {vault.status.backupConfigured && (
                 <button
                   className="secondary-button"
                   disabled={Boolean(busy)}
@@ -365,7 +430,7 @@ export function SettingsPage({ setContext }: ModuleProps) {
               </button>
             </div>
             <p className="backup-note">
-              项目历史、台账、账号、任务、文档、草稿和引用图片整体加密。换机使用备份生成时的主密码；导出不需要解锁秘密。
+              项目历史、台账、账号、任务、文档、草稿和引用图片整体加密。换机使用该备份的独立备份密码；旧备份继续使用生成时的密码。
             </p>
             <h3>关于</h3>
             <AboutUpdate />
@@ -374,17 +439,22 @@ export function SettingsPage({ setContext }: ModuleProps) {
       </section>
       {changingPassword && (
         <PasswordChange
-          onClose={() => setChangingPassword(false)}
+          disable={changingPassword === 'disable'}
+          onClose={() => setChangingPassword(null)}
           onSuccess={() => {
-            setChangingPassword(false);
-            setNotice('主密码已更改，秘密已锁定。已有备份仍使用原密码。');
+            setChangingPassword(null);
+            setNotice(
+              changingPassword === 'disable'
+                ? '主密码已关闭，凭据由系统加密保护。'
+                : '主密码已更改，秘密已锁定。备份密码保持不变。',
+            );
           }}
         />
       )}
       {selection && (
         <Dialog title="输入备份密码" onClose={() => void cancelBackup()} error={dialogError}>
           <p>{selection.name}</p>
-          <p>请输入生成这份备份时的主密码。校验不会修改当前资料。</p>
+          <p>请输入这份文件的备份密码；旧格式使用生成时的主密码。校验不会修改当前资料。</p>
           <label>
             备份密码
             <input
@@ -433,6 +503,9 @@ export function SettingsPage({ setContext }: ModuleProps) {
             </p>
           </div>
           <p>将替换当前资料、草稿与回收站。替换前会保留一份当前资料的加密副本。</p>
+          {!vault.status.backupConfigured && (
+            <p>当前尚未设置备份密码，恢复前副本使用本次导入文件的备份密码。</p>
+          )}
           <div className="modal-actions">
             <button
               className="secondary-button"

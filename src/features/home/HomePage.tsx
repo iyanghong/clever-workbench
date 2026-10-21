@@ -1,3 +1,4 @@
+import { PageHeading } from '../../shared/WorkspaceUI';
 import { scopeFor } from '../../ledger-workspace-types';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -13,7 +14,7 @@ import {
 } from '@phosphor-icons/react';
 import type { ModuleProps } from '../../app/modules';
 import { routeForHit } from '../../app/modules';
-import type { Draft, Snapshot } from '../../types';
+import type { Draft, Snapshot, TaskSummary } from '../../types';
 import type { Favorite } from '../../home-types';
 import { emptyContent, dateLabel } from '../../domain';
 import { useSaveGroup } from '../../shared/useSaveGroup';
@@ -24,6 +25,11 @@ import { SecretCopyButton } from '../vault/SecretCopyButton';
 import { Dialog } from '../../shared/Dialog';
 import { AccessActions } from '../ledger/AccessActions';
 import { findTool, registeredTools } from '../tools/registry';
+import { sortTasks, taskUrgency } from '../../task-list';
+import { useTaskClock } from '../../shared/useTaskClock';
+import { TaskTagChips } from '../tasks/TaskTags';
+import { TaskTiming } from '../tasks/TaskTiming';
+const emptyTasks: TaskSummary[] = [];
 
 export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
@@ -85,10 +91,14 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
       setError(String(cause));
     }
   }
-  const pending =
-    snapshot?.tasks
-      .filter((item) => item.deletedAt === null && item.completedAt === null)
-      .sort((a, b) => b.createdAt - a.createdAt) ?? [];
+  const now = useTaskClock(snapshot?.tasks ?? emptyTasks);
+  const pending = sortTasks(
+    (snapshot?.tasks ?? emptyTasks).filter(
+      (item) => item.deletedAt === null && item.completedAt === null,
+    ),
+    'created',
+    now,
+  );
   const recent = snapshot?.documents.filter((item) => item.deletedAt === null).slice(0, 6) ?? [];
   function scopeName(kind: 'resource' | 'access', id: string, environmentId: string | null) {
     if (!snapshot) return '';
@@ -173,17 +183,15 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
         </button>
       </header>
       <div className="home-content">
-        <div className="home-heading">
-          <span className="eyebrow">
-            {new Intl.DateTimeFormat('zh-CN', {
-              month: 'long',
-              day: 'numeric',
-              weekday: 'long',
-            }).format(new Date())}
-          </span>
-          <h1>我的工作台</h1>
-          <p>账号、任务与方案，打开就能继续。</p>
-        </div>
+        <PageHeading
+          title="我的工作台"
+          description="账号、任务与方案，打开就能继续。"
+          eyebrow={new Intl.DateTimeFormat('zh-CN', {
+            month: 'long',
+            day: 'numeric',
+            weekday: 'long',
+          }).format(new Date())}
+        />
         <div className="home-grid">
           <section className="home-work">
             <div className="section-heading">
@@ -208,7 +216,7 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
             )}
             <div className="home-task-list">
               {pending.slice(0, 8).map((item) => (
-                <div className="home-task" key={item.id}>
+                <div className="home-task" key={item.id} data-urgency={taskUrgency(item, now)}>
                   <button
                     className="home-complete"
                     aria-label={`完成 ${item.title}`}
@@ -225,6 +233,8 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
                       {snapshot?.systems.find((system) => system.id === item.systemId)?.name ??
                         '未关联系统'}
                     </span>
+                    <TaskTiming task={item} now={now} />
+                    <TaskTagChips ids={item.tagIds} tags={snapshot?.taskTags} />
                   </button>
                 </div>
               ))}

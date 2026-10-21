@@ -5,6 +5,7 @@ export function useAutosave<T>(
   persist: (value: T) => Promise<void>,
   onError: (message: string) => void,
   pending?: React.MutableRefObject<Promise<void>>,
+  prepare?: React.MutableRefObject<() => void>,
 ) {
   const [value, setValue] = useState(initial);
   const [status, setStatus] = useState('已保存');
@@ -25,6 +26,7 @@ export function useAutosave<T>(
       .catch(() => {})
       .then(async () => {
         await pending?.current;
+        prepare?.current();
         if (!dirty.current) return;
         const next = latest.current;
         setStatus('保存中');

@@ -16,6 +16,7 @@ import {
 import { secretLabels } from '../src/vault-types';
 import type { ObjectContext } from '../src/ledger-types';
 import { scopeFor, type ScopeKind } from '../src/ledger-workspace-types';
+import type { TaskTime } from '../src/task-time';
 
 type ExportDocument = { name: string; markdown: string };
 export type DocumentRenderer = (
@@ -28,6 +29,8 @@ const escape = (value: string) =>
 const heading = (value: string) => escape(value.replace(/\s+/g, ' '));
 const date = (value: number | null) =>
   value === null ? '—' : new Date(value).toISOString().replace('T', ' ').slice(0, 19);
+const plannedDate = (value?: TaskTime | null) =>
+  !value ? '未设置' : value.kind === 'date' ? value.value : `${date(value.value)} UTC`;
 const table = (rows: [string, string][]) =>
   '| 信息 | 内容 |\n| --- | --- |\n' +
   rows
@@ -305,6 +308,22 @@ export class SystemExports {
             ['创建时间', date(task.createdAt)],
             ['开始时间', date(task.startedAt)],
             ['完成时间', date(task.completedAt)],
+            ['预计完成时间', plannedDate(task.dueAt)],
+            [
+              '临期开始时间',
+              task.urgentAt
+                ? plannedDate(task.urgentAt)
+                : task.dueAt
+                  ? '预计完成前 24 小时'
+                  : '未设置',
+            ],
+            [
+              '任务颜色标签',
+              (snapshot.taskTags ?? [])
+                .filter((tag) => task.tagIds?.includes(tag.id))
+                .map((tag) => tag.name)
+                .join('、'),
+            ],
           ]) +
           this.store.task(task.id).markdown,
       });

@@ -1,3 +1,4 @@
+import { PageHeading } from '../../shared/WorkspaceUI';
 import {
   LedgerCopyProvider,
   LedgerCopyActions,
@@ -7,6 +8,7 @@ import {
 } from './LedgerCopy';
 import type { LedgerCopyRef } from '../../ledger-copy-types';
 import { QuickTask } from '../tasks/QuickTask';
+import { RelatedWork } from './RelatedWork';
 import { PasteLedger } from './PasteLedger';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -185,6 +187,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
     [systemQuery, setSystemQuery] = useState(''),
     [info, setInfo] = useState(false),
     [exporting, setExporting] = useState(false),
+    [relatedOpen, setRelatedOpen] = useState(false),
     [capture, setCapture] = useState<string | null>(null),
     [captureContext, setCaptureContext] = useState<CreationContext>({}),
     [busy, setBusy] = useState(false),
@@ -666,6 +669,12 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
         <div className="spacer" />
         {system && (
           <>
+            <button
+              className="text-button"
+              onClick={() => void transition(() => setRelatedOpen(true))}
+            >
+              相关工作
+            </button>
             <SystemActionsMenu
               onInfo={() => void transition(() => setInfo(true))}
               onExport={() => void transition(() => setExporting(true))}
@@ -1439,6 +1448,15 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
           onClose={() => setExporting(false)}
         />
       )}
+      {relatedOpen && system && (
+        <Dialog
+          title="系统相关工作"
+          onClose={() => void transition(() => setRelatedOpen(false))}
+          error={error}
+        >
+          <RelatedWork {...host} snapshot={snapshot} context={{ systemId }} />
+        </Dialog>
+      )}
       {capture && Form && (
         <Dialog
           title={`新增${capture === 'task' ? '任务' : capture === 'system' ? '系统' : categories.find((c) => c[0] === capture)?.[1]}`}
@@ -1613,8 +1631,10 @@ export function ProjectArchiveWorkspace() {
   return (
     <main className="main">
       <section className="archive-page">
-        <h1>项目档案</h1>
-        <p>项目用于记录系统的阶段历史，工作任务只关联系统。</p>
+        <PageHeading
+          title="项目档案"
+          description="项目用于记录系统的阶段历史，工作任务只关联系统。"
+        />
         {snapshot && (
           <ProjectManager snapshot={snapshot} onSnapshot={setSnapshot} onError={setError} />
         )}

@@ -1,0 +1,122 @@
+/* macOS 27 material hierarchy; native window chrome remains owned by each platform. */
+:root {
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+  --font-caption: 11px;
+  --font-small: 12px;
+  --font-body: 13px;
+  --font-reading: 14px;
+  --font-subheading: 16px;
+  --font-heading: 20px;
+  --font-title: 24px;
+  --leading-tight: 1.35;
+  --leading-normal: 1.5;
+  --leading-reading: 1.75;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --radius-small: 5px;
+  --radius-control: 8px;
+  --radius-panel: 12px;
+  --radius-overlay: 18px;
+  --control-height: 32px;
+  --page-padding: 24px;
+  --bg: #f7f8fa;
+  --panel: #ffffff;
+  --text: #24262b;
+  --secondary: #5b606b;
+  --muted: #6c7280;
+  --line: #dce0e7;
+  --hover: #eceff4;
+  --selected: #e2edfc;
+  --accent: #0668d8;
+  --accent-fill: #0668d8;
+  --on-accent: #ffffff;
+  --danger: #bb303a;
+  --danger-fill: #bb303a;
+  --warning: #965600;
+  --success: #22734d;
+  --tag-red: #c34c51;
+  --tag-orange: #bc7029;
+  --tag-yellow: #a28a1f;
+  --tag-green: #3e8c65;
+  --tag-blue: #427fc0;
+  --tag-purple: #9164b3;
+  --tag-gray: #7a7e87;
+  --syntax-string: #267346;
+  --syntax-keyword: #965284;
+  --glass: rgba(244, 246, 249, 0.86);
+  --sidebar-glass: linear-gradient(160deg, #e8edf4d9, #f1f3f6c7);
+  --glass-highlight: #ffffffb8;
+  --border: 1px solid var(--line);
+  --shadow-control: 0 1px 2px #1f293b12, inset 0 1px 0 var(--glass-highlight);
+  --shadow: 0 12px 40px #18273d1c;
+  --shadow-overlay: 0 24px 80px #18273d38, 0 0 0 1px #18273d0a;
+  --scrim: #14203340;
+  --duration: 140ms;
+  --layer-sticky: 2;
+  --layer-header: 3;
+  --layer-notice: 40;
+  --layer-busy: 50;
+  --layer-install: 60;
+  font: var(--font-body) / var(--leading-normal) var(--font-ui);
+  font-synthesis: none;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: light;
+}
+:root[data-platform='win32'] {
+  --font-ui: 'Segoe UI Variable', 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+:root[data-theme='dark'] {
+  --bg: #202226;
+  --panel: #282b30;
+  --text: #f0f1f4;
+  --secondary: #bac0ca;
+  --muted: #a2a9b5;
+  --line: #41464f;
+  --hover: #353a42;
+  --selected: #28476e;
+  --accent: #86bbff;
+  --accent-fill: #266fc9;
+  --danger: #ff939b;
+  --danger-fill: #ae3543;
+  --warning: #f2bc72;
+  --success: #7cd5a8;
+  --tag-red: #ef7d83;
+  --tag-orange: #eaa263;
+  --tag-yellow: #d9c264;
+  --tag-green: #78c59a;
+  --tag-blue: #83b5ea;
+  --tag-purple: #bc99dc;
+  --tag-gray: #a4abb8;
+  --syntax-string: #91cfa2;
+  --syntax-keyword: #d4a1ce;
+  --glass: rgba(40, 44, 51, 0.9);
+  --sidebar-glass: linear-gradient(160deg, #2b3441e6, #292e35e0);
+  --glass-highlight: #ffffff14;
+  --shadow-control: 0 1px 2px #0003, inset 0 1px 0 var(--glass-highlight);
+  --shadow: 0 12px 40px #0005;
+  --shadow-overlay: 0 24px 80px #0008, 0 0 0 1px #ffffff0c;
+  --scrim: #0b101b80;
+  color-scheme: dark;
+}
+:root[data-high-contrast='true'] {
+  --muted: #454b55;
+  --secondary: #343942;
+  --line: #737b87;
+  --accent: #0055b5;
+}
+:root[data-theme='dark'][data-high-contrast='true'] {
+  --muted: #d1d6e0;
+  --secondary: #e8ebf2;
+  --line: #a4adbb;
+  --accent: #a6d2ff;
+}

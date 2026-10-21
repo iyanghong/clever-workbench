@@ -9,3 +9,5 @@ dist-electron/
 release/
 test-results/
 playwright-report/
+
+/public/editor-vendor/

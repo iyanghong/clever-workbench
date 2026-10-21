@@ -171,6 +171,8 @@ test('Markdown 系统资料包包含独立文档、任务、图片和所选密�
     type: 'task.create',
     draft: {
       title: '无项目系统任务',
+      dueAt: { kind: 'date', value: '2026-10-23' },
+      urgentAt: { kind: 'date', value: '2026-10-20' },
       projectId: null,
       systemId: a,
       content: emptyContent(),
@@ -196,6 +198,9 @@ test('Markdown 系统资料包包含独立文档、任务、图片和所选密�
     .map(([, bytes]) => bytes.toString())
     .join('\n');
   expect(markdown).toContain('任务正文完整保留');
+  expect(markdown).toContain('预计完成时间');
+  expect(markdown).toContain('2026-10-23');
+  expect(markdown).toContain('临期开始时间');
   expect(markdown).toContain('../图片/');
   expect(markdown).not.toContain('workbench-asset:');
   for (const excluded of [

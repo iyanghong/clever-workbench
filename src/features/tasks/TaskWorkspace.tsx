@@ -1,3 +1,4 @@
+import { PageHeading, SegmentedControl } from '../../shared/WorkspaceUI';
 import type { CreationContext } from '../../app/actions';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -19,12 +20,17 @@ import {
   ArrowRightIcon,
   CheckCircleIcon,
 } from '@phosphor-icons/react';
-import type { Command, Draft, Snapshot, Task } from '../../types';
+import type { Command, Draft, Snapshot, Task, TaskSummary } from '../../types';
 import { dateLabel, emptyContent } from '../../domain';
 import { Dialog } from '../../shared/Dialog';
 import { Detail } from '../../components/Detail';
 import { Timeline } from '../../components/Timeline';
 import { useVirtual } from '../../useVirtual';
+import { taskRows, taskUrgency, type TaskListRow, type TaskGrouping } from '../../task-list';
+import { useTaskClock } from '../../shared/useTaskClock';
+import { TaskTagChips, TaskTagManager } from './TaskTags';
+import { TaskTiming } from './TaskTiming';
+const emptyTasks: TaskSummary[] = [];
 const freshDraft = (systemId: string | null = null): Draft => ({
   title: '',
   content: emptyContent(),
@@ -76,6 +82,10 @@ export function TaskWorkspace({
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
     [view, setView] = useState<TaskView>(initialView),
     [systemScope, setSystemScope] = useState(initialSystem),
+    [grouping, setGrouping] = useState<TaskGrouping>('created'),
+    [tagIds, setTagIds] = useState<string[]>([]),
+    [tagMatch, setTagMatch] = useState<'any' | 'all'>('any'),
+    [manageTags, setManageTags] = useState(false),
     [filter, setFilter] = useState<'pending' | 'completed' | 'all'>(savedNavigation().filter),
     [layout, setLayout] = useState<'normal' | 'compact'>(() =>
       localStorage.getItem('task-layout') === 'compact' ? 'compact' : 'normal',
@@ -360,9 +370,17 @@ export function TaskWorkspace({
       return false;
     }
   }
-  const all = snapshot?.tasks ?? [],
+  const all = snapshot?.tasks ?? emptyTasks,
     systems = snapshot?.systems ?? [],
     currentSystem = systems.find((item) => item.id === systemScope);
+  const now = useTaskClock(all);
+  useEffect(() => {
+    if (!snapshot) return;
+    setTagIds((ids) => {
+      const next = ids.filter((id) => snapshot.taskTags?.some((tag) => tag.id === id));
+      return next.length === ids.length ? ids : next;
+    });
+  }, [snapshot?.taskTags]);
   useEffect(() => {
     if (snapshot && !selected) setContext({ systemId: currentSystem?.id ?? null });
   }, [Boolean(snapshot), selected, currentSystem?.id]);
@@ -373,9 +391,14 @@ export function TaskWorkspace({
           (view === 'trash' ? t.deletedAt !== null : t.deletedAt === null) &&
           (systemScope === 'all' ||
             (systemScope === 'none' ? !t.systemId : t.systemId === systemScope)) &&
-          (!matches || matches.has(t.id)),
+          (!matches || matches.has(t.id)) &&
+          (view !== 'tasks' ||
+            !tagIds.length ||
+            (tagMatch === 'all'
+              ? tagIds.every((id) => t.tagIds?.includes(id))
+              : tagIds.some((id) => t.tagIds?.includes(id)))),
       ),
-    [all, view, systemScope, matches],
+    [all, view, systemScope, matches, tagIds, tagMatch],
   );
   const visible = useMemo(
     () =>
@@ -398,7 +421,7 @@ export function TaskWorkspace({
   );
   useEffect(() => {
     setBatchIds([]);
-  }, [systemScope, filter, query, view]);
+  }, [systemScope, filter, query, view, tagIds, tagMatch]);
   async function assignSystem() {
     if (batchBusy) return;
     setBatchBusy(true);
@@ -412,7 +435,21 @@ export function TaskWorkspace({
       setBatchBusy(false);
     }
   }
-  const virtual = useVirtual(visible.length, layout === 'compact' ? 44 : 68);
+  const rows = useMemo(
+    () =>
+      view === 'trash'
+        ? visible.map((task): TaskListRow => ({ kind: 'task', task }))
+        : taskRows(visible, grouping, now),
+    [visible, view, grouping, now],
+  );
+  const rowHeights = useMemo(
+    () => rows.map((row) => (row.kind === 'group' ? 34 : layout === 'compact' ? 44 : 68)),
+    [rows, layout],
+  );
+  const virtual = useVirtual(rows.length, rowHeights);
+  useEffect(() => {
+    if (virtual.element) virtual.element.scrollTop = 0;
+  }, [view, systemScope, filter, query, grouping, tagIds, tagMatch, virtual.element]);
   useEffect(() => {
     if (virtual.element) virtual.element.scrollTop = 0;
   }, [view, systemScope, filter, query]);
@@ -494,71 +531,69 @@ export function TaskWorkspace({
             <Timeline tasks={all} systems={systems} onSelect={(id) => void select(id)} />
           ) : (
             <section className="task-page">
-              <div className="page-heading">
-                <div>
-                  <span className="eyebrow">
-                    {view === 'trash'
-                      ? 'ROOM TO RECONSIDER'
-                      : new Date().toLocaleDateString('zh-CN', {
-                          month: 'long',
-                          day: 'numeric',
-                          weekday: 'long',
-                        })}
-                  </span>
-                  <h1>
-                    {listTitle}
-                    <span className="heading-count">{scoped.length}</span>
-                  </h1>
-                </div>
-                {view === 'trash' && scoped.length > 0 && (
-                  <button
-                    className="text-button danger-text"
-                    onClick={() => void run({ type: 'task.purge' })}
-                  >
-                    清空回收站
-                  </button>
-                )}
-              </div>
+              <PageHeading
+                title={listTitle}
+                count={scoped.length}
+                eyebrow={
+                  view === 'trash'
+                    ? '回收站'
+                    : new Date().toLocaleDateString('zh-CN', {
+                        month: 'long',
+                        day: 'numeric',
+                        weekday: 'long',
+                      })
+                }
+                actions={
+                  view === 'trash' &&
+                  scoped.length > 0 && (
+                    <button
+                      className="text-button danger-text"
+                      onClick={() => void run({ type: 'task.purge' })}
+                    >
+                      清空回收站
+                    </button>
+                  )
+                }
+              />
               {view !== 'trash' ? (
                 <div className="list-filter">
-                  <div className="segmented">
-                    {(
+                  <SegmentedControl
+                    label="任务完成状态"
+                    value={filter}
+                    onChange={setFilter}
+                    options={(
                       [
-                        { id: 'pending', name: '未完成' },
-                        { id: 'completed', name: '已完成' },
-                        { id: 'all', name: '全部' },
+                        { value: 'pending', name: '未完成' },
+                        { value: 'completed', name: '已完成' },
+                        { value: 'all', name: '全部' },
                       ] as const
-                    ).map((f) => (
-                      <button
-                        key={f.id}
-                        className={filter === f.id ? 'active' : ''}
-                        onClick={() => setFilter(f.id)}
-                      >
-                        {f.name}
-                        <span>
-                          {f.id === 'all'
-                            ? scoped.length
-                            : scoped.filter((t) =>
-                                f.id === 'pending'
-                                  ? t.completedAt === null
-                                  : t.completedAt !== null,
-                              ).length}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="segmented" role="group" aria-label="任务布局">
-                    {(['normal', 'compact'] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        aria-pressed={layout === mode}
-                        className={layout === mode ? 'active' : ''}
-                        onClick={() => setLayout(mode)}
-                      >
-                        {mode === 'normal' ? '正常' : '紧凑'}
-                      </button>
-                    ))}
-                  </div>
+                    ).map((f) => ({
+                      value: f.value,
+                      label: (
+                        <>
+                          {f.name}
+                          <span>
+                            {f.value === 'all'
+                              ? scoped.length
+                              : scoped.filter((t) =>
+                                  f.value === 'pending'
+                                    ? t.completedAt === null
+                                    : t.completedAt !== null,
+                                ).length}
+                          </span>
+                        </>
+                      ),
+                    }))}
+                  />
+                  <SegmentedControl
+                    label="任务布局"
+                    value={layout}
+                    onChange={setLayout}
+                    options={[
+                      { value: 'normal', label: '正常' },
+                      { value: 'compact', label: '紧凑' },
+                    ]}
+                  />
                   <button
                     className="text-button"
                     aria-pressed={batchMode}
@@ -569,12 +604,60 @@ export function TaskWorkspace({
                   >
                     批量关联系统
                   </button>
-                  <span className="list-sort">
-                    {filter === 'completed' ? '最近完成优先' : '最近记录优先'}
-                  </span>
+                  <select
+                    aria-label="时间归类"
+                    value={grouping}
+                    onChange={(event) => setGrouping(event.target.value as TaskGrouping)}
+                  >
+                    <option value="created">按创建时间</option>
+                    <option value="due">按预计完成时间</option>
+                  </select>
+                  <button className="text-button" onClick={() => setManageTags(true)}>
+                    管理标签
+                  </button>
                 </div>
               ) : (
                 <p className="page-description">记录会保留在这里，直到你选择恢复或彻底删除。</p>
+              )}
+              {view === 'tasks' && (
+                <details className="compact-details task-tag-filter">
+                  <summary>标签筛选{tagIds.length ? ` · ${tagIds.length} 项` : ''}</summary>
+                  <div className="task-tag-options">
+                    {(snapshot.taskTags ?? []).map((tag) => (
+                      <label key={tag.id}>
+                        <input
+                          type="checkbox"
+                          aria-label={`筛选标签 ${tag.name}`}
+                          checked={tagIds.includes(tag.id)}
+                          onChange={(event) =>
+                            setTagIds(
+                              event.target.checked
+                                ? [...tagIds, tag.id]
+                                : tagIds.filter((id) => id !== tag.id),
+                            )
+                          }
+                        />
+                        <TaskTagChips tags={[tag]} ids={[tag.id]} />
+                      </label>
+                    ))}
+                    <select
+                      aria-label="标签匹配方式"
+                      value={tagMatch}
+                      onChange={(event) => setTagMatch(event.target.value as 'any' | 'all')}
+                    >
+                      <option value="any">匹配任一标签</option>
+                      <option value="all">匹配全部标签</option>
+                    </select>
+                    {!!tagIds.length && (
+                      <button className="text-button" onClick={() => setTagIds([])}>
+                        清除标签筛选
+                      </button>
+                    )}
+                    {!snapshot.taskTags?.length && (
+                      <span className="muted">可在“管理标签”中创建分类。</span>
+                    )}
+                  </div>
+                </details>
               )}
               {view !== 'trash' && (
                 <form
@@ -680,11 +763,26 @@ export function TaskWorkspace({
                 {visible.length ? (
                   <>
                     <div style={{ height: virtual.paddingTop }} />
-                    {visible.slice(virtual.start, virtual.end).map((t) => {
+                    {rows.slice(virtual.start, virtual.end).map((row) => {
+                      if (row.kind === 'group')
+                        return (
+                          <div
+                            className="task-group-heading"
+                            data-task-group={row.id}
+                            key={row.id}
+                            role="heading"
+                            aria-level={2}
+                          >
+                            <span>{row.label}</span>
+                            <span>{row.count} 项</span>
+                          </div>
+                        );
+                      const t = row.task;
                       const p = systems.find((p) => p.id === t.systemId);
                       return (
                         <div
                           className={`task-row ${selected === t.id ? 'selected' : ''}`}
+                          data-urgency={taskUrgency(t, now)}
                           key={t.id}
                         >
                           {batchMode && view === 'tasks' && (
@@ -727,17 +825,21 @@ export function TaskWorkspace({
                               {t.title}
                             </span>
                             <span className="task-subtitle">
-                              <span
-                                className="dot"
-                                style={{ background: p ? '#007aff' : '#b1b1b9' }}
-                              />
-                              {p?.name ?? '未关联系统'}
-                              <span className="subtitle-divider">·</span>
-                              {view === 'trash'
-                                ? `${dateLabel(t.deletedAt)}删除`
-                                : t.completedAt
-                                  ? `${dateLabel(t.completedAt)}完成`
-                                  : `${dateLabel(t.startedAt)}开始`}
+                              <span className="task-context">
+                                <span
+                                  className="dot"
+                                  style={{ background: p ? 'var(--accent)' : 'var(--muted)' }}
+                                />
+                                {p?.name ?? '未关联系统'}
+                                <span className="subtitle-divider">·</span>
+                                {view === 'trash'
+                                  ? `${dateLabel(t.deletedAt)}删除`
+                                  : t.completedAt
+                                    ? `${dateLabel(t.completedAt)}完成`
+                                    : `${dateLabel(t.startedAt)}开始`}
+                              </span>
+                              <TaskTiming task={t} now={now} />
+                              <TaskTagChips ids={t.tagIds} tags={snapshot.taskTags} />
                             </span>
                           </button>
                           {view === 'trash' ? (
@@ -771,7 +873,7 @@ export function TaskWorkspace({
                       <TrayIcon size={35} weight="duotone" />
                     </div>
                     <h3>
-                      {query
+                      {query || tagIds.length
                         ? '没有找到这条记录'
                         : view === 'trash'
                           ? '回收站是空的'
@@ -780,19 +882,20 @@ export function TaskWorkspace({
                             : '留一点空间，给专注'}
                     </h3>
                     <p>
-                      {query
+                      {query || tagIds.length
                         ? '试试其他关键词，或清除筛选。'
                         : view === 'trash'
                           ? '删除的任务可以在这里找回。'
                           : '从一行文字开始，把工作慢慢变成成果。'}
                     </p>
-                    {query ? (
+                    {query || tagIds.length ? (
                       <button
                         className="secondary-button"
                         onClick={() => {
                           setQuery('');
                           setSystemScope('all');
                           setFilter('all');
+                          setTagIds([]);
                         }}
                       >
                         清除筛选
@@ -886,6 +989,13 @@ export function TaskWorkspace({
             </button>
           </div>
         </Dialog>
+      )}
+      {manageTags && snapshot && (
+        <TaskTagManager
+          snapshot={snapshot}
+          onSnapshot={applySnapshot}
+          onClose={() => setManageTags(false)}
+        />
       )}
     </div>
   );

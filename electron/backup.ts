@@ -1,5 +1,7 @@
 import { WorkspaceLedger } from './ledger-workspace';
 import { migrateWorkbench } from './workbench-migration';
+import { migrateTaskPlanning } from './task-migration';
+import { TaskTags } from './task-tags';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
@@ -19,10 +21,11 @@ import {
   schemaTables,
 } from './store';
 import { encryptArchive, decryptArchive, checkEncryptedArchive } from './encrypted-archive';
-import { validateConfig, type VaultConfig } from './vault-crypto';
+import { newProtection, type VaultConfig } from './vault-crypto';
+import { backupProtection, validateBackupConfig, type BackupConfig } from './backup-crypto';
 import { validateFavorites } from './favorites';
 import { validateZipSettings } from './tools/zip-validation';
-import { verifyVaultIntegrity } from './vault';
+import { verifyVaultIntegrity, type Vault, type RestoreProtection } from './vault';
 import { Ledger, validateLedger } from './ledger';
 import { migrateSystemLedger } from './ledger-migration';
 import { validateTimes } from '../src/domain';
@@ -76,8 +79,20 @@ function backupFailure(cause: unknown) {
 export class Backups {
   busy = false;
   private idleWaiters = new Set<() => void>();
-  prepared = new Map<string, { directory: string; manifest: Manifest; protection: VaultConfig }>();
-  constructor(public store: Store) {
+  prepared = new Map<
+    string,
+    {
+      directory: string;
+      manifest: Manifest;
+      protection: BackupConfig;
+      key: Buffer;
+      legacyRestore?: VaultConfig;
+    }
+  >();
+  constructor(
+    public store: Store,
+    private vault?: () => Vault,
+  ) {
     fs.rmSync(path.join(store.root, 'restore-staging'), { recursive: true, force: true });
   }
   whenIdle() {
@@ -92,11 +107,12 @@ export class Backups {
   async discard(token: string) {
     const prepared = this.prepared.get(token);
     if (prepared && prepared.directory !== this.store.directory) {
-      await fsp.rm(prepared.directory, { recursive: true, force: true });
+      prepared.key.fill(0);
       this.prepared.delete(token);
+      await fsp.rm(prepared.directory, { recursive: true, force: true });
     }
   }
-  async create(filename: string, fallbackProtection?: VaultConfig) {
+  async create(filename: string, fallbackProtection?: BackupConfig) {
     if (this.busy) throw new Error('另一项备份或恢复正在进行，请稍后再试。');
     this.busy = true;
     try {
@@ -107,14 +123,14 @@ export class Backups {
       this.finish();
     }
   }
-  private async writeArchive(filename: string, fallbackProtection?: VaultConfig) {
+  private async writeArchive(filename: string, fallbackProtection?: BackupConfig) {
     const staging = path.join(this.store.root, `backup-${randomUUID()}`),
       temporary = `${filename}.${randomUUID()}.tmp`;
     try {
       await fsp.mkdir(staging, { recursive: true });
       const database = path.join(staging, 'database.sqlite');
       await backup(this.store.db, database);
-      const snapshot = new DatabaseSync(database, { readOnly: true });
+      const snapshot = new DatabaseSync(database);
       let names: string[],
         tasks: number,
         projects: number,
@@ -124,13 +140,19 @@ export class Backups {
         resources: number,
         accounts: number,
         secrets: number,
-        protection: VaultConfig;
+        protection: BackupConfig;
       try {
-        const row = snapshot.prepare("SELECT value FROM preferences WHERE key='vaultConfig'").get();
-        const value = row ? JSON.parse(String(row.value)) : fallbackProtection;
-        if (!value) throw new Error('请先设置主密码，再启用完整加密备份。');
-        validateConfig(value);
+        const value = backupProtection(snapshot) ?? fallbackProtection;
+        if (!value) throw new Error('请先设置独立备份密码，再启用完整加密备份。');
+        validateBackupConfig(value);
         protection = value;
+        snapshot.exec('PRAGMA journal_mode=DELETE');
+        const set = snapshot.prepare(
+          'INSERT INTO preferences(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+        );
+        set.run('vaultConfig', JSON.stringify(protection));
+        set.run('backupConfig', JSON.stringify(protection));
+        snapshot.prepare("DELETE FROM preferences WHERE key='systemProtection'").run();
         systems = Number(snapshot.prepare('SELECT count(*) n FROM systems').get()!.n);
         accessEntries = Number(snapshot.prepare('SELECT count(*) n FROM access_entries').get()!.n);
         resources = Number(snapshot.prepare('SELECT count(*) n FROM resources').get()!.n);
@@ -217,6 +239,7 @@ export class Backups {
     if (this.busy) throw new Error('请等待正在进行的备份完成。');
     this.busy = true;
     const directory = path.join(this.store.root, 'restore-staging', randomUUID());
+    let restoredKey: Buffer | undefined;
     try {
       for (const token of this.prepared.keys()) await this.discard(token);
       await fsp.mkdir(path.join(directory, 'assets'), { recursive: true });
@@ -316,9 +339,20 @@ export class Backups {
       if (!manifest || Object.keys(manifest.files).some((name) => !received.has(name)))
         throw new Error('备份缺少必要文件。');
       await fsp.rm(payload, { force: true });
-      await validateDatabase(directory, manifest, password, protection);
+      restoredKey = await validateDatabase(directory, manifest, password, protection);
+      const legacyRestore =
+        !this.vault && protection.version === 2
+          ? await newProtection(password, restoredKey)
+          : undefined;
       const token = randomUUID();
-      this.prepared.set(token, { directory, manifest, protection });
+      this.prepared.set(token, {
+        directory,
+        manifest,
+        protection,
+        key: restoredKey,
+        legacyRestore,
+      });
+      restoredKey = undefined;
       return {
         token,
         createdAt: manifest.createdAt,
@@ -333,6 +367,7 @@ export class Backups {
         images: Object.keys(manifest.files).filter((n) => n.startsWith('assets/')).length,
       };
     } catch (e) {
+      restoredKey?.fill(0);
       await fsp.rm(directory, { recursive: true, force: true });
       throw e;
     } finally {
@@ -352,10 +387,25 @@ export class Backups {
     const oldDirectory = this.store.directory,
       oldGeneration = this.store.generation,
       deviceSettings = this.store.settings();
+    let localProtection: RestoreProtection | undefined;
     try {
-      await this.writeArchive(recovery, prepared.protection);
+      const vault = this.vault?.();
+      const recoveryProtection =
+        backupProtection(this.store.db) ??
+        (vault ? vault.recoveryProtection(prepared.protection) : prepared.protection);
+      localProtection = vault?.prepareRestore();
+      vault?.lock();
+      await this.writeArchive(recovery, recoveryProtection);
       const replacement = new DatabaseSync(path.join(prepared.directory, 'database.sqlite'));
+      let rebound: ReturnType<RestoreProtection['apply']> | undefined;
       try {
+        replacement.exec('BEGIN IMMEDIATE');
+        if (localProtection)
+          rebound = localProtection.apply(replacement, prepared.key, prepared.protection);
+        else if (prepared.legacyRestore)
+          replacement
+            .prepare("UPDATE preferences SET value=? WHERE key='vaultConfig'")
+            .run(JSON.stringify(prepared.legacyRestore));
         for (const [key, value] of Object.entries({
           backupDir: deviceSettings.backupDir,
           lastBackupAt: null,
@@ -367,6 +417,17 @@ export class Backups {
               'INSERT INTO preferences VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
             )
             .run(key, JSON.stringify(value));
+        replacement.exec('COMMIT');
+        if (rebound) {
+          prepared.key.fill(0);
+          prepared.key = rebound.key;
+          prepared.protection = rebound.backup;
+          rebound = undefined;
+        }
+      } catch (cause) {
+        rebound?.key.fill(0);
+        replacement.exec('ROLLBACK');
+        throw cause;
       } finally {
         replacement.close();
       }
@@ -390,9 +451,11 @@ export class Backups {
         this.store.db = this.store.open();
         throw e;
       }
+      prepared.key.fill(0);
       this.prepared.delete(token);
       return this.store.snapshot();
     } finally {
+      localProtection?.dispose();
       this.finish();
     }
   }
@@ -402,8 +465,8 @@ export class Backups {
       return;
     }
     const settings = this.store.settings();
-    if (this.store.get('vaultConfig', null) === null) {
-      if (force) throw new Error('请先设置主密码，再启用完整加密备份。');
+    if (backupProtection(this.store.db) === null) {
+      if (force) throw new Error('请先设置独立备份密码，再启用完整加密备份。');
       return;
     }
     const now = new Date();
@@ -464,15 +527,18 @@ async function validateDatabase(
   directory: string,
   manifest: Manifest,
   password: unknown,
-  protection: VaultConfig,
+  protection: BackupConfig,
 ) {
   // This is the authenticated, isolated extraction; never migrate the source or active database.
   const db = new DatabaseSync(path.join(directory, 'database.sqlite'));
+  let key: Buffer | undefined;
   try {
     db.exec('PRAGMA trusted_schema=OFF; PRAGMA foreign_keys=ON');
     const version = Number(db.prepare('PRAGMA user_version').get()!.user_version);
     if (
-      ![7, 8, schemaVersion].includes(version) ||
+      !Number.isInteger(version) ||
+      version < 7 ||
+      version > schemaVersion ||
       Object.values(db.prepare('PRAGMA integrity_check').get()!)[0] !== 'ok' ||
       db.prepare('PRAGMA foreign_key_check').all().length
     )
@@ -485,13 +551,16 @@ async function validateDatabase(
         .all(...schemaTables).length
     )
       throw new Error('备份数据库结构不兼容。');
-    await verifyVaultIntegrity(db, password, protection);
+    key = await verifyVaultIntegrity(db, password, protection);
     if (version < schemaVersion) {
       migrateSystemLedger(db);
       migrateWorkbench(db);
+      migrateTaskPlanning(db);
       db.exec(`PRAGMA user_version=${schemaVersion}`);
     }
     validateLedger(db);
+    const taskTags = new TaskTags(db);
+    taskTags.validate();
     db.exec('SAVEPOINT validate_workspace');
     try {
       new WorkspaceLedger(db).validate();
@@ -531,7 +600,11 @@ async function validateDatabase(
     }
     const rows = db.prepare('SELECT * FROM tasks').all();
     for (const row of rows) {
-      const task = row as unknown as Task;
+      const task = {
+        ...row,
+        dueAt: row.dueAt ? JSON.parse(String(row.dueAt)) : null,
+        urgentAt: row.urgentAt ? JSON.parse(String(row.urgentAt)) : null,
+      } as unknown as Task;
       validateTimes(task.startedAt, task.completedAt);
       ledger.resolveContext(task);
       if (
@@ -560,6 +633,7 @@ async function validateDatabase(
       const draft = JSON.parse(draftRow.value as string) as Draft | null;
       if (draft !== null) {
         validateDraftFields(draft);
+        taskTags.validateIds(draft.tagIds);
         if (draft.projectId !== null && !projectMap.has(draft.projectId))
           throw new Error('草稿无效。');
         ledger.resolveContext(draft);
@@ -599,7 +673,16 @@ async function validateDatabase(
     if (documents.length !== manifest.documents) throw new Error('备份文档数量不一致。');
     if (rows.length !== manifest.tasks || projects.length !== manifest.projects)
       throw new Error('备份记录数量不一致。');
+    return key;
+  } catch (cause) {
+    key?.fill(0);
+    throw cause;
   } finally {
-    db.close();
+    try {
+      db.close();
+    } catch (cause) {
+      key?.fill(0);
+      throw cause;
+    }
   }
 }

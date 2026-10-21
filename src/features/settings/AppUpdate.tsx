@@ -15,6 +15,7 @@ import {
 } from '@phosphor-icons/react';
 import type { UpdateSnapshot, UpdateHistoryEntry } from '../../update-types';
 import { Dialog } from '../../shared/Dialog';
+import { useVault } from '../vault/VaultProvider';
 import './app-update.css';
 
 export function useAppUpdate() {
@@ -76,6 +77,7 @@ export function UpdateDetails({
   state: UpdateSnapshot | null;
   allowCheck?: boolean;
 }) {
+  const vault = useVault();
   const [error, setError] = useState('');
   const status = state?.status;
   const busy =
@@ -231,8 +233,9 @@ export function UpdateDetails({
                 className="primary-button"
                 onClick={() => {
                   setError('');
-                  void window.desktop
-                    .installUpdate()
+                  void vault
+                    .ensureBackup()
+                    .then((configured) => (configured ? window.desktop.installUpdate() : undefined))
                     .catch((cause) =>
                       setError(
                         (cause instanceof Error ? cause.message : '更新准备失败，请重试。').replace(

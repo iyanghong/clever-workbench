@@ -68,11 +68,12 @@ export function unseal(value: unknown, key: Buffer, aad: string, max = 1_000_000
     throw new Error('秘密完整性校验失败，无法读取。');
   }
 }
-export function validateConfig(value: unknown): asserts value is VaultConfig {
+export function validateProtection(
+  value: unknown,
+): asserts value is Omit<VaultConfig, 'version' | 'key'> {
   if (!value || typeof value !== 'object') throw new Error('主密码保护材料缺失。');
   const data = value as VaultConfig;
   if (
-    data.version !== 1 ||
     typeof data.id !== 'string' ||
     !/^[a-f0-9-]{36}$/.test(data.id) ||
     !data.kdf ||
@@ -83,7 +84,6 @@ export function validateConfig(value: unknown): asserts value is VaultConfig {
   )
     throw new Error('不支持的主密码保护参数。');
   decode(data.kdf.salt, 16, 16);
-  validateSealed(data.key, 32);
   validateSealed(data.backupPrivateKey, 8192);
   const publicKey = createPublicKey({
     key: decode(data.backupPublicKey, 1024),
@@ -95,6 +95,12 @@ export function validateConfig(value: unknown): asserts value is VaultConfig {
     publicKey.asymmetricKeyDetails?.modulusLength !== 3072
   )
     throw new Error('备份保护材料无效。');
+}
+export function validateConfig(value: unknown): asserts value is VaultConfig {
+  validateProtection(value);
+  const data = value as VaultConfig;
+  if (data.version !== 1) throw new Error('不支持的主密码保护版本。');
+  validateSealed(data.key, 32);
 }
 export async function derive(password: unknown, kdf: VaultConfig['kdf']) {
   if (typeof password !== 'string' || password.length > 1024 || password.length === 0)

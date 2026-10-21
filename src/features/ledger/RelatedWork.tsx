@@ -3,6 +3,10 @@ import { PlusIcon, NotePencilIcon, ArrowUpRightIcon } from '@phosphor-icons/reac
 import type { Snapshot } from '../../types';
 import type { ObjectContext } from '../../ledger-types';
 import type { ModuleProps } from '../../app/modules';
+import { sortTasks, taskUrgency } from '../../task-list';
+import { useTaskClock } from '../../shared/useTaskClock';
+import { TaskTagChips } from '../tasks/TaskTags';
+import { TaskTiming } from '../tasks/TaskTiming';
 export type RelatedHost = {
   createDocument: (context: Partial<ObjectContext>) => Promise<void>;
   createTask: (context: Partial<ObjectContext>, title: string) => Promise<void>;
@@ -28,7 +32,15 @@ export function RelatedWork({
     (!context.environmentId || context.environmentId === item.environmentId) &&
     (!context.resourceId || context.resourceId === item.resourceId);
   const documents = snapshot.documents.filter((item) => item.deletedAt === null && matches(item));
-  const tasks = snapshot.tasks.filter((item) => item.deletedAt === null && matches(item));
+  const now = useTaskClock(snapshot.tasks);
+  const tasks = sortTasks(
+    snapshot.tasks.filter(
+      (item) =>
+        item.deletedAt === null && (!context.systemId || context.systemId === item.systemId),
+    ),
+    'created',
+    now,
+  );
   async function run(operation: () => Promise<void>) {
     if (busy) return;
     setBusy(true);
@@ -93,9 +105,14 @@ export function RelatedWork({
             {tasks.map((item) => (
               <button
                 key={item.id}
+                className="related-task"
+                data-urgency={taskUrgency(item, now)}
                 onClick={() => void navigate({ module: 'tasks', objectId: item.id })}
               >
-                {item.completedAt ? '✓' : '○'} {item.title}
+                <span aria-hidden="true">{item.completedAt ? '✓' : '○'}</span>
+                <span className="related-task-title">{item.title}</span>
+                <TaskTiming task={item} now={now} />
+                <TaskTagChips ids={item.tagIds} tags={snapshot.taskTags} />
                 <ArrowUpRightIcon size={13} />
               </button>
             ))}

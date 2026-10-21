@@ -21,7 +21,7 @@ import type {
   AccessCopyTarget,
 } from './vault-types';
 import type { DocumentCommand, DocumentRecord, DocumentSummary } from './document-types';
-import type { JSONContent } from '@tiptap/react';
+import type { JSONContent } from '@tiptap/core';
 import type {
   LedgerCommand,
   SystemRecord,
@@ -36,6 +36,9 @@ import type {
 } from './ledger-types';
 export type Project = { id: string; name: string; color: string; archivedAt: number | null };
 export type TaskSummary = {
+  tagIds?: string[];
+  dueAt?: import('./task-time').TaskTime | null;
+  urgentAt?: import('./task-time').TaskTime | null;
   history?: string;
   id: string;
   title: string;
@@ -50,6 +53,9 @@ export type TaskSummary = {
 };
 export type Task = TaskSummary & { content: JSONContent; markdown: string };
 export type Draft = {
+  tagIds?: string[];
+  dueAt?: import('./task-time').TaskTime | null;
+  urgentAt?: import('./task-time').TaskTime | null;
   history?: string;
   title: string;
   projectId: string | null;
@@ -72,6 +78,7 @@ export type Settings = {
 };
 export type SystemAppearance = { reduceTransparency: boolean; highContrast: boolean };
 export type Snapshot = {
+  taskTags?: import('./task-tags').TaskTag[];
   scopes: LedgerScope[];
   deploymentNodes: DeploymentNode[];
   operations: Operation[];
@@ -91,6 +98,7 @@ export type Snapshot = {
   settings: Settings;
 };
 export type Command =
+  | import('./task-tags').TaskTagCommand
   | WorkspaceLedgerCommand
   | FavoriteCommand
   | DocumentCommand
@@ -98,6 +106,9 @@ export type Command =
   | { type: 'task.create'; draft: Draft; consumeDraft?: boolean }
   | {
       type: 'task.edit';
+      tagIds?: string[];
+      dueAt?: import('./task-time').TaskTime | null;
+      urgentAt?: import('./task-time').TaskTime | null;
       id: string;
       title: string;
       content: JSONContent;
@@ -178,6 +189,8 @@ export interface DesktopAPI {
   copyResourceWithSecrets(id: string, target: ResourceCopyTarget): Promise<MutationResult>;
   initializeVault(password: string): Promise<void>;
   unlockVault(password: string): Promise<void>;
+  unlockSystemVault(): Promise<void>;
+  configureBackup(password: string): Promise<void>;
   lockVault(): Promise<void>;
   readSecret(accountId: string, kind: SecretKind): Promise<string>;
   saveSecret(accountId: string, kind: SecretKind, value: string): Promise<Snapshot>;
@@ -187,6 +200,7 @@ export interface DesktopAPI {
   systemAppearance(): Promise<SystemAppearance>;
   onSystemAppearance(handler: (preferences: SystemAppearance) => void): () => void;
   rotateVault(currentPassword: string, nextPassword: string): Promise<void>;
+  disableMasterPassword(password: string): Promise<void>;
   onVaultStatus(handler: (status: VaultStatus) => void): () => void;
   snapshot(): Promise<Snapshot>;
   document(id: string): Promise<DocumentRecord>;

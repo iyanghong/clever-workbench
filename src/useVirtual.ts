@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-export function useVirtual(count: number, rowHeight: number) {
+import { useCallback, useEffect, useMemo, useState } from 'react';
+export function useVirtual(count: number, rowHeight: number | readonly number[]) {
   const [element, setElement] = useState<HTMLDivElement | null>(null),
     [view, setView] = useState({ top: 0, height: 600 });
   const ref = useCallback((node: HTMLDivElement | null) => setElement(node), []);
@@ -15,17 +15,33 @@ export function useVirtual(count: number, rowHeight: number) {
       element.removeEventListener('scroll', update);
     };
   }, [element]);
+  const offsets = useMemo(() => {
+    const result = [0];
+    for (let i = 0; i < count; i++)
+      result.push(result[i] + (typeof rowHeight === 'number' ? rowHeight : rowHeight[i]));
+    return result;
+  }, [count, rowHeight]);
   useEffect(() => {
-    if (element && element.scrollTop > count * rowHeight) element.scrollTop = 0;
-  }, [count, element, rowHeight]);
-  const start = Math.min(Math.max(0, count - 1), Math.max(0, Math.floor(view.top / rowHeight) - 5)),
-    end = Math.min(count, Math.ceil((view.top + view.height) / rowHeight) + 5);
+    if (element && element.scrollTop > offsets[count]) element.scrollTop = 0;
+  }, [count, element, offsets]);
+  function indexAt(position: number) {
+    let low = 0,
+      high = count;
+    while (low < high) {
+      const middle = (low + high + 1) >> 1;
+      if (offsets[middle] <= position) low = middle;
+      else high = middle - 1;
+    }
+    return low;
+  }
+  const start = Math.max(0, indexAt(view.top) - 5),
+    end = Math.min(count, indexAt(view.top + view.height) + 6);
   return {
     ref,
     element,
     start,
     end,
-    paddingTop: start * rowHeight,
-    paddingBottom: Math.max(0, (count - end) * rowHeight),
+    paddingTop: offsets[start],
+    paddingBottom: offsets[count] - offsets[end],
   };
 }

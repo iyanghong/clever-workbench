@@ -1,3 +1,4 @@
+import { PageHeading } from '../../shared/WorkspaceUI';
 import { Suspense, useEffect, useState } from 'react';
 import { ArrowRightIcon, WrenchIcon } from '@phosphor-icons/react';
 import type { ModuleProps } from '../../app/modules';
@@ -56,11 +57,11 @@ export function ToolsPage({ route, navigate, setContext, registerFlush }: Module
           </Suspense>
         ) : (
           <>
-            <div className="tools-heading">
-              <span className="eyebrow">本地工具</span>
-              <h1>工具</h1>
-              <p>完成手边的操作，把常用工具放到工作台。</p>
-            </div>
+            <PageHeading
+              title="工具"
+              eyebrow="本地工具"
+              description="完成手边的操作，把常用工具放到工作台。"
+            />
             {route.objectId && <p role="alert">这个工具已不可用，请从工具目录重新选择。</p>}
             <div className="tool-directory">
               {registeredTools.map((tool) => (

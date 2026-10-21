@@ -1,3 +1,4 @@
+import { PageHeading } from '../../shared/WorkspaceUI';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArchiveIcon,
@@ -293,11 +294,11 @@ export function ZipTextPage({ registerFlush }: ToolPageProps) {
   }
   return (
     <>
-      <div className="tools-heading">
-        <span className="eyebrow">文件转换 · 本地处理</span>
-        <h1>ZIP 文本归档</h1>
-        <p>把文件加密为文本分片，方便传递；收齐分片后，用密码还原。</p>
-      </div>
+      <PageHeading
+        title="ZIP 文本归档"
+        eyebrow="本地工具"
+        description="把文件或 Git 变更整理为加密文本，也可还原已有分片。"
+      />
       <div className="tool-tabs" role="tablist" aria-label="归档操作">
         {modes.map((mode, index) => (
           <button
