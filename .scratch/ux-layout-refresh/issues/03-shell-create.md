@@ -4,9 +4,9 @@ What to build: 统一应用壳的导航、全局工具栏和内容层级，并�
 
 Blocked by: None (can start immediately)
 
-Status: ready-for-agent
+Status: ready-for-human
 
-Completion: complete
+Completion: verified
 
 规格：[共用框架与台账布局优化](../spec.md)。原型依据：`codex/prototype-ux-layout`，提交 `dda1f01ce7043caff3e8fc92486d4166a674cef3`，方案 B 的共用壳和分组新建。
 
@@ -22,3 +22,5 @@ Completion: complete
 2026-10-21：用户确认可与任务 01 并行，台账内部布局和菜单不在本项修改范围。
 
 2026-10-21：实现与定向 Electron 回归完成，见[实施与验证记录](../03-shell-create-evidence.md)。最小窗口中设置入口裁切问题经红→绿回归修复。原生鼠标点击、最终集成和完整测试集按协调安排由任务 04 统一执行，本记录不宣称这些环节已通过。
+
+2026-10-21：已快进合入集成分支 `codex/ux-layout-refresh`，合并头为 `3d571b7ee89bbf5dd5a826bb1291c709502e6cd9`。集成工作区类型检查与生产构建通过，任务状态按实施记录约定改为待人工审阅；任务 04 的剩余验收边界不变。

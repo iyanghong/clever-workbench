@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | [01 台账浏览与宽详情](issues/01-ledger-layout.md) | 无 | 独立工作区实施与验证中 |
 | [02 系统菜单与按需批量操作](issues/02-ledger-actions.md) | 01 | 等待前置 |
-| [03 共用框架与分组新建](issues/03-shell-create.md) | 无 | 独立工作区实施与验证中 |
+| [03 共用框架与分组新建](issues/03-shell-create.md) | 无 | 已完成实现与定向验证，快进合入 `3d571b7ee89bbf5dd5a826bb1291c709502e6cd9`；原生鼠标及完整集成验收留任务 04 |
 | [04 集成验收与视觉收尾](issues/04-integration-acceptance.md) | 02、03 | 等待前置 |
 
 任务在独立工作区实施，再由集成代理合并。每项记录实际验证及局限，完成后保持 `Status: ready-for-human` 并以 `Completion: verified` 及勾选验收项标识本地任务完成；若仍有必要工作未做，则如实保留未完成状态。
@@ -18,3 +18,11 @@
 ## 实施澄清
 
 台账的环境和标签属于真实操作范围。为保持原有复制校验，范围筛选切换继续先保存并关闭旧详情；只有搜索词变化保留当前详情。这是对既有业务边界的保留，不是放宽复制或改变资料归属。
+
+## 任务 03 集成记录
+
+2026-10-21：确认集成头 `837fc6fb36a86b7603f1f101f2155b2ef58e29f2` 是实现分支 `codex/ux-shell-create` 的祖先后，使用 `git merge --ff-only` 合入。实际合并头为 `3d571b7ee89bbf5dd5a826bb1291c709502e6cd9`，包含实现提交 `f49bdbda8a7e543d4492d8eb9b284e2f8fabc3f5` 及规格澄清的合并提交。
+
+合入范围为共用应用壳、真实九项快速新建分组、最小窗口导航、相关 Electron 回归与说明文档。新提交的 author、committer 均与仓库本地 Git 配置的 `ikuku-tt` 一致，提交说明为中文。集成工作区重新执行 `npm run typecheck` 和 `npm run build`，均通过。
+
+定向 Electron 实际结果沿用[任务 03 实施与验证记录](03-shell-create-evidence.md)：18 项不同检查通过，2 项安装版专属检查未运行，本次合并未重复扩跑。截图和 trace 保留于 `release/ux-layout-refresh/task03/`。原生鼠标点击、完整测试集、两轴代码审查和跨任务集成验收仍由任务 04 执行；本次没有推送、发布或安装。
