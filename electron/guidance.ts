@@ -120,7 +120,8 @@ export async function readBundledGuidance(directory: string) {
       .readdir(path.join(directory, relative), { withFileTypes: true })
       .catch(() => []);
     for (const entry of entries) {
-      const file = path.join(relative, entry.name);
+      // Catalog identities use repository-relative slashes on every platform.
+      const file = relative ? `${relative}/${entry.name}` : entry.name;
       if (entry.isDirectory()) await visit(file);
       else if (entry.isFile() && entry.name.endsWith('.json')) {
         const text = await fs.readFile(path.join(directory, file), 'utf8').catch(() => '');

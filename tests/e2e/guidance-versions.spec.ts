@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { ReleaseGuide } from '../../src/guidance/types';
+import { expectedUpdateGuide } from './guidance-content';
 
 const release = (
   version: string,
@@ -91,6 +92,7 @@ test('跨版本按功能合并不同变化，目标无新增操作仍提示，�
   delete env.ELECTRON_RUN_AS_NODE;
   const app = await electron.launch({ args: ['.'], env });
   try {
+    const expected = await expectedUpdateGuide(app);
     const page = await versions(
       app,
       [
@@ -108,9 +110,21 @@ test('跨版本按功能合并不同变化，目标无新增操作仍提示，�
     );
     const prompt = page.getByRole('dialog', { name: '版本操作指引', exact: true });
     await expect(prompt).toBeVisible({ timeout: 6000 });
-    await expect(
-      prompt.getByRole('button', { name: '查看当前用法：检查与安装应用更新', exact: true }),
-    ).toHaveCount(1);
+    if (expected)
+      await expect(
+        prompt.getByRole('button', { name: `查看当前用法：${expected.title}`, exact: true }),
+      ).toHaveCount(1);
+    else {
+      await expect(
+        prompt.getByText('此功能指引已移除或暂不可用，历史摘要仍可阅读。', { exact: true }),
+      ).toHaveCount(1);
+      test
+        .info()
+        .annotations.push({
+          type: 'guidance-content-warning',
+          description: '当前功能正文不可用，版本变化仍按同一功能合并，并验证了不可用说明。',
+        });
+    }
     await expect(prompt).toContainText('支持下载后稍后重启');
     await expect(prompt).toContainText('加入安装失败恢复入口');
     await expect(prompt).not.toContainText('失败标签不应出现');
@@ -199,11 +213,13 @@ test('更新重启提示等待当前指引关闭，版本提示也避让更新�
   delete env.ELECTRON_RUN_AS_NODE;
   const app = await electron.launch({ args: ['.'], env });
   try {
+    const expected = await expectedUpdateGuide(app);
     const page = await app.firstWindow();
     await page.getByRole('button', { name: '设置', exact: true }).click();
     await page.getByRole('button', { name: '应用更新使用指引', exact: true }).click();
-    const guide = page.getByRole('dialog', { name: '检查与安装应用更新', exact: true });
+    const guide = page.getByRole('dialog', { name: expected?.title ?? '使用指引', exact: true });
     await expect(guide).toBeVisible();
+    if (!expected) await expect(guide).toContainText('此指引暂不可用');
     await app.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0].webContents.send('update-state', {
         status: 'ready',
