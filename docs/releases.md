@@ -8,6 +8,14 @@
 
 Electron 的 `net.fetch` 在手动重定向时会报 `Redirect was cancelled`，不能用 Node.js 的 fetch 测试结果替代原生验证。更新传输先用 `net.request` 取得单跳响应头并终止请求，将 3xx 交给协调器验证。非重定向地址会多一次只读取响应头的 GET；正文由禁止重定向的原生 fetch 流读取，避免将整个 ZIP 排队在主进程内存。两次请求之间若目标行为变化，下载会失败，不能自动跟随。依据：[Electron 原生问题记录](https://github.com/electron/electron/issues/43715)、[ClientRequest API](https://www.electronjs.org/docs/latest/api/client-request)。
 
+## 操作指引编写要求
+
+每次发布前按[操作指引编写与发布规范](operation-guidance.md)编写本次用户操作说明：新增功能或操作方式变化须关联对应功能指引；确实没有操作变化时明确写出“无新增操作”及原因，缺少说明不能当作没有变化。首批接入覆盖全部现有功能，范围见[功能覆盖清单](../.scratch/operation-guidance/coverage.md)。
+
+使用[JSON 模板与发布核对清单](operation-guidance/README.md)，保留步骤、截图及入口的实际核对结果和已知缺项。内容与计划发布的源码一起提交到远端；继续遵守本地 Git 身份和中文提交要求。指引问题仅警告，不新增发布阻断，也不把未完成的编写或核对记为通过。
+
+上述规范已确认。应用内展示、版本绑定、同源正文生成及本地／GitHub Actions 自动检查尚未接入，当前脚本仍按现有提交记录生成发布正文；不能把现有发布成功视为已经检查操作指引。下文描述当前发布工具的实际行为。
+
 ## macOS 双击发布
 
 维护者在 Finder 中双击仓库根目录的 **`发布新版本.command`**，终端会读取远端 `origin/master`，列出最新正式 Release 之后的全部提交（包含文档提交），建议新版本号，并展示本地 Git 提交身份。输入一次 `yes` 确认发布计划后，脚本在隔离目录准备版本提交、原子推送 master 和注释 tag，等待 GitHub Actions 完成验证并发布。

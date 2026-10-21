@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "kind": "release-draft",
+  "operationChange": "none",
+  "summary": "无新增操作",
+  "noOperationReason": "请说明本次变更为何不改变用户操作；不能以尚未编写指引作为原因",
+  "changes": [],
+  "review": {
+    "status": "pending",
+    "reviewer": "",
+    "checkedAt": "",
+    "source": "",
+    "environment": "",
+    "checks": [],
+    "knownGaps": []
+  }
+}

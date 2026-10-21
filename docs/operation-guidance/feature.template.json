@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "replace-with-stable-guide-id",
+  "revision": 1,
+  "title": "请填写功能名称",
+  "platforms": ["darwin"],
+  "placements": ["replace-with-registered-placement"],
+  "purpose": "请说明用户能完成什么",
+  "prerequisites": {
+    "items": ["请填写准备条件；没有特殊条件时改为空数组并说明原因"],
+    "notApplicableReason": ""
+  },
+  "entry": {
+    "label": "请填写与界面一致的入口路径",
+    "target": "replace-with-registered-target"
+  },
+  "steps": [
+    {
+      "id": "step-1",
+      "title": "请用动词概括本步",
+      "action": "请说明一个主要动作",
+      "expectedResult": "请说明用户可以观察到的结果"
+    }
+  ],
+  "completion": "请说明完成标志以及结果所在位置",
+  "faq": {
+    "items": [
+      {
+        "question": "请填写常见问题",
+        "answer": "请给出原因及用户可以执行的下一步"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}
