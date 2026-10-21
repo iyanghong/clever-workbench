@@ -34,6 +34,7 @@ const call = async (channel: string, ...args: unknown[]) => {
   return ipcRenderer.invoke(channel, await expected, ...args);
 };
 const api: DesktopAPI = {
+  guidanceAvailability: () => call('guidance-availability'),
   tools: {
     state: (id) => call('tool-state', id),
     command: (id, command) => call('tool-command', id, command),

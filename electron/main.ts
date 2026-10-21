@@ -67,6 +67,7 @@ let installation: UpdateInstallation;
 let updateFrozen = false;
 const activeOperations = new Set<Promise<unknown>>();
 const updateReadChannels = new Set([
+  'guidance-availability',
   'update-history',
   'update-health-ready',
   'update-health-confirm',
@@ -495,6 +496,21 @@ app
           disableUpdates();
         });
     }, 1000).unref();
+    secureHandler('guidance-availability', () => {
+      // Native file dialogs live inside active IPC operations; they have no renderer DOM modal.
+      const busy =
+        updateFrozen ||
+        restoring ||
+        rotatingProtection ||
+        closePending ||
+        quitting ||
+        backups.busy ||
+        installation?.busy ||
+        activeOperations.size > 0;
+      return busy
+        ? { available: false, reason: '请等待当前保存、文件选择、备份或安装操作完成。' }
+        : { available: true };
+    });
     secureHandler('data-generation', () => store.generation);
     secureHandler('system-appearance', systemAppearance);
     nativeTheme.on('updated', () => {

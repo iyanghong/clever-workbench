@@ -1,3 +1,4 @@
+import { SettingsGuidance } from '../guidance/Guidance';
 import { PageHeading, SegmentedControl } from '../../shared/WorkspaceUI';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -20,7 +21,7 @@ import { PasswordChange } from './PasswordChange';
 import { AboutUpdate } from './AppUpdate';
 const message = (cause: unknown) =>
   String(cause).replace(/^Error: Error invoking remote method '[^']+': Error: /, '');
-export function SettingsPage({ setContext }: ModuleProps) {
+export function SettingsPage({ setContext, route }: ModuleProps) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
@@ -49,6 +50,15 @@ export function SettingsPage({ setContext }: ModuleProps) {
       activeTokens.current.clear();
     };
   }, []);
+  useEffect(() => {
+    if (
+      !snapshot ||
+      !route.section ||
+      !['appearance', 'vault', 'backup', 'about', 'guidance'].includes(route.section)
+    )
+      return;
+    document.getElementById(`settings-${route.section}`)?.scrollIntoView({ block: 'start' });
+  }, [snapshot !== null, route.section]);
   async function run(label: string, operation: () => Promise<void>) {
     if (working.current) return;
     working.current = true;
@@ -180,7 +190,7 @@ export function SettingsPage({ setContext }: ModuleProps) {
         />
         {snapshot && (
           <>
-            <h3>外观</h3>
+            <h3 id="settings-appearance">外观</h3>
             <div className="setting-row">
               <div>
                 <strong>界面主题</strong>
@@ -260,7 +270,7 @@ export function SettingsPage({ setContext }: ModuleProps) {
               </div>
             ))}
             <p className="backup-note">系统启用的可访问性偏好也会自动生效。</p>
-            <h3>秘密保护</h3>
+            <h3 id="settings-vault">秘密保护</h3>
             <div className="setting-row">
               <div>
                 <strong>{vault.status.initialized ? '主密码已设置' : '系统加密保护'}</strong>
@@ -327,7 +337,7 @@ export function SettingsPage({ setContext }: ModuleProps) {
                 </div>
               </div>
             )}
-            <h3>备份与迁移</h3>
+            <h3 id="settings-backup">备份与迁移</h3>
             <div className="setting-row">
               <div>
                 <strong>独立备份密码</strong>
@@ -432,7 +442,8 @@ export function SettingsPage({ setContext }: ModuleProps) {
             <p className="backup-note">
               项目历史、台账、账号、任务、文档、草稿和引用图片整体加密。换机使用该备份的独立备份密码；旧备份继续使用生成时的密码。
             </p>
-            <h3>关于</h3>
+            <SettingsGuidance />
+            <h3 id="settings-about">关于</h3>
             <AboutUpdate />
           </>
         )}

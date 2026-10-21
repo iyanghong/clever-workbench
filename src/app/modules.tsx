@@ -55,6 +55,7 @@ const ToolsPage = lazy(() =>
 );
 
 export type Route = {
+  section?: string;
   system?: string;
   module: string;
   project?: string;

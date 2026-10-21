@@ -1,3 +1,4 @@
+import { GuidanceButton } from '../guidance/Guidance';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowClockwiseIcon,
@@ -73,9 +74,11 @@ const descriptions: Partial<Record<UpdateSnapshot['status'], string>> = {
 export function UpdateDetails({
   state,
   allowCheck = false,
+  onBeforeGuidance,
 }: {
   state: UpdateSnapshot | null;
   allowCheck?: boolean;
+  onBeforeGuidance?: () => void;
 }) {
   const vault = useVault();
   const [error, setError] = useState('');
@@ -176,6 +179,11 @@ export function UpdateDetails({
         </p>
       )}
       <div className="update-secondary">
+        <GuidanceButton
+          guideId="application-update"
+          accessibleLabel="应用更新使用指引"
+          beforeOpen={onBeforeGuidance}
+        />
         <details className="update-disclosure update-source">
           <summary>
             <LockKeyIcon size={16} aria-hidden="true" />
@@ -306,7 +314,7 @@ export function UpdateBadge({ state }: { state: UpdateSnapshot | null }) {
       )}
       {open && !prompt && (
         <Dialog className="modal update-dialog" title="应用更新" onClose={() => setOpen(false)}>
-          <UpdateDetails state={state} />
+          <UpdateDetails state={state} onBeforeGuidance={() => setOpen(false)} />
         </Dialog>
       )}
       {prompt && state?.status === 'ready' && (

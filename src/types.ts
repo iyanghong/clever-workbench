@@ -159,6 +159,7 @@ export type BackupInfo = {
   secrets: number;
 };
 export interface DesktopAPI {
+  guidanceAvailability(): Promise<import('./guidance/types').GuidanceAvailability>;
   tools: import('./tool-types').ToolsAPI;
   updateSnapshot(): Promise<import('./update-types').UpdateSnapshot>;
   updateHistory(): Promise<import('./update-types').UpdateHistoryEntry[]>;
