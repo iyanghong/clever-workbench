@@ -136,9 +136,18 @@ export function loadGuidanceCatalog(
         );
       if (!reviewValid) delete value.review;
       if (value.kind === 'release') {
+        if (file !== `releases/${value.version}.json`) {
+          warn(
+            'invalid-release-location',
+            '$',
+            '版本记录没有位于对应版本的固定位置。',
+            '使用 releases/<版本号>.json，版本历史由发布准备从已确认的 tag 生成。',
+          );
+          continue;
+        }
         if (
           typeof value.version !== 'string' ||
-          !/^\d+\.\d+\.\d+$/.test(value.version) ||
+          !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(value.version) ||
           value.tag !== `v${value.version}` ||
           typeof value.sourceSha !== 'string' ||
           !/^[a-f0-9]{40}$/i.test(value.sourceSha) ||

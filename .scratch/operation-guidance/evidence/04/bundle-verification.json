@@ -1,0 +1,23 @@
+{
+  "baseImplementation": "334814c",
+  "sourceSha": "e3caf167f3ba4e4fb6614f32bfef78ac476d6122",
+  "releaseSha": "89eef9b0e81d51c107ff8c5623a073bf7c2b6d1a",
+  "tag": "v99.4.1",
+  "applicationVersion": "99.4.1",
+  "bindingInRendererBundle": true,
+  "bindingInMainProcessRawJSON": true,
+  "rawJSONCount": 19,
+  "signatureVerification": "passed",
+  "warningCodes": [
+    "missing-image",
+    "invalid-json",
+    "missing-review",
+    "missing-guide",
+    "unreviewed-step"
+  ],
+  "applicationPath": "/private/var/folders/73/c35nxr410f11hfh3ls36xjlc0000gn/T/cwb-guidance-binding-bundle-viztfh/source/release/mac-arm64/Clever Workbench.app",
+  "limitations": [
+    "临时本地Git仓库与实际macOS arm64 .app；未推送、运行GitHub Actions、上传资产、替换用户应用或启动该包。",
+    "该包验证版本绑定与内容容错打包输入；安装版界面、原生交互和26组全量联合验收由任务11负责。"
+  ]
+}
