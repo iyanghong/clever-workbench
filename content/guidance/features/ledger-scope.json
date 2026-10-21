@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "ledger-scope",
+  "revision": 1,
+  "title": "设置适用环境与标签",
+  "platforms": ["darwin", "win32"],
+  "placements": [
+    "ledger",
+    "ledger-access",
+    "ledger-accounts",
+    "ledger-resources",
+    "ledger-deployments",
+    "ledger-operations"
+  ],
+  "purpose": "同一系统内让一条资料出现在多个适用环境，避免重复维护。",
+  "prerequisites": {
+    "items": ["先选择要维护的系统；试操作请使用示例资料。"],
+    "notApplicableReason": ""
+  },
+  "entry": {
+    "label": "台账 → 对象详情 → 编辑 → 适用范围与标签",
+    "target": "ledger"
+  },
+  "steps": [
+    {
+      "id": "open",
+      "title": "打开对象编辑",
+      "action": "在访问入口、服务器、数据库／中间件或应用部署详情点击“编辑”。",
+      "expectedResult": "可以看到“适用范围与标签”。账号随所属资源或入口展示，不单独复制身份。"
+    },
+    {
+      "id": "environments",
+      "title": "选择适用环境",
+      "action": "勾选该对象适用的一个或多个环境；全部不勾选表示系统通用。",
+      "expectedResult": "同一记录在这些环境中展示，账号仍维护一份；不会因名称或地址相同合并其他记录。"
+    },
+    {
+      "id": "tags",
+      "title": "填写地点与网络标签",
+      "action": "在“地点与网络标签”填写如“内网，广州”，用中文或英文逗号分隔。",
+      "expectedResult": "标签作为额外筛选条件，不替代环境，也不改变系统归属。"
+    },
+    {
+      "id": "save",
+      "title": "保存并核对不同视图",
+      "action": "点击“完成编辑”，返回清单后切换环境和标签筛选。",
+      "expectedResult": "适用视图出现同一对象；通用记录也会出现在具体环境视图中。"
+    },
+    {
+      "id": "operation",
+      "title": "核对运维记录的环境",
+      "action": "维护运行作业或备份策略时，在该记录自身的“环境”字段选择，标签在范围区域填写。",
+      "expectedResult": "运维记录环境由自身字段决定，不显示多环境复选框。"
+    }
+  ],
+  "completion": "环境、标签与实际适用范围一致，跨视图修改的是同一记录。",
+  "faq": {
+    "items": [
+      {
+        "question": "跨系统能共享这份资料吗？",
+        "answer": "不能。跨系统复制形成独立记录；同系统的多环境展示无需创建副本。"
+      },
+      {
+        "question": "环境被占用时可以删除吗？",
+        "answer": "删除前处理关联资料；失败提示不会替你迁移或清除资料。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}

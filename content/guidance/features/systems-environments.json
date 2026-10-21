@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "systems-environments",
+  "revision": 1,
+  "title": "维护系统与部署环境",
+  "platforms": ["darwin", "win32"],
+  "placements": ["systems", "environments", "ledger"],
+  "purpose": "按长期系统身份维护基本资料与部署环境。",
+  "prerequisites": {
+    "items": ["先选择要维护的系统；试操作请使用示例资料。"],
+    "notApplicableReason": ""
+  },
+  "entry": {
+    "label": "台账 → 切换系统；更多 → 系统信息",
+    "target": "systems"
+  },
+  "steps": [
+    {
+      "id": "create",
+      "title": "创建一个系统",
+      "action": "点击“切换系统”中的“新增系统”，填写名称后点击“创建系统”；空台账也可直接新增。",
+      "expectedResult": "名称即可起步；取消新建不产生系统，已有系统不会因项目变化重建。"
+    },
+    {
+      "id": "basic",
+      "title": "维护基本信息",
+      "action": "选择系统后，打开“更多 → 系统信息 → 基本信息”，填写系统名称、登录地址与普通说明。",
+      "expectedResult": "保存状态提示进度；密码、Token、私钥应存入账号秘密，不写在普通说明里。"
+    },
+    {
+      "id": "project",
+      "title": "选择当前阶段项目",
+      "action": "在“当前项目”选择已有未归档项目，或选择“暂不关联”。",
+      "expectedResult": "项目沿革保留曾关联的项目；任务仍只以系统为归属，原文档归属也不因此改写。"
+    },
+    {
+      "id": "add-environment",
+      "title": "新增部署环境",
+      "action": "切换“环境管理”，填写“新环境名称”后点击“新增环境”。",
+      "expectedResult": "环境出现在此系统中，可用生产、测试等名称；地点与网络用台账标签补充。"
+    },
+    {
+      "id": "rename-environment",
+      "title": "修改环境名称",
+      "action": "编辑现有环境名称，等待保存或点击保存状态。",
+      "expectedResult": "身份保持不变，关联资料继续属于同一环境。"
+    },
+    {
+      "id": "delete-environment",
+      "title": "删除不用的环境",
+      "action": "确认没有需要保留的关联资料后，在对应环境行点击“删除”。",
+      "expectedResult": "删除会立即尝试执行；被引用时提示先处理关联，不自动转移或清空台账。"
+    },
+    {
+      "id": "finish",
+      "title": "结束编辑",
+      "action": "点击“完成”或按 Esc。",
+      "expectedResult": "等待已登记编辑保存成功才关闭；失败保留输入，修正后再试。尚未点击新增的环境或项目名称只是临时输入，离开前应创建或自行保留。"
+    }
+  ],
+  "completion": "系统基本信息与环境准确，项目变化不产生重复系统。",
+  "faq": {
+    "items": [
+      {
+        "question": "能用关闭撤销自动保存吗？",
+        "answer": "不能。系统基本字段和环境改名会自动保存；关闭只等待保存，不撤销已经完成的变更。"
+      },
+      {
+        "question": "为什么不能删除环境？",
+        "answer": "检查错误指出的账号、部署、资源或其他引用，先在相应功能处理再重试。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}

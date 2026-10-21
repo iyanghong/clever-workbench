@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "projects-history",
+  "revision": 1,
+  "title": "维护项目档案与系统沿革",
+  "platforms": ["darwin", "win32"],
+  "placements": ["systems", "projects", "ledger"],
+  "purpose": "记录系统的阶段项目，归档结束阶段并保留历史。",
+  "prerequisites": {
+    "items": ["先选择要维护的系统；试操作请使用示例资料。"],
+    "notApplicableReason": ""
+  },
+  "entry": {
+    "label": "侧栏 → 项目档案；台账 → 更多 → 系统信息 → 项目档案",
+    "target": "projects"
+  },
+  "steps": [
+    {
+      "id": "create",
+      "title": "新增阶段项目",
+      "action": "在“项目名称”输入名称，点击“新增项目”。",
+      "expectedResult": "项目加入列表；仅输入名称不会创建。"
+    },
+    {
+      "id": "edit",
+      "title": "编辑项目名称",
+      "action": "在项目行点击“编辑”，修改顶部名称后点击“保存”。",
+      "expectedResult": "同一项目更名，已有系统历史关联保留；没有保存的输入不会自动提交。"
+    },
+    {
+      "id": "assign",
+      "title": "关联系统当前项目",
+      "action": "到台账选择系统，打开“更多 → 系统信息 → 基本信息”，在“当前项目”选择项目并完成保存。",
+      "expectedResult": "项目沿革将该项标为当前，切换到其他项目时旧项保留为历史。"
+    },
+    {
+      "id": "archive",
+      "title": "归档已结束项目",
+      "action": "回到“项目档案”，在对应行点击“归档”。",
+      "expectedResult": "归档立即生效，项目标为已归档，并解除其当前系统关联；已有系统、任务、文档和历史不删除。"
+    },
+    {
+      "id": "restore",
+      "title": "恢复项目",
+      "action": "在已归档项目行点击“恢复”。",
+      "expectedResult": "恢复后可以再次选择该项目；不会自动恢复各系统的当前项目，需在系统基本信息中重新选择。"
+    },
+    {
+      "id": "delete",
+      "title": "删除空项目",
+      "action": "只有不再需要且没有相关资料的项目，才点击“删除空项目”。",
+      "expectedResult": "有引用的项目会拒绝删除并提示；项目档案不是资料的通用回收站。"
+    }
+  ],
+  "completion": "项目状态和系统当前项目符合实际阶段，历史仍可查阅。",
+  "faq": {
+    "items": [
+      {
+        "question": "归档项目后任务还能处理吗？",
+        "answer": "可以。工作任务唯一可选归属是系统，项目归档不阻止任务查看、完成或重开。"
+      },
+      {
+        "question": "如何取消尚未保存的项目更名？",
+        "answer": "不要点击“保存”，先记下需要保留的文字再离开；已经提交的更名可再次编辑。阅读指引并关闭会保留当前输入，但“前往功能”可能离开当前页面。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}

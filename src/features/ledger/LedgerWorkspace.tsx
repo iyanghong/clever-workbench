@@ -1,3 +1,5 @@
+import { GuidanceButton, useGuidance } from '../guidance/Guidance';
+import type { GuidancePlacement } from '../../guidance/registry';
 import { PageHeading } from '../../shared/WorkspaceUI';
 import {
   LedgerCopyProvider,
@@ -62,6 +64,16 @@ const categories = [
   ['documents', '文档'],
 ] as const;
 type Category = (typeof categories)[number][0];
+// One nearby entry follows the category in both full-list and inspector layouts.
+const categoryGuidance: Record<Category, GuidancePlacement> = {
+  access: 'ledger-access',
+  accounts: 'ledger-accounts',
+  servers: 'ledger-resources',
+  resources: 'ledger-resources',
+  services: 'ledger-deployments',
+  operations: 'ledger-operations',
+  documents: 'documents',
+};
 type View = {
   operationKind: 'all' | 'job' | 'backup';
   operationStatus: 'all' | 'active' | 'inactive' | 'unverified';
@@ -177,6 +189,7 @@ function copyRef(row: Row): LedgerCopyRef | null {
   return kind ? { kind, id: row.id } : null;
 }
 export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: ModuleProps) {
+  const guidance = useGuidance();
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
     [systemId, setSystemId] = useState(''),
     [view, setView] = useState<View>(defaultView),
@@ -667,6 +680,10 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
           <CaretDownIcon size={14} />
         </button>
         <div className="spacer" />
+        <GuidanceButton
+          placement={system ? categoryGuidance[view.category] : 'ledger'}
+          accessibleLabel="台账使用指引"
+        />
         {system && (
           <>
             <button
@@ -678,6 +695,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
             <SystemActionsMenu
               onInfo={() => void transition(() => setInfo(true))}
               onExport={() => void transition(() => setExporting(true))}
+              onGuidance={() => guidance.openLibrary('systems')}
             />
             <FavoriteButton
               item={{ kind: 'system', id: systemId }}
@@ -1634,6 +1652,7 @@ export function ProjectArchiveWorkspace() {
         <PageHeading
           title="项目档案"
           description="项目用于记录系统的阶段历史，工作任务只关联系统。"
+          actions={<GuidanceButton placement="projects" accessibleLabel="项目档案使用指引" />}
         />
         {snapshot && (
           <ProjectManager snapshot={snapshot} onSnapshot={setSnapshot} onError={setError} />

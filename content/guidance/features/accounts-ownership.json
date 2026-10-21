@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "accounts-ownership",
+  "revision": 1,
+  "title": "复制账号与调整归属",
+  "platforms": ["darwin", "win32"],
+  "placements": ["ledger-accounts", "ledger-access", "ledger-resources"],
+  "purpose": "在同系统内移动账号或创建独立副本，避免误删秘密。",
+  "prerequisites": {
+    "items": ["先选择要维护的系统；试操作请使用示例资料。"],
+    "notApplicableReason": ""
+  },
+  "entry": {
+    "label": "台账 → 账号 → 详情 → 编辑",
+    "target": "ledger-accounts"
+  },
+  "steps": [
+    {
+      "id": "copy",
+      "title": "准备账号副本",
+      "action": "点击“复制账号”，填写副本名称，选择目标环境与归属。",
+      "expectedResult": "默认仅复制用途、用户名和普通说明；当前操作面板不提供跨系统目标。"
+    },
+    {
+      "id": "include",
+      "title": "决定是否复制秘密",
+      "action": "需要时勾选“同时复制账号秘密”，点击“创建副本”并按需解锁。",
+      "expectedResult": "勾选会复制该账号已有的秘密；不勾选不会复制秘密，副本是独立记录。"
+    },
+    {
+      "id": "move",
+      "title": "调整现有账号归属",
+      "action": "点击“调整归属”，在同系统内选择目标环境，再选择系统环境、资源或访问入口，点击“保存归属”。",
+      "expectedResult": "移动现有身份及其秘密，不生成副本；列表按当前筛选可能不再显示该账号。"
+    },
+    {
+      "id": "constraints",
+      "title": "核对可用目标",
+      "action": "具体环境可以选“系统环境”；系统通用必须选择可用资源或访问入口，目标列表按所选环境过滤。",
+      "expectedResult": "不允许无环境且无所属对象的账号；不能靠改归属跨系统共享账号。同一资源或入口的账号随其适用范围展示。"
+    },
+    {
+      "id": "cancel",
+      "title": "取消调整或复制",
+      "action": "未确定时点击“取消”；若出现解锁提示也可取消。",
+      "expectedResult": "本次副本或归属操作不提交，原账号的自动保存编辑不回退。"
+    },
+    {
+      "id": "delete",
+      "title": "删除不再需要的账号",
+      "action": "点击“删除账号”，阅读影响后选择“确认删除”或“取消”。",
+      "expectedResult": "确认会同时删除账号已保存秘密；有引用需先处理，不能把任务／文档回收站当作账号恢复入口。"
+    }
+  ],
+  "completion": "账号副本、归属与秘密范围符合意图，取消时没有额外变更。",
+  "faq": {
+    "items": [
+      {
+        "question": "目标资源为什么没出现？",
+        "answer": "核对同一系统与所选环境；目标列表按资源或入口的归属环境过滤。若对象仅在多环境视图展示，请回到其实际归属背景核对。"
+      },
+      {
+        "question": "创建副本和复制整行有什么区别？",
+        "answer": "副本新增本地账号记录；复制整行仅把一段账号资料写入剪贴板。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}
