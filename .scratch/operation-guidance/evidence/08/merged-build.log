@@ -28,7 +28,7 @@ dist/assets/Editor-BpqTx3UE.js                     489.37 kB │ gzip: 140.93 kB
 dist/assets/index-pbMxKrkm.js                      512.66 kB │ gzip: 146.43 kB
 
 ✓ built in 325ms
-[plugin builtin:vite-reporter] 
+[plugin builtin:vite-reporter]
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
