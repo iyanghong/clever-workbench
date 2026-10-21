@@ -112,6 +112,7 @@ test('可排除文档和任务，按本地开始日期含首尾筛选任务，�
     { taskStartDate: '2026-02-30' },
     { taskEndDate: '2025-02-29' },
     { taskStartDate: '2025-10-22', taskEndDate: '2025-10-20' },
+    { formats: ['markdown', 'pdf'] },
   ]) {
     await expect(
       exporter.write({ ...options, ...invalid } as SystemExportOptions, target),
@@ -125,7 +126,7 @@ test('可排除文档和任务，按本地开始日期含首尾筛选任务，�
   });
 });
 
-test('任务合并保留各自引用链接，单文件图片内嵌，多格式仅包含各格式总览', async () => {
+test('任务合并保留各自引用链接和内嵌图片，无文档时拒绝以多格式生成 ZIP', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workbench-export-inline-'));
   roots.push(root);
   const store = new Store(root);
@@ -172,17 +173,11 @@ test('任务合并保留各自引用链接，单文件图片内嵌，多格式�
   expect(markdown).toContain('[第二项链接](<https://example.test/second>)');
   expect(markdown.match(/!\[图片\]\(data:image\/png;base64,/g)).toHaveLength(2);
   expect(markdown).toContain(`\`\`\`text\n${image.src}\n\`\`\``);
-  const multiple = { ...options, formats: ['markdown', 'docx', 'pdf'] as const };
-  expect(exporter.fileExtension({ ...multiple, formats: [...multiple.formats] })).toBe('zip');
+  const multiple: SystemExportOptions = { ...options, formats: ['markdown', 'docx', 'pdf'] };
+  expect(() => exporter.fileExtension(multiple)).toThrow('单文件导出请选择一种文件格式');
   const bundle = path.join(root, '资料.zip');
-  expect(
-    (await exporter.write({ ...multiple, formats: [...multiple.formats] }, bundle)).files,
-  ).toBe(3);
-  expect([...(await files(bundle)).keys()]).toEqual([
-    'Markdown/系统总览.md',
-    'Word/系统总览.docx',
-    'PDF/系统总览.pdf',
-  ]);
+  await expect(exporter.write(multiple, bundle)).rejects.toThrow('单文件导出请选择一种文件格式');
+  expect(fs.existsSync(bundle)).toBe(false);
   for (const format of ['docx', 'pdf'] as const) {
     expect(exporter.fileExtension({ ...options, formats: [format] })).toBe(format);
     expect(

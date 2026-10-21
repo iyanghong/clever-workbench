@@ -32,6 +32,28 @@ test('TSV preserves quoted multiline cells and reports malformed boundaries', ()
   expect(parseTsv('a\tb\n1').warnings).toHaveLength(1);
   expect(parseTsv('a\t"broken').warnings[0]).toContain('引号');
 });
+test('batch services retain their selected environment and roll back scopes with invalid rows', () => {
+  const { store, vault, systemId } = setup();
+  const environmentId = store.mutate({
+    type: 'environment.save',
+    systemId,
+    name: '生产',
+  }).createdId!;
+  const input = {
+    token: randomUUID(),
+    systemId,
+    environmentId,
+    kind: 'service' as const,
+    rows: [{ name: '业务服务' }, { name: '业务服务' }],
+  };
+  expect(() => vault.captureBatch(input)).toThrow('同名');
+  expect(store.snapshot().services).toHaveLength(0);
+  expect(store.snapshot().scopes.filter((s) => s.kind === 'service')).toHaveLength(0);
+  const saved = vault.captureBatch({ ...input, rows: [{ name: '业务服务' }] });
+  expect(saved.snapshot.scopes.find((s) => s.ownerId === saved.createdId)?.environmentIds).toEqual([
+    environmentId,
+  ]);
+});
 test('locked batches and invalid later rows never leave partial objects or credentials', async () => {
   const { store, vault, systemId } = setup();
   const input = {

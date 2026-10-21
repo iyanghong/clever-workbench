@@ -100,6 +100,7 @@ export class SystemExports {
     }
     if (options.taskStartDate && options.taskEndDate && options.taskStartDate > options.taskEndDate)
       throw new Error('开始日期不能晚于结束日期。');
+    this.fileExtension(options);
   }
 
   fileExtension(options: SystemExportOptions) {
@@ -108,11 +109,9 @@ export class SystemExports {
       this.store
         .snapshot()
         .documents.some((item) => item.systemId === options.systemId && item.deletedAt === null);
-    return options.formats.length === 1 && !hasDocuments
-      ? options.formats[0] === 'markdown'
-        ? 'md'
-        : options.formats[0]
-      : 'zip';
+    if (hasDocuments) return 'zip';
+    if (options.formats.length !== 1) throw new Error('单文件导出请选择一种文件格式。');
+    return options.formats[0] === 'markdown' ? 'md' : options.formats[0];
   }
 
   private collect(options: SystemExportOptions) {
@@ -431,7 +430,7 @@ export class SystemExports {
         assertCurrent();
         return bytes;
       };
-      if (singleDocument && options.formats.length === 1) {
+      if (singleDocument) {
         const bytes = await render(options.formats[0], documents[0]);
         await fs.promises.writeFile(temporary, bytes, { flag: 'wx', mode: 0o600 });
         assertCurrent();

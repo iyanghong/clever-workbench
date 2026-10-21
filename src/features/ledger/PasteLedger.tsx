@@ -62,36 +62,61 @@ const kinds: Record<LedgerBatch['kind'], string> = {
   account: '账号',
   node: '部署节点',
 };
+type Row = LedgerBatch['rows'][number];
+type Entry = { id: string; row: Row; selected: boolean; confirmed: boolean; sourceIssue?: string };
+function entry(row: Row = { name: '' }): Entry {
+  return { id: crypto.randomUUID(), row, selected: true, confirmed: false };
+}
+function hasContent(row: Row) {
+  return Object.entries(row).some(([key, value]) =>
+    key === 'fields'
+      ? Object.values(value ?? {}).some((v) => String(v).trim())
+      : key === 'password'
+        ? Boolean(value)
+        : typeof value === 'string' && value.trim(),
+  );
+}
 export function PasteLedger({
   snapshot,
   systemId,
   environmentId,
+  initialKind,
+  registerFlush,
   onClose,
   onSaved,
 }: {
   snapshot: Snapshot;
   systemId: string;
   environmentId: string | null;
+  initialKind: LedgerBatch['kind'];
+  registerFlush: (save: () => Promise<void>) => () => void;
   onClose: () => void;
   onSaved: (s: Snapshot, id?: string) => void;
 }) {
-  const [kind, setKind] = useState<LedgerBatch['kind']>('server'),
+  const [kind, setKind] = useState(initialKind),
     [environment, setEnvironment] = useState(environmentId ?? ''),
     [owner, setOwner] = useState(''),
+    [rows, setRows] = useState<Entry[]>(() => [entry()]),
+    [extraFields, setExtraFields] = useState<string[]>([]),
+    [newField, setNewField] = useState(''),
     [text, setText] = useState(''),
     [source, setSource] = useState<PastedTable | null>(null),
     [mode, setMode] = useState<'list' | 'card'>('list'),
     [header, setHeader] = useState(true),
     [mapping, setMapping] = useState<string[]>([]),
-    [skip, setSkip] = useState<number[]>([]),
-    [confirmed, setConfirmed] = useState<number[]>([]),
-    [names, setNames] = useState<Record<number, string>>({}),
     [reviewed, setReviewed] = useState(false),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [leaving, setLeaving] = useState(false),
     [result, setResult] = useState<{ count: number; skipped: number } | null>(null);
-  const continueButton = useRef<HTMLButtonElement>(null);
+  const continueButton = useRef<HTMLButtonElement>(null),
+    submitting = useRef<Promise<void> | null>(null),
+    finished = useRef(false),
+    token = useRef(crypto.randomUUID()),
+    vault = useVault();
+  const dirty = Boolean(source || text.trim() || rows.some((r) => hasContent(r.row)));
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
   function focusExitChoice() {
     continueButton.current?.scrollIntoView({ block: 'center' });
     continueButton.current?.focus({ preventScroll: true });
@@ -99,8 +124,22 @@ export function PasteLedger({
   useEffect(() => {
     if (leaving) focusExitChoice();
   }, [leaving]);
-  const token = useRef(crypto.randomUUID()),
-    vault = useVault();
+  useEffect(
+    () =>
+      registerFlush(async () => {
+        await submitting.current;
+        if (!finished.current && dirtyRef.current) {
+          setLeaving(true);
+          focusExitChoice();
+          throw new Error('批量资料尚未提交，请确认新增或放弃后重试。');
+        }
+      }),
+    [registerFlush],
+  );
+  function changeRows(next: Entry[]) {
+    token.current = crypto.randomUUID();
+    setRows(next.map((r) => ({ ...r, confirmed: false })));
+  }
   function shape(data: PastedTable, layout = mode, hasHeader = header) {
     if (layout === 'card') {
       if (data.rows.some((r) => r.length !== 2))
@@ -124,13 +163,9 @@ export function PasteLedger({
       setMode(layout);
       setHeader(hasHeader);
       setMapping(value.headers.map((h) => aliases[h.trim().toLowerCase()] ?? 'unmapped'));
-      setSkip([]);
-      setConfirmed([]);
-      setNames({});
       setReviewed(false);
       setError('');
       setText('');
-      token.current = crypto.randomUUID();
     } catch (e) {
       setError(String(e));
     }
@@ -150,6 +185,10 @@ export function PasteLedger({
               : ['name', 'address', 'port', 'notes', 'username', 'password', 'accountName'];
   const hasFields = ['server', 'database', 'redis', 'other'].includes(kind);
   const supported = baseFields.filter(([key]) => allowed.includes(key));
+  const columns: [string, string][] = [
+    ...supported.map(([key, label]): [string, string] => [key, key === 'name' ? '名称' : label]),
+    ...extraFields.map((key): [string, string] => [`field:${key}`, key]),
+  ];
   const mappingError = mapping.some(
     (key, i) =>
       /密码|口令|password/i.test(shaped?.headers[i] ?? '') &&
@@ -165,42 +204,92 @@ export function PasteLedger({
           ? '同一个字段不能映射两列。'
           : !mapping.includes('name')
             ? '需要映射名称／用途。'
-            : mapping.some(
-                  (k) =>
-                    !k.startsWith('field:') &&
-                    k !== 'ignore' &&
-                    !supported.some(([key]) => key === k),
-                )
-              ? '当前类型不支持已映射的账号字段，请调整映射。'
+            : mapping.some((k) => !k.startsWith('field:') && k !== 'ignore' && !allowed.includes(k))
+              ? '当前类型不支持已映射的字段，请调整映射。'
               : '';
-  const preview = (shaped?.rows ?? []).map((cells, index) => {
-    const row: Record<string, any> = { fields: {} };
-    mapping.forEach((key, column) => {
-      const value = cells[column] ?? '';
-      if (key.startsWith('field:')) row.fields[key.slice(6)] = value;
-      else if (key !== 'ignore' && key !== 'unmapped') row[key] = value;
+  function appendSource() {
+    if (!shaped || mappingError || (source!.warnings.length && !reviewed)) return;
+    const added = shaped.rows.map((cells) => {
+      let row: Row = { name: '', fields: {} };
+      mapping.forEach((key, i) => {
+        const value = cells[i] ?? '';
+        if (key.startsWith('field:')) row.fields = { ...row.fields, [key.slice(6)]: value };
+        else if (key !== 'ignore') row = { ...row, [key]: value };
+      });
+      if (row.status)
+        row.status =
+          (
+            { 在用: 'active', 停用: 'inactive', 待确认: 'unverified' } as Record<
+              string,
+              Row['status']
+            >
+          )[row.status] ?? row.status;
+      if (row.mode)
+        row.mode =
+          (
+            {
+              固定: 'fixed',
+              固定部署: 'fixed',
+              按需: 'scheduled',
+              按需调度: 'scheduled',
+            } as Record<string, Row['mode']>
+          )[row.mode] ?? row.mode;
+      const repeated =
+        mode === 'list' &&
+        header &&
+        cells.length === shaped.headers.length &&
+        cells.every((v, i) => v.trim() === shaped.headers[i].trim());
+      return { ...entry(row), sourceIssue: repeated ? '重复表头，请取消录入此行' : undefined };
     });
-    row.name = names[index] ?? row.name ?? '';
-    if (row.status)
-      row.status =
-        ({ 在用: 'active', 停用: 'inactive', 待确认: 'unverified' } as Record<string, string>)[
-          row.status
-        ] ?? row.status;
-    if (row.mode)
-      row.mode =
-        (
-          { 固定: 'fixed', 固定部署: 'fixed', 按需: 'scheduled', 按需调度: 'scheduled' } as Record<
-            string,
-            string
-          >
-        )[row.mode] ?? row.mode;
-    let issue = !row.name.trim()
-      ? '名称不能为空'
-      : row.port && (!/^\d+$/.test(row.port) || Number(row.port) < 1 || Number(row.port) > 65535)
-        ? '端口无效'
-        : row.status && !['active', 'inactive', 'unverified'].includes(row.status)
-          ? '状态需为在用、停用或待确认'
-          : '';
+    changeRows([...rows.filter((r) => hasContent(r.row)), ...added]);
+    setExtraFields([
+      ...new Set([
+        ...extraFields,
+        ...mapping.filter((k) => k.startsWith('field:')).map((k) => k.slice(6)),
+      ]),
+    ]);
+    setSource(null);
+    setText('');
+    setMapping([]);
+    setError('');
+  }
+  const [ownerKind, ownerId] = owner.split(':');
+  const existing =
+    kind === 'account'
+      ? snapshot.accounts.filter(
+          (r) =>
+            r.systemId === systemId &&
+            (ownerKind === 'resource'
+              ? r.resourceId === ownerId
+              : ownerKind === 'access'
+                ? r.accessId === ownerId
+                : r.environmentId === ownerId && !r.resourceId && !r.accessId),
+        )
+      : kind === 'node'
+        ? snapshot.deploymentNodes.filter(
+            (r) => r.serviceId === ownerId && r.environmentId === environment,
+          )
+        : kind === 'access'
+          ? snapshot.accessEntries.filter((r) => r.systemId === systemId)
+          : kind === 'service'
+            ? snapshot.services.filter((r) => r.systemId === systemId)
+            : kind === 'job' || kind === 'backup'
+              ? snapshot.operations.filter((r) => r.systemId === systemId && r.kind === kind)
+              : snapshot.resources.filter((r) => r.systemId === systemId);
+  const preview = rows.map((item, index) => {
+    const row = item.row,
+      blank = !hasContent(row);
+    let issue =
+      item.sourceIssue ||
+      (!blank && !row.name.trim()
+        ? '名称不能为空'
+        : row.port && (!/^\d+$/.test(row.port) || Number(row.port) < 1 || Number(row.port) > 65535)
+          ? '端口无效'
+          : row.status && !['active', 'inactive', 'unverified'].includes(row.status)
+            ? '状态需为在用、停用或待确认'
+            : row.mode && !['fixed', 'scheduled'].includes(row.mode)
+              ? '部署方式需为固定或按需'
+              : '');
     if (kind === 'access' && row.address) {
       try {
         const url = new URL(row.address);
@@ -210,113 +299,129 @@ export function PasteLedger({
         issue = '地址格式无效';
       }
     }
-    const existing =
-      kind === 'access'
-        ? snapshot.accessEntries.filter((r) => r.systemId === systemId)
-        : kind === 'account'
-          ? snapshot.accounts.filter((r) => r.systemId === systemId)
-          : kind === 'service'
-            ? snapshot.services.filter((r) => r.systemId === systemId)
-            : kind === 'job' || kind === 'backup'
-              ? snapshot.operations.filter((r) => r.systemId === systemId)
-              : kind === 'node'
-                ? snapshot.deploymentNodes.filter((r) => r.serviceId === owner)
-                : snapshot.resources.filter((r) => r.systemId === systemId);
     const duplicate =
-      shaped!.rows
+      !blank &&
+      (rows
         .slice(0, index)
         .some(
-          (earlier, i) =>
-            !skip.includes(i) &&
-            ((names[i] ?? earlier[mapping.indexOf('name')] ?? '').trim().toLowerCase() ===
-              row.name.trim().toLowerCase() ||
-              (row.address && earlier[mapping.indexOf('address')] === row.address) ||
-              (kind === 'account' &&
-                row.username &&
-                earlier[mapping.indexOf('username')] === row.username)),
+          (r) =>
+            r.selected &&
+            hasContent(r.row) &&
+            (r.row.name.trim().toLowerCase() === row.name.trim().toLowerCase() ||
+              (row.address && r.row.address === row.address) ||
+              (kind === 'account' && row.username && r.row.username === row.username)),
         ) ||
-      existing.some(
-        (r) =>
-          r.name.toLowerCase() === row.name.trim().toLowerCase() ||
-          (row.address &&
-            ('address' in r
-              ? r.address === row.address
-              : 'addresses' in r
-                ? r.addresses.some((a) => a.url === row.address)
-                : false)) ||
-          (kind === 'account' && row.username && 'username' in r && r.username === row.username),
-      );
-    if (
-      mode === 'list' &&
-      header &&
-      cells.length === shaped!.headers.length &&
-      cells.every((value, i) => value.trim() === shaped!.headers[i].trim())
-    )
-      issue = '重复表头，请取消录入此行';
-    return { row: row as LedgerBatch['rows'][number], issue, duplicate, index };
+        existing.some(
+          (r) =>
+            r.name.toLowerCase() === row.name.trim().toLowerCase() ||
+            (row.address &&
+              ('address' in r
+                ? r.address === row.address
+                : 'addresses' in r
+                  ? r.addresses.some((a) => a.url === row.address)
+                  : false)) ||
+            (kind === 'account' && row.username && 'username' in r && r.username === row.username),
+        ));
+    return { ...item, blank, issue, duplicate };
   });
-  const selected = preview.filter((r) => !skip.includes(r.index));
+  const selected = preview.filter((r) => r.selected && !r.blank);
+  const needsReview = selected.filter((r) => r.issue || (r.duplicate && !r.confirmed)).length;
   const valid =
-    source &&
     selected.length > 0 &&
-    !mappingError &&
-    (!source.warnings.length || reviewed) &&
-    selected.every((r) => !r.issue && (!r.duplicate || confirmed.includes(r.index))) &&
+    selected.length <= 200 &&
+    !source &&
+    !text.trim() &&
+    !needsReview &&
     (!['account', 'node'].includes(kind) || owner) &&
     (kind !== 'node' || environment);
-  async function submit() {
-    if (busy || !valid) return;
+  function submit() {
+    if (submitting.current || !valid) return;
     setBusy(true);
+    setLeaving(false);
     setError('');
-    try {
-      if (selected.some((r) => r.row.password) && !(await vault.ensureUnlocked())) return;
-      const [ownerKind, ownerId] = owner.split(':');
-      const response = await window.desktop.captureLedgerBatch({
-        token: token.current,
-        systemId,
-        environmentId: environment || null,
-        kind,
-        ownerId,
-        ownerKind: ownerKind as LedgerBatch['ownerKind'],
-        rows: selected.map((r) => ({ ...r.row, confirmDuplicate: confirmed.includes(r.index) })),
-      });
-      onSaved(response.snapshot, response.createdId);
-      setResult({ count: selected.length, skipped: skip.length });
-      setSource(null);
-      setText('');
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setBusy(false);
-    }
+    submitting.current = (async () => {
+      try {
+        if (selected.some((r) => r.row.password) && !(await vault.ensureUnlocked())) return;
+        const response = await window.desktop.captureLedgerBatch({
+          token: token.current,
+          systemId,
+          environmentId: kind === 'account' ? null : environment || null,
+          kind,
+          ownerId,
+          ownerKind: ownerKind as LedgerBatch['ownerKind'],
+          rows: selected.map((r) => ({
+            ...r.row,
+            status: r.row.status || undefined,
+            mode: r.row.mode || undefined,
+            confirmDuplicate: r.confirmed,
+          })),
+        });
+        finished.current = true;
+        setResult({
+          count: selected.length,
+          skipped: preview.filter((r) => !r.blank && !r.selected).length,
+        });
+        setRows([]);
+        setSource(null);
+        setText('');
+        onSaved(response.snapshot, response.createdId);
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        submitting.current = null;
+        setBusy(false);
+      }
+    })();
   }
   function close() {
-    if (busy) return;
-    if (!result && (source || text.trim())) {
+    if (submitting.current) return;
+    if (!finished.current && dirty) {
       setLeaving(true);
       if (leaving) focusExitChoice();
     } else onClose();
   }
+  function edit(index: number, key: string, value: string) {
+    changeRows(
+      rows.map((item, i) =>
+        i !== index
+          ? item
+          : {
+              ...item,
+              row: key.startsWith('field:')
+                ? { ...item.row, fields: { ...item.row.fields, [key.slice(6)]: value } }
+                : { ...item.row, [key]: value },
+            },
+      ),
+    );
+  }
   return (
     <Dialog
-      title="粘贴表格 · 校对后新增"
+      title="批量录入 · 校对后新增"
       className="modal paste-ledger"
-      description="从 Word 或 Excel 复制表格，校对字段后一次录入。"
+      description="直接填写多行，或粘贴表格后逐格修改；校对完成后统一新增。"
       closeDisabled={busy}
       error={error}
       onClose={close}
     >
       {leaving && (
         <div className="paste-leave-notice" role="alert">
-          <p>这些资料尚未提交，离开将丢弃本次粘贴内容。</p>
+          <p>这些资料尚未提交，离开将丢弃本次录入内容。</p>
           <button
             ref={continueButton}
             className="secondary-button"
+            disabled={busy}
             onClick={() => setLeaving(false)}
           >
             继续校对
           </button>
-          <button className="text-button" onClick={onClose}>
+          <button
+            className="text-button"
+            disabled={busy}
+            onClick={() => {
+              finished.current = true;
+              onClose();
+            }}
+          >
             放弃并离开
           </button>
         </div>
@@ -344,11 +449,12 @@ export function PasteLedger({
                 <select
                   aria-label="批量条目类型"
                   value={kind}
+                  disabled={dirty}
                   onChange={(e) => {
                     setKind(e.target.value as LedgerBatch['kind']);
                     setOwner('');
-                    setConfirmed([]);
-                    token.current = crypto.randomUUID();
+                    setExtraFields([]);
+                    setNewField('');
                   }}
                 >
                   {Object.entries(kinds).map(([key, label]) => (
@@ -358,30 +464,38 @@ export function PasteLedger({
                   ))}
                 </select>
               </label>
-              <label>
-                环境
-                <select
-                  aria-label="批量环境"
-                  value={environment}
-                  onChange={(e) => setEnvironment(e.target.value)}
-                >
-                  <option value="">系统通用</option>
-                  {snapshot.environments
-                    .filter((e) => e.systemId === systemId)
-                    .map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.name}
-                      </option>
-                    ))}
-                </select>
-              </label>
+              {kind !== 'account' && (
+                <label>
+                  环境
+                  <select
+                    aria-label="批量环境"
+                    value={environment}
+                    onChange={(e) => {
+                      setEnvironment(e.target.value);
+                      changeRows(rows);
+                    }}
+                  >
+                    <option value="">{kind === 'node' ? '请选择部署环境' : '系统通用'}</option>
+                    {snapshot.environments
+                      .filter((e) => e.systemId === systemId)
+                      .map((e) => (
+                        <option key={e.id} value={e.id}>
+                          {e.name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              )}
               {['account', 'node'].includes(kind) && (
                 <label>
                   所属对象
                   <select
                     aria-label="批量所属对象"
                     value={owner}
-                    onChange={(e) => setOwner(e.target.value)}
+                    onChange={(e) => {
+                      setOwner(e.target.value);
+                      changeRows(rows);
+                    }}
                   >
                     <option value="">请选择</option>
                     {kind === 'node' ? (
@@ -398,14 +512,14 @@ export function PasteLedger({
                           .filter((r) => r.systemId === systemId)
                           .map((r) => (
                             <option key={r.id} value={`resource:${r.id}`}>
-                              {r.name}
+                              {r.name} · 资源
                             </option>
                           ))}
                         {snapshot.accessEntries
                           .filter((r) => r.systemId === systemId)
                           .map((r) => (
                             <option key={r.id} value={`access:${r.id}`}>
-                              {r.name}
+                              {r.name} · 访问入口
                             </option>
                           ))}
                         {snapshot.environments
@@ -421,31 +535,210 @@ export function PasteLedger({
                 </label>
               )}
             </div>
-            <label className="field-label paste-source">
-              粘贴内容
-              <textarea
-                aria-label="粘贴表格"
-                rows={7}
-                value={text}
-                placeholder={
-                  '在这里粘贴表格…\n支持清单和“字段／值”资料卡，粘贴后可预览并调整字段。'
-                }
-                onChange={(e) => setText(e.target.value)}
-                onPaste={(e) => {
-                  try {
-                    e.preventDefault();
-                    load(
-                      parseClipboardTable(
-                        e.clipboardData.getData('text/plain'),
-                        e.clipboardData.getData('text/html'),
-                      ),
-                    );
-                  } catch (error) {
-                    setError(String(error));
+            <p className="secondary-copy">
+              {kind === 'account'
+                ? '账号的适用范围随所属对象。'
+                : '本批资料使用同一环境，更多适用环境与标签可在详情补充。'}{' '}
+              有内容时需先清空条目和粘贴内容才能切换类型。
+            </p>
+            <div
+              className="paste-preview batch-grid"
+              tabIndex={0}
+              role="region"
+              aria-label="批量录入表格（可横向滚动）"
+            >
+              <table>
+                <thead>
+                  <tr>
+                    <th>录入</th>
+                    {columns.map(([key, label]) => (
+                      <th key={key}>{label}</th>
+                    ))}
+                    <th>校对与操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.map(
+                    ({ id, row, selected: checked, confirmed, issue, duplicate, blank }, index) => (
+                      <tr key={id}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            aria-label={`录入第 ${index + 1} 行`}
+                            checked={checked}
+                            onChange={(e) =>
+                              changeRows(
+                                rows.map((r, i) =>
+                                  i === index ? { ...r, selected: e.target.checked } : r,
+                                ),
+                              )
+                            }
+                          />
+                        </td>
+                        {columns.map(([key, label]) => {
+                          const value = key.startsWith('field:')
+                            ? (row.fields?.[key.slice(6)] ?? '')
+                            : (row[key as (typeof baseFields)[number][0]] ?? '');
+                          const name = `第 ${index + 1} 行${label}`;
+                          return (
+                            <td key={key}>
+                              {key === 'status' || key === 'mode' ? (
+                                <select
+                                  aria-label={name}
+                                  value={value}
+                                  onChange={(e) => edit(index, key, e.target.value)}
+                                >
+                                  <option value="">
+                                    {key === 'status' ? '待确认（默认）' : '固定（默认）'}
+                                  </option>
+                                  {(key === 'status'
+                                    ? [
+                                        ['active', '在用'],
+                                        ['inactive', '停用'],
+                                        ['unverified', '待确认'],
+                                      ]
+                                    : [
+                                        ['fixed', '固定'],
+                                        ['scheduled', '按需'],
+                                      ]
+                                  ).map(([v, l]) => (
+                                    <option key={v} value={v}>
+                                      {l}
+                                    </option>
+                                  ))}
+                                  {value &&
+                                    !(
+                                      key === 'status'
+                                        ? ['active', 'inactive', 'unverified']
+                                        : ['fixed', 'scheduled']
+                                    ).includes(value) && (
+                                      <option value={value}>{value}（请修正）</option>
+                                    )}
+                                </select>
+                              ) : ['name', 'port', 'username', 'password', 'accountName'].includes(
+                                  key,
+                                ) ? (
+                                <input
+                                  aria-label={name}
+                                  type={key === 'password' ? 'password' : 'text'}
+                                  autoComplete="off"
+                                  value={value}
+                                  onChange={(e) => edit(index, key, e.target.value)}
+                                />
+                              ) : (
+                                <textarea
+                                  aria-label={name}
+                                  rows={2}
+                                  value={value}
+                                  onChange={(e) => edit(index, key, e.target.value)}
+                                />
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="batch-row-actions">
+                          {issue && <span className="error-text">{issue}</span>}
+                          {blank && <span className="secondary-copy">空白行不提交</span>}
+                          {duplicate && (
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={confirmed}
+                                onChange={(e) =>
+                                  setRows(
+                                    rows.map((r, i) =>
+                                      i === index ? { ...r, confirmed: e.target.checked } : r,
+                                    ),
+                                  )
+                                }
+                              />
+                              疑似重复，仍新增独立记录
+                            </label>
+                          )}
+                          <button
+                            className="text-button"
+                            aria-label={`删除第 ${index + 1} 行`}
+                            onClick={() => changeRows(rows.filter((r) => r.id !== id))}
+                          >
+                            删除行
+                          </button>
+                        </td>
+                      </tr>
+                    ),
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {!!needsReview && (
+              <p role="status" className="secondary-copy">
+                {needsReview} 条资料待校对，请向右查看“校对与操作”列并修正或取消勾选。
+              </p>
+            )}
+            <div className="batch-toolbar">
+              <button className="secondary-button" onClick={() => changeRows([...rows, entry()])}>
+                增加一行
+              </button>
+              {hasFields && (
+                <>
+                  <label>
+                    附加字段
+                    <input
+                      aria-label="新增附加字段名称"
+                      placeholder="例如：CPU、内存、库名"
+                      value={newField}
+                      onChange={(e) => setNewField(e.target.value)}
+                    />
+                  </label>
+                  <button
+                    className="secondary-button"
+                    disabled={!newField.trim()}
+                    onClick={() => {
+                      const key = newField.trim();
+                      if (/密码|口令|password|token|私钥/i.test(key)) {
+                        setError('秘密内容请使用密码字段，不能存入普通附加字段。');
+                        return;
+                      }
+                      if (key.length > 80 || extraFields.length >= 50) {
+                        setError('附加字段名称最多 80 个字符，每次最多 50 个附加字段。');
+                        return;
+                      }
+                      setExtraFields([...new Set([...extraFields, key])]);
+                      setNewField('');
+                      setError('');
+                    }}
+                  >
+                    添加字段
+                  </button>
+                </>
+              )}
+            </div>
+            {!source && (
+              <label className="field-label paste-source">
+                从 Word／Excel 粘贴表格
+                <textarea
+                  aria-label="粘贴表格"
+                  rows={4}
+                  value={text}
+                  placeholder={
+                    '在这里粘贴表格…\n支持清单和“字段／值”资料卡，映射后追加到上方表格。'
                   }
-                }}
-              />
-            </label>
+                  onChange={(e) => setText(e.target.value)}
+                  onPaste={(e) => {
+                    try {
+                      e.preventDefault();
+                      load(
+                        parseClipboardTable(
+                          e.clipboardData.getData('text/plain'),
+                          e.clipboardData.getData('text/html'),
+                        ),
+                      );
+                    } catch (e) {
+                      setError(String(e));
+                    }
+                  }}
+                />
+              </label>
+            )}
             {text && (
               <button
                 className="secondary-button"
@@ -507,13 +800,9 @@ export function PasteLedger({
                       <select
                         aria-label={`映射第 ${i + 1} 列`}
                         value={mapping[i] ?? 'unmapped'}
-                        onChange={(e) => {
-                          const next = [...mapping];
-                          next[i] = e.target.value;
-                          setMapping(next);
-                          setConfirmed([]);
-                          token.current = crypto.randomUUID();
-                        }}
+                        onChange={(e) =>
+                          setMapping(mapping.map((v, j) => (i === j ? e.target.value : v)))
+                        }
                       >
                         <option value="unmapped">选择字段</option>
                         <option value="ignore">忽略此列</option>
@@ -554,100 +843,80 @@ export function PasteLedger({
                     {mappingError}
                   </p>
                 )}
-                <div className="paste-preview">
+                <div
+                  className="paste-preview"
+                  tabIndex={0}
+                  role="region"
+                  aria-label="待追加表格预览"
+                >
                   <table>
                     <thead>
                       <tr>
-                        <th>录入</th>
-                        <th>名称（可区分重名）</th>
-                        <th>地址／用户名</th>
-                        <th>密码</th>
-                        <th>校对</th>
+                        {shaped!.headers.map((h, i) => (
+                          <th key={i}>{h || `列 ${i + 1}`}</th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {preview.map(({ row, issue, duplicate, index }) => (
-                        <tr key={index}>
-                          <td>
-                            <input
-                              type="checkbox"
-                              aria-label={`录入第 ${index + 1} 行`}
-                              checked={!skip.includes(index)}
-                              onChange={(e) =>
-                                setSkip(
-                                  e.target.checked
-                                    ? skip.filter((i) => i !== index)
-                                    : [...skip, index],
-                                )
-                              }
-                            />
-                          </td>
-                          <td>
-                            <input
-                              aria-label={`第 ${index + 1} 行名称`}
-                              value={row.name}
-                              onChange={(e) => setNames({ ...names, [index]: e.target.value })}
-                            />
-                          </td>
-                          <td className="multiline">
-                            {row.address || row.username || row.frequency || '—'}
-                          </td>
-                          <td>{row.password ? '•••••• · 加密保存' : '—'}</td>
-                          <td>
-                            {issue && <span className="error-text">{issue}</span>}
-                            {duplicate && (
-                              <label>
-                                <input
-                                  type="checkbox"
-                                  checked={confirmed.includes(index)}
-                                  onChange={(e) =>
-                                    setConfirmed(
-                                      e.target.checked
-                                        ? [...confirmed, index]
-                                        : confirmed.filter((i) => i !== index),
-                                    )
-                                  }
-                                />
-                                疑似重复，仍新增独立记录
-                              </label>
-                            )}
-                            <details>
-                              <summary>完整映射</summary>
-                              {Object.entries(row)
-                                .filter(([k]) => !['password', 'fields'].includes(k))
-                                .map(([k, v]) => (
-                                  <p className="multiline" key={k}>
-                                    {k}：{String(v)}
-                                  </p>
-                                ))}
-                              {Object.entries(row.fields ?? {}).map(([k, v]) => (
-                                <p className="multiline" key={k}>
-                                  {k}：{v}
-                                </p>
-                              ))}
-                            </details>
-                          </td>
+                      {shaped!.rows.map((cells, i) => (
+                        <tr key={i}>
+                          {cells.map((value, j) => (
+                            <td key={j} className="multiline">
+                              {value &&
+                              (mapping[j] === 'password' ||
+                                /密码|口令|password/i.test(shaped!.headers[j] ?? ''))
+                                ? '•••••• · 加密保存或忽略'
+                                : value}
+                            </td>
+                          ))}
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+                <div className="batch-toolbar">
+                  <button
+                    className="secondary-button"
+                    disabled={
+                      !!mappingError ||
+                      !shaped!.rows.length ||
+                      (!!source.warnings.length && !reviewed)
+                    }
+                    onClick={appendSource}
+                  >
+                    追加到录入表格（{shaped!.rows.length} 行）
+                  </button>
+                  <button
+                    className="text-button"
+                    onClick={() => {
+                      setSource(null);
+                      setMapping([]);
+                    }}
+                  >
+                    放弃本次粘贴
+                  </button>
+                </div>
               </>
             )}
           </fieldset>
+          {selected.length > 200 && (
+            <p role="alert" className="error-text">
+              每批最多新增 200 条，请取消勾选多余的行。
+            </p>
+          )}
+          {(source || text.trim()) && (
+            <p className="secondary-copy">请先将粘贴内容追加到表格，或清除本次粘贴内容。</p>
+          )}
           <div className="modal-actions">
             <span>
-              {selected.length} 条待新增，{skip.length} 条跳过
+              {selected.length} 条待新增，{preview.filter((r) => !r.blank && !r.selected).length}{' '}
+              条跳过
             </span>
             <button className="secondary-button" disabled={busy} onClick={close}>
               取消
             </button>
-            <button
-              className="primary-button"
-              disabled={busy || !valid}
-              onClick={() => void submit()}
-            >
-              确认新增
+            <button className="primary-button" disabled={busy || !valid} onClick={submit}>
+              {busy ? '正在保存…' : '确认新增'}
             </button>
           </div>
         </>

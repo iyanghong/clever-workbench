@@ -38,6 +38,21 @@ afterEach(() => {
   }
 });
 
+test.each(['system', 'password'])('查询 %s 凭据状态与锁定不访问系统钥匙串', async (mode) => {
+  const { vault, system } = device();
+  if (mode === 'password') await vault.initialize('fixture-master-password');
+  const available = vi.spyOn(system, 'available');
+  const encrypt = vi.spyOn(system, 'encrypt');
+  const decrypt = vi.spyOn(system, 'decrypt');
+  expect(vault.status().mode).toBe(mode);
+  vault.lock();
+  vault.touch();
+  expect(vault.status()).toMatchObject({ mode, unlocked: false });
+  expect(available).not.toHaveBeenCalled();
+  expect(encrypt).not.toHaveBeenCalled();
+  expect(decrypt).not.toHaveBeenCalled();
+});
+
 test.each([
   ['system', 'system'],
   ['system', 'password'],

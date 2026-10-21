@@ -159,7 +159,6 @@ export class Vault {
       unlocked: this.key !== null,
       mode: this.mode(),
       backupConfigured: backupProtection(this.store.db) !== null,
-      systemAvailable: this.system?.available() ?? false,
     };
   }
   private mode(): NonNullable<VaultStatus['mode']> {
@@ -667,7 +666,7 @@ export class Vault {
             },
             now,
           );
-        else if (input.kind === 'service')
+        else if (input.kind === 'service') {
           id = this.store.ledger.saveService(
             {
               type: 'service.save',
@@ -678,7 +677,11 @@ export class Vault {
             },
             now,
           );
-        else if (input.kind === 'job' || input.kind === 'backup')
+          workspace.saveScope('service', id, {
+            environmentIds: input.environmentId ? [input.environmentId] : [],
+            tags: [],
+          });
+        } else if (input.kind === 'job' || input.kind === 'backup')
           id = workspace.saveOperation({
             systemId: input.systemId,
             environmentId: input.environmentId,

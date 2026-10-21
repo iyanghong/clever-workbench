@@ -4,6 +4,60 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
+test('启动、浏览、主密码解锁与重启不访问系统钥匙串', async () => {
+  test.skip(Boolean(process.env.CWB_TEST_EXECUTABLE), '此用例需在开发入口加载前监测系统加密调用');
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-no-keychain-'));
+  const bootstrap = path.join(directory, 'bootstrap.cjs');
+  await fs.writeFile(
+    bootstrap,
+    `const { safeStorage } = require('electron');
+globalThis.keychainCalls = [];
+for (const method of ['isEncryptionAvailable', 'encryptString', 'decryptString']) {
+  safeStorage[method] = () => {
+    globalThis.keychainCalls.push(method);
+    if (method === 'isEncryptionAvailable') return false;
+    throw new Error('此流程不应访问系统钥匙串');
+  };
+}
+require(${JSON.stringify(path.resolve('dist-electron/main.cjs'))});
+`,
+  );
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  delete env.VITE_DEV_SERVER_URL;
+  let app: Awaited<ReturnType<typeof electron.launch>> | undefined;
+  try {
+    for (const restart of [false, true]) {
+      app = await electron.launch({ args: [bootstrap], env });
+      const page = await app.firstWindow();
+      await expect(page.getByRole('button', { name: '快速新建', exact: true })).toBeEnabled();
+      expect(await page.evaluate(() => window.desktop.vaultStatus())).toMatchObject({
+        mode: restart ? 'password' : 'system',
+        unlocked: false,
+      });
+      expect(await app.evaluate(() => (globalThis as any).keychainCalls)).toEqual([]);
+      for (const name of ['台账', '工作任务', '文档', '设置'])
+        await page.getByRole('button', { name, exact: true }).click();
+      if (restart) {
+        await page.evaluate(() => window.desktop.unlockVault('fixture-no-keychain-master'));
+      } else {
+        await page.getByRole('button', { name: '启用主密码', exact: true }).click();
+        await page.getByLabel('主密码', { exact: true }).fill('fixture-no-keychain-master');
+        await page.getByLabel('确认主密码', { exact: true }).fill('fixture-no-keychain-master');
+        await page.getByRole('button', { name: '设置并解锁', exact: true }).click();
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+      }
+      await page.evaluate(() => window.desktop.lockVault());
+      expect(await app.evaluate(() => (globalThis as any).keychainCalls)).toEqual([]);
+      await app.close();
+      app = undefined;
+    }
+  } finally {
+    await app?.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('真实系统加密支持无主密码凭据、独立备份密码与重启读取', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-native-protection-'));
   const filename = path.join(directory, 'portable.cwb');

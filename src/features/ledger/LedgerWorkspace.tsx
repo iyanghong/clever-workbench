@@ -704,7 +704,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
             </nav>
             <div className="workspace-category-actions">
               <button className="secondary-button" onClick={() => captureNew('paste')}>
-                粘贴表格
+                批量录入
               </button>
               <button
                 className="primary-button"
@@ -1536,6 +1536,22 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
           snapshot={snapshot}
           systemId={systemId}
           environmentId={captureContext.environmentId ?? null}
+          initialKind={
+            view.category === 'access'
+              ? 'access'
+              : view.category === 'accounts'
+                ? 'account'
+                : view.category === 'resources'
+                  ? 'database'
+                  : view.category === 'services'
+                    ? 'service'
+                    : view.category === 'operations'
+                      ? view.operationKind === 'backup'
+                        ? 'backup'
+                        : 'job'
+                      : 'server'
+          }
+          registerFlush={saves.register}
           onClose={() => setCapture(null)}
           onSaved={(s, id) => {
             setSnapshot(s);
