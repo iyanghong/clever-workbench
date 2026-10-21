@@ -14,7 +14,7 @@ Electron 的 `net.fetch` 在手动重定向时会报 `Redirect was cancelled`，
 
 使用[JSON 模板与发布核对清单](operation-guidance/README.md)，保留步骤、截图及入口的实际核对结果和已知缺项。内容与计划发布的源码一起提交到远端；继续遵守本地 Git 身份和中文提交要求。指引问题仅警告，不新增发布阻断，也不把未完成的编写或核对记为通过。
 
-上述规范已确认。应用内展示、版本绑定、同源正文生成及本地／GitHub Actions 自动检查尚未接入，当前脚本仍按现有提交记录生成发布正文；不能把现有发布成功视为已经检查操作指引。下文描述当前发布工具的实际行为。
+功能指引已接入离线查阅，本地发布预览及 GitHub Actions 已接入同一套非阻断内容检查。维护者可用 `npm run guidance:check` 检查当前工作区，实际发布预览仅检查远端计划源码；CI 输出警告、步骤摘要和 `guidance-check.json` 报告，详见[检查入口与核对清单](operation-guidance/README.md)。版本绑定和同源正文生成仍待相应任务接入，当前发布正文仍来自提交记录；发布成功不等于内容已全部核对。下文描述当前发布工具的实际行为。
 
 ## macOS 双击发布
 
@@ -62,6 +62,8 @@ CWB_UPDATE_ZIP="$PWD/release/Clever-Workbench-0.2.0-arm64.zip" npx vitest run te
 将示例版本替换成 `package.json` 中的版本。准备脚本会拒绝 tag 不匹配、缺失或过大的资产。真实 bundle 校验测试通过应用更新接口解压并验证应用身份、版本、架构、签名及内部链接，写入 quarantine；它不证明公网下载后的系统启动授权已经通过。
 
 原生传输回归通过更新协调器的检查和下载接口，使用明确的本地 HTTP 302 fixture 与完整 ZIP，验证授权 API、无授权 CDN 和原生包校验；它不宣称真实 GitHub 网络已经通过。此项已纳入发布工作流。
+
+桌面用例可通过 `CWB_TEST_EXECUTABLE` 指定被测安装版。若开发机的临时签名包被 macOS 钥匙串访问提示阻塞，可显式设置 `CWB_TEST_MOCK_KEYCHAIN=1` 运行界面测试；封装只在 macOS 且 `CLEVER_WORKBENCH_DATA_DIR` 的真实路径是系统临时目录内已经创建的独立目录时传入 `--use-mock-keychain`，缺少隔离、使用临时根目录或符号链接越界均拒绝启动。默认不开启，也不修改生产应用或系统钥匙串设置。此模式属于外部操作系统适配夹具，不能作为真实钥匙串授权、生产秘密保护或安装打开授权的验收证据。该参数会改变相关子系统行为，依据 [Chromium 的 macOS 构建与测试说明](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/docs/mac_build_instructions.md#avoiding-system-permissions-dialogs-after-each-build)。
 
 ## GitHub 发布
 
