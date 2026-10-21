@@ -66,17 +66,17 @@ async function fixture(changes = true) {
   };
 }
 
-function fakeLocalGitHub(f: Awaited<ReturnType<typeof fixture>>, failure = false) {
+function fakeLocalGitHub(f: Awaited<ReturnType<typeof fixture>>, failure = false, tag = 'v0.1.5') {
   let published = false,
     attempt = 1;
   const posts: string[] = [];
   const released = {
     id: 2,
-    tag_name: 'v0.1.5',
+    tag_name: tag,
     draft: false,
     prerelease: false,
     published_at: '2026-10-20T10:00:00Z',
-    html_url: 'https://github.com/fixture/app/releases/tag/v0.1.5',
+    html_url: `https://github.com/fixture/app/releases/tag/${tag}`,
   };
   return {
     repository: 'fixture/app',
@@ -102,13 +102,23 @@ function fakeLocalGitHub(f: Awaited<ReturnType<typeof fixture>>, failure = false
             };
       if (route === '') return { permissions: { push: true } };
       if (route === '/actions/workflows/release.yml') return { state: 'active' };
-      if (route === '/releases/tags/v0.1.5' && published) return released;
+      if (route === `/releases/tags/${tag}` && published) return released;
       throw new transport.GitHubError(404);
     },
     async pages(route: string) {
+      if (route === '/releases')
+        return [
+          {
+            id: 1,
+            tag_name: 'v0.1.4',
+            draft: false,
+            prerelease: false,
+            published_at: '2026-10-19T10:00:00Z',
+          },
+        ];
       if (route.includes('status=')) return [];
       if (route.includes('head_sha=')) {
-        const sha = g(f.root, '--git-dir', f.remote, 'rev-parse', 'v0.1.5^{commit}');
+        const sha = g(f.root, '--git-dir', f.remote, 'rev-parse', `${tag}^{commit}`);
         published = !failure;
         return [
           {
@@ -276,6 +286,92 @@ test('confirmation publishes an isolated version commit with the local identity 
   }
 });
 
+test('发布准备绑定远端说明、实际版本与业务源码，保留核对来源', async () => {
+  const f = await fixture();
+  try {
+    await fs.mkdir(path.join(f.seed, 'content/guidance/features'), { recursive: true });
+    await fs.copyFile(
+      path.resolve('content/guidance/features/application-update.json'),
+      path.join(f.seed, 'content/guidance/features/application-update.json'),
+    );
+    const draft = {
+      schemaVersion: 1,
+      kind: 'release-draft',
+      operationChange: 'changed',
+      summary: '从设置阅读更新操作步骤。',
+      changes: [
+        { id: 'help', summary: '更新旁可打开离线指引。', guideIds: ['application-update'] },
+      ],
+      review: {
+        status: 'pending',
+        reviewer: '',
+        checkedAt: '',
+        source: 'a'.repeat(40),
+        environment: '隔离发布测试',
+        checks: [],
+        knownGaps: ['尚待人工核对。'],
+      },
+    };
+    await fs.writeFile(path.join(f.seed, 'content/guidance/pending.json'), JSON.stringify(draft));
+    g(f.seed, 'add', '.');
+    g(f.seed, 'commit', '--quiet', '-m', '提交真实待发布说明');
+    g(f.seed, 'push', '--quiet', 'origin', 'master');
+    const source = g(f.seed, 'rev-parse', 'HEAD');
+    const answers = ['', 'yes'];
+    await local.runRelease({
+      directory: f.working,
+      origin: f.remote,
+      identity,
+      github: fakeLocalGitHub(f),
+      ask: async () => answers.shift(),
+      log: () => {},
+      watchOptions: { sleep: async () => {} },
+    });
+    const bound = JSON.parse(
+      g(f.root, '--git-dir', f.remote, 'show', 'v0.1.5:content/guidance/releases/0.1.5.json'),
+    );
+    expect(bound).toMatchObject({
+      ...draft,
+      kind: 'release',
+      version: '0.1.5',
+      tag: 'v0.1.5',
+      sourceSha: source,
+      publication: 'pending',
+    });
+    expect(
+      g(f.root, '--git-dir', f.remote, 'diff', '--name-only', source, 'v0.1.5').split('\n').sort(),
+    ).toEqual(['content/guidance/releases/0.1.5.json', 'package-lock.json', 'package.json']);
+    expect(
+      core.releaseMetadata(g(f.root, '--git-dir', f.remote, 'show', '-s', '--format=%B', 'v0.1.5'))
+        .sourceSha,
+    ).toBe(source);
+    g(f.seed, 'fetch', '--quiet', 'origin', '--tags');
+    g(f.seed, 'checkout', '--quiet', '--detach', 'v0.1.5');
+    const reportPath = path.join(f.root, 'ci-guidance.json');
+    execFileSync(
+      process.execPath,
+      [
+        path.resolve('scripts/check-operation-guidance.mjs'),
+        '--directory',
+        f.seed,
+        '--release-tag',
+        'v0.1.5',
+        '--output',
+        reportPath,
+        '--github',
+      ],
+      { encoding: 'utf8' },
+    );
+    const ciReport = JSON.parse(await fs.readFile(reportPath, 'utf8'));
+    expect(ciReport.sourceSha).toBe(source);
+    expect(ciReport.content).toMatchObject({ tag: 'v0.1.5', sourceSha: source });
+    await fs.writeFile(path.join(f.seed, 'content/guidance/pending.json'), '{ later edit');
+    expect(() => local.releaseSourceContext(f.seed, 'v0.1.5')).toThrow('已跟踪源码已被修改');
+  } finally {
+    await f.cleanup();
+  }
+});
+
 test('no remote changes exits without prompting even when local commits exist', async () => {
   const f = await fixture(false);
   try {
@@ -354,6 +450,188 @@ test('a failed workflow can resume the same remote version without another versi
     );
     expect(g(f.root, '--git-dir', f.remote, 'rev-parse', 'master')).toBe(prepared);
     expect(github.posts).toEqual(['/actions/runs/42/rerun']);
+  } finally {
+    await f.cleanup();
+  }
+});
+
+test('已占用失败版本可重绑新号，同一 tag 重跑始终读取原绑定内容', async () => {
+  const f = await fixture();
+  try {
+    await fs.mkdir(path.join(f.seed, 'content/guidance'), { recursive: true });
+    const draft = {
+      schemaVersion: 1,
+      kind: 'release-draft',
+      operationChange: 'none',
+      summary: '修复排版。',
+      noOperationReason: '现有操作方式没有变化。',
+      changes: [],
+    };
+    await fs.writeFile(path.join(f.seed, 'content/guidance/pending.json'), JSON.stringify(draft));
+    g(f.seed, 'add', '.');
+    g(f.seed, 'commit', '--quiet', '-m', '添加待发布说明');
+    g(f.seed, 'push', '--quiet', 'origin', 'master');
+    const source = g(f.seed, 'rev-parse', 'HEAD');
+    const config = {
+      directory: f.working,
+      origin: f.remote,
+      identity,
+      log: () => {},
+      watchOptions: { sleep: async () => {} },
+    };
+    await expect(
+      local.runRelease({
+        ...config,
+        requestedVersion: 'v0.1.5',
+        github: fakeLocalGitHub(f, true),
+        ask: async () => 'yes',
+      }),
+    ).rejects.toThrow('云端发布未通过');
+    const original = g(
+      f.root,
+      '--git-dir',
+      f.remote,
+      'show',
+      'v0.1.5:content/guidance/releases/0.1.5.json',
+    );
+    const failedHead = g(f.root, '--git-dir', f.remote, 'rev-parse', 'master');
+    const preview = await local.runRelease({
+      ...config,
+      github: fakeLocalGitHub(f, true),
+      dryRun: true,
+      ask: async () => '',
+    });
+    expect(preview.resume).toBe(true);
+    expect(preview.guidance.content).toMatchObject({
+      kind: 'release',
+      tag: 'v0.1.5',
+      summary: '修复排版。',
+    });
+    expect(
+      (
+        await local.runRelease({
+          ...config,
+          requestedVersion: 'v0.1.6',
+          github: fakeLocalGitHub(f, false, 'v0.1.6'),
+          ask: async () => 'yes',
+        })
+      ).status,
+    ).toBe('published');
+    expect(
+      g(f.root, '--git-dir', f.remote, 'show', 'v0.1.5:content/guidance/releases/0.1.5.json'),
+    ).toBe(original);
+    const next = JSON.parse(
+      g(f.root, '--git-dir', f.remote, 'show', 'v0.1.6:content/guidance/releases/0.1.6.json'),
+    );
+    expect(next).toMatchObject({
+      version: '0.1.6',
+      tag: 'v0.1.6',
+      sourceSha: source,
+      publication: 'pending',
+      summary: '修复排版。',
+    });
+    expect(g(f.root, '--git-dir', f.remote, 'rev-parse', 'master^')).toBe(failedHead);
+  } finally {
+    await f.cleanup();
+  }
+});
+
+test('新版本仅纳入已确认正式发布的固定历史，草稿和失败记录不冒充正式历史', async () => {
+  const f = await fixture();
+  try {
+    const pendingPath = path.join(f.seed, 'content/guidance/pending.json');
+    await fs.mkdir(path.dirname(pendingPath), { recursive: true });
+    const draft = (summary: string) => ({
+      schemaVersion: 1,
+      kind: 'release-draft',
+      operationChange: 'none',
+      summary,
+      noOperationReason: '修复不改变操作步骤。',
+      changes: [],
+    });
+    await fs.writeFile(pendingPath, JSON.stringify(draft('已正式发布的原始说明。')));
+    g(f.seed, 'add', '.');
+    g(f.seed, 'commit', '--quiet', '-m', '为首版准备操作说明');
+    const first = await local.prepareVersion(
+      f.seed,
+      { tag: 'v0.1.5', baseTag: 'v0.1.4', sourceSha: g(f.seed, 'rev-parse', 'HEAD') },
+      identity,
+    );
+    const original = g(f.seed, 'show', 'v0.1.5:content/guidance/releases/0.1.5.json');
+    await fs.writeFile(pendingPath, JSON.stringify(draft('失败版本的说明。')));
+    g(f.seed, 'add', '.');
+    g(f.seed, 'commit', '--quiet', '-m', '准备下一版内容');
+    await local.prepareVersion(
+      f.seed,
+      { tag: 'v0.1.6', baseTag: 'v0.1.5', sourceSha: g(f.seed, 'rev-parse', 'HEAD') },
+      identity,
+    );
+    const forged = JSON.parse(original);
+    forged.summary = '后改历史不得进入包。';
+    forged.publication = 'published';
+    await fs.writeFile(
+      path.join(f.seed, 'content/guidance/releases/0.1.5.json'),
+      JSON.stringify(forged),
+    );
+    const falseHistory = { ...forged, version: '0.1.7', tag: 'v0.1.7' };
+    await fs.writeFile(
+      path.join(f.seed, 'content/guidance/releases/0.1.7.json'),
+      JSON.stringify(falseHistory),
+    );
+    await fs.writeFile(pendingPath, JSON.stringify(draft('本次准备版本的说明。')));
+    g(f.seed, 'add', '.');
+    g(f.seed, 'commit', '--quiet', '-m', '更新待发布说明');
+    g(f.seed, 'push', '--quiet', 'origin', 'master', '--tags');
+    const github = fakeLocalGitHub(f, false, 'v0.1.8');
+    const repo = github.repo.bind(github),
+      pages = github.pages.bind(github);
+    const formal = {
+      id: 5,
+      tag_name: 'v0.1.5',
+      draft: false,
+      prerelease: false,
+      published_at: '2026-10-20T00:00:00Z',
+    };
+    github.repo = (route: string, options?: any) => {
+      const result = repo(route, options);
+      return route.startsWith('/releases/latest') && result.id === 1 ? formal : result;
+    };
+    github.pages = async (route: string) =>
+      route === '/releases'
+        ? ([
+            formal,
+            { ...formal, id: 6, tag_name: 'v0.1.6', draft: true },
+            { ...formal, id: 7, tag_name: 'v0.1.7', prerelease: true },
+          ] as any)
+        : pages(route);
+    const result = await local.runRelease({
+      directory: f.working,
+      origin: f.remote,
+      identity,
+      github,
+      requestedVersion: 'v0.1.8',
+      ask: async () => 'yes',
+      log: () => {},
+      watchOptions: { sleep: async () => {} },
+    });
+    expect(result.status).toBe('published');
+    const historic = JSON.parse(
+      g(f.root, '--git-dir', f.remote, 'show', 'master:content/guidance/releases/0.1.5.json'),
+    );
+    expect(historic).toMatchObject({
+      summary: '已正式发布的原始说明。',
+      publication: 'published',
+      sourceSha: first.sourceSha,
+    });
+    expect(
+      g(f.root, '--git-dir', f.remote, 'show', 'v0.1.5:content/guidance/releases/0.1.5.json'),
+    ).toBe(original);
+    expect(() =>
+      g(f.root, '--git-dir', f.remote, 'show', 'master:content/guidance/releases/0.1.6.json'),
+    ).toThrow();
+    expect(() =>
+      g(f.root, '--git-dir', f.remote, 'show', 'master:content/guidance/releases/0.1.7.json'),
+    ).toThrow();
   } finally {
     await f.cleanup();
   }
@@ -559,6 +837,135 @@ test('cloud publication verifies three assets and downloaded checksums before pu
     ).rejects.toThrow('禁止覆盖');
   } finally {
     await f.cleanup();
+  }
+});
+
+test('云端正文读取固定版本绑定而非后改草稿，缺失指引仅警告仍发布', async () => {
+  const f = await cloudFixture();
+  try {
+    await fs.mkdir(path.join(f.root, 'content/guidance/releases'), { recursive: true });
+    await fs.writeFile(
+      path.join(f.root, 'content/guidance/releases/0.1.5.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        kind: 'release',
+        version: '0.1.5',
+        tag: 'v0.1.5',
+        sourceSha: f.context.sourceSha,
+        publication: 'pending',
+        operationChange: 'changed',
+        summary: '固定版本的用户操作说明。',
+        changes: [{ id: 'guide', summary: '在设置查阅操作步骤。', guideIds: ['missing-guide'] }],
+      }),
+    );
+    await fs.writeFile(
+      path.join(f.root, 'content/guidance/pending.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        kind: 'release-draft',
+        operationChange: 'none',
+        summary: '后来修改的下一版说明。',
+        noOperationReason: '没有变化。',
+        changes: [],
+      }),
+    );
+    const logs: string[] = [];
+    const result = await cloud.publishMacRelease({
+      github: f.github,
+      context: f.context,
+      directory: f.root,
+      sourceDirectory: f.root,
+      log: (s: string) => logs.push(s),
+    });
+    expect(result.body).toContain('固定版本的用户操作说明。');
+    expect(result.body).toContain('在设置查阅操作步骤。');
+    expect(result.body).toContain('暂未提供完整操作指引');
+    expect(result.body).toContain('技术提交明细');
+    expect(result.body).toContain('/blob/v0.1.5/content/guidance/releases/0.1.5.json');
+    expect(result.body).not.toContain('后来修改的下一版说明');
+    expect(logs.join('\n')).toContain('missing-guide');
+    expect(result.draft).toBe(false);
+    const report = JSON.parse(await fs.readFile(path.join(f.root, 'guidance-check.json'), 'utf8'));
+    expect(report.sourceSha).toBe(f.context.sourceSha);
+    expect(report.content.tag).toBe('v0.1.5');
+  } finally {
+    await f.cleanup();
+  }
+});
+
+test('坏正文从版本准备到云端资产发布仅降级，来源错配不混入摘要', async () => {
+  const f = await fixture();
+  const assets = await cloudFixture();
+  try {
+    await fs.mkdir(path.join(f.seed, 'content/guidance/features'), { recursive: true });
+    await fs.writeFile(path.join(f.seed, 'content/guidance/pending.json'), '{ invalid draft');
+    await fs.writeFile(
+      path.join(f.seed, 'content/guidance/features/broken.json'),
+      '{ invalid feature',
+    );
+    g(f.seed, 'add', '.');
+    g(f.seed, 'commit', '--quiet', '-m', '构造无效内容输入');
+    g(f.seed, 'push', '--quiet', 'origin', 'master');
+    const source = g(f.seed, 'rev-parse', 'HEAD');
+    const logs: string[] = [];
+    const result = await local.runRelease({
+      directory: f.working,
+      origin: f.remote,
+      identity,
+      github: fakeLocalGitHub(f),
+      requestedVersion: 'v0.1.5',
+      ask: async () => 'yes',
+      log: (s: string) => logs.push(s),
+      watchOptions: { sleep: async () => {} },
+    });
+    expect(result.status).toBe('published');
+    expect(logs.join('\n')).toContain('invalid-json');
+    g(f.seed, 'fetch', '--quiet', 'origin', '--tags');
+    g(f.seed, 'checkout', '--quiet', '--detach', 'v0.1.5');
+    const selected = local.releaseSourceContext(f.seed, 'v0.1.5');
+    expect(selected.sourceSha).toBe(source);
+    const context = { ...assets.context, ...selected };
+    const published = await cloud.publishMacRelease({
+      github: assets.github,
+      context,
+      directory: assets.root,
+      sourceDirectory: f.seed,
+      log: () => {},
+    });
+    expect(published.body).toContain('暂未提供完整操作指引');
+    expect(published.body).not.toContain('无新增操作：');
+    expect(assets.uploads).toHaveLength(3);
+    const report = JSON.parse(
+      await fs.readFile(path.join(assets.root, 'guidance-check.json'), 'utf8'),
+    );
+    expect(report.content).toBeNull();
+    expect(report.warnings.some((item: any) => item.code === 'invalid-json')).toBe(true);
+    await fs.mkdir(path.join(f.seed, 'content/guidance/releases'), { recursive: true });
+    await fs.writeFile(
+      path.join(f.seed, 'content/guidance/releases/0.1.5.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        kind: 'release',
+        version: '0.1.5',
+        tag: 'v0.1.5',
+        publication: 'pending',
+        sourceSha: 'a'.repeat(40),
+        operationChange: 'none',
+        summary: '另一源码的说明。',
+        noOperationReason: '另一源码没有变化。',
+        changes: [],
+      }),
+    );
+    const checked = await (
+      await import(new URL('../scripts/release-tools/guidance.mjs', import.meta.url).href)
+    ).inspectOperationGuidance(f.seed, { releaseTag: 'v0.1.5', sourceSha: source });
+    expect(checked.content).toBeNull();
+    expect(checked.warnings.some((item: any) => item.code === 'binding-source-mismatch')).toBe(
+      true,
+    );
+  } finally {
+    await f.cleanup();
+    await assets.cleanup();
   }
 });
 

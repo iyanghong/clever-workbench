@@ -4,7 +4,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
-import { inspectOperationGuidance, formatOperationGuidance } from './guidance.mjs';
+import {
+  inspectOperationGuidance,
+  formatOperationGuidance,
+  bindOperationGuidance,
+} from './guidance.mjs';
+import { loadGuidanceCatalog } from '../../src/guidance/catalog.ts';
 import {
   compareVersions,
   nextVersion,
@@ -96,14 +101,65 @@ export function commitsSince(directory, baseTag, sourceSha) {
     });
 }
 
-export async function prepareVersion(directory, { tag, baseTag, sourceSha }, identity) {
+function verifyPreparedCommit(directory, head, meta) {
+  const parent = meta.preparedFromSha || meta.sourceSha;
+  if (git(directory, ['rev-parse', `${head}^`]) !== parent)
+    throw Error('发布版本提交与原始源码不一致。');
+  const files = git(directory, ['diff', '--name-only', parent, head]).split('\n').filter(Boolean);
+  const allowed = ['package-lock.json', 'package.json', ...(meta.guidanceFiles || [])];
+  if (files.some((file) => !allowed.includes(file))) throw Error('版本准备包含意外文件。');
+  const application = JSON.parse(git(directory, ['show', `${head}:package.json`]));
+  const lock = JSON.parse(git(directory, ['show', `${head}:package-lock.json`]));
+  if (
+    `v${application.version}` !== meta.tag ||
+    lock.version !== application.version ||
+    lock.packages?.['']?.version !== application.version
+  )
+    throw Error('版本提交的应用与锁文件版本不一致。');
+  if (parent !== meta.sourceSha) {
+    const previous = releaseMetadata(git(directory, ['show', '-s', '--format=%B', parent]));
+    if (!previous || previous.sourceSha !== meta.sourceSha)
+      throw Error('重新绑定版本的业务源码不一致。');
+    verifyPreparedCommit(directory, parent, previous);
+  }
+}
+
+/** Verify the fixed checkout and retain business source independently from its version commit. */
+export function releaseSourceContext(directory, tag) {
+  versionParts(tag);
+  const releaseSha = git(directory, ['rev-parse', 'HEAD']);
+  if (git(directory, ['rev-parse', `${tag}^{commit}`]) !== releaseSha)
+    throw Error('当前构建源码与发布 tag 不一致。');
+  if (git(directory, ['status', '--porcelain', '--untracked-files=no']))
+    throw Error('固定 tag 的已跟踪源码已被修改，停止使用混合来源。');
+  const meta = releaseMetadata(git(directory, ['show', '-s', '--format=%B', 'HEAD']));
+  if (meta) {
+    if (meta.tag !== tag) throw Error('发布提交的 tag 不一致。');
+    verifyPreparedCommit(directory, releaseSha, meta);
+  }
+  const application = JSON.parse(git(directory, ['show', 'HEAD:package.json']));
+  if (`v${application.version}` !== tag) throw Error('当前应用版本与发布 tag 不一致。');
+  return { ...meta, tag, sourceSha: meta?.sourceSha || releaseSha, releaseSha };
+}
+
+export async function prepareVersion(
+  directory,
+  { tag, baseTag, sourceSha, preparedFromSha = sourceSha, guidanceHistory },
+  identity,
+) {
   const meta = { schema: 1, tag, baseTag, sourceSha };
   versionParts(tag);
   if (
-    git(directory, ['rev-parse', 'HEAD']) !== sourceSha ||
+    git(directory, ['rev-parse', 'HEAD']) !== preparedFromSha ||
     git(directory, ['status', '--porcelain'])
   )
     throw Error('隔离目录的源码状态已变化，停止准备版本。');
+  if (preparedFromSha !== sourceSha) {
+    const previous = releaseMetadata(git(directory, ['show', '-s', '--format=%B', 'HEAD']));
+    if (!previous || previous.sourceSha !== sourceSha)
+      throw Error('重新绑定版本的业务源码不一致。');
+    verifyPreparedCommit(directory, preparedFromSha, previous);
+  }
   for (const filename of ['package.json', 'package-lock.json']) {
     const file = path.join(directory, filename),
       stat = await fs.lstat(file);
@@ -116,11 +172,19 @@ export async function prepareVersion(directory, { tag, baseTag, sourceSha }, ide
     }
     await fs.writeFile(file, JSON.stringify(data, null, 2) + '\n');
   }
+  const guidance = await bindOperationGuidance(directory, {
+    tag,
+    sourceSha,
+    history: guidanceHistory,
+  });
+  if (preparedFromSha !== sourceSha) meta.preparedFromSha = preparedFromSha;
+  if (guidance.files.length) meta.guidanceFiles = guidance.files;
   // Copy the already verified user identity only into this disposable repository.
   for (const [key, value] of Object.entries(identity))
     git(directory, ['config', `user.${key}`, value]);
   git(directory, ['config', 'user.useConfigOnly', 'true']);
-  git(directory, ['add', '--', 'package.json', 'package-lock.json']);
+  const allowedFiles = [...guidance.files, 'package.json', 'package-lock.json'].sort();
+  git(directory, ['add', '--', ...allowedFiles]);
   git(directory, ['commit', '--file', '-'], { input: releaseCommitMessage(meta), timeout: 30000 });
   const actual = git(directory, ['show', '-s', '--format=%an%x00%ae%x00%cn%x00%ce', 'HEAD']).split(
     '\0',
@@ -135,27 +199,77 @@ export async function prepareVersion(directory, { tag, baseTag, sourceSha }, ide
   const files = git(directory, ['diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD'])
     .split('\n')
     .sort();
-  if (JSON.stringify(files) !== JSON.stringify(['package-lock.json', 'package.json']))
+  if (files.some((file) => !allowedFiles.includes(file)))
     throw Error('版本提交包含非版本文件，停止推送。');
   const releaseSha = git(directory, ['rev-parse', 'HEAD']);
   git(directory, ['tag', '-a', tag, '--file', '-'], {
     input: `发布 ${tag}：macOS 正式版本\n\n${releaseCommitMessage(meta)}`,
   });
-  return { ...meta, releaseSha };
+  return { ...meta, releaseSha, guidance };
+}
+
+async function confirmedGuidanceHistory(directory, github, baseTag) {
+  const records = [],
+    warnings = [];
+  const warn = (tag, message) =>
+    warnings.push({
+      code: 'history-guidance-unavailable',
+      file: `content/guidance/releases/${tag.slice(1)}.json`,
+      field: 'publication',
+      message,
+      suggestion: '保留历史缺口；只纳入已确认正式发布且与固定 tag 相符的说明，不补造历史。',
+    });
+  let releases;
+  try {
+    releases = await github.pages('/releases');
+  } catch {
+    warn(baseTag, '未能获取正式发布历史，本次不生成未经确认的历史说明。');
+    return { records, warnings };
+  }
+  for (const release of releases) {
+    const tag = release.tag_name;
+    if (
+      !/^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(tag || '') ||
+      release.draft ||
+      release.prerelease ||
+      !release.published_at ||
+      compareVersions(tag, baseTag) > 0
+    )
+      continue;
+    try {
+      const releaseSha = git(directory, ['rev-parse', `${tag}^{commit}`]);
+      const meta = releaseMetadata(git(directory, ['show', '-s', '--format=%B', tag]));
+      if (meta) verifyPreparedCommit(directory, releaseSha, meta);
+      const file = `releases/${tag.slice(1)}.json`;
+      const text = git(directory, ['show', `${tag}:content/guidance/${file}`]);
+      const record = loadGuidanceCatalog([{ file, text }]).releases[0];
+      if (
+        !record ||
+        record.tag !== tag ||
+        record.sourceSha !== (meta?.sourceSha || releaseSha) ||
+        (meta && meta.tag !== tag)
+      )
+        throw Error('历史来源不符');
+      records.push({
+        ...record,
+        publication: 'published',
+        publicationEvidence: {
+          releaseId: release.id,
+          publishedAt: release.published_at,
+          releaseSha,
+        },
+      });
+    } catch {
+      warn(tag, '已发布版本缺少可确认的固定操作说明。');
+    }
+  }
+  return { records, warnings };
 }
 
 async function pendingVersion(directory, head, latestTag) {
   const meta = releaseMetadata(git(directory, ['show', '-s', '--format=%B', head]));
   if (!meta || meta.baseTag !== latestTag || compareVersions(meta.tag, latestTag) <= 0) return null;
-  if (git(directory, ['rev-parse', `${head}^`]) !== meta.sourceSha)
-    throw Error('未完成版本的源码关联无效。');
-  const files = git(directory, ['diff', '--name-only', meta.sourceSha, head]).split('\n').sort();
-  if (JSON.stringify(files) !== JSON.stringify(['package-lock.json', 'package.json']))
-    throw Error('未完成版本包含意外文件。');
-  const prepared = JSON.parse(git(directory, ['show', `${head}:package.json`]));
-  if (`v${prepared.version}` !== meta.tag) throw Error('未完成版本的应用版本不一致。');
-  if (git(directory, ['rev-parse', `${meta.tag}^{commit}`]) !== head)
-    throw Error('未完成版本的 tag 与源码不一致。');
+  releaseSourceContext(directory, meta.tag);
   return { ...meta, releaseSha: head };
 }
 
@@ -335,8 +449,23 @@ export async function runRelease({
     if (!workflowReady)
       log('注意：远端 master 尚未包含新的发布流程，实际运行前需先提交并推送本功能。');
     log(`\n计划：${resume ? '恢复未完成的' : '准备'} ${tag}；完整测试通过后自动发布为 latest。`);
-    const plan = { tag, baseTag: latest.tag_name, sourceSha, commits, resume };
-    const guidance = await inspectOperationGuidance(snapshot, { sourceSha });
+    const guidanceHistory = resume
+      ? undefined
+      : await confirmedGuidanceHistory(snapshot, github, latest.tag_name);
+    const plan = {
+      tag,
+      baseTag: latest.tag_name,
+      sourceSha,
+      preparedFromSha: head,
+      commits,
+      resume,
+      guidanceHistory,
+    };
+    const guidance = await inspectOperationGuidance(snapshot, {
+      sourceSha,
+      ...(resume ? { releaseTag: tag } : {}),
+    });
+    guidance.warnings.push(...(guidanceHistory?.warnings || []));
     log(formatOperationGuidance(guidance));
     if (dryRun) {
       log('预览完成；没有创建提交、tag、草稿或云端任务。');
@@ -355,6 +484,7 @@ export async function runRelease({
     let prepared = pending;
     if (!resume) {
       prepared = await prepareVersion(snapshot, plan, identity);
+      log(formatOperationGuidance(prepared.guidance.report));
       log(`已创建本地版本提交 ${prepared.releaseSha.slice(0, 7)}，正在原子推送 master 与 ${tag}……`);
       git(
         snapshot,

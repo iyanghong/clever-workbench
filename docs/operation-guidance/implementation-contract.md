@@ -1,6 +1,6 @@
 # 操作指引实现契约
 
-本页记录任务 01 交付给后续内容、版本提示和发布任务的共同接口。自动版本提示与发布集成由后续任务完成，不能仅凭本页认为已实现。
+本页记录内容、版本提示和发布任务的共同接口。各项是否已验收，以对应任务的实施证据为准。
 
 ## 内容与资源
 
@@ -23,9 +23,11 @@
 
 ## 版本记录边界
 
-待发布说明沿用 release-draft 模板。绑定记录使用 kind `release`，增加 version、tag、sourceSha、publication。version 为正式三段版本号，tag 与之对应；sourceSha 为选定业务源码的完整 SHA。tag 指向的版本准备提交 SHA 另存构建证据，避免把提交自身 SHA 写回。
+待发布说明沿用 release-draft 模板。绑定记录使用 kind `release`，增加 version、tag、sourceSha、publication，固定放在 `releases/<version>.json`；放错位置或重复的记录警告并跳过。version 为正式三段版本号，tag 与之对应；sourceSha 为选定业务源码的完整 SHA。tag 指向的版本准备提交 SHA 另存构建证据，避免把提交自身 SHA 写回。
 
-publication 可为 `pending` 或 `published`：**当前实际运行版本可以展示本包自己的绑定记录，即使构建时尚为 pending**；只有经确认的既往 published 记录参与历史升级范围。不能把失败或草稿 tag 当作用户已经历的正式版本。发布确认的历史快照、固定 tag 重跑与源码绑定由发布任务负责，不能事后改写已经发布的安装包。
+publication 可为 `pending` 或 `published`：**当前实际运行版本可以展示本包自己的绑定记录，即使构建时尚为 pending**；只有经确认的既往 published 记录参与历史升级范围。不能把失败或草稿 tag 当作用户已经历的正式版本。发布工具在下一版准备时依据 GitHub 正式发布状态与固定 tag 原始内容重建历史，额外保留 `publicationEvidence` 的 Release ID、发布时间及 tag 提交；缺失或无法确认的旧记录排除并警告。固定 tag 重跑直接使用该 tag 的绑定内容，不能事后改写已经发布的安装包。
+
+发布版本提交的恢复元信息保留 `sourceSha`（业务源码），必要时增加 `preparedFromSha`（失败换号的直接父提交）及 `guidanceFiles`（精确版本记录允许清单）。校验沿失败换号链检查每次允许变更，不能把源码修改伪装成版本准备。CI 检查器通过 `--release-tag` 自动获取业务 SHA，不把版本提交 SHA 当作人工核对来源。
 
 缺失、未知和 none 是不同状态。changed 的缺项生成警告，不自动改成 none。review 为真实核对记录，格式异常可省略并警告，不自动补造人员、日期或通过结果。
 

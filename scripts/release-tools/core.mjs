@@ -6,6 +6,10 @@ import path from 'node:path';
 export const workflowFile = 'release.yml';
 export const releaseMarker = 'CWB-Release: ';
 
+export function guidanceReleaseFile(file) {
+  return /^content\/guidance\/releases\/(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\.json$/.test(file);
+}
+
 export function versionParts(tag) {
   if (!/^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(tag ?? ''))
     throw Error('版本号必须使用 vX.Y.Z 格式，例如 v0.1.5。');
@@ -89,17 +93,73 @@ export function releaseMetadata(message) {
     compareVersions(meta.tag, meta.baseTag) <= 0
   )
     throw Error('发布提交的恢复信息无效。');
-  return { schema: 1, tag: meta.tag, baseTag: meta.baseTag, sourceSha: meta.sourceSha };
+  if (meta.preparedFromSha !== undefined && !/^[a-f0-9]{40}$/.test(meta.preparedFromSha))
+    throw Error('发布准备父提交无效。');
+  if (
+    meta.guidanceFiles !== undefined &&
+    (!Array.isArray(meta.guidanceFiles) || !meta.guidanceFiles.every(guidanceReleaseFile))
+  )
+    throw Error('版本记录允许变更范围无效。');
+  return {
+    schema: 1,
+    tag: meta.tag,
+    baseTag: meta.baseTag,
+    sourceSha: meta.sourceSha,
+    ...(meta.preparedFromSha ? { preparedFromSha: meta.preparedFromSha } : {}),
+    ...(meta.guidanceFiles ? { guidanceFiles: meta.guidanceFiles } : {}),
+  };
 }
 
 export function releaseCommitMessage(meta) {
   return `准备发布 ${meta.tag}\n\n基于远端 master 的已提交源码准备 macOS 正式版本。\n完整测试、打包与发布由 GitHub Actions 执行。\n\n${releaseMarker}${JSON.stringify(meta)}\n`;
 }
 
-export function releaseNotes({ repository, tag, baseTag, sourceSha, releaseSha, commits, runUrl }) {
+export function releaseNotes({
+  repository,
+  tag,
+  baseTag,
+  sourceSha,
+  releaseSha,
+  commits,
+  runUrl,
+  guidance,
+}) {
   const title = (text) => visibleText(text).replace(/[\\`*_[\]<>]/g, (char) => `\\${char}`);
+  const content = guidance?.content;
+  const operations = [];
+  if (!content) operations.push('暂未提供完整操作指引，不能据此认定本版无新增操作。');
+  else {
+    operations.push(title(content.summary), '');
+    if (content.operationChange === 'none')
+      operations.push(`无新增操作：${title(content.noOperationReason)}`);
+    else
+      for (const change of content.changes) {
+        operations.push(`- ${title(change.summary)}`);
+        for (const id of change.guideIds) {
+          const guide = guidance.catalog.features.find((item) => item.id === id);
+          operations.push(
+            guide
+              ? `  - 应用内：设置 → 使用指引 → ${title(guide.title)}。功能入口：${title(guide.entry.label)}。`
+              : `  - 暂未提供完整操作指引（${title(id)}），有效内容仍可在应用设置中查阅。`,
+          );
+        }
+      }
+    operations.push(
+      '',
+      `[本版本操作说明来源](https://github.com/${repository}/blob/${tag}/content/guidance/releases/${tag.slice(1)}.json)（仓库访问权限不变）。`,
+    );
+  }
+  if (guidance?.warnings.length)
+    operations.push(
+      '',
+      `指引检查仍有 ${guidance.warnings.length} 项警告；发布成功不代表内容已核对完整。`,
+    );
   return [
     `## ${tag} 更新内容`,
+    '',
+    ...operations,
+    '',
+    '## 技术提交明细',
     '',
     ...commits.map(
       (commit) =>
