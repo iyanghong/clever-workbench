@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "tasks-tags",
+  "revision": 1,
+  "title": "维护任务颜色标签",
+  "platforms": [
+    "darwin",
+    "win32"
+  ],
+  "placements": [
+    "tasks"
+  ],
+  "purpose": "创建任务共用标签，调整名称与颜色，并明确删除影响。",
+  "prerequisites": {
+    "items": [
+      "使用本机工作资料；需要试操作时，先使用示例对象。"
+    ],
+    "notApplicableReason": ""
+  },
+  "entry": {
+    "label": "任务 → 管理标签；或任务详情 → 计划与标签 → 管理标签",
+    "target": "tasks"
+  },
+  "steps": [
+    {
+      "id": "open",
+      "title": "打开标签管理",
+      "action": "点击“管理标签”。",
+      "expectedResult": "弹出“任务标签”，显示全局标签；它们不是台账标签。"
+    },
+    {
+      "id": "add",
+      "title": "创建标签",
+      "action": "填写标签名称、选择标签颜色，再点击“创建标签”。",
+      "expectedResult": "新标签可在全部任务中选用；错误时保留表单供修正。"
+    },
+    {
+      "id": "edit",
+      "title": "修改名称或颜色",
+      "action": "点击标签旁的编辑按钮，修改名称或颜色后点击“保存标签”。",
+      "expectedResult": "引用该标签的任务使用更新后的名称／颜色；点击“取消编辑”放弃尚未保存的修改。"
+    },
+    {
+      "id": "apply",
+      "title": "给任务选择标签",
+      "action": "关闭管理弹窗，在任务详情“计划与标签”中勾选所需标签。",
+      "expectedResult": "一个任务可有多个标签，勾选随任务自动保存；取消勾选移除该任务的标签，不删除标签本身。"
+    },
+    {
+      "id": "delete",
+      "title": "删除不再使用的标签",
+      "action": "回到管理弹窗，点击目标标签的删除按钮并阅读确认范围。",
+      "expectedResult": "确认后从标签列表及任务关联中移除标签，不删除任务；取消确认保留原标签。"
+    }
+  ],
+  "completion": "任务显示所需分类，标签名称和颜色保持一致；删除影响已经确认。",
+  "faq": {
+    "items": [
+      {
+        "question": "颜色表示紧急程度吗？",
+        "answer": "不表示。颜色只用于分类，临期和逾期由计划日期独立决定。"
+      },
+      {
+        "question": "关闭管理弹窗会撤销已新增标签吗？",
+        "answer": "不会。新增、保存修改和确认删除分别即时保存；关闭只结束管理。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}

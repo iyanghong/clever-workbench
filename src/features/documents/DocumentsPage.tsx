@@ -17,6 +17,7 @@ import { useAutosave } from '../../shared/useAutosave';
 import { useSaveGroup } from '../../shared/useSaveGroup';
 import { dateLabel } from '../../domain';
 import { Dialog } from '../../shared/Dialog';
+import { GuidanceButton } from '../guidance/Guidance';
 
 export function DocumentsPage({ route, navigate, registerFlush, setContext }: ModuleProps) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
@@ -155,6 +156,7 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
           </span>
         </div>
         <div className="spacer" />
+        {!trash && <GuidanceButton placement="documents" accessibleLabel="文档使用指引" />}
         <button className="toolbar-new" onClick={() => void create()}>
           <PlusIcon size={17} />
           新建文档

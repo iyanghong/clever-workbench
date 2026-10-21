@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "search-and-open",
+  "revision": 1,
+  "title": "全局搜索与结果快捷操作",
+  "platforms": [
+    "darwin",
+    "win32"
+  ],
+  "placements": [
+    "search",
+    "quick-create"
+  ],
+  "purpose": "按普通资料关键词查找系统、台账、任务和文档，并从结果打开对象或使用明确的快捷动作。",
+  "prerequisites": {
+    "items": [
+      "使用本机工作资料；需要试操作时，先使用示例对象。"
+    ],
+    "notApplicableReason": ""
+  },
+  "entry": {
+    "label": "顶部搜索按钮；macOS ⌘K，Windows Ctrl+K",
+    "target": "search"
+  },
+  "steps": [
+    {
+      "id": "open",
+      "title": "打开全局搜索",
+      "action": "点击顶部搜索或使用 ⌘K（Windows Ctrl+K）。",
+      "expectedResult": "当前页面必要编辑先保存，成功后打开“搜索工作台”；保存失败保留原页面并提示原因。"
+    },
+    {
+      "id": "query",
+      "title": "输入关键词",
+      "action": "在搜索框输入名称、地址、用户名或普通正文关键词。",
+      "expectedResult": "短暂显示查找状态后列出对象类别、名称和背景；密码、Token、私钥等秘密内容不参与搜索。"
+    },
+    {
+      "id": "select",
+      "title": "打开匹配对象",
+      "action": "用上、下方向键选择结果后按 Enter，或点击结果标题。",
+      "expectedResult": "关闭搜索并进入对应对象；没有结果时可换关键词，不会自动创建资料。"
+    },
+    {
+      "id": "website",
+      "title": "从结果打开地址",
+      "action": "需要直接访问网站时，在访问入口的结果中点击“打开网站”图标。",
+      "expectedResult": "仅打开该结果提供的地址；系统浏览器或相应应用处理链接，失败会在搜索中提示。"
+    },
+    {
+      "id": "copy",
+      "title": "从结果复制账号",
+      "action": "需要复制时，在账号结果中点击复制用户名或指定秘密的按钮。",
+      "expectedResult": "用户名显示复制反馈；秘密通过专用接口并在需要时要求解锁，取消或失败不会当作复制成功。"
+    },
+    {
+      "id": "cancel",
+      "title": "退出搜索",
+      "action": "按 Esc 或点击“关闭全局搜索”。",
+      "expectedResult": "返回原页面；搜索本身不修改资料，已明确执行的网站打开或复制动作不会因关闭而撤回。"
+    }
+  ],
+  "completion": "找到并打开所需对象，或通过明确的结果动作完成访问／复制。",
+  "faq": {
+    "items": [
+      {
+        "question": "为什么搜不到刚改的内容？",
+        "answer": "先确认保存成功，再重新输入关键词；回收站及秘密内容不属于普通全局检索范围。"
+      },
+      {
+        "question": "原生菜单为什么写着搜索任务？",
+        "answer": "这是当前沿用的菜单文字，实际动作同样是全局搜索，不仅检索任务。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}
