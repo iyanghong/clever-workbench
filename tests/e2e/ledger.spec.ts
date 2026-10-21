@@ -1,6 +1,6 @@
 import { electron } from './launch';
 import { test, expect, type Page } from '@playwright/test';
-import { openLedgerRecord } from './ledger-actions';
+import { openLedgerRecord, openSystemAction } from './ledger-actions';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -30,7 +30,7 @@ test('系统跨项目保留沿革，任务只保留系统归属', async () =>
     await page.getByRole('button', { name: '新增系统', exact: true }).first().click();
     await page.getByLabel('快速新建系统名称').fill('园区平台');
     await page.getByRole('button', { name: '创建系统', exact: true }).click();
-    await page.getByRole('button', { name: '系统信息', exact: true }).click();
+    await openSystemAction(page, '系统信息');
     await page.getByLabel('当前项目', { exact: true }).selectOption(ids.a);
     await page
       .getByRole('dialog', { name: '系统信息' })
@@ -43,7 +43,7 @@ test('系统跨项目保留沿革，任务只保留系统归属', async () =>
     await expect(page.getByLabel('所属项目', { exact: true })).toHaveCount(0);
     await expect(page.getByLabel('关联系统', { exact: true })).toContainText('园区平台');
     await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('button', { name: '系统信息', exact: true }).click();
+    await openSystemAction(page, '系统信息');
     await page.getByLabel('当前项目', { exact: true }).selectOption(ids.b);
     await page.getByLabel('系统名称', { exact: true }).fill('智慧园区平台');
     await page

@@ -3,6 +3,8 @@
 }
 
 .ledger-workspace .ledger-workspace-header {
+  position: relative;
+  z-index: 2;
   min-height: 58px;
   height: auto;
   padding: 12px 24px;
@@ -244,4 +246,48 @@
   .ledger-workspace .workspace-categories {
     flex-basis: 100%;
   }
+}
+
+.ledger-workspace .system-actions {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.ledger-workspace .system-actions,
+.ledger-workspace .system-actions-menu {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.ledger-workspace .system-actions-trigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.ledger-workspace .system-actions-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10;
+  min-width: 160px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px #0002;
+}
+
+.ledger-workspace .system-actions-menu button {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 6px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ledger-workspace .system-actions-menu button:is(:hover, :focus-visible) {
+  background: var(--selected);
 }

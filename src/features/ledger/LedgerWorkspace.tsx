@@ -35,6 +35,7 @@ import { AccountList } from './AccountList';
 import { QuickAccess, QuickServer } from './LedgerCaptureForm';
 import { QuickAccount, QuickResource, QuickService, QuickSystem } from './QuickRecord';
 import { SystemExportDialog } from './SystemExportDialog';
+import { SystemActionsMenu } from './SystemActionsMenu';
 import { FavoriteButton } from '../home/FavoriteButton';
 import { SecretCopyButton } from '../vault/SecretCopyButton';
 import { secretLabels } from '../../vault-types';
@@ -192,7 +193,11 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
     [deletion, setDeletion] = useState<Command | null>(null);
   const saves = useSaveGroup(registerFlush),
     memory = useRef(savedViews()),
-    list = useRef<HTMLDivElement>(null);
+    list = useRef<HTMLDivElement>(null),
+    systemSearch = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (picker) systemSearch.current?.focus();
+  }, [picker]);
   function locate(s: Snapshot, id?: string) {
     const account = s.accounts.find((r) => r.id === id),
       access = s.accessEntries.find((r) => r.id === id),
@@ -346,6 +351,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
   const system = snapshot?.systems.find((s) => s.id === systemId);
   function captureNew(kind: string, context?: CreationContext) {
     void transition(() => {
+      setPicker(false);
       setCapture(kind);
       setCaptureContext(
         context ?? {
@@ -645,6 +651,8 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
         <button
           className="system-switcher"
           aria-label="切换系统"
+          aria-haspopup="dialog"
+          aria-expanded={picker}
           onClick={() =>
             void transition(() => {
               setSystemQuery('');
@@ -658,15 +666,10 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
         <div className="spacer" />
         {system && (
           <>
-            <button className="text-button" onClick={() => void transition(() => setInfo(true))}>
-              系统信息
-            </button>
-            <button
-              className="text-button"
-              onClick={() => void transition(() => setExporting(true))}
-            >
-              导出资料
-            </button>
+            <SystemActionsMenu
+              onInfo={() => void transition(() => setInfo(true))}
+              onExport={() => void transition(() => setExporting(true))}
+            />
             <FavoriteButton
               item={{ kind: 'system', id: systemId }}
               snapshot={snapshot}
@@ -675,10 +678,6 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
             />
           </>
         )}
-        <button className="toolbar-new" onClick={() => captureNew('system')}>
-          <PlusIcon />
-          新增系统
-        </button>
       </header>
       {system ? (
         <>
@@ -1374,7 +1373,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
       {picker && (
         <Dialog title="切换系统" onClose={() => setPicker(false)}>
           <input
-            autoFocus
+            ref={systemSearch}
             aria-label="搜索系统"
             placeholder="搜索系统…"
             value={systemQuery}
@@ -1405,6 +1404,12 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                       : ''}
                 </button>
               ))}
+          </div>
+          <div className="modal-actions">
+            <button className="primary-button" onClick={() => captureNew('system', {})}>
+              <PlusIcon size={16} />
+              新增系统
+            </button>
           </div>
         </Dialog>
       )}

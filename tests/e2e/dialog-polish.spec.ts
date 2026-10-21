@@ -1,3 +1,4 @@
+import { openSystemAction } from './ledger-actions';
 import { test, expect } from '@playwright/test';
 import { electron } from './launch';
 import fs from 'node:fs/promises';
@@ -26,7 +27,7 @@ test('台账弹窗有固定关闭入口，表单统一且退出保留保存与�
       await window.desktop.mutate({ type: 'environment.save', systemId, name: '生产' });
     });
     await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('button', { name: '系统信息', exact: true }).click();
+    await openSystemAction(page, '系统信息');
     const system = page.getByRole('dialog', { name: '系统信息', exact: true });
     await expect(system.getByRole('button', { name: '关闭系统信息', exact: true })).toBeVisible();
     await expect
@@ -100,7 +101,7 @@ test('台账弹窗有固定关闭入口，表单统一且退出保留保存与�
     await page.screenshot({ animations: 'disabled', path: info.outputPath('operation-new.png') });
     await operation.getByRole('button', { name: '关闭新增运维记录', exact: true }).click();
     await expect(operation).toHaveCount(0);
-    await page.getByRole('button', { name: '系统信息', exact: true }).click();
+    await openSystemAction(page, '系统信息');
     await system.evaluate((el) => {
       el.scrollTop = el.scrollHeight;
     });
@@ -120,7 +121,7 @@ test('台账弹窗有固定关闭入口，表单统一且退出保留保存与�
     });
     await page.keyboard.press('Escape');
     await expect(system).toHaveCount(0);
-    await expect(page.getByRole('button', { name: '系统信息', exact: true })).toBeFocused();
+    await expect(page.getByRole('button', { name: '当前系统更多操作', exact: true })).toBeFocused();
   } finally {
     await app.close();
     await fs.rm(directory, { recursive: true, force: true });

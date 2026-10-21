@@ -1,3 +1,4 @@
+import { openSystemAction } from './ledger-actions';
 import { test, expect } from '@playwright/test';
 import { electron } from './launch';
 import fs from 'node:fs/promises';
@@ -74,7 +75,7 @@ test('台账只读工作区、共享范围、部署与任务布局和开始时�
       return { systemId, prod, testing, server, task };
     });
     await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('button', { name: '系统信息', exact: true }).click();
+    await openSystemAction(page, '系统信息');
     const info = page.getByRole('dialog', { name: '系统信息' });
     await info.getByRole('button', { name: '环境管理', exact: true }).click();
     await info.getByLabel('环境名称 生产', { exact: true }).fill('测试');

@@ -1,3 +1,4 @@
+import { openSystemAction } from './ledger-actions';
 import { test, expect } from '@playwright/test';
 import { electron } from './launch';
 import fs from 'node:fs/promises';
@@ -67,7 +68,7 @@ test('系统资料分别导出 Markdown、Word、PDF，取消解锁无输出，�
       })) as typeof dialog.showSaveDialog;
     }, output);
     await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('button', { name: '导出资料', exact: true }).click({ timeout: 2000 });
+    await openSystemAction(page, '导出资料');
     const dialog = page.getByRole('dialog', { name: '导出系统资料', exact: true });
     await dialog.getByLabel('Word', { exact: true }).check();
     await dialog.getByLabel('PDF', { exact: true }).check();

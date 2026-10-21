@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { electron } from './launch';
+import { openSystemAction } from './ledger-actions';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -82,6 +83,12 @@ test('台账资料单条、多选、附账号与编辑保存失败不覆盖剪�
     });
     await page.getByRole('button', { name: '台账', exact: true }).click();
     await page.getByRole('button', { name: '服务器', exact: true }).click();
+    await expect(page.getByLabel('选择当前资料结果', { exact: true })).toBeVisible();
+    await expect(page.getByText('已选 0 项', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '复制所选资料', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '所选资料包含账号…', exact: true })).toHaveCount(
+      0,
+    );
     await page.getByRole('button', { name: '复制资料 应用节点 01', exact: true }).click();
     await expect
       .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
@@ -93,8 +100,32 @@ test('台账资料单条、多选、附账号与编辑保存失败不覆盖剪�
     await expect
       .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
       .toContain('应用节点 02');
+    await expect(page.getByText('已选 2 项', { exact: true })).toBeVisible();
+    await page
+      .locator('.workspace-list tbody tr')
+      .filter({ hasText: '应用节点 01' })
+      .locator('td')
+      .first()
+      .getByRole('button')
+      .click();
+    await expect(page.getByText('已选 2 项', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '复制所选资料', exact: true }).click();
+    await expect
+      .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
+      .toContain('应用节点 02');
+    await page.screenshot({
+      path: info.outputPath('batch-copy-summary.png'),
+      animations: 'disabled',
+    });
+    await page.getByRole('button', { name: '取消选择', exact: true }).click();
+    await expect(page.getByLabel('选择当前资料结果', { exact: true })).not.toBeChecked();
+    await expect(page.getByLabel('选择当前资料结果', { exact: true })).toBeFocused();
+    await expect(page.getByRole('button', { name: '复制所选资料', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: '返回清单', exact: true }).click();
+    await expect(page.getByText('已选 0 项', { exact: true })).toBeVisible();
+    await page.getByLabel('选择当前资料结果', { exact: true }).check();
     await page.getByLabel('搜索台账清单').fill('节点 01');
-    await expect(page.getByRole('button', { name: '复制所选资料', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: '复制所选资料', exact: true })).toHaveCount(0);
     await page.getByLabel('搜索台账清单').fill('');
     await page.getByRole('button', { name: '包含账号 应用节点 01', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: '复制资料 · 包含账号', exact: true });
@@ -109,7 +140,8 @@ test('台账资料单条、多选、附账号与编辑保存失败不覆盖剪�
     expect(await app.evaluate(({ clipboard }) => clipboard.readText())).not.toContain(
       'fixture-copy-password',
     );
-    await page.getByRole('button', { name: '包含账号 应用节点 01', exact: true }).click();
+    await page.getByLabel('选择当前资料结果', { exact: true }).check();
+    await page.getByRole('button', { name: '所选资料包含账号…', exact: true }).click();
     await dialog.getByLabel('附带账号 应用节点 01 / 运维').check();
     await dialog.getByLabel('包含密码', { exact: true }).check();
     await page.screenshot({
@@ -161,6 +193,14 @@ test('台账资料单条、多选、附账号与编辑保存失败不覆盖剪�
     const detail = page.getByRole('complementary', { name: '台账详情', exact: true });
     await detail.getByRole('button', { name: '编辑', exact: true }).click();
     await page.getByLabel('资源名称', { exact: true }).fill('');
+    for (const action of ['系统信息', '导出资料'] as const) {
+      await openSystemAction(page, action);
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(page.getByLabel('资源名称', { exact: true })).toHaveValue('');
+    }
+    await page.getByRole('button', { name: '切换系统', exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByLabel('资源名称', { exact: true })).toHaveValue('');
     const before = await app.evaluate(({ clipboard }) => clipboard.readText());
     await detail.getByRole('button', { name: '复制资料 应用节点 01', exact: true }).click();
     await expect(page.getByLabel('资源名称', { exact: true })).toHaveValue('');

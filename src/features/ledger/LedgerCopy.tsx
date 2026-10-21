@@ -282,6 +282,7 @@ export function LedgerCopyCheckbox({ object, name }: { object: LedgerCopyRef; na
 }
 export function LedgerCopySelectionBar({ objects }: { objects: LedgerCopyRef[] }) {
   const c = useCopy(),
+    selectAll = useRef<HTMLInputElement>(null),
     selected = objects.filter((r) => c.selected.some((s) => same(r, s)));
   return (
     <div className="ledger-copy-selection">
@@ -289,6 +290,7 @@ export function LedgerCopySelectionBar({ objects }: { objects: LedgerCopyRef[] }
         <input
           type="checkbox"
           aria-label="选择当前资料结果"
+          ref={selectAll}
           disabled={c.busy || !objects.length}
           checked={objects.length > 0 && selected.length === objects.length}
           onChange={(e) => c.setSelected(e.target.checked ? objects : [])}
@@ -296,20 +298,26 @@ export function LedgerCopySelectionBar({ objects }: { objects: LedgerCopyRef[] }
         选择当前结果
       </label>
       <span>已选 {selected.length} 项</span>
-      <button
-        className="text-button"
-        disabled={c.busy || !selected.length}
-        onClick={() => void c.copy(selected)}
-      >
-        复制所选资料
-      </button>
-      <button
-        className="text-button"
-        disabled={c.busy || !selected.length}
-        onClick={() => void c.choose(selected)}
-      >
-        所选资料包含账号…
-      </button>
+      {selected.length > 0 && (
+        <>
+          <button className="text-button" disabled={c.busy} onClick={() => void c.copy(selected)}>
+            复制所选资料
+          </button>
+          <button className="text-button" disabled={c.busy} onClick={() => void c.choose(selected)}>
+            所选资料包含账号…
+          </button>
+          <button
+            className="text-button"
+            disabled={c.busy}
+            onClick={() => {
+              c.setSelected([]);
+              selectAll.current?.focus();
+            }}
+          >
+            取消选择
+          </button>
+        </>
+      )}
     </div>
   );
 }

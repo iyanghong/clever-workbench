@@ -1,4 +1,4 @@
-import { openLedgerRecord } from './ledger-actions';
+import { openLedgerRecord, openSystemAction } from './ledger-actions';
 import { electron } from './launch';
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
@@ -45,7 +45,7 @@ test('从资源写方案并回到台账，系统换项目后保留旧背景和�
     await expect(page.getByLabel('文档所属项目')).toHaveValue(ids.a);
     await page.getByRole('button', { name: '回到关联对象', exact: true }).click();
     await expect(page.getByRole('heading', { name: '订单缓存', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: '系统信息', exact: true }).click();
+    await openSystemAction(page, '系统信息');
     await page.getByLabel('当前项目', { exact: true }).selectOption(ids.b);
     await page
       .getByRole('dialog', { name: '系统信息' })

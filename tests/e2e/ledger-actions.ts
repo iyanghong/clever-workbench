@@ -10,3 +10,8 @@ export async function openLedgerRecord(page: Page, category: string, name?: stri
       .getByRole('button', { name: '编辑', exact: true })
       .click();
 }
+
+export async function openSystemAction(page: Page, action: '系统信息' | '导出资料') {
+  await page.getByRole('button', { name: '当前系统更多操作', exact: true }).click();
+  await page.getByRole('menuitem', { name: action, exact: true }).click();
+}
