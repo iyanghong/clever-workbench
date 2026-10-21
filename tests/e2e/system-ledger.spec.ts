@@ -14,6 +14,7 @@ for (const kind of ['access', 'server'] as const)
       const app = await electron.launch({ args: ['.'], env });
       try {
         const page = await app.firstWindow();
+        await page.setViewportSize({ width: 1000, height: 760 });
         const production = await page.evaluate(async (kind) => {
           const api = window.desktop,
             systemId = (await api.mutate({ type: 'system.save', name: '订单平台' })).createdId!,
@@ -64,6 +65,7 @@ for (const kind of ['access', 'server'] as const)
               )?.environmentId,
           )
           .toBeNull();
+        await page.getByRole('button', { name: '返回清单', exact: true }).click();
         await page.getByLabel('台账环境筛选').selectOption('common');
         await expect(page.locator('.workspace-list')).toContainText('其他通用记录');
       } finally {

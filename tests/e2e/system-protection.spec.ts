@@ -113,6 +113,8 @@ test('准备保存期间取消密码配置不会在取消后开启保护或生�
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
+    // Wait for React's save coordinator before replacing it with the held flush fixture.
+    await expect(page.getByRole('button', { name: '快速新建', exact: true })).toBeEnabled();
     for (const operation of ['initializeVault', 'configureBackup'] as const) {
       await page.evaluate((operation) => {
         const state = window as typeof window & { release?: () => void; result?: Promise<string> };

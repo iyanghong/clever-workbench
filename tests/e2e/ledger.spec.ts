@@ -59,6 +59,7 @@ test('系统跨项目保留沿革，任务只保留系统归属', async () =>
   }));
 test('服务仓库只维护一份，多个环境的独立部署节点可编辑', async () =>
   session(async (page) => {
+    await page.setViewportSize({ width: 1000, height: 760 });
     const ids = await page.evaluate(async () => {
       const api = window.desktop,
         systemId = (await api.mutate({ type: 'system.save', name: '订单平台' })).createdId!;
@@ -95,6 +96,7 @@ test('服务仓库只维护一份，多个环境的独立部署节点可编辑',
     const nodeEditor = page.getByRole('dialog', { name: '编辑部署节点' });
     await nodeEditor.getByLabel('端口', { exact: true }).fill('8081');
     await nodeEditor.getByRole('button', { name: '完成', exact: true }).click();
+    await page.getByRole('button', { name: '返回清单', exact: true }).click();
     await page.getByLabel('台账环境筛选').selectOption(ids.testing);
     await openLedgerRecord(page, '应用部署', '订单服务');
     await expect(page.locator('.workspace-node')).toContainText('orders.test.internal');
