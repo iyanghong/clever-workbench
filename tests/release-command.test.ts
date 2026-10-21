@@ -637,6 +637,38 @@ test('新版本仅纳入已确认正式发布的固定历史，草稿和失败�
   }
 });
 
+test('远端已填写目标版本且缺少指引时仍能生成版本来源提交', async () => {
+  const f = await fixture();
+  try {
+    for (const name of ['package.json', 'package-lock.json']) {
+      const file = path.join(f.seed, name),
+        data = JSON.parse(await fs.readFile(file, 'utf8'));
+      data.version = '0.1.5';
+      if (data.packages) data.packages[''].version = data.version;
+      await fs.writeFile(file, JSON.stringify(data, null, 2) + '\n');
+    }
+    g(f.seed, 'add', '.');
+    g(f.seed, 'commit', '--quiet', '-m', '预先填写目标应用版本');
+    g(f.seed, 'push', '--quiet', 'origin', 'master');
+    const source = g(f.seed, 'rev-parse', 'HEAD');
+    const result = await local.runRelease({
+      directory: f.working,
+      origin: f.remote,
+      identity,
+      github: fakeLocalGitHub(f),
+      requestedVersion: 'v0.1.5',
+      ask: async () => 'yes',
+      log: () => {},
+      watchOptions: { sleep: async () => {} },
+    });
+    expect(result.status).toBe('published');
+    expect(g(f.root, '--git-dir', f.remote, 'rev-parse', 'master')).not.toBe(source);
+    expect(g(f.root, '--git-dir', f.remote, 'diff', '--name-only', source, 'master')).toBe('');
+  } finally {
+    await f.cleanup();
+  }
+});
+
 test('local identity overrides and concurrent local or cloud publishers are rejected', async () => {
   const f = await fixture();
   try {

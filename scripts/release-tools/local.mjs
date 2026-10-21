@@ -185,7 +185,11 @@ export async function prepareVersion(
   git(directory, ['config', 'user.useConfigOnly', 'true']);
   const allowedFiles = [...guidance.files, 'package.json', 'package-lock.json'].sort();
   git(directory, ['add', '--', ...allowedFiles]);
-  git(directory, ['commit', '--file', '-'], { input: releaseCommitMessage(meta), timeout: 30000 });
+  // A pre-versioned source with unavailable guidance still needs immutable release provenance.
+  git(directory, ['commit', '--allow-empty', '--file', '-'], {
+    input: releaseCommitMessage(meta),
+    timeout: 30000,
+  });
   const actual = git(directory, ['show', '-s', '--format=%an%x00%ae%x00%cn%x00%ce', 'HEAD']).split(
     '\0',
   );
@@ -198,6 +202,7 @@ export async function prepareVersion(
     throw Error('版本提交说明被修改，未满足已确认的中文提交格式，停止推送。');
   const files = git(directory, ['diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD'])
     .split('\n')
+    .filter(Boolean)
     .sort();
   if (files.some((file) => !allowedFiles.includes(file)))
     throw Error('版本提交包含非版本文件，停止推送。');

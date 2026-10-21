@@ -1,0 +1,13 @@
+
+> clever-workbench@0.1.12 test
+> vitest run tests/release-command.test.ts tests/release-guidance.test.ts tests/guidance-catalog.test.ts
+
+
+ RUN  v4.1.12 /private/tmp/cwb-operation-guidance-04
+
+
+ Test Files  3 passed (3)
+      Tests  25 passed (25)
+   Start at  00:56:15
+   Duration  7.67s (transform 81ms, setup 0ms, import 118ms, tests 7.76s, environment 0ms)
+
