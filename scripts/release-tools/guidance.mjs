@@ -1,8 +1,89 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { loadGuidanceCatalog, safeGuidanceImagePath } from '../../src/guidance/catalog.ts';
 
 const prefix = 'content/guidance/';
+
+/** Build only confirmed history and the current pending binding in the disposable checkout. */
+export async function bindOperationGuidance(
+  directory,
+  { tag, sourceSha, history = { records: [], warnings: [] } },
+) {
+  const report = await inspectOperationGuidance(directory, { sourceSha });
+  report.warnings.push(...history.warnings);
+  const files = [];
+  const desired = new Map(history.records.map((record) => [`${record.version}.json`, record]));
+  if (report.content)
+    desired.set(`${tag.slice(1)}.json`, {
+      ...report.content,
+      kind: 'release',
+      version: tag.slice(1),
+      tag,
+      sourceSha,
+      publication: 'pending',
+    });
+  const folder = path.join(directory, prefix, 'releases');
+  const warn = (file) =>
+    report.warnings.push({
+      code: 'binding-unavailable',
+      file,
+      field: '$',
+      message: '操作说明无法写入安全的绑定目录。',
+      suggestion: '检查内容目录权限和普通文件；本次继续发布但不宣称已有完整指引。',
+    });
+  try {
+    for (const relative of ['content', 'content/guidance', 'content/guidance/releases']) {
+      const target = path.join(directory, relative);
+      await fs.mkdir(target, { recursive: false }).catch((error) => {
+        if (error.code !== 'EEXIST') throw error;
+      });
+      const stat = await fs.lstat(target);
+      if (!stat.isDirectory() || stat.isSymbolicLink())
+        throw Object.assign(Error('内容输出目录不是普通目录。'), { code: 'UNSAFE_CONTENT' });
+    }
+    const names = new Set([
+      ...(await fs.readdir(folder)).filter((name) =>
+        /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\.json$/.test(name),
+      ),
+      ...desired.keys(),
+    ]);
+    for (const name of names) {
+      const file = `${prefix}releases/${name}`,
+        target = path.join(folder, name);
+      try {
+        if (!desired.has(name)) {
+          await fs.unlink(target);
+          files.push(file);
+          report.warnings.push({
+            code: 'unconfirmed-history-excluded',
+            file,
+            field: 'publication',
+            message: '没有匹配的正式 Release 与固定 tag 记录，此记录不进入新包历史。',
+            suggestion: '保留原源码和失败 tag 供调查，不把草稿或未确认版本写成已发布历史。',
+          });
+          continue;
+        }
+        const text = JSON.stringify(desired.get(name), null, 2) + '\n';
+        const temporary = `${target}.${randomUUID()}.tmp`;
+        try {
+          await fs.writeFile(temporary, text, { flag: 'wx' });
+          await fs.rename(temporary, target);
+        } finally {
+          await fs.rm(temporary, { force: true });
+        }
+        files.push(file);
+      } catch (error) {
+        if (!error.code) throw error;
+        warn(file);
+      }
+    }
+  } catch (error) {
+    if (!error.code) throw error;
+    warn(`${prefix}releases/`);
+  }
+  return { report, files };
+}
 
 /** Read the selected checkout only. Authored files are data, never imported as JavaScript/JSON modules. */
 export async function inspectOperationGuidance(directory, { sourceSha, releaseTag } = {}) {
@@ -88,6 +169,16 @@ export async function inspectOperationGuidance(directory, { sourceSha, releaseTa
       releaseTag ? '本次版本没有有效的绑定操作说明。' : '没有唯一有效的待发布操作说明。',
       '编写本次操作变化及功能引用，或明确无新增操作的原因；缺失不能推断为无新增操作。',
     );
+  if (releaseTag && content && sourceSha && content.sourceSha !== sourceSha) {
+    warnings.push({
+      code: 'binding-source-mismatch',
+      file: `${prefix}releases/${releaseTag.slice(1)}.json`,
+      field: 'sourceSha',
+      message: '绑定记录与本次业务源码不一致，不能作为本版操作说明。',
+      suggestion: '从实际业务源码重新准备新的版本；固定 tag 不能改写。',
+    });
+    content = undefined;
+  }
   if (content?.review?.source && sourceSha && content.review.source !== sourceSha)
     warnings.push({
       code: 'review-source-mismatch',

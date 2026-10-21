@@ -2,11 +2,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { githubClient } from './release-tools/github.mjs';
-import { git, commitsSince } from './release-tools/local.mjs';
+import { commitsSince, releaseSourceContext } from './release-tools/local.mjs';
+import { inspectOperationGuidance, formatOperationGuidance } from './release-tools/guidance.mjs';
 import {
   versionParts,
   compareVersions,
-  releaseMetadata,
   releaseNotes,
   localAssets,
   verifyUploadedAssets,
@@ -16,6 +16,7 @@ export async function publishMacRelease({
   github,
   context,
   directory = 'release',
+  sourceDirectory = process.cwd(),
   log = console.log,
 }) {
   const { tag } = context;
@@ -36,7 +37,16 @@ export async function publishMacRelease({
   };
   const latest = currentLatest();
   if (latest.tag_name !== context.baseTag) throw Error('基准 Release 已变化，停止发布旧计划。');
-  const body = releaseNotes({ repository: github.repository, ...context });
+  const guidance = await inspectOperationGuidance(sourceDirectory, {
+    sourceSha: context.sourceSha,
+    releaseTag: tag,
+  });
+  log(formatOperationGuidance(guidance));
+  await fs.writeFile(
+    path.join(directory, 'guidance-check.json'),
+    JSON.stringify(guidance, null, 2) + '\n',
+  );
+  const body = releaseNotes({ repository: github.repository, ...context, guidance });
   const releases = await github.pages('/releases');
   let release = releases.find((item) => item.tag_name === tag);
   if (release && !release.draft) throw Error('禁止覆盖已正式发布的版本。');
@@ -126,15 +136,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
       throw Error('此入口仅供已完成验证的 GitHub Actions 发布任务使用，请在 Mac 双击发布脚本。');
     const tag = process.argv[2];
     versionParts(tag);
-    const releaseSha = git(process.cwd(), ['rev-parse', 'HEAD']);
-    if (git(process.cwd(), ['rev-parse', `${tag}^{commit}`]) !== releaseSha)
-      throw Error('当前构建源码与发布 tag 不一致。');
+    const selected = releaseSourceContext(process.cwd(), tag);
     const github = githubClient(process.env.GITHUB_REPOSITORY, process.env.GH_TOKEN);
-    const meta = releaseMetadata(git(process.cwd(), ['show', '-s', '--format=%B', 'HEAD']));
-    const baseTag = meta?.baseTag || github.repo('/releases/latest').tag_name;
-    const sourceSha = meta?.sourceSha || releaseSha;
-    if (meta && (meta.tag !== tag || git(process.cwd(), ['rev-parse', 'HEAD^']) !== sourceSha))
-      throw Error('发布版本提交与原始源码不一致。');
+    const baseTag = selected.baseTag || github.repo('/releases/latest').tag_name;
+    const { sourceSha, releaseSha } = selected;
     const context = {
       tag,
       baseTag,

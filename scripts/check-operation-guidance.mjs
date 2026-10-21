@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { inspectOperationGuidance, formatOperationGuidance } from './release-tools/guidance.mjs';
+import { releaseSourceContext } from './release-tools/local.mjs';
 
 // Content diagnostics are advisory; invocation, I/O and program failures are not swallowed.
 const args = process.argv.slice(2);
@@ -16,8 +17,13 @@ for (let i = 0; i < args.length; i++) {
 }
 if (!(await fs.stat(options.directory)).isDirectory())
   throw Error('检查来源必须是已检出的源码目录。');
+const sourceSha =
+  options.source ||
+  (options['release-tag']
+    ? releaseSourceContext(options.directory, options['release-tag']).sourceSha
+    : undefined);
 const report = await inspectOperationGuidance(path.resolve(options.directory), {
-  sourceSha: options.source,
+  sourceSha,
   releaseTag: options['release-tag'],
 });
 const text = formatOperationGuidance(report);

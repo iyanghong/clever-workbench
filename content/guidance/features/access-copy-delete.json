@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "access-copy-delete",
+  "revision": 1,
+  "title": "复制或删除访问入口",
+  "platforms": ["darwin", "win32"],
+  "placements": ["ledger-access"],
+  "purpose": "需要独立记录时创建副本，删除前确认地址、账号和秘密影响。",
+  "prerequisites": {
+    "items": ["先选择要维护的系统；试操作请使用示例资料。"],
+    "notApplicableReason": ""
+  },
+  "entry": {
+    "label": "台账 → 访问入口 → 详情 → 编辑",
+    "target": "ledger-access"
+  },
+  "steps": [
+    {
+      "id": "copy",
+      "title": "打开副本设置",
+      "action": "在入口编辑区点击“复制访问入口”，填写副本名称，选择目标系统与环境。",
+      "expectedResult": "这是新建独立入口，不是复制到剪贴板；地址和账号元数据会一起复制。"
+    },
+    {
+      "id": "secrets",
+      "title": "明确是否复制秘密",
+      "action": "确有需要才勾选“同时复制入口秘密”；否则保持未勾选。",
+      "expectedResult": "默认副本没有秘密；此处没有逐账号选择项，会复制入口下全部账号元数据，勾选后复制其秘密。"
+    },
+    {
+      "id": "confirm",
+      "title": "创建并核对副本",
+      "action": "点击“创建副本”，按需解锁。",
+      "expectedResult": "等待编辑保存后创建，完成后进入副本；跨系统是独立记录，同系统多环境通常应优先调整适用范围。"
+    },
+    {
+      "id": "cancel",
+      "title": "取消副本或解锁",
+      "action": "不再需要时在弹窗或解锁中选择“取消”。",
+      "expectedResult": "不产生新副本；原入口已经自动保存的编辑不会被撤销。"
+    },
+    {
+      "id": "delete",
+      "title": "阅读删除影响",
+      "action": "在原入口或副本编辑区点击“删除访问入口”，核对名称、地址数、账号数和秘密数。",
+      "expectedResult": "确认文字列出影响；此时尚未删除。"
+    },
+    {
+      "id": "delete-confirm",
+      "title": "决定是否删除",
+      "action": "保留时点“取消”；确需删除时点“确认删除”。",
+      "expectedResult": "入口及其地址、账号和秘密被删除，任务与文档不因此删除；不能从任务或文档回收站找回台账入口。"
+    }
+  ],
+  "completion": "副本是否含秘密已核对；删除动作只在确认影响后执行。",
+  "faq": {
+    "items": [
+      {
+        "question": "保存或复制失败怎么办？",
+        "answer": "保留当前输入，按错误提示修正后重试；未见成功不能认定副本已创建。"
+      },
+      {
+        "question": "只想发送部分账号资料怎么办？",
+        "answer": "使用台账“包含账号…”复制资料摘要，在那里逐项选择账号；它与创建入口副本不同。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}

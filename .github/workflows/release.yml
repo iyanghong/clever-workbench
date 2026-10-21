@@ -36,7 +36,7 @@ jobs:
       - name: Verify stable tag matches application version
         run: node scripts/prepare-release.mjs "$RELEASE_TAG" --check-version
       - name: Report operation guidance warnings
-        run: node scripts/check-operation-guidance.mjs --source "$(git rev-parse HEAD)" --github --output release/guidance-check.json
+        run: node scripts/check-operation-guidance.mjs --release-tag "$RELEASE_TAG" --github --output release/guidance-check.json
       - run: npm ci
       - run: npm run setup:electron
       - run: npm test

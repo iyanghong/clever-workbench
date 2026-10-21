@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "ledger-copy",
+  "revision": 1,
+  "title": "复制台账资料摘要",
+  "platforms": ["darwin", "win32"],
+  "placements": [
+    "ledger",
+    "ledger-access",
+    "ledger-accounts",
+    "ledger-resources",
+    "ledger-deployments",
+    "ledger-operations"
+  ],
+  "purpose": "复制日常沟通用的资料摘要，明确选择是否包含账号和密码。",
+  "prerequisites": {
+    "items": ["先选择要维护的系统；试操作请使用示例资料。"],
+    "notApplicableReason": ""
+  },
+  "entry": {
+    "label": "台账 → 清单或详情 → 复制资料",
+    "target": "ledger"
+  },
+  "steps": [
+    {
+      "id": "field",
+      "title": "复制一个字段",
+      "action": "在清单、摘要或详情找到地址、名称等字段，点击旁边的复制按钮。",
+      "expectedResult": "复制前等待必要保存；失败时保留原剪贴板，不用旧值替代本次编辑。"
+    },
+    {
+      "id": "one",
+      "title": "复制一条资料",
+      "action": "对访问入口、资源、服务或运维记录点击“复制资料”。",
+      "expectedResult": "得到含名称和必要背景的资料摘要，默认不附带账号或秘密；不是创建台账副本。"
+    },
+    {
+      "id": "selection",
+      "title": "选择多条资料",
+      "action": "勾选各行“选择资料”，或勾选“选择当前结果”，核对已选数量。",
+      "expectedResult": "选择仅适用于当前系统、分类及筛选结果；改变范围会清除选择。"
+    },
+    {
+      "id": "many",
+      "title": "复制选中资料",
+      "action": "点击“复制所选资料”；不需要继续时点击“取消选择”。",
+      "expectedResult": "一次复制所选摘要；取消选择不修改台账。"
+    },
+    {
+      "id": "accounts",
+      "title": "明确选择附带账号",
+      "action": "点击单条“包含账号…”或“所选资料包含账号…”，展开资料范围并逐项勾选账号。",
+      "expectedResult": "默认未选账号，也未包含密码；没有可用账号时说明原因。"
+    },
+    {
+      "id": "password",
+      "title": "按需加入密码",
+      "action": "确有需要才勾选“包含密码”，点击“复制资料”，需要时完成主密码解锁。",
+      "expectedResult": "只包含勾选账号的密码，不包含 Token 或私钥；含密码剪贴板受自动清理保护。"
+    },
+    {
+      "id": "cancel",
+      "title": "取消或处理失败",
+      "action": "不继续时在复制或解锁弹窗点击“取消”；失败时检查错误和保存状态，再重新复制。",
+      "expectedResult": "取消和保存失败不会覆盖剪贴板；复制成功反馈才表示已完成。"
+    }
+  ],
+  "completion": "粘贴前已核对对象、账号与密码范围，没有把摘要误当作恢复备份。",
+  "faq": {
+    "items": [
+      {
+        "question": "Token 和私钥怎么复制？",
+        "answer": "在账号处使用相应的专用复制按钮，摘要的“包含密码”不会附带其他秘密。"
+      },
+      {
+        "question": "复制的内容为何消失？",
+        "answer": "含秘密内容会在约 30 秒后清理；锁定也会清理仍由应用持有的秘密剪贴板内容。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}

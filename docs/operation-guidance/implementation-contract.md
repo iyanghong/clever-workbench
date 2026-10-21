@@ -1,10 +1,10 @@
 # 操作指引实现契约
 
-本页记录任务 01、02 交付给后续内容和发布任务的共同接口。任务 02 已接入版本提示与设备记录；正式发布绑定仍由发布任务完成，不能仅凭本页认为已发布或完成安装版总验收。
+本页记录离线阅读、版本提示、设备记录与发布绑定的共同接口。各项是否已验收，以对应任务的实施证据为准；不能仅凭本页认为已正式发布或完成安装版总验收。
 
 ## 内容与资源
 
-- 实际功能正文：`content/guidance/features/*.json`；随包历史：`content/guidance/releases/*.json`；下一次发布说明：`content/guidance/pending.json`（后续发布任务接入）。每个文件独立解析。
+- 实际功能正文：`content/guidance/features/*.json`；随包历史：`content/guidance/releases/*.json`；下一次发布说明：`content/guidance/pending.json`。每个文件独立解析。
 - 本地截图放在 `content/guidance/assets/`，步骤沿用 `image.src/alt/caption`，其中 src 形如 `assets/application-update-about.png`。支持 PNG、JPEG、WebP、GIF；不允许 URL、绝对路径、上级路径或脚本资源。
 - 功能字段与编写模板一致：schemaVersion、kind、id、revision、title、platforms、placements、purpose、prerequisites、entry、steps、completion、faq。稳定步骤 ID 不随显示文案变更。准备条件及常见问题的 items 为空时必须给出具体不适用原因。
 - 首批已交付 `application-update`（覆盖组 21）和 `using-guidance`（指引自身说明）。截图来自隔离资料下的真实开发界面，用受控更新状态展示按钮；版本号是示例，不是远端最新版断言。
@@ -23,9 +23,11 @@
 
 ## 版本记录边界
 
-待发布说明沿用 release-draft 模板。绑定记录使用 kind `release`，增加 version、tag、sourceSha、publication。version 为正式三段版本号，tag 与之对应；sourceSha 为选定业务源码的完整 SHA。tag 指向的版本准备提交 SHA 另存构建证据，避免把提交自身 SHA 写回。
+待发布说明沿用 release-draft 模板。绑定记录使用 kind `release`，增加 version、tag、sourceSha、publication，固定放在 `releases/<version>.json`；放错位置或重复的记录警告并跳过。version 为正式三段版本号，tag 与之对应；sourceSha 为选定业务源码的完整 SHA。tag 指向的版本准备提交 SHA 另存构建证据，避免把提交自身 SHA 写回。
 
-publication 可为 `pending` 或 `published`：**当前实际运行版本可以展示本包自己的绑定记录，即使构建时尚为 pending**；只有经确认的既往 published 记录参与历史升级范围。不能把失败或草稿 tag 当作用户已经历的正式版本。发布确认的历史快照、固定 tag 重跑与源码绑定由发布任务负责，不能事后改写已经发布的安装包。
+publication 可为 `pending` 或 `published`：**当前实际运行版本可以展示本包自己的绑定记录，即使构建时尚为 pending**；只有经确认的既往 published 记录参与历史升级范围。不能把失败或草稿 tag 当作用户已经历的正式版本。发布工具在下一版准备时依据 GitHub 正式发布状态与固定 tag 原始内容重建历史，额外保留 `publicationEvidence` 的 Release ID、发布时间及 tag 提交；缺失或无法确认的旧记录排除并警告。固定 tag 重跑直接使用该 tag 的绑定内容，不能事后改写已经发布的安装包。
+
+发布版本提交的恢复元信息保留 `sourceSha`（业务源码），必要时增加 `preparedFromSha`（失败换号的直接父提交）及 `guidanceFiles`（精确版本记录允许清单）。校验沿失败换号链检查每次允许变更，不能把源码修改伪装成版本准备。CI 检查器通过 `--release-tag` 自动获取业务 SHA，不把版本提交 SHA 当作人工核对来源。
 
 缺失、未知和 none 是不同状态。changed 的缺项生成警告，不自动改成 none。review 为真实核对记录，格式异常可省略并警告，不自动补造人员、日期或通过结果。
 
@@ -54,3 +56,9 @@ App 保留原有 `navigate(): Promise<void>` 契约，并为指引提供显式 `
 - 当前版本可以读取本包自己的 pending 绑定；既往范围只使用 published 记录。同功能仅出现一个当前用法入口，不同变化保留；旧版缺口明确声明，缺失不能改写为无新增操作。
 - 设备记录采用串行临时写入、同步及原子替换，正常关闭等待队列完成。`persisted: false` 表示只保证本进程去重，界面明确提醒重启后可能再次显示；损坏记录按首次处理，既不回放全部历史，也不把失败写入当成持久成功。
 - 设置中的 `openVersions()` 提供手动历史入口；历史摘要保持原文，功能按钮使用当前有效指引。手动查看不重置自动去重状态，来源不可用时保持可理解的降级说明。
+
+## 台账附近入口（任务 06）
+
+台账顶部共用一个 `GuidanceButton`，可访问名称为“台账使用指引”，表格、摘要和详情状态均沿用同一入口。无系统时使用 `ledger`；当前分类的 placement 为：访问入口 `ledger-access`、账号 `ledger-accounts`、服务器及数据库／中间件 `ledger-resources`、应用部署 `ledger-deployments`、运行维护 `ledger-operations`、文档 `documents`。后续资源、部署、运维内容直接配置对应 placement，不再增加同类帮助按钮。
+
+“更多”菜单新增“系统与环境使用指引”，打开 `systems` 主题列表；菜单先把焦点归还持久触发按钮，指引关闭后返回该按钮。独立项目档案页使用 `projects`。这些入口只阅读，不强行关闭系统信息、新建或秘密编辑弹窗；所有“前往功能”继续经过统一保存与受控目的地检查。
