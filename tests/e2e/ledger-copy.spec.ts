@@ -173,8 +173,11 @@ test('台账资料单条、多选、附账号与编辑保存失败不覆盖剪�
       .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
       .toContain('服务器：更新后的节点');
     await page.getByLabel('资源地址', { exact: true }).fill('192.0.2.31');
-    const editedRow = page.locator('.workspace-list tbody tr.selected');
-    await editedRow.locator('.ledger-copy-field').hover();
+    const editedRow = page
+      .getByRole('list', { name: '台账摘要清单' })
+      .getByRole('listitem')
+      .filter({ hasText: '更新后的节点' });
+    await editedRow.locator('.ledger-copy-field').first().hover();
     await editedRow.getByRole('button', { name: '复制地址', exact: true }).click();
     await expect
       .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))

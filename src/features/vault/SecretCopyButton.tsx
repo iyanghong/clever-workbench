@@ -7,11 +7,13 @@ export function SecretCopyButton({
   kind,
   name,
   onError,
+  beforeCopy,
 }: {
   accountId: string;
   kind: SecretKind;
   name: string;
   onError: (message: string) => void;
+  beforeCopy?: () => Promise<void>;
 }) {
   const vault = useVault(),
     generation = useRef(0);
@@ -44,8 +46,10 @@ export function SecretCopyButton({
       onBlur={() => setCopied(false)}
       onClick={async () => {
         try {
-          if (!(await vault.ensureUnlocked())) return;
           const request = generation.current;
+          await beforeCopy?.();
+          if (request !== generation.current) return;
+          if (!(await vault.ensureUnlocked()) || request !== generation.current) return;
           await window.desktop.copySecret(accountId, kind);
           if (request === generation.current) setCopied(true);
         } catch (cause) {

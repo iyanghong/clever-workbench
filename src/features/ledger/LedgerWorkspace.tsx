@@ -37,6 +37,7 @@ import { QuickAccount, QuickResource, QuickService, QuickSystem } from './QuickR
 import { SystemExportDialog } from './SystemExportDialog';
 import { FavoriteButton } from '../home/FavoriteButton';
 import { SecretCopyButton } from '../vault/SecretCopyButton';
+import { secretLabels } from '../../vault-types';
 import {
   ScopeEditor,
   ServiceEditor,
@@ -46,6 +47,7 @@ import {
   ProjectManager,
 } from './WorkspaceEditors';
 import type { EditorHost } from './Environments';
+import './ledger-layout.css';
 
 const categories = [
   ['access', '访问入口'],
@@ -296,8 +298,16 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
   function changeView(next: Partial<View>) {
     void transition(() => {
       setView((v) => ({ ...v, ...next, scroll: 0 }));
-      setSelected(null);
-      setEditing(false);
+      if (
+        next.category !== undefined ||
+        next.environment !== undefined ||
+        next.tag !== undefined ||
+        next.operationKind !== undefined ||
+        next.operationStatus !== undefined
+      ) {
+        setSelected(null);
+        setEditing(false);
+      }
     });
   }
   async function run(command: Command) {
@@ -569,6 +579,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
               kind={kind}
               name={`${item.name} ${item.username}`}
               onError={setError}
+              beforeCopy={saves.flush}
             />
           ))}
           <FavoriteButton
@@ -592,6 +603,37 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
         </div>
       </div>
     );
+  }
+  function summaryAccounts(row: Row) {
+    const accounts = snapshot!.accounts.filter((item) =>
+      row.kind === 'accounts'
+        ? item.id === row.id
+        : item.resourceId === row.id || item.accessId === row.id,
+    );
+    return accounts.map((item) => (
+      <div className="workspace-summary-account" key={item.id}>
+        {row.kind !== 'accounts' && (
+          <CopyableField
+            value={item.username}
+            label={`用户名 ${item.name} ${item.username}`}
+            currentValue={(current) => currentRecord(current.accounts, item.id).username}
+            onError={setError}
+          />
+        )}
+        {item.secretKinds.map((kind) => (
+          <span className="workspace-summary-secret" key={kind}>
+            {secretLabels[kind]}
+            <SecretCopyButton
+              accountId={item.id}
+              kind={kind}
+              name={`${item.name} ${item.username}`}
+              beforeCopy={saves.flush}
+              onError={setError}
+            />
+          </span>
+        ))}
+      </div>
+    ));
   }
   const content = (
     <main className="main ledger-workspace">
@@ -640,105 +682,110 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
       </header>
       {system ? (
         <>
-          <nav className="workspace-categories" aria-label="系统资料类型">
-            {categories.map(([id, label]) => (
-              <button
-                key={id}
-                aria-pressed={view.category === id}
-                onClick={() => changeView({ category: id, query: '' })}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
-          <div className="workspace-query">
-            <label className="workspace-search">
-              <MagnifyingGlassIcon />
-              <input
-                aria-label="搜索台账清单"
-                placeholder={`搜索${categories.find((c) => c[0] === view.category)?.[1]}…`}
-                value={view.query}
-                onChange={(e) => changeView({ query: e.target.value })}
-              />
-            </label>
-            <select
-              aria-label="台账环境筛选"
-              value={view.environment}
-              onChange={(e) => changeView({ environment: e.target.value })}
-            >
-              <option value="all">全部环境</option>
-              <option value="common">仅系统通用</option>
-              {snapshot.environments
-                .filter((e) => e.systemId === systemId)
-                .map((e) => (
-                  <option value={e.id} key={e.id}>
-                    {e.name}
-                  </option>
-                ))}
-            </select>
-            <select
-              aria-label="台账标签筛选"
-              value={view.tag}
-              onChange={(e) => changeView({ tag: e.target.value })}
-            >
-              <option value="all">全部标签</option>
-              {tags.map((t) => (
-                <option key={t}>{t}</option>
+          <div className="workspace-category-toolbar">
+            <nav className="workspace-categories" aria-label="系统资料类型">
+              {categories.map(([id, label]) => (
+                <button
+                  key={id}
+                  aria-pressed={view.category === id}
+                  onClick={() => changeView({ category: id, query: '' })}
+                >
+                  {label}
+                </button>
               ))}
-            </select>
-            {view.category === 'operations' && (
-              <>
-                <select
-                  aria-label="运维类型筛选"
-                  value={view.operationKind}
-                  onChange={(e) =>
-                    changeView({ operationKind: e.target.value as View['operationKind'] })
-                  }
-                >
-                  <option value="all">全部运维类型</option>
-                  <option value="job">运行作业</option>
-                  <option value="backup">备份策略</option>
-                </select>
-                <select
-                  aria-label="运维状态筛选"
-                  value={view.operationStatus}
-                  onChange={(e) =>
-                    changeView({ operationStatus: e.target.value as View['operationStatus'] })
-                  }
-                >
-                  <option value="all">全部状态</option>
-                  <option value="active">在用</option>
-                  <option value="inactive">停用</option>
-                  <option value="unverified">待确认</option>
-                </select>
-              </>
-            )}
-            <button className="secondary-button" onClick={() => captureNew('paste')}>
-              粘贴表格
-            </button>
-            <button
-              className="primary-button"
-              onClick={() =>
-                view.category === 'documents'
-                  ? void createDocument({
-                      systemId,
-                      environmentId: !['all', 'common'].includes(view.environment)
-                        ? view.environment
-                        : null,
-                    }).catch((e) => setError(String(e)))
-                  : captureNew(view.category)
-              }
-            >
-              <PlusIcon size={16} />
-              新增{categories.find((c) => c[0] === view.category)?.[1]}
-            </button>
+            </nav>
+            <div className="workspace-category-actions">
+              <button className="secondary-button" onClick={() => captureNew('paste')}>
+                粘贴表格
+              </button>
+              <button
+                className="primary-button"
+                onClick={() =>
+                  view.category === 'documents'
+                    ? void createDocument({
+                        systemId,
+                        environmentId: !['all', 'common'].includes(view.environment)
+                          ? view.environment
+                          : null,
+                      }).catch((e) => setError(String(e)))
+                    : captureNew(view.category)
+                }
+              >
+                <PlusIcon size={16} />
+                新增{categories.find((c) => c[0] === view.category)?.[1]}
+              </button>
+            </div>
           </div>
           <div className={`workspace-browser ${picked ? 'show-inspector' : ''}`}>
-            <section className="workspace-results">
-              {view.category !== 'accounts' && (
+            <section className="workspace-results" aria-label="台账清单">
+              <div className="workspace-query">
+                <label className="workspace-search">
+                  <MagnifyingGlassIcon />
+                  <input
+                    aria-label="搜索台账清单"
+                    placeholder={`搜索${categories.find((c) => c[0] === view.category)?.[1]}…`}
+                    value={view.query}
+                    onChange={(e) => changeView({ query: e.target.value })}
+                  />
+                </label>
+                <select
+                  aria-label="台账环境筛选"
+                  value={view.environment}
+                  onChange={(e) => changeView({ environment: e.target.value })}
+                >
+                  <option value="all">全部环境</option>
+                  <option value="common">仅系统通用</option>
+                  {snapshot.environments
+                    .filter((e) => e.systemId === systemId)
+                    .map((e) => (
+                      <option value={e.id} key={e.id}>
+                        {e.name}
+                      </option>
+                    ))}
+                </select>
+                <select
+                  aria-label="台账标签筛选"
+                  value={view.tag}
+                  onChange={(e) => changeView({ tag: e.target.value })}
+                >
+                  <option value="all">全部标签</option>
+                  {tags.map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+                {view.category === 'operations' && (
+                  <>
+                    <select
+                      aria-label="运维类型筛选"
+                      value={view.operationKind}
+                      onChange={(e) =>
+                        changeView({ operationKind: e.target.value as View['operationKind'] })
+                      }
+                    >
+                      <option value="all">全部运维类型</option>
+                      <option value="job">运行作业</option>
+                      <option value="backup">备份策略</option>
+                    </select>
+                    <select
+                      aria-label="运维状态筛选"
+                      value={view.operationStatus}
+                      onChange={(e) =>
+                        changeView({ operationStatus: e.target.value as View['operationStatus'] })
+                      }
+                    >
+                      <option value="all">全部状态</option>
+                      <option value="active">在用</option>
+                      <option value="inactive">停用</option>
+                      <option value="unverified">待确认</option>
+                    </select>
+                  </>
+                )}
+              </div>
+
+              {(view.category !== 'accounts' || picked) && (
                 <div className="workspace-result-count">
                   {visible.length} 条记录
-                  {view.category !== 'documents' && (
+                  {view.category !== 'documents' && view.category !== 'accounts' && (
                     <LedgerCopySelectionBar
                       objects={visible.flatMap((row) => {
                         const ref = copyRef(row);
@@ -749,16 +796,49 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                 </div>
               )}
               <div
+                key={picked ? 'summary' : 'table'}
                 className="workspace-list"
                 ref={list}
                 onScroll={(e) => {
-                  if (!e.currentTarget.offsetParent) return;
+                  if (picked || !e.currentTarget.offsetParent) return;
                   const scroll = e.currentTarget.scrollTop;
                   memory.current.views[systemId] = { ...view, scroll };
                   localStorage.setItem('ledger-workspace', JSON.stringify(memory.current));
                 }}
               >
-                {view.category === 'accounts' ? (
+                {picked ? (
+                  <ul className="workspace-summary" aria-label="台账摘要清单">
+                    {visible.map((row) => (
+                      <li key={row.id} aria-current={selected === row.id ? 'true' : undefined}>
+                        {copyRef(row) && (
+                          <LedgerCopyCheckbox object={copyRef(row)!} name={row.name} />
+                        )}
+                        <button className="workspace-summary-open" onClick={() => openRow(row)}>
+                          <strong>{row.name}</strong>
+                          <small>{scopeLabel(row)}</small>
+                        </button>
+                        <div className="workspace-summary-content">
+                          <CopyableField
+                            value={row.address}
+                            currentValue={(snapshot) => currentRowValue(snapshot, row)}
+                            label={
+                              row.kind === 'accounts'
+                                ? `用户名 ${row.name} ${row.address}`
+                                : row.kind === 'services'
+                                  ? '代码仓库'
+                                  : row.kind === 'operations'
+                                    ? '频率'
+                                    : '地址'
+                            }
+                            onError={setError}
+                          />
+                          {row.extra && <p title={row.extra}>{row.extra}</p>}
+                          {summaryAccounts(row)}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : view.category === 'accounts' ? (
                   <AccountList
                     key={JSON.stringify([systemId, view.environment, view.tag, view.query])}
                     snapshot={snapshot}

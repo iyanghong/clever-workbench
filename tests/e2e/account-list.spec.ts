@@ -74,6 +74,7 @@ test('密码列显隐、当前范围批量展示与整行复制沿用解锁和�
       await api.saveSecret(admin, 'password', 'fixture-admin-password');
       await api.saveSecret(reader, 'password', 'fixture-reader-password');
       await api.saveSecret(token, 'token', 'fixture-token-not-password');
+      await api.saveSecret(token, 'privateKey', 'fixture-private-key');
       await api.lockVault();
       return { admin, reader, prod, test };
     });
@@ -120,10 +121,50 @@ test('密码列显隐、当前范围批量展示与整行复制沿用解锁和�
     await expect(table).not.toContainText('fixture-admin-password');
     const row = table.getByRole('row').filter({ hasText: 'operator' });
     await row.locator('td').first().getByRole('button').click();
-    await expect(table.getByRole('columnheader', { name: '密码', exact: true })).toBeVisible();
-    await expect(
-      row.getByRole('button', { name: '复制整行 Jenkins / 运维', exact: true }),
-    ).toBeVisible();
+    await expect(table).toHaveCount(0);
+    const summary = page.getByRole('list', { name: '台账摘要清单' });
+    await expect(summary).toContainText('Jenkins');
+    const summaryPassword = summary.getByRole('button', {
+      name: '复制密码 运维 operator',
+      exact: true,
+    });
+    await expect(summaryPassword).toBeVisible();
+    await page.evaluate(() => window.desktop.lockVault());
+    await app.evaluate(({ clipboard }) => clipboard.writeText('summary-before-cancel'));
+    await summaryPassword.click();
+    await page
+      .getByRole('dialog', { name: '解锁秘密', exact: true })
+      .getByRole('button', { name: '取消', exact: true })
+      .click();
+    expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe(
+      'summary-before-cancel',
+    );
+    await summaryPassword.click();
+    await page.getByLabel('主密码', { exact: true }).fill('fixture-master');
+    await page.getByRole('button', { name: '解锁', exact: true }).click();
+    await expect
+      .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
+      .toBe('fixture-admin-password');
+    const detail = page.getByRole('complementary', { name: '台账详情' });
+    await detail.getByRole('button', { name: '编辑', exact: true }).click();
+    await page.getByLabel('账号用途', { exact: true }).fill('');
+    await app.evaluate(({ clipboard }) => clipboard.writeText('summary-before-invalid-save'));
+    await summaryPassword.click();
+    await expect(page.getByLabel('账号用途', { exact: true })).toHaveValue('');
+    expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe(
+      'summary-before-invalid-save',
+    );
+    await detail.getByRole('button', { name: '返回清单', exact: true }).click();
+    await expect(page.getByLabel('账号用途', { exact: true })).toHaveValue('');
+    await page.getByLabel('账号用途', { exact: true }).fill('运维');
+    await page.getByLabel('账号用户名', { exact: true }).fill('operator-updated');
+    await summary.getByRole('button', { name: '复制用户名 运维 operator', exact: true }).click();
+    await expect
+      .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
+      .toBe('operator-updated');
+    await page.getByLabel('账号用户名', { exact: true }).fill('operator');
+    await detail.getByRole('button', { name: '完成编辑', exact: true }).click();
+    await page.screenshot({ path: info.outputPath('account-summary.png') });
     await page.getByRole('button', { name: '返回清单', exact: true }).click();
     await row.locator('.account-copy-field').first().hover();
     await row.getByRole('button', { name: '复制用户名 运维 operator', exact: true }).click();
@@ -154,6 +195,21 @@ test('密码列显隐、当前范围批量展示与整行复制沿用解锁和�
       table.getByRole('button', { name: '复制Token 自动化 bot', exact: true }),
     ).toBeVisible();
     await expect(table).not.toContainText('fixture-token-not-password');
+    await table.getByRole('button', { name: /自动化.*生产/ }).click();
+    await summary.getByRole('button', { name: '复制Token 自动化 bot', exact: true }).click();
+    await page.getByLabel('主密码', { exact: true }).fill('fixture-master');
+    await page.getByRole('button', { name: '解锁', exact: true }).click();
+    await expect
+      .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
+      .toBe('fixture-token-not-password');
+    await summary.getByRole('button', { name: '复制私钥 自动化 bot', exact: true }).click();
+    await expect
+      .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
+      .toBe('fixture-private-key');
+    await expect(summary).not.toContainText('fixture-private-key');
+    await page.evaluate(() => window.desktop.lockVault());
+    await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toBe('');
+    await detail.getByRole('button', { name: '返回清单', exact: true }).click();
     await page.getByLabel('搜索台账清单').fill('');
     await page.getByLabel('台账环境筛选').selectOption('all');
     await page.screenshot({
