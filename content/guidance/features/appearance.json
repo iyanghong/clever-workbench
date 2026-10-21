@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "appearance",
+  "revision": 1,
+  "title": "调整主题与辅助外观",
+  "platforms": ["darwin", "win32"],
+  "placements": ["settings-appearance"],
+  "purpose": "选择适合自己的主题、文字对比和动态效果，让页面与使用指引保持一致。",
+  "prerequisites": {
+    "items": ["无需设置密码；界面偏好在当前工作台保存。"],
+    "notApplicableReason": ""
+  },
+  "entry": {
+    "label": "设置 → 外观与可访问性",
+    "target": "settings-appearance"
+  },
+  "steps": [
+    {
+      "id": "theme",
+      "title": "选择固定主题或跟随系统",
+      "action": "打开设置，在“界面主题”中选择“浅色”“深色”或“系统”。选择系统后，在操作系统中切换浅深外观可观察跟随结果。",
+      "expectedResult": "页面立即切换；固定浅色或深色不随系统主题变化，选择系统时跟随系统。"
+    },
+    {
+      "id": "transparency",
+      "title": "稳定文字背景",
+      "action": "在“可访问性”中开启“减少透明度”。",
+      "expectedResult": "导航和工具栏使用实色背景；文字背景更稳定，设置与指引均采用同一外观偏好。"
+    },
+    {
+      "id": "contrast",
+      "title": "增强文字与边界对比",
+      "action": "开启“增强对比”，观察次要文字、分隔线与键盘焦点。",
+      "expectedResult": "文字和边界更清楚，同时减少透明效果；不会改变资料内容。"
+    },
+    {
+      "id": "motion",
+      "title": "减少界面动态",
+      "action": "开启“减少动态效果”，再打开或切换页面与使用指引。",
+      "expectedResult": "过渡和动画减少，加载、成功或失败状态仍会显示。"
+    },
+    {
+      "id": "system-preferences",
+      "title": "核对系统偏好",
+      "action": "如关闭应用内某开关后仍看到对应效果，检查操作系统的辅助功能设置。",
+      "expectedResult": "系统已启用的减少透明度、增强对比或减少动态效果也会生效；应用内关闭并不会强制覆盖系统要求。"
+    }
+  ],
+  "completion": "当前页面和指引采用所选主题与辅助外观，重新打开应用后仍保留应用内选择。",
+  "faq": {
+    "items": [
+      {
+        "question": "为什么关掉减少透明度后背景仍然不透明？",
+        "answer": "增强对比也会减少透明效果；系统辅助偏好同样可能要求实色背景。先核对这两处设置。"
+      },
+      {
+        "question": "更改主题会影响资料和凭据吗？",
+        "answer": "不会。外观设置只改变呈现方式，秘密仍按当前保护方式访问。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}

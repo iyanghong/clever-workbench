@@ -1,4 +1,4 @@
-import { SettingsGuidance } from '../guidance/Guidance';
+import { GuidanceButton, SettingsGuidance } from '../guidance/Guidance';
 import { PageHeading, SegmentedControl } from '../../shared/WorkspaceUI';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -191,6 +191,7 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
         {snapshot && (
           <>
             <h3 id="settings-appearance">外观</h3>
+            <GuidanceButton guideId="appearance" accessibleLabel="外观使用指引" />
             <div className="setting-row">
               <div>
                 <strong>界面主题</strong>
@@ -271,6 +272,7 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
             ))}
             <p className="backup-note">系统启用的可访问性偏好也会自动生效。</p>
             <h3 id="settings-vault">秘密保护</h3>
+            <GuidanceButton placement="settings-vault" accessibleLabel="秘密保护使用指引" />
             <div className="setting-row">
               <div>
                 <strong>{vault.status.initialized ? '主密码已设置' : '系统加密保护'}</strong>

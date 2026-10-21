@@ -487,6 +487,9 @@ export function TaskWorkspace({
           {view === 'review' && (
             <GuidanceButton placement="review" accessibleLabel="工作回顾使用指引" />
           )}
+          {view === 'trash' && (
+            <GuidanceButton guideId="recycle-tasks" accessibleLabel="任务回收站使用指引" />
+          )}
           {view === 'tasks' && (
             <div className="project-picker">
               <select

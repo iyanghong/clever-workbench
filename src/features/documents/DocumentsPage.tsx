@@ -156,7 +156,11 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
           </span>
         </div>
         <div className="spacer" />
-        {!trash && <GuidanceButton placement="documents" accessibleLabel="文档使用指引" />}
+        {trash ? (
+          <GuidanceButton guideId="recycle-documents" accessibleLabel="文档回收站使用指引" />
+        ) : (
+          <GuidanceButton placement="documents" accessibleLabel="文档使用指引" />
+        )}
         <button className="toolbar-new" onClick={() => void create()}>
           <PlusIcon size={17} />
           新建文档
