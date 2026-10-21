@@ -28,7 +28,7 @@ export function ToolsPage({ route, navigate, setContext, registerFlush }: Module
       />
     );
   return (
-    <main className="main tools-page">
+    <main className="main tools-page" aria-busy={!snapshot}>
       <header className="window-toolbar">
         <div className="breadcrumb">
           <WrenchIcon size={17} />
@@ -52,7 +52,13 @@ export function ToolsPage({ route, navigate, setContext, registerFlush }: Module
           </p>
         )}
         {selected ? (
-          <Suspense fallback={<p role="status">正在打开工具…</p>}>
+          <Suspense
+            fallback={
+              <p role="status" aria-busy="true">
+                正在打开工具…
+              </p>
+            }
+          >
             <selected.Page registerFlush={registerFlush} />
           </Suspense>
         ) : (

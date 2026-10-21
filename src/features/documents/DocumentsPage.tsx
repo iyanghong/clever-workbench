@@ -145,7 +145,7 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
           : matches === null || matches.includes(item.id)),
     ) ?? [];
   return (
-    <main className="main documents-page">
+    <main className="main documents-page" aria-busy={loading || !snapshot}>
       <header className="window-toolbar">
         <div className="breadcrumb">
           <NotePencilIcon size={18} />

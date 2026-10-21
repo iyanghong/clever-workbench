@@ -175,7 +175,7 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
     }
   }
   return (
-    <main className="main">
+    <main className="main" aria-busy={!snapshot || !!busy}>
       <header className="window-toolbar">
         <div className="breadcrumb">
           <GearSixIcon size={17} />

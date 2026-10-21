@@ -397,7 +397,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
   }
   if (!snapshot)
     return (
-      <main className="main">
+      <main className="main" aria-busy="true">
         <p>{error || '正在读取台账…'}</p>
       </main>
     );
@@ -1629,7 +1629,7 @@ export function ProjectArchiveWorkspace() {
       .catch((e) => setError(String(e)));
   }, []);
   return (
-    <main className="main">
+    <main className="main" aria-busy={!snapshot}>
       <section className="archive-page">
         <PageHeading
           title="项目档案"
