@@ -52,11 +52,15 @@ python3 /tmp/cwb-guidance-run-electron.py npm run test:e2e -- \
 
 ## 可复查证据与限制
 
-临时运行证据已复制至 `/tmp/cwb-operation-guidance-evidence/08/`：
+运行证据保存在 [evidence/08](evidence/08/)，原始红测日志另保存在 `/tmp/cwb-operation-guidance-evidence/08/`：
 
 - `cwb-guidance-08-red-appearance.log`、`cwb-guidance-08-red-vault.log`、`cwb-guidance-08-red-trash.log`、`cwb-guidance-08-red-documents-trash.log`：四轮入口缺失红测。
-- `cwb-guidance-08-regression.log`：12 项正常内容回归。
-- `cwb-guidance-08-degraded-build.log`、`cwb-guidance-08-degraded-check.log`、`cwb-guidance-08-degraded-e2e.log`：实际损坏正文构建、警告和 4 项降级验证。
-- `appearance-guide-dark-narrow.png`：实际 Electron 窄窗口、深色／高对比／减少透明度下的指引。
+- [regression.log](evidence/08/regression.log)：12 项正常内容回归。
+- [degraded-build.log](evidence/08/degraded-build.log)、[degraded-check.log](evidence/08/degraded-check.log)、[degraded-e2e.log](evidence/08/degraded-e2e.log)：实际损坏正文构建、警告和 4 项降级验证。
+- [appearance-guide-dark-narrow.png](evidence/08/appearance-guide-dark-narrow.png)：实际 Electron 窄窗口、深色／高对比／减少透明度下的指引。
 
 这些是开发 Electron 实际运行结果；尚未在最终安装包验证，也未执行原生鼠标点击、真实系统钥匙串授权或 Windows 实机验证。原生菜单、最终安装内容及完整跨任务覆盖由任务 11 汇总。没有推送、发布、替换日常应用或使用真实秘密。
+
+## 集成复核
+
+代码提交 `17c05d7` 后，将最新集成 `0f81de6` 合入本分支（合并提交 `1209553`），无冲突。合并后生产构建与本任务四项 Electron 用例再次通过：[构建](evidence/08/merged-build.log)、[4 项复核](evidence/08/merged-e2e.log)。[指引检查](evidence/08/merged-check.log)无本任务正文警告；待发布说明保留 10 项尚缺人工核对的既有警告，未伪造核对结果，也未阻断构建或测试。

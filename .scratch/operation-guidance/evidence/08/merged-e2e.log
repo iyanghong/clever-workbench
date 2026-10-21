@@ -1,0 +1,15 @@
+
+> clever-workbench@0.1.12 test:e2e
+> playwright test tests/e2e/maintenance-guidance.spec.ts
+
+
+Running 4 tests using 1 worker
+
+(node:60958) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/e2e/maintenance-guidance.spec.ts:38:1 › 外观旁的离线指引遵守主题和辅助偏好，关闭返回焦点并从集中入口导航 (2.4s)
+  ✓  2 tests/e2e/maintenance-guidance.spec.ts:118:1 › 秘密保护指引只导航，启用解锁与更改关闭可取消且保留备份配置 (6.1s)
+  ✓  3 tests/e2e/maintenance-guidance.spec.ts:186:1 › 任务回收站指引只导航，恢复、单条删除和清空均保留各自边界 (3.6s)
+  ✓  4 tests/e2e/maintenance-guidance.spec.ts:234:1 › 文档回收站指引可集中到达，逐篇恢复和删除确认不提供批量清空 (3.4s)
+
+  4 passed (15.7s)

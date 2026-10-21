@@ -1,0 +1,23 @@
+
+> clever-workbench@0.1.12 test:e2e
+> playwright test tests/e2e/maintenance-guidance.spec.ts tests/e2e/appearance.spec.ts tests/e2e/vault-rotation.spec.ts tests/e2e/vault.spec.ts tests/e2e/documents.spec.ts
+
+
+Running 12 tests using 1 worker
+
+(node:60164) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/e2e/appearance.spec.ts:7:1 › 主题跟随与手动覆盖，透明度／对比／动态偏好可保存，键盘操作与弹层焦点有效 (3.7s)
+  ✓   2 tests/e2e/appearance.spec.ts:93:1 › 系统减少动态效果生效，原生可访问性变化更新全局材质 (585ms)
+  ✓   3 tests/e2e/documents.spec.ts:8:1 › 从资源写方案并回到台账，系统换项目后保留旧背景和文档恢复能力 (2.7s)
+  ✓   4 tests/e2e/documents.spec.ts:73:1 › 未命名文档粘贴图片后立即切换，重启后保留正文与图片 (3.3s)
+  ✓   5 tests/e2e/maintenance-guidance.spec.ts:38:1 › 外观旁的离线指引遵守主题和辅助偏好，关闭返回焦点并从集中入口导航 (2.2s)
+  ✓   6 tests/e2e/maintenance-guidance.spec.ts:118:1 › 秘密保护指引只导航，启用解锁与更改关闭可取消且保留备份配置 (6.0s)
+  ✓   7 tests/e2e/maintenance-guidance.spec.ts:186:1 › 任务回收站指引只导航，恢复、单条删除和清空均保留各自边界 (3.6s)
+  ✓   8 tests/e2e/maintenance-guidance.spec.ts:234:1 › 文档回收站指引可集中到达，逐篇恢复和删除确认不提供批量清空 (3.4s)
+  ✓   9 tests/e2e/vault-rotation.spec.ts:6:1 › 设置更改主密码验证旧密码与新密码确认，取消不变更，成功锁定且重启用新密码 (5.4s)
+  ✓  10 tests/e2e/vault.spec.ts:8:1 › 可选启用主密码后保存秘密，手动锁定及重启后按需解锁，普通元数据仍可查 (5.8s)
+  ✓  11 tests/e2e/vault.spec.ts:86:1 › 秘密在可信侧复制，30 秒清理及锁屏事件撤销访问，取消解锁不改剪贴板 (32.2s)
+  ✓  12 tests/e2e/vault.spec.ts:147:1 › 账号和资源的秘密复制必须明确勾选，取消解锁不创建副本 (3.1s)
+
+  12 passed (1.2m)
