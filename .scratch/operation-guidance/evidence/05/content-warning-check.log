@@ -1,0 +1,50 @@
+故障注入：本任务14篇JSON同时损坏，验证打包准备与运行降级。
+
+> clever-workbench@0.1.12 build
+> tsc --noEmit && vite build && node scripts/build-electron.mjs
+
+vite v8.3.4 building client environment for production...
+transforming...
+<script src="./editor-vendor/dist/js/icons/ant.js"> in "/index.html" can't be bundled without type="module" attribute
+✓ 4899 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                      0.81 kB │ gzip:   0.47 kB
+dist/assets/application-update-about-yg7eIdrd.png   70.19 kB
+dist/assets/LedgerWorkspace-CX0hbyVn.css             4.94 kB │ gzip:   1.24 kB
+dist/assets/ToolsPage-Dzqc8M6m.css                   6.84 kB │ gzip:   1.61 kB
+dist/assets/Editor-1ukmnEbC.css                     40.55 kB │ gzip:   8.15 kB
+dist/assets/index-C_k99MfN.css                      90.53 kB │ gzip:  15.67 kB
+dist/assets/ToolsPage-UmwkIl2T.js                    2.01 kB │ gzip:   0.98 kB
+dist/assets/FavoriteButton-DABTrVO3.js               5.28 kB │ gzip:   2.09 kB
+dist/assets/DocumentsPage-B9zJT6VY.js                9.12 kB │ gzip:   3.18 kB
+dist/assets/jsx-runtime-yvPPUtFc.js                  9.32 kB │ gzip:   3.61 kB
+dist/assets/ZipTextPage-Csxx-GSu.js                 23.12 kB │ gzip:   7.78 kB
+dist/assets/SettingsPage-CjZPxN_7.js                24.52 kB │ gzip:   7.22 kB
+dist/assets/TaskWorkspace-vldL23Vp.js               40.80 kB │ gzip:  12.41 kB
+dist/assets/LedgerWorkspace-C6d3jT-Q.js            121.77 kB │ gzip:  31.42 kB
+dist/assets/code-highlighting-DkV8VnUc.js          182.69 kB │ gzip:  59.25 kB
+dist/assets/editor-model-BhdfYWu4.js               251.81 kB │ gzip:  77.27 kB
+dist/assets/index-CswFu2zU.js                      406.87 kB │ gzip: 118.34 kB
+dist/assets/Editor-DddZUwDN.js                     489.37 kB │ gzip: 140.94 kB
+
+✓ built in 202ms
+命令退出码：0
+
+> clever-workbench@0.1.12 test:e2e
+> playwright test tests/e2e/daily-guidance.spec.ts
+
+
+Running 6 tests using 1 worker
+
+(node:79839) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/e2e/daily-guidance.spec.ts:67:1 › 首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具 (1.5s)
+  ✓  2 tests/e2e/daily-guidance.spec.ts:121:1 › 搜索新建旁指引只导航，九项选择可取消且键盘搜索可打开任务 (1.9s)
+  ✓  3 tests/e2e/daily-guidance.spec.ts:170:1 › 任务指引关闭保留详情，计划、标签与批量归属可按说明操作 (3.1s)
+  ✓  4 tests/e2e/daily-guidance.spec.ts:223:1 › 阅读任务指引期间创建快捷键不会提交底层草稿 (1.6s)
+  ✓  5 tests/e2e/daily-guidance.spec.ts:249:1 › 文档附近和设置可查看共用编辑指引，源码与本地图片保存后仍可阅读 (3.0s)
+  ✓  6 tests/e2e/daily-guidance.spec.ts:330:1 › 工作回顾指引与月份、系统全貌入口一致，打开任务后可返回 (2.0s)
+
+  6 passed (13.5s)
+命令退出码：0

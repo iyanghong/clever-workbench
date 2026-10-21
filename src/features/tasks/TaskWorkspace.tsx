@@ -1,4 +1,5 @@
 import { PageHeading, SegmentedControl } from '../../shared/WorkspaceUI';
+import { GuidanceButton } from '../guidance/Guidance';
 import type { CreationContext } from '../../app/actions';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -253,7 +254,7 @@ export function TaskWorkspace({
   }
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
-      if (e.isComposing) return;
+      if (e.isComposing || document.querySelector('dialog[open], [role="alertdialog"]')) return;
       if (e.key === 'Escape' && !confirm) {
         if (selected) void closeDetail();
         else {
@@ -480,6 +481,12 @@ export function TaskWorkspace({
             <span>{view === 'review' ? '工作回顾' : listTitle}</span>
           </div>
           <div className="spacer" />
+          {view === 'tasks' && (
+            <GuidanceButton placement="tasks" accessibleLabel="工作任务使用指引" />
+          )}
+          {view === 'review' && (
+            <GuidanceButton placement="review" accessibleLabel="工作回顾使用指引" />
+          )}
           {view === 'tasks' && (
             <div className="project-picker">
               <select

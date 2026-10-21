@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "workspace-basics",
+  "revision": 1,
+  "title": "从工作台开始记录",
+  "platforms": [
+    "darwin",
+    "win32"
+  ],
+  "placements": [
+    "home"
+  ],
+  "purpose": "切换模块，在首页记录待办、完成后撤销，并继续最近的文档。",
+  "prerequisites": {
+    "items": [
+      "使用本机工作资料；需要试操作时，先使用示例对象。"
+    ],
+    "notApplicableReason": ""
+  },
+  "entry": {
+    "label": "侧栏 → 工作台",
+    "target": "home"
+  },
+  "steps": [
+    {
+      "id": "modules",
+      "title": "切换工作模块",
+      "action": "点击侧栏的工作台、台账、任务、文档、工具或工作回顾。",
+      "expectedResult": "主区域切换到对应功能；切换前会等待当前编辑保存，保存失败会停留并显示原因。"
+    },
+    {
+      "id": "capture",
+      "title": "快速记录待办",
+      "action": "在工作台“待办工作”的输入框写下标题后按回车。",
+      "expectedResult": "新任务出现在待办列表；仅输入未按回车时保留为草稿，不能当作已经创建。"
+    },
+    {
+      "id": "open",
+      "title": "继续任务",
+      "action": "点击待办的标题。",
+      "expectedResult": "进入任务详情，可补正文、关联系统和计划信息；“全部任务”可查看完整列表，首页只展示部分待办。"
+    },
+    {
+      "id": "complete",
+      "title": "完成一项工作",
+      "action": "回到工作台，点击一项待办左侧的完成按钮。",
+      "expectedResult": "任务移出未完成列表，短暂出现“已完成”和“撤销”。"
+    },
+    {
+      "id": "undo",
+      "title": "撤销刚才的完成",
+      "action": "如果误点，在首页提示仍可用时点击“撤销”。",
+      "expectedResult": "该任务重新成为未完成；离开首页后也可以在任务的已完成列表中重新打开。"
+    },
+    {
+      "id": "recent",
+      "title": "继续最近文档",
+      "action": "点击“最近文档”中的标题。",
+      "expectedResult": "打开该文档的正文继续编辑；“全部文档”可查看完整列表。"
+    },
+    {
+      "id": "write",
+      "title": "开始一份方案",
+      "action": "需要写新方案时点击首页“写一份方案”。",
+      "expectedResult": "立即创建并打开一份文档，标题、归属和正文可以稍后填写；关闭页面不是撤销创建，不需要的文档要在文档页删除。"
+    }
+  ],
+  "completion": "能从首页找到日常入口；创建的任务和文档在对应模块中可继续查看。",
+  "faq": {
+    "items": [
+      {
+        "question": "没有系统也能记任务吗？",
+        "answer": "可以。系统是任务唯一可选业务归属，项目不是必填项。首页没有指定系统背景。"
+      },
+      {
+        "question": "录入失败后怎么办？",
+        "answer": "保留输入，按错误提示处理后再提交或重试保存；不要把输入框中的草稿误认为已创建的任务。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}
