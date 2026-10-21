@@ -111,6 +111,16 @@ export function App() {
     [navigateChecked],
   );
   const selected = modules.find((item) => item.id === route.module) ?? modules[0];
+  const prepareGuidancePrompt = useCallback(async () => {
+    const expected = generation.current;
+    try {
+      if (installingRef.current) return false;
+      await save.current();
+      return expected === generation.current && !installingRef.current;
+    } catch {
+      return false;
+    }
+  }, []);
   const Page = selected.Page;
   const navigation = (section: 'workspace' | 'utility') => (
     <nav aria-label={section === 'workspace' ? '工作空间' : '辅助功能'}>
@@ -131,7 +141,12 @@ export function App() {
     </nav>
   );
   return (
-    <GuidanceProvider navigate={navigateGuidance} disabled={installing} generation={dataVersion}>
+    <GuidanceProvider
+      navigate={navigateGuidance}
+      disabled={installing}
+      generation={dataVersion}
+      preparePrompt={prepareGuidancePrompt}
+    >
       <div className={`app-shell ${window.desktop.platform}`} inert={installing}>
         <aside className="sidebar">
           <div className="sidebar-drag" />

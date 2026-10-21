@@ -5,13 +5,19 @@ import { guidanceTarget, type GuidancePlacement } from '../../guidance/registry'
 import type { FeatureGuide } from '../../guidance/types';
 import { bundledGuidance, guidanceImage } from './bundled';
 import './guidance.css';
+import { VersionGuidance } from './VersionGuidance';
 
 export type GuidanceNavigationResult = { ok: boolean; message?: string };
 type GuidanceContextValue = {
   openGuide: (id: string) => void;
   openLibrary: (placement?: GuidancePlacement) => void;
+  openVersions: () => void;
 };
-const GuidanceContext = createContext<GuidanceContextValue>({ openGuide() {}, openLibrary() {} });
+const GuidanceContext = createContext<GuidanceContextValue>({
+  openGuide() {},
+  openLibrary() {},
+  openVersions() {},
+});
 export const useGuidance = () => useContext(GuidanceContext);
 
 /** This host owns manual guidance. It never executes actions embedded in content. */
@@ -20,12 +26,15 @@ export function GuidanceProvider({
   navigate,
   disabled = false,
   generation,
+  preparePrompt,
 }: {
   children: ReactNode;
   navigate: (target: string, stillCurrent?: () => boolean) => Promise<GuidanceNavigationResult>;
   disabled?: boolean;
   generation: number;
+  preparePrompt?: () => Promise<boolean>;
 }) {
+  const [versionRequest, setVersionRequest] = useState(0);
   const [selection, setSelection] = useState<{ id?: string; placement?: GuidancePlacement } | null>(
     null,
   );
@@ -73,9 +82,20 @@ export function GuidanceProvider({
   const guide = selection?.id ? features.find((item) => item.id === selection.id) : undefined;
   return (
     <GuidanceContext.Provider
-      value={{ openGuide: (id) => open({ id }), openLibrary: (placement) => open({ placement }) }}
+      value={{
+        openGuide: (id) => open({ id }),
+        openLibrary: (placement) => open({ placement }),
+        openVersions: () => setVersionRequest((value) => value + 1),
+      }}
     >
       {children}
+      <VersionGuidance
+        manualRequest={versionRequest}
+        disabled={disabled}
+        generation={generation}
+        preparePrompt={preparePrompt}
+        onGuide={(id) => setSelection({ id })}
+      />
       {notice && (
         <div className="toast guidance-notice" role="status">
           <span>{notice}</span>
@@ -102,7 +122,7 @@ export function GuidanceProvider({
             onNavigated={close}
           />
         ) : (
-          <Dialog title="使用指引" className="modal guidance-dialog" onClose={close}>
+          <Dialog title="使用指引" className="modal guidance-dialog" onClose={close} exclusive>
             <div className="guidance-body">
               <p className="guidance-intro">
                 随应用提供，离线也能查阅。选择功能，按步骤了解操作和结果。
@@ -178,6 +198,7 @@ export function GuidanceButton({
   );
 }
 export function SettingsGuidance() {
+  const { openVersions } = useGuidance();
   return (
     <section
       className="settings-guidance"
@@ -187,6 +208,9 @@ export function SettingsGuidance() {
       <h3 id="guidance-heading">使用指引</h3>
       <p>查阅功能的准备条件、操作步骤和常见问题。内容随版本提供，离线可用。</p>
       <GuidanceButton label="查看全部使用指引" />
+      <button className="guidance-button" onClick={openVersions}>
+        查看版本操作说明
+      </button>
     </section>
   );
 }
@@ -218,6 +242,7 @@ export function GuideDialog({
       className="modal guidance-dialog"
       description="功能使用指引 · 离线可用"
       onClose={onClose}
+      exclusive
     >
       <p className="guidance-step-position" aria-live="polite">
         第 {index + 1} 步，共 {guide.steps.length} 步

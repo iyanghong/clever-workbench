@@ -71,3 +71,12 @@ export type GuidanceCatalog = {
   warnings: GuidanceWarning[];
 };
 export type GuidanceAvailability = { available: boolean; reason?: string };
+export type GuidanceDeviceState = {
+  firstVersion: string | null;
+  lastStartedVersion: string | null;
+  shownThrough: string | null;
+  /** False means session deduplication only; the next launch may prompt again. */
+  persisted: boolean;
+  warning?: string;
+};
+export type GuidanceVersions = { currentVersion: string; releases: ReleaseGuide[] };

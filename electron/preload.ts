@@ -35,6 +35,9 @@ const call = async (channel: string, ...args: unknown[]) => {
 };
 const api: DesktopAPI = {
   guidanceAvailability: () => call('guidance-availability'),
+  guidanceVersions: () => call('guidance-versions'),
+  guidanceState: () => call('guidance-state'),
+  guidanceAcknowledge: (version) => call('guidance-acknowledge', version),
   tools: {
     state: (id) => call('tool-state', id),
     command: (id, command) => call('tool-command', id, command),
