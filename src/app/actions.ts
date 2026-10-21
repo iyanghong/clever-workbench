@@ -16,6 +16,7 @@ export type CreationProps = {
 };
 export type QuickAction = {
   id: string;
+  group: 'work' | 'ledger';
   order?: number;
   title: string;
   description: string;

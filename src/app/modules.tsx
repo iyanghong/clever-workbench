@@ -115,6 +115,7 @@ export const modules: WorkbenchModule[] = [
     actions: [
       {
         id: 'new-access',
+        group: 'ledger',
         order: 25,
         title: '新访问入口',
         description: 'Jenkins、GitLab 等地址与账号',
@@ -123,6 +124,7 @@ export const modules: WorkbenchModule[] = [
       },
       {
         id: 'new-server',
+        group: 'ledger',
         order: 35,
         title: '新服务器',
         description: 'IP、配置与可选的访问账号',
@@ -131,6 +133,7 @@ export const modules: WorkbenchModule[] = [
       },
       {
         id: 'new-system',
+        group: 'ledger',
         order: 20,
         title: '新系统',
         description: '先记名称，其他资料随时补',
@@ -139,6 +142,7 @@ export const modules: WorkbenchModule[] = [
       },
       {
         id: 'new-environment',
+        group: 'ledger',
         order: 50,
         title: '新环境',
         description: '开发、测试、生产等环境',
@@ -147,6 +151,7 @@ export const modules: WorkbenchModule[] = [
       },
       {
         id: 'new-resource',
+        group: 'ledger',
         order: 40,
         title: '新资源',
         description: 'Redis、服务器与其他设施',
@@ -155,6 +160,7 @@ export const modules: WorkbenchModule[] = [
       },
       {
         id: 'new-account',
+        group: 'ledger',
         order: 30,
         title: '新账号',
         description: '按用途或角色快速记录',
@@ -163,6 +169,7 @@ export const modules: WorkbenchModule[] = [
       },
       {
         id: 'new-service',
+        group: 'ledger',
         order: 60,
         title: '新服务',
         description: '公共仓库和各环境部署',
@@ -182,6 +189,7 @@ export const modules: WorkbenchModule[] = [
     actions: [
       {
         id: 'new-task',
+        group: 'work',
         order: 0,
         title: '新任务',
         description: '标题即可，内容稍后补',
@@ -200,6 +208,7 @@ export const modules: WorkbenchModule[] = [
     actions: [
       {
         id: 'new-document',
+        group: 'work',
         order: 10,
         title: '新文档',
         description: '直接开始记录问题与方案',

@@ -1,9 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { PlusIcon, CaretLeftIcon } from '@phosphor-icons/react';
+import { PlusIcon, CaretLeftIcon, CaretRightIcon } from '@phosphor-icons/react';
 import { modules, type ModuleProps } from './modules';
 import type { CreationContext, QuickAction } from './actions';
 import type { Snapshot } from '../types';
 import { Dialog } from '../shared/Dialog';
+
+const actionGroups: { id: QuickAction['group']; title: string }[] = [
+  { id: 'work', title: '工作记录' },
+  { id: 'ledger', title: '台账资料' },
+];
+const actions = modules
+  .flatMap((module) => module.actions ?? [])
+  .sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
+
 export function QuickCreate({
   ready,
   context,
@@ -102,7 +111,9 @@ export function QuickCreate({
       {snapshot && (
         <Dialog
           title={action?.title ?? '快速新建'}
+          description={action ? undefined : '选择要记录的内容'}
           onClose={cancel}
+          closeDisabled={busy}
           error={error}
           className="modal quick-create-dialog"
         >
@@ -126,26 +137,34 @@ export function QuickCreate({
             </>
           ) : (
             <div className="quick-action-list">
-              {modules
-                .flatMap((module) => module.actions ?? [])
-                .sort((a, b) => (a.order ?? 100) - (b.order ?? 100))
-                .map((item) => (
-                  <button
-                    key={item.id}
-                    aria-label={item.title}
-                    onClick={() => {
-                      if (item.create) void execute(() => item.create!(context, snapshot));
-                      else setAction(item);
-                    }}
-                    disabled={busy}
-                  >
-                    <item.icon size={23} weight="duotone" />
-                    <span>
-                      <strong>{item.title}</strong>
-                      <small>{item.description}</small>
-                    </span>
-                  </button>
-                ))}
+              {actionGroups.map((group) => (
+                <section key={group.id} aria-labelledby={`quick-create-${group.id}`}>
+                  <h3 id={`quick-create-${group.id}`}>{group.title}</h3>
+                  {actions
+                    .filter((item) => item.group === group.id)
+                    .map((item) => (
+                      <button
+                        key={item.id}
+                        className="quick-action"
+                        aria-label={item.title}
+                        onClick={() => {
+                          if (item.create) void execute(() => item.create!(context, snapshot));
+                          else setAction(item);
+                        }}
+                        disabled={busy}
+                      >
+                        <span className="quick-action-icon">
+                          <item.icon size={20} weight="duotone" />
+                        </span>
+                        <span className="quick-action-copy">
+                          <strong>{item.title}</strong>
+                          <small>{item.description}</small>
+                        </span>
+                        <CaretRightIcon size={15} />
+                      </button>
+                    ))}
+                </section>
+              ))}
             </div>
           )}
         </Dialog>

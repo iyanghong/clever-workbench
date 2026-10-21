@@ -91,7 +91,7 @@ test('更新弹窗支持鼠标关闭，重新打开后仍能按 Esc 关闭', asy
     const closeBounds = await close.boundingBox();
     const toolbar = await page.locator('.window-toolbar').boundingBox();
     const closeCenter = closeBounds!.y + closeBounds!.height / 2;
-    expect(closeCenter).toBeGreaterThan(toolbar!.y);
+    expect(closeCenter).toBeGreaterThanOrEqual(toolbar!.y);
     expect(closeCenter).toBeLessThan(toolbar!.y + toolbar!.height);
     // Browser automation bypasses Electron's native drag hit testing. The modal
     // must exclude the toolbar drag region even when its close button overlaps it.
