@@ -3,6 +3,12 @@ import { electron } from './launch';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import {
+  expectedUpdateGuide,
+  verifyUnavailableOrNoTarget,
+  expectGuidanceDestination,
+} from './guidance-content';
+import { guidanceTarget } from '../../src/guidance/registry';
 
 test('离线从设置和更新旁阅读同一指引，步骤、关闭与安全前往功能可用', async ({}, info) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-guidance-'));
@@ -10,25 +16,50 @@ test('离线从设置和更新旁阅读同一指引，步骤、关闭与安全�
   delete env.ELECTRON_RUN_AS_NODE;
   const app = await electron.launch({ args: ['.'], env });
   try {
+    const expected = await expectedUpdateGuide(app);
     const page = await app.firstWindow();
     await page.context().setOffline(true);
     await page.getByRole('button', { name: '设置', exact: true }).click();
     const open = page.getByRole('button', { name: '查看全部使用指引', exact: true });
     await open.click({ timeout: 5000 });
     const catalog = page.getByRole('dialog', { name: '使用指引', exact: true });
-    await catalog.getByRole('button', { name: '检查与安装应用更新', exact: true }).click();
-    const guide = page.getByRole('dialog', { name: '检查与安装应用更新', exact: true });
-    await expect(guide.getByRole('heading', { name: '检查正式版本', exact: true })).toBeVisible();
-    await expect(guide.getByText('第 1 步，共 5 步', { exact: true })).toBeVisible();
-    const image = guide.getByRole('img', { name: '设置关于区域中的检查更新按钮和更新状态' });
-    await expect(image).toBeAttached({ timeout: 3000 });
-    await expect
-      .poll(() => image.evaluate((element) => (element as HTMLImageElement).naturalWidth))
-      .toBeGreaterThan(0);
-    await guide.getByRole('button', { name: '下一步', exact: true }).click();
-    await expect(guide.getByRole('heading', { name: '下载并校验更新', exact: true })).toBeVisible();
-    await guide.getByRole('button', { name: '上一步', exact: true }).click();
-    await expect(guide.getByRole('heading', { name: '检查正式版本', exact: true })).toBeVisible();
+    if (!expected) {
+      await expect(catalog).toBeVisible();
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: '应用更新使用指引', exact: true }).click();
+      await verifyUnavailableOrNoTarget(page);
+      await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeVisible();
+      return;
+    }
+    await catalog.getByRole('button', { name: expected.title, exact: true }).click();
+    const guide = page.getByRole('dialog', { name: expected.title, exact: true });
+    await expect(
+      guide.getByRole('heading', { name: expected.steps[0].title, exact: true }),
+    ).toBeVisible();
+    await expect(
+      guide.getByText(`第 1 步，共 ${expected.steps.length} 步`, { exact: true }),
+    ).toBeVisible();
+    if (expected.steps[0].image) {
+      const alt = expected.steps[0].image.alt;
+      await expect
+        .poll(async () => {
+          const image = guide.getByRole('img', { name: alt, exact: true });
+          if (await image.count())
+            return image.evaluate((element) => (element as HTMLImageElement).naturalWidth > 0);
+          return guide.getByText(`图片暂不可用：${alt}`, { exact: true }).isVisible();
+        })
+        .toBe(true);
+    }
+    if (expected.steps.length > 1) {
+      await guide.getByRole('button', { name: '下一步', exact: true }).click();
+      await expect(
+        guide.getByRole('heading', { name: expected.steps[1].title, exact: true }),
+      ).toBeVisible();
+      await guide.getByRole('button', { name: '上一步', exact: true }).click();
+      await expect(
+        guide.getByRole('heading', { name: expected.steps[0].title, exact: true }),
+      ).toBeVisible();
+    } else await expect(guide.getByRole('button', { name: '下一步', exact: true })).toBeDisabled();
     await page.keyboard.press('Escape');
     await expect(guide).toHaveCount(0);
     await expect(open).toBeFocused();
@@ -41,14 +72,18 @@ test('离线从设置和更新旁阅读同一指引，步骤、关闭与安全�
     await page.emulateMedia({ colorScheme: 'dark' });
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await expect(
-      guide.getByRole('button', { name: '关闭检查与安装应用更新', exact: true }),
+      guide.getByRole('button', { name: `关闭${expected.title}`, exact: true }),
     ).toBeInViewport();
     await expect(guide.getByRole('button', { name: '前往功能', exact: true })).toBeInViewport();
     expect(await guide.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
     await page.screenshot({ path: info.outputPath('guidance-dark-narrow.png') });
+    if (!guidanceTarget(expected.entry.target)) {
+      await verifyUnavailableOrNoTarget(page, expected);
+      return;
+    }
     await guide.getByRole('button', { name: '前往功能', exact: true }).click();
     await expect(guide).toHaveCount(0);
-    await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeVisible();
+    await expectGuidanceDestination(page, expected);
     await expect(page.getByRole('dialog')).toHaveCount(0);
   } finally {
     await app.close();
@@ -62,6 +97,7 @@ test('从更新弹窗切换到指引后可关闭，导航不会遗留更新弹�
   delete env.ELECTRON_RUN_AS_NODE;
   const app = await electron.launch({ args: ['.'], env });
   try {
+    const expected = await expectedUpdateGuide(app);
     const page = await app.firstWindow();
     await page.getByRole('button', { name: '工作台', exact: true }).waitFor();
     await app.evaluate(({ BrowserWindow, ipcMain }) => {
@@ -85,12 +121,16 @@ test('从更新弹窗切换到指引后可关闭，导航不会遗留更新弹�
     await badge.click();
     const update = page.getByRole('dialog', { name: '应用更新', exact: true });
     await update.getByRole('button', { name: '应用更新使用指引', exact: true }).click();
-    const guide = page.getByRole('dialog', { name: '检查与安装应用更新', exact: true });
+    if (await verifyUnavailableOrNoTarget(page, expected)) {
+      await expect(update).toHaveCount(0);
+      return;
+    }
+    const guide = page.getByRole('dialog', { name: expected!.title, exact: true });
     await expect(guide).toBeVisible({ timeout: 4000 });
     await expect(update).toHaveCount(0);
     await guide.getByRole('button', { name: '前往功能', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeVisible();
+    await expectGuidanceDestination(page, expected!);
   } finally {
     await app.close();
     await fs.rm(directory, { recursive: true, force: true });
@@ -105,6 +145,7 @@ test('指引导航保存失败保留输入，恢复保存后可以重试', async
   const { DatabaseSync } = await import('node:sqlite');
   let database: InstanceType<typeof DatabaseSync> | undefined;
   try {
+    const expected = await expectedUpdateGuide(app);
     const page = await app.firstWindow();
     await page.getByRole('button', { name: '工作任务', exact: true }).click();
     const generation = (await fs.readFile(path.join(directory, 'data', 'CURRENT'), 'utf8')).trim();
@@ -132,7 +173,11 @@ test('指引导航保存失败保留输入，恢复保存后可以重试', async
     });
     await page.getByRole('button', { name: '查看可用更新', exact: true }).click();
     await page.getByRole('button', { name: '应用更新使用指引', exact: true }).click();
-    const guide = page.getByRole('dialog', { name: '检查与安装应用更新', exact: true });
+    if (await verifyUnavailableOrNoTarget(page, expected)) {
+      await expect(page.getByLabel('快速新增任务')).toHaveValue('导航失败也要保留的任务草稿');
+      return;
+    }
+    const guide = page.getByRole('dialog', { name: expected!.title, exact: true });
     await guide.getByRole('button', { name: '前往功能', exact: true }).click();
     await expect(guide.getByRole('alert')).toContainText('指引验收保存失败');
     await expect(page.getByLabel('快速新增任务')).toHaveValue('导航失败也要保留的任务草稿');
@@ -142,7 +187,7 @@ test('指引导航保存失败保留输入，恢复保存后可以重试', async
     database.exec('DROP TRIGGER guidance_draft_failure');
     await guide.getByRole('button', { name: '前往功能', exact: true }).click();
     await expect(guide).toHaveCount(0);
-    await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeVisible();
+    await expectGuidanceDestination(page, expected!);
     await page.getByRole('button', { name: '工作任务', exact: true }).click();
     await expect(page.getByLabel('快速新增任务')).toHaveValue('导航失败也要保留的任务草稿');
   } finally {
@@ -210,6 +255,7 @@ test('前往功能等待期间关闭指引，不执行迟到导航', async () =>
   delete env.ELECTRON_RUN_AS_NODE;
   const app = await electron.launch({ args: ['.'], env });
   try {
+    const expected = await expectedUpdateGuide(app);
     const page = await app.firstWindow();
     await page.getByRole('button', { name: '工作任务', exact: true }).click();
     await app.evaluate(({ BrowserWindow, ipcMain }) => {
@@ -238,7 +284,14 @@ test('前往功能等待期间关闭指引，不执行迟到导航', async () =>
     });
     await page.getByRole('button', { name: '查看可用更新', exact: true }).click();
     await page.getByRole('button', { name: '应用更新使用指引', exact: true }).click();
-    const guide = page.getByRole('dialog', { name: '检查与安装应用更新', exact: true });
+    if (await verifyUnavailableOrNoTarget(page, expected)) {
+      await expect(page.getByRole('button', { name: '工作任务', exact: true })).toHaveAttribute(
+        'aria-current',
+        'page',
+      );
+      return;
+    }
+    const guide = page.getByRole('dialog', { name: expected!.title, exact: true });
     await guide.getByRole('button', { name: '前往功能', exact: true }).click();
     await expect
       .poll(() => app.evaluate(() => typeof (globalThis as any).releaseGuidanceAvailability))

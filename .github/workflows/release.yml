@@ -35,6 +35,8 @@ jobs:
           cache: npm
       - name: Verify stable tag matches application version
         run: node scripts/prepare-release.mjs "$RELEASE_TAG" --check-version
+      - name: Report operation guidance warnings
+        run: node scripts/check-operation-guidance.mjs --source "$(git rev-parse HEAD)" --github --output release/guidance-check.json
       - run: npm ci
       - run: npm run setup:electron
       - run: npm test
@@ -71,4 +73,5 @@ jobs:
             release/SHA256SUMS
             release/uploaded.json
             release/verification.json
+            release/guidance-check.json
             test-results/
