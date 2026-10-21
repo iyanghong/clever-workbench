@@ -15,6 +15,10 @@
 
 纯契约、类型和入口登记位于 `src/guidance/`，没有 React、Electron、Node 文件访问依赖；Node 发布脚本可用现有 Node 类型擦除能力直接导入。渲染层 `bundled.ts` 仅负责 Vite raw glob 和本地图片 URL，不能在发布脚本中引用。
 
+发布适配 `scripts/release-tools/guidance.mjs` 提供 `inspectOperationGuidance(directory, { sourceSha?, releaseTag? })`：只读取传入的已检出目录，返回 `content`（当前选定说明或 null）、完整 `catalog`、图片路径 `assets` 和汇总 `warnings`。省略 releaseTag 时只选择唯一有效的 `pending.json`，指定时选择该 tag 的正式记录；不自动把缺失转换成 none。`formatOperationGuidance(report)` 生成本地终端预览。实际绑定任务复用此接口和内容，不重写解析器。
+
+`scripts/check-operation-guidance.mjs` 是同一检查的 Node CLI，输出可选 JSON、Actions annotation 和 summary；无新增运行依赖。内容读取与格式问题产生警告；程序调用错误、报告写入错误仍失败。正式来源选择、版本绑定与同源正文生成属于后续发布编排；报告不会执行 Git 写操作。
+
 解析器保留有效正文，排除未知格式、占位正文与重复身份；缺图保留替代文字，未登记入口保留正文但禁止跳转。正式内容质量由覆盖核对报告判断，不能用针对当前正文的强制测试断言重新引入发布阻断。
 
 ## 版本记录边界

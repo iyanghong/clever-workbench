@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "editor-formatting",
+  "revision": 1,
+  "title": "共用编辑器：文字与排版",
+  "platforms": [
+    "darwin",
+    "win32"
+  ],
+  "placements": [
+    "documents",
+    "tasks"
+  ],
+  "purpose": "在任务与文档中使用同一套即时排版和 Markdown 源码编辑能力。",
+  "prerequisites": {
+    "items": [
+      "使用本机工作资料；需要试操作时，先使用示例对象。"
+    ],
+    "notApplicableReason": ""
+  },
+  "entry": {
+    "label": "任务详情或文档详情 → 正文编辑器",
+    "target": "documents"
+  },
+  "steps": [
+    {
+      "id": "mode",
+      "title": "选择编辑模式",
+      "action": "在正文上方选择“即时排版”或“Markdown 源码”。",
+      "expectedResult": "两种视图编辑同一份正文；转换可能改变内容时保留源码并提示原因，不强制转换。"
+    },
+    {
+      "id": "text",
+      "title": "应用文字格式",
+      "action": "在即时排版中点击“格式”，选中文字后使用标题、加粗、斜体、删除线或行内代码。",
+      "expectedResult": "选中文字显示相应格式；再次切回源码可查看对应 Markdown 标记。"
+    },
+    {
+      "id": "list",
+      "title": "组织列表与清单",
+      "action": "把光标放在目标段落，使用无序列表、有序列表或“清单”。",
+      "expectedResult": "段落成为对应列表；清单勾选改变正文勾选状态，不会把整个工作任务标记完成。"
+    },
+    {
+      "id": "quote",
+      "title": "插入引用或代码",
+      "action": "需要引用时使用“引用”，代码内容使用“代码块”。",
+      "expectedResult": "引用与代码以独立块展示，代码保留原始文本；不是执行脚本的入口。"
+    },
+    {
+      "id": "table",
+      "title": "编辑表格",
+      "action": "使用“插入表格”后在单元格填写文字，按 Tab 移动到下一格。",
+      "expectedResult": "单元格支持单段文字和行内格式；多段内容请放到表格外，Shift+Enter 的限制会有提示。"
+    },
+    {
+      "id": "history",
+      "title": "撤销或重做编辑",
+      "action": "需要修正时使用工具栏“撤销／重做”或编辑菜单与系统快捷键。",
+      "expectedResult": "恢复当前编辑会话的文字操作；不可把编辑撤销当作恢复已删除对象或撤销已完成导出。"
+    },
+    {
+      "id": "save",
+      "title": "保存并继续",
+      "action": "等待任务底部或文档详情的状态变成已保存；失败时点击状态重试。",
+      "expectedResult": "任务与文档均等待正文和图片导入保存，切页前也会等待；任务草稿状态仍不等同于创建。"
+    }
+  ],
+  "completion": "任务或文档正文呈现所需格式，源码未被不兼容转换破坏，保存结果明确。",
+  "faq": {
+    "items": [
+      {
+        "question": "粘贴复杂 Markdown 后为什么进入源码？",
+        "answer": "不支持无损即时排版的内容会保留为源码并给出提示，避免丢失原文。可继续在源码中编辑。"
+      },
+      {
+        "question": "指引的“前往功能”会新建文章吗？",
+        "answer": "不会。它进入文档页；选择或创建正文对象后再操作。任务中的同一篇指引仍适用于任务正文。"
+      },
+      {
+        "question": "查看回收站内容能修改吗？",
+        "answer": "不能，回收站对象正文只读。恢复对象后才可继续编辑。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}

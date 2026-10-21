@@ -124,6 +124,7 @@ export function Detail({
   }
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
+      if (document.querySelector('dialog[open], [role="alertdialog"]')) return;
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !e.isComposing && !task) {
         e.preventDefault();
         void create();

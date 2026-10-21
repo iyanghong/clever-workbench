@@ -175,6 +175,70 @@ test('preview reads only remote commits and preserves dirty files and unpushed l
   }
 });
 
+test('发布预览汇总实际远端指引与警告，本地修正不掩盖远端缺项且不产生发布副作用', async () => {
+  const f = await fixture();
+  try {
+    const content = path.join(f.seed, 'content/guidance');
+    await fs.mkdir(path.join(content, 'features'), { recursive: true });
+    await fs.writeFile(path.join(content, 'features/broken.json'), '{ bad json');
+    await fs.writeFile(
+      path.join(content, 'pending.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        kind: 'release-draft',
+        operationChange: 'changed',
+        summary: '远端新增系统资料导出。',
+        changes: [{ id: 'export', summary: '从系统菜单导出资料。', guideIds: ['missing-export'] }],
+      }),
+    );
+    g(f.seed, 'add', '.');
+    g(f.seed, 'commit', '--quiet', '-m', '加入远端待核对操作说明');
+    g(f.seed, 'push', '--quiet', 'origin', 'master');
+    const sourceSha = g(f.seed, 'rev-parse', 'HEAD');
+    await fs.mkdir(path.join(f.working, 'content/guidance'), { recursive: true });
+    await fs.writeFile(
+      path.join(f.working, 'content/guidance/pending.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        kind: 'release-draft',
+        operationChange: 'none',
+        summary: '只存在本地的说明。',
+        noOperationReason: '未修改操作。',
+        changes: [],
+      }),
+    );
+    const before = g(f.working, 'status', '--porcelain');
+    const logs: string[] = [];
+    const github = fakeLocalGitHub(f);
+    const result = await local.runRelease({
+      directory: f.working,
+      origin: f.remote,
+      identity,
+      github,
+      dryRun: true,
+      ask: () => {
+        throw Error('preview must not prompt');
+      },
+      log: (line: string) => logs.push(line),
+    });
+    expect(result.status).toBe('preview');
+    expect(result.guidance.content.summary).toBe('远端新增系统资料导出。');
+    expect(result.guidance.warnings.map((item: any) => item.code)).toEqual(
+      expect.arrayContaining(['invalid-json', 'missing-guide', 'missing-review']),
+    );
+    expect(logs.join('\n')).toContain('content/guidance/features/broken.json');
+    expect(logs.join('\n')).toContain('修正建议');
+    expect(logs.join('\n')).not.toContain('只存在本地的说明');
+    expect(result.guidance.sourceSha).toBe(sourceSha);
+    expect(g(f.working, 'status', '--porcelain')).toBe(before);
+    expect(g(f.root, '--git-dir', f.remote, 'rev-parse', 'master')).toBe(sourceSha);
+    expect(github.posts).toEqual([]);
+    expect(() => g(f.root, '--git-dir', f.remote, 'rev-parse', 'v0.1.5')).toThrow();
+  } finally {
+    await f.cleanup();
+  }
+});
+
 test('confirmation publishes an isolated version commit with the local identity and only two version files', async () => {
   const f = await fixture();
   try {

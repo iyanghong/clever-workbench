@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
+import { inspectOperationGuidance, formatOperationGuidance } from './guidance.mjs';
 import {
   compareVersions,
   nextVersion,
@@ -335,9 +336,11 @@ export async function runRelease({
       log('注意：远端 master 尚未包含新的发布流程，实际运行前需先提交并推送本功能。');
     log(`\n计划：${resume ? '恢复未完成的' : '准备'} ${tag}；完整测试通过后自动发布为 latest。`);
     const plan = { tag, baseTag: latest.tag_name, sourceSha, commits, resume };
+    const guidance = await inspectOperationGuidance(snapshot, { sourceSha });
+    log(formatOperationGuidance(guidance));
     if (dryRun) {
       log('预览完成；没有创建提交、tag、草稿或云端任务。');
-      return { status: 'preview', workflowReady, ...plan };
+      return { status: 'preview', workflowReady, ...plan, guidance };
     }
     if ((await ask('确认执行以上发布计划？输入 yes 继续：')).trim().toLowerCase() !== 'yes') {
       log('已取消发布。');

@@ -4,6 +4,7 @@ import { Dialog } from '../../shared/Dialog';
 import { routeForHit, type ModuleProps } from '../../app/modules';
 import { searchKindLabels, type SearchHit } from '../../search-types';
 import { SecretCopyButton } from '../vault/SecretCopyButton';
+import { GuidanceButton } from '../guidance/Guidance';
 
 export function GlobalSearch({
   navigate,
@@ -112,6 +113,7 @@ export function GlobalSearch({
         <kbd>{window.desktop.platform === 'darwin' ? '⌘' : 'Ctrl'} K</kbd>
       </button>
       <div className="spacer" />
+      <GuidanceButton placement="search" accessibleLabel="搜索与新建使用指引" />
       {children}
       {error && !open && (
         <span className="error-text" role="alert">

@@ -14,7 +14,7 @@ const content = (value: unknown): value is string =>
   typeof value === 'string' &&
   value.trim().length > 0 &&
   value.length <= 30000 &&
-  !/replace-with-|请填写功能名称|请填写准备条件|请填写与界面一致的入口路径|请填写常见问题|请填写面向用户的更新摘要|请说明用户能完成什么|请用动词概括本步|请说明一个主要动作|请说明用户可以观察到的结果|请说明完成标志以及结果所在位置/.test(
+  !/replace-with-|请填写功能名称|请填写准备条件|请填写与界面一致的入口路径|请填写常见问题|请填写面向用户的更新摘要|请说明用户能完成什么|请用动词概括本步|请说明一个主要动作|请说明用户可以观察到的结果|请说明完成标志以及结果所在位置|请说明操作方式如何变化|请给出原因及用户可以执行的下一步/.test(
     value,
   );
 const identifier = (value: unknown): value is string =>
@@ -293,7 +293,7 @@ export function loadGuidanceCatalog(
       });
     else result.releases.push(guide);
   }
-  for (const { guide, file } of releaseFiles)
+  for (const { guide, file } of releaseFiles) {
     for (const change of guide.changes) {
       for (const guideId of change.guideIds)
         if (!result.features.some((feature) => feature.id === guideId))
@@ -305,6 +305,75 @@ export function loadGuidanceCatalog(
             suggestion: '补充有效功能指引或更正引用；保留可读版本摘要。',
           });
     }
+    const review = guide.review;
+    if (!review) continue;
+    const warn = (code: string, field: string, message: string, suggestion: string) =>
+      result.warnings.push({ code, file, field, message, suggestion });
+    if (
+      review.status === 'completed' &&
+      (review.knownGaps.length > 0 ||
+        review.checks.some((check) => ['failed', 'not-verified'].includes(check.result)))
+    )
+      warn(
+        'review-status-conflict',
+        'review.status',
+        '整体通过状态与失败、未验证结果或已知缺项冲突。',
+        '保留真实单项结果，并将整体状态改为 pending 或 completed-with-gaps。',
+      );
+    if (
+      review.checkedAt &&
+      (!/^\d{4}-\d\d-\d\dT.*(?:Z|[+-]\d\d:\d\d)$/.test(review.checkedAt) ||
+        !Number.isFinite(Date.parse(review.checkedAt)))
+    )
+      warn(
+        'invalid-review-time',
+        'review.checkedAt',
+        '核对时间缺少有效日期和时区。',
+        '记录实际核对时间及当地时区，不自动补造时间。',
+      );
+    for (const [index, check] of review.checks.entries()) {
+      const feature = result.features.find((item) => item.id === check.guideId);
+      if (!feature)
+        warn(
+          'unknown-review-guide',
+          `review.checks.${index}.guideId`,
+          `核对记录引用的功能指引不存在或无效：${check.guideId}`,
+          '修正引用，保留原始核对结果，必要时重新核对。',
+        );
+      else
+        for (const stepId of check.stepIds)
+          if (!feature.steps.some((step) => step.id === stepId))
+            warn(
+              'unknown-review-step',
+              `review.checks.${index}.stepIds`,
+              `核对记录引用的步骤不存在：${check.guideId}/${stepId}`,
+              '核对当前步骤后更新记录，不将旧结果自动视为通过。',
+            );
+      if (['failed', 'not-verified'].includes(check.result))
+        warn(
+          'review-gap',
+          `review.checks.${index}.result`,
+          `核对尚未通过：${check.guideId}（${check.result}）。`,
+          `保留并处理核对证据：${check.evidence}`,
+        );
+    }
+    for (const guideId of new Set(guide.changes.flatMap((change) => change.guideIds))) {
+      const feature = result.features.find((item) => item.id === guideId);
+      if (!feature) continue;
+      for (const step of feature.steps)
+        if (
+          !review.checks.some(
+            (check) => check.guideId === guideId && check.stepIds.includes(step.id),
+          )
+        )
+          warn(
+            'unreviewed-step',
+            'review.checks',
+            `操作变化关联步骤尚无核对记录：${guideId}/${step.id}`,
+            '为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。',
+          );
+    }
+  }
   return result;
 }
 export type { GuidanceWarning };
