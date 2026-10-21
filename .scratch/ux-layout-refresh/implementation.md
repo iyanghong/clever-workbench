@@ -6,10 +6,10 @@
 
 | 任务 | 前置 | 当前完成情况 |
 | --- | --- | --- |
-| [01 台账浏览与宽详情](issues/01-ledger-layout.md) | 无 | 已完成实现与定向验证，快进合入 `375227115b3848927cf56913a8ba977b1e2bd121`；原生鼠标及完整集成验收留任务 04 |
-| [02 系统菜单与按需批量操作](issues/02-ledger-actions.md) | 01 | 已完成实现与定向验证，快进合入 `db2056b52632ae608d75fe6d9584b280606084ab`；原生鼠标及完整集成验收留任务 04 |
-| [03 共用框架与分组新建](issues/03-shell-create.md) | 无 | 已完成实现与定向验证，快进合入 `3d571b7ee89bbf5dd5a826bb1291c709502e6cd9`；原生鼠标及完整集成验收留任务 04 |
-| [04 集成验收与视觉收尾](issues/04-integration-acceptance.md) | 02、03 | 本地验收与用户文档已完成，等待合入及统一双轴审查；见[验证记录](04-integration-evidence.md) |
+| [01 台账浏览与宽详情](issues/01-ledger-layout.md) | 无 | 已完成实现与定向验证，快进合入 `375227115b3848927cf56913a8ba977b1e2bd121`；全量与原生结果见任务 04 |
+| [02 系统菜单与按需批量操作](issues/02-ledger-actions.md) | 01 | 已完成实现与定向验证，快进合入 `db2056b52632ae608d75fe6d9584b280606084ab`；全量与原生结果见任务 04 |
+| [03 共用框架与分组新建](issues/03-shell-create.md) | 无 | 已完成实现与定向验证，快进合入 `3d571b7ee89bbf5dd5a826bb1291c709502e6cd9`；全量与原生结果见任务 04 |
+| [04 集成验收与视觉收尾](issues/04-integration-acceptance.md) | 02、03 | 本地验收与用户文档已完成，快进合入 `bfb134072711ac584e34eaa6f835005fad8278e9`；统一双轴审查待完成，见[验证记录](04-integration-evidence.md) |
 
 任务在独立工作区实施，再由集成代理合并。每项记录实际验证及局限，完成后保持 `Status: ready-for-human` 并以 `Completion: verified` 及勾选验收项标识本地任务完成；若仍有必要工作未做，则如实保留未完成状态。
 
@@ -49,4 +49,12 @@
 
 类型检查、生产构建通过；完整 Vitest 为 29 文件、153 通过、3 条依赖专项输入的条件跳过；完整 Electron 为 26 文件、59 通过、2 条安装版专属跳过，新增连续流程也单独通过。完整测试无新增失败，无产品修复。根代理在相同产品源码上完成关键原生鼠标验收，详情导出与新建弹窗点击通过；系统选择器内新增步骤因用户手动操作而停止，未记为原生通过。
 
-证据与未验边界见[任务 04 验证记录](04-integration-evidence.md)及 `release/ux-layout-refresh/task04/`，原生证据位于集成工作区的 `release/ux-layout-refresh/native/`。本地 `ikuku-tt` 身份已核对，提交使用中文。交付合入与双轴审查仍由根代理统一完成；未推送、发布或安装。
+证据与未验边界见[任务 04 验证记录](04-integration-evidence.md)及 `release/ux-layout-refresh/task04/`，原生证据位于集成工作区的 `release/ux-layout-refresh/native/`。本地 `ikuku-tt` 身份已核对，提交使用中文。交付后的双轴审查仍由根代理统一完成；未推送、发布或安装。
+
+## 任务 04 集成记录
+
+2026-10-21：确认集成头 `ba5062db9f63da680f3b3675413cfbfea03ea3d1` 是验收分支 `codex/ux-layout-acceptance` 的祖先后，使用 `git merge --ff-only` 合入。实际合并头为 `bfb134072711ac584e34eaa6f835005fad8278e9`，包含验收提交 `95d20baf4086e5f974128cbb656c8132e0cba2cb` 及 README 导出菜单、任务归属与项目归档语义的修正。合入仅涉及文档与测试，产品源码没有变化。
+
+两个交付提交的 author、committer 均为仓库本地配置 `ikuku-tt`，提交说明为中文。已将任务 04 的 69 个运行证据文件复制到集成工作区同路径，[产物清单](../../release/ux-layout-refresh/task04/artifact-manifest.json)内 68 项大小及 SHA-256 全部匹配；现有 `native/` 目录的 8 个文件内容保持不变。文档链接与 diff 检查通过，本次未重复产品构建或业务测试。
+
+全部任务代码与文档现已集中到集成分支。任务 04 保持 `Completion: pending`，待根代理完成双轴代码审查并处理发现后再更新整个流程的完成状态。本次没有推送、发布、安装或清理工作区。
