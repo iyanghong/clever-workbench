@@ -607,10 +607,11 @@ app
       const name = Array.from(system.name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_'))
         .slice(0, 40)
         .join('');
+      const extension = systemExports.fileExtension(options);
       const selection = await dialog.showSaveDialog(window!, {
         title: '导出系统资料',
-        defaultPath: `${name}-系统资料.zip`,
-        filters: [{ name: '系统资料包', extensions: ['zip'] }],
+        defaultPath: `${name}-系统资料.${extension}`,
+        filters: [{ name: '系统资料', extensions: [extension] }],
       });
       if (selection.canceled || !selection.filePath) return null;
       writable(generation);

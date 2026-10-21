@@ -85,3 +85,12 @@ test('零起点步骤与跨行链接标题保持原值，无法保留的 HTML �
     '原始 HTML',
   );
 });
+
+test('合并任务前补齐未闭合代码块，保留供 Word／PDF 处理的 HTML', () => {
+  const first = portableMarkdown('```text\n尚未闭合', 'workbench-asset://image/', true);
+  const combined = first + '\n\n### 下一项任务\n\n正文';
+  expect(marked.parse(combined)).toContain('<h3>下一项任务</h3>');
+  const html = '<details><summary>说明</summary>内容</details>';
+  expect(portableMarkdown(html, 'workbench-asset://image/', true)).toContain(html);
+  expect(() => portableMarkdown(html, '图片/')).toThrow('原始 HTML');
+});

@@ -16,6 +16,10 @@ export function SystemExportDialog({
 }) {
   const [formats, setFormats] = useState<ExportFormat[]>(['markdown']);
   const [secretKinds, setSecretKinds] = useState<SecretKind[]>(['password']);
+  const [includeDocuments, setIncludeDocuments] = useState(true);
+  const [includeTasks, setIncludeTasks] = useState(true);
+  const [taskStartDate, setTaskStartDate] = useState('');
+  const [taskEndDate, setTaskEndDate] = useState('');
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const [result, setResult] = useState<SystemExportResult | null>(null);
@@ -29,14 +33,28 @@ export function SystemExportDialog({
   const tasks = snapshot.tasks.filter(
     (item) => item.systemId === systemId && item.deletedAt === null,
   ).length;
+  const dateError =
+    includeTasks && taskStartDate && taskEndDate && taskStartDate > taskEndDate
+      ? '开始日期不能晚于结束日期。'
+      : '';
   async function submit() {
-    if (busy) return;
+    if (busy || dateError) return;
     setBusy(true);
     setError('');
     setResult(null);
     try {
       if (secretKinds.some((kind) => count(kind) > 0) && !(await vault.ensureUnlocked())) return;
-      setResult(await window.desktop.exportSystem({ systemId, formats, secretKinds }));
+      setResult(
+        await window.desktop.exportSystem({
+          systemId,
+          formats,
+          secretKinds,
+          includeDocuments,
+          includeTasks,
+          taskStartDate: includeTasks ? taskStartDate : '',
+          taskEndDate: includeTasks ? taskEndDate : '',
+        }),
+      );
     } catch (cause) {
       setError(String(cause));
     } finally {
@@ -44,11 +62,60 @@ export function SystemExportDialog({
     }
   }
   return (
-    <Dialog title="导出系统资料" error={error} onClose={() => !busy && onClose()}>
+    <Dialog title="导出系统资料" error={dateError || error} onClose={onClose} closeDisabled={busy}>
       <p>
-        {snapshot.systems.find((system) => system.id === systemId)?.name}的完整台账，包含{' '}
-        {documents} 份文档和 {tasks} 项任务。每份文档独立成文件，另附系统总览。
+        导出{snapshot.systems.find((system) => system.id === systemId)?.name}的完整台账。
+        任务合并到系统总览，文档独立成文件。
       </p>
+      <fieldset className="export-options" disabled={busy}>
+        <legend>附加内容</legend>
+        <label className="secret-show">
+          <input
+            type="checkbox"
+            aria-label="导出文档"
+            checked={includeDocuments}
+            onChange={(event) => setIncludeDocuments(event.target.checked)}
+          />
+          文档 · {documents}
+        </label>
+        <label className="secret-show">
+          <input
+            type="checkbox"
+            aria-label="导出任务"
+            checked={includeTasks}
+            onChange={(event) => setIncludeTasks(event.target.checked)}
+          />
+          任务 · {tasks}
+        </label>
+      </fieldset>
+      {includeTasks && (
+        <fieldset className="export-options" disabled={busy}>
+          <legend>任务日期范围</legend>
+          <div className="context-fields">
+            <label>
+              开始日期
+              <input
+                type="date"
+                value={taskStartDate}
+                max={taskEndDate || undefined}
+                onChange={(event) => setTaskStartDate(event.target.value)}
+              />
+            </label>
+            <label>
+              结束日期
+              <input
+                type="date"
+                value={taskEndDate}
+                min={taskStartDate || undefined}
+                onChange={(event) => setTaskEndDate(event.target.value)}
+              />
+            </label>
+          </div>
+          <span className="field-hint">
+            默认全部任务。按任务开始日期筛选，包含首尾当天；留空不限。
+          </span>
+        </fieldset>
+      )}
       <fieldset className="export-options" disabled={busy}>
         <legend>文件格式</legend>
         {(Object.keys(exportFormatLabels) as ExportFormat[]).map((format) => (
@@ -69,6 +136,11 @@ export function SystemExportDialog({
           </label>
         ))}
       </fieldset>
+      <p className="field-hint">
+        {formats.length === 1 && (!includeDocuments || documents === 0)
+          ? '直接保存一个文件，图片嵌入文件。'
+          : '多种格式或包含文档时，保存为 ZIP 资料包。'}
+      </p>
       <fieldset className="export-options" disabled={busy}>
         <legend>账号秘密</legend>
         {(Object.keys(secretLabels) as SecretKind[]).map((kind) => (
@@ -95,7 +167,7 @@ export function SystemExportDialog({
       )}
       {result && (
         <div role="status" className="export-result">
-          系统资料包已导出，共 {result.files} 个文件。
+          系统资料已导出，共 {result.files} 个文件。
           <br />
           {result.path}
         </div>
@@ -106,10 +178,10 @@ export function SystemExportDialog({
         </button>
         <button
           className="primary-button"
-          disabled={busy || !formats.length}
+          disabled={busy || !formats.length || !!dateError}
           onClick={() => void submit()}
         >
-          {busy ? '正在整理资料…' : '导出资料包'}
+          {busy ? '正在整理资料…' : '导出资料'}
         </button>
       </div>
     </Dialog>
