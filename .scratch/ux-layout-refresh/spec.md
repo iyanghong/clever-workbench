@@ -1,6 +1,8 @@
 # 共用框架与台账布局优化
 
-Status: ready-for-agent
+Status: ready-for-human
+
+Completion: verified — 方案 B 已在集成分支实现，完成开发构建验收和双轴审查；平台及安装版边界见[实施记录](implementation.md)。
 
 确认日期：2026-10-21。设计基线：v0.1.7。用户已选择原型 **B：紧凑工具栏**，并确认本文的 Electron 验收边界。
 

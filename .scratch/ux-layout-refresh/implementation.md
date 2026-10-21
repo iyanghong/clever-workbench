@@ -4,12 +4,14 @@
 
 基线：`81778de429153214396a705c1608f0840737b7ce`（v0.1.7）。集成分支：`codex/ux-layout-refresh`。规格与设计来源见 [规格](spec.md)。
 
+Completion: verified — 四项任务已集成，开发构建验收与[双轴审查](review.md)完成。条件跳过与未验平台保持原结论。
+
 | 任务 | 前置 | 当前完成情况 |
 | --- | --- | --- |
 | [01 台账浏览与宽详情](issues/01-ledger-layout.md) | 无 | 已完成实现与定向验证，快进合入 `375227115b3848927cf56913a8ba977b1e2bd121`；全量与原生结果见任务 04 |
 | [02 系统菜单与按需批量操作](issues/02-ledger-actions.md) | 01 | 已完成实现与定向验证，快进合入 `db2056b52632ae608d75fe6d9584b280606084ab`；全量与原生结果见任务 04 |
 | [03 共用框架与分组新建](issues/03-shell-create.md) | 无 | 已完成实现与定向验证，快进合入 `3d571b7ee89bbf5dd5a826bb1291c709502e6cd9`；全量与原生结果见任务 04 |
-| [04 集成验收与视觉收尾](issues/04-integration-acceptance.md) | 02、03 | 本地验收与用户文档已完成，快进合入 `bfb134072711ac584e34eaa6f835005fad8278e9`；统一双轴审查待完成，见[验证记录](04-integration-evidence.md) |
+| [04 集成验收与视觉收尾](issues/04-integration-acceptance.md) | 02、03 | 完成统一验收、文档与双轴审查，见[验证记录](04-integration-evidence.md)和[审查结果](review.md) |
 
 任务在独立工作区实施，再由集成代理合并。每项记录实际验证及局限，完成后保持 `Status: ready-for-human` 并以 `Completion: verified` 及勾选验收项标识本地任务完成；若仍有必要工作未做，则如实保留未完成状态。
 
@@ -58,3 +60,9 @@
 两个交付提交的 author、committer 均为仓库本地配置 `ikuku-tt`，提交说明为中文。已将任务 04 的 69 个运行证据文件复制到集成工作区同路径，[产物清单](../../release/ux-layout-refresh/task04/artifact-manifest.json)内 68 项大小及 SHA-256 全部匹配；现有 `native/` 目录的 8 个文件内容保持不变。文档链接与 diff 检查通过，本次未重复产品构建或业务测试。
 
 全部任务代码与文档现已集中到集成分支。任务 04 保持 `Completion: pending`，待根代理完成双轴代码审查并处理发现后再更新整个流程的完成状态。本次没有推送、发布、安装或清理工作区。
+
+## 最终审查与交付
+
+2026-10-21：在 `ba95ab49de9c8219a876120d08a05eb8114e2bfe` 上完成两名独立代理的只读审查，规范轴 0 项、规格轴 0 项，无待修复问题。四项任务均已完成，本次收尾仅更新记录，不改变经审查和测试的产品源码。
+
+类型检查与生产构建通过，完整 Vitest 为 153 通过／3 条条件跳过，完整 Electron 为 59 通过／2 条安装版条件跳过。关键原生点击与焦点返回通过，具体步骤及中断边界见 `release/ux-layout-refresh/native/native-report.md`；不声明安装包、Windows 实机或未执行的原生步骤通过。提交均使用本地 `ikuku-tt` 身份和中文说明。
