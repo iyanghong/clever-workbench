@@ -4,9 +4,9 @@ What to build: 将台账改为方案 B 的紧凑工具区、完整表格与摘�
 
 Blocked by: None (can start immediately)
 
-Status: ready-for-agent
+Status: ready-for-human
 
-Completion: complete
+Completion: verified
 
 规格：[共用框架与台账布局优化](../spec.md)。原型依据：`codex/prototype-ux-layout`，提交 `dda1f01ce7043caff3e8fc92486d4166a674cef3`，已选 B。
 
@@ -23,3 +23,5 @@ Completion: complete
 2026-10-21：用户确认四项拆分与依赖。系统管理动作收纳和按需批量条留给任务 02；共用壳与全局新建由任务 03 并行处理。
 
 2026-10-21：实现与定向验证完成，见[实施与验证记录](../01-ledger-layout-evidence.md)。已合入共用框架集成头 `97d4a29`，生产构建、相关 Vitest 与 Electron 回归通过。台账按内容区 840px 切换单栏；搜索保留详情，环境、标签和运维范围变化继续先保存再关闭详情。系统管理菜单和按需批量条由任务 02 接续，原生鼠标与完整集成验收由任务 04 统一执行。
+
+2026-10-21：已快进合入集成分支 `codex/ux-layout-refresh`，合并头为 `375227115b3848927cf56913a8ba977b1e2bd121`。集成工作区类型检查通过，证据产物已复制到 `release/ux-layout-refresh/task01/`；本项实现与定向验证完成，待人工审阅。原生鼠标及完整集成验收仍由任务 04 执行。

@@ -24,7 +24,7 @@
 | 范围筛选沿用原边界 | 环境切换后详情仍保留，可能留下范围不匹配的复制对象 | 环境变化先保存再关闭详情；环境校验接口保持原实现 |
 | 长内容摘要 | 长标题、地址和备注令单条摘要达到 521px | 备注摘要限制两行，条目小于 300px；详情长文本可换行和滚动 |
 
-首轮宽比红色数值来自执行输出，未保留完整追踪。其余红色日志或追踪保存在工作区 `release/ux-ledger-layout/`，包括 `red-filter-trace.zip`、`red-account-summary.log`、`red-content-width.log`、`red-scope-boundary.log`、`red-long-summary.log`。这些运行产物不纳入源码提交。
+首轮宽比红色数值来自执行输出，未保留完整追踪。其余红色日志或追踪已从实现工作区 `release/ux-ledger-layout/` 复制到集成工作区 `release/ux-layout-refresh/task01/`，包括 `red-filter-trace.zip`、`red-account-summary.log`、`red-content-width.log`、`red-scope-boundary.log`、`red-long-summary.log`。这些运行产物不纳入源码提交。
 
 ## 实际验证
 
@@ -38,7 +38,16 @@
 
 ## 图像证据与剩余边界
 
-截图在本工作区 `release/ux-ledger-layout/`：`ledger-wide-light.png`、`ledger-wide-dark.png`、`ledger-narrow-light.png`、`ledger-narrow-dark.png`、`account-summary.png`、`ledger-copy-details.png`。最新截图已在包含任务 03 共用壳的构建上重采。
+截图与日志已复制至集成工作区 `release/ux-layout-refresh/task01/`，25 个文件逐一校验与实现工作区内容一致。最新截图已在包含任务 03 共用壳的构建上重采。
+
+- [台账宽窗口，浅色](../../release/ux-layout-refresh/task01/ledger-wide-light.png)
+- [台账宽窗口，深色](../../release/ux-layout-refresh/task01/ledger-wide-dark.png)
+- [台账窄窗口，浅色](../../release/ux-layout-refresh/task01/ledger-narrow-light.png)
+- [台账窄窗口，深色](../../release/ux-layout-refresh/task01/ledger-narrow-dark.png)
+- [账号摘要](../../release/ux-layout-refresh/task01/account-summary.png)
+- [详情资料复制](../../release/ux-layout-refresh/task01/ledger-copy-details.png)
+
+剩余验收边界：
 
 - 本项为开发生产构建的 Electron 验证，不是安装包或目标平台发布验收；未推送、发布或安装应用。
 - 未新增独立测试逐项穷举运维筛选、文档导航；这些仍沿用原处理链路，完整集成回归由任务 04 执行。

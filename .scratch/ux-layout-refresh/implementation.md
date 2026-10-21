@@ -6,8 +6,8 @@
 
 | 任务 | 前置 | 当前完成情况 |
 | --- | --- | --- |
-| [01 台账浏览与宽详情](issues/01-ledger-layout.md) | 无 | 独立工作区实施与验证中 |
-| [02 系统菜单与按需批量操作](issues/02-ledger-actions.md) | 01 | 等待前置 |
+| [01 台账浏览与宽详情](issues/01-ledger-layout.md) | 无 | 已完成实现与定向验证，快进合入 `375227115b3848927cf56913a8ba977b1e2bd121`；原生鼠标及完整集成验收留任务 04 |
+| [02 系统菜单与按需批量操作](issues/02-ledger-actions.md) | 01 | 前置已完成，待开始 |
 | [03 共用框架与分组新建](issues/03-shell-create.md) | 无 | 已完成实现与定向验证，快进合入 `3d571b7ee89bbf5dd5a826bb1291c709502e6cd9`；原生鼠标及完整集成验收留任务 04 |
 | [04 集成验收与视觉收尾](issues/04-integration-acceptance.md) | 02、03 | 等待前置 |
 
@@ -26,3 +26,11 @@
 合入范围为共用应用壳、真实九项快速新建分组、最小窗口导航、相关 Electron 回归与说明文档。新提交的 author、committer 均与仓库本地 Git 配置的 `ikuku-tt` 一致，提交说明为中文。集成工作区重新执行 `npm run typecheck` 和 `npm run build`，均通过。
 
 定向 Electron 实际结果沿用[任务 03 实施与验证记录](03-shell-create-evidence.md)：18 项不同检查通过，2 项安装版专属检查未运行，本次合并未重复扩跑。截图和 trace 保留于 `release/ux-layout-refresh/task03/`。原生鼠标点击、完整测试集、两轴代码审查和跨任务集成验收仍由任务 04 执行；本次没有推送、发布或安装。
+
+## 任务 01 集成记录
+
+2026-10-21：确认集成头 `97d4a294ac937d51b1bf73a124fe073ab8c56e8c` 是实现分支 `codex/ux-ledger-layout` 的祖先后，使用 `git merge --ff-only` 合入。实际合并头为 `375227115b3848927cf56913a8ba977b1e2bd121`，合入范围为台账摘要列表、宽详情、按内容区宽度切换单栏、保存后复制及相关回归证据。
+
+实现提交的 author、committer 均为仓库本地配置 `ikuku-tt`，提交说明为中文。集成工作区重新执行 `npm run typecheck` 通过；生产构建与定向检查沿用[任务 01 实施与验证记录](01-ledger-layout-evidence.md)：17 条 Vitest、16 条台账 Electron 检查通过，包含任务 03 共用壳的构建及布局／账号／资料复制 4 条复跑通过。本次未重复构建或扩跑 Electron。
+
+已将实现工作区 `release/ux-ledger-layout/` 的 25 个截图、日志和追踪文件复制到集成工作区 `release/ux-layout-refresh/task01/`，逐文件校验内容一致并更新证据链接。任务 02 的前置已满足；原生鼠标、完整测试集、两轴代码审查、外观与跨任务验收仍留任务 04。本次没有推送、发布、安装或清理工作区。
