@@ -1,3 +1,5 @@
+import { ConnectionFields, OptionalFields } from './RecordFields';
+import { resourceTemplate, secretFieldName } from '../../ledger-fields';
 import { useEffect, useRef, useState } from 'react';
 import {
   PlusIcon,
@@ -201,6 +203,8 @@ export function ResourceEditor({
       port: resource.port,
       notes: resource.notes,
       fields: resource.fields,
+      connections: resource.connections ?? [],
+      preferredConnectionId: resource.preferredConnectionId ?? null,
     },
     async (value) => {
       host.onSnapshot(
@@ -354,64 +358,74 @@ export function ResourceEditor({
           )}
         </div>
       )}
-      <div className="record-fields deployment-fields">
-        <label>
-          地址
-          <div className="inline-field">
-            <input
-              aria-label="资源地址"
-              placeholder={resource.kind === 'server' ? 'IP 或 SSH 主机名' : '主机名、IP 或 URL'}
-              value={form.value.address}
-              onChange={(event) => form.change({ ...form.value, address: event.target.value })}
-            />
-            <CopyValue
-              resolveValue={async () => {
-                await flushAll();
-                return form.value.address;
-              }}
-              value={form.value.address}
-              label="资源地址"
-              onError={host.onError}
-            />
-            {/^https?:\/\//i.test(form.value.address) && (
-              <button
-                className="icon-button"
-                aria-label="打开资源链接"
-                onClick={() =>
-                  void window.desktop
-                    .openExternal(form.value.address)
-                    .catch((cause) => host.onError(String(cause)))
-                }
-              >
-                <ArrowUpRightIcon size={17} />
-              </button>
-            )}
-          </div>
-        </label>
-        <label>
-          端口
-          <div className="inline-field">
-            <input
-              aria-label="资源端口"
-              inputMode="numeric"
-              placeholder={
-                resource.kind === 'redis' ? '6379' : resource.kind === 'server' ? '22' : '可选'
-              }
-              value={form.value.port}
-              onChange={(event) => form.change({ ...form.value, port: event.target.value })}
-            />
-            <CopyValue
-              resolveValue={async () => {
-                await flushAll();
-                return form.value.port;
-              }}
-              value={form.value.port}
-              label="资源端口"
-              onError={host.onError}
-            />
-          </div>
-        </label>
-      </div>
+      {resource.kind !== 'server' ? (
+        <ConnectionFields
+          value={form.value.connections}
+          preferred={form.value.preferredConnectionId}
+          systemId={resource.systemId}
+          snapshot={snapshot}
+          onChange={(connections, preferredConnectionId) =>
+            form.change({ ...form.value, connections, preferredConnectionId })
+          }
+        />
+      ) : (
+        <div className="record-fields deployment-fields">
+          <label>
+            地址
+            <div className="inline-field">
+              <input
+                aria-label="资源地址"
+                placeholder={resource.kind === 'server' ? 'IP 或 SSH 主机名' : '主机名、IP 或 URL'}
+                value={form.value.address}
+                onChange={(event) => form.change({ ...form.value, address: event.target.value })}
+              />
+              <CopyValue
+                resolveValue={async () => {
+                  await flushAll();
+                  return form.value.address;
+                }}
+                value={form.value.address}
+                label="资源地址"
+                onError={host.onError}
+              />
+              {/^https?:\/\//i.test(form.value.address) && (
+                <button
+                  className="icon-button"
+                  aria-label="打开资源链接"
+                  onClick={() =>
+                    void window.desktop
+                      .openExternal(form.value.address)
+                      .catch((cause) => host.onError(String(cause)))
+                  }
+                >
+                  <ArrowUpRightIcon size={17} />
+                </button>
+              )}
+            </div>
+          </label>
+          <label>
+            端口
+            <div className="inline-field">
+              <input
+                aria-label="资源端口"
+                inputMode="numeric"
+                placeholder={'22'}
+                value={form.value.port}
+                onChange={(event) => form.change({ ...form.value, port: event.target.value })}
+              />
+              <CopyValue
+                resolveValue={async () => {
+                  await flushAll();
+                  return form.value.port;
+                }}
+                value={form.value.port}
+                label="资源端口"
+                onError={host.onError}
+              />
+            </div>
+          </label>
+        </div>
+      )}
       {resource.kind === 'server' && (
         <div className="record-fields server-configuration">
           {serverConfigurationFields.map((field) => (
@@ -432,25 +446,19 @@ export function ResourceEditor({
           ))}
         </div>
       )}
-      {resource.kind === 'database' && (
-        <div className="record-fields">
-          {['类型', '版本', '实例', '库名', '主备', '目录', '配置', '日志'].map((field) => (
-            <label key={field}>
-              {field}
-              <input
-                aria-label={`数据库${field}`}
-                value={form.value.fields[field] ?? ''}
-                onChange={(e) =>
-                  form.change({
-                    ...form.value,
-                    fields: { ...form.value.fields, [field]: e.target.value },
-                  })
-                }
-              />
-            </label>
-          ))}
-        </div>
-      )}
+      <OptionalFields
+        value={Object.fromEntries(
+          resourceTemplate(resource.kind, form.value.fields['类型']).map((key) => [
+            key,
+            form.value.fields[key] ?? '',
+          ]),
+        )}
+        names={resourceTemplate(resource.kind, form.value.fields['类型'])}
+        prefix={resource.kind === 'database' ? '数据库' : '资源'}
+        onChange={(fields) =>
+          form.change({ ...form.value, fields: { ...form.value.fields, ...fields } })
+        }
+      />
       <details className="compact-details">
         <summary>附加信息</summary>
         <p className="field-hint">
@@ -459,7 +467,8 @@ export function ResourceEditor({
         {Object.entries(form.value.fields)
           .filter(
             ([key]) =>
-              resource.kind !== 'server' || !['用途', ...serverConfigurationFields].includes(key),
+              !resourceTemplate(resource.kind, form.value.fields['类型']).includes(key) &&
+              (resource.kind !== 'server' || !['用途', ...serverConfigurationFields].includes(key)),
           )
           .map(([key, value]) => (
             <div className="extra-field" key={key}>
@@ -517,6 +526,10 @@ export function ResourceEditor({
             disabled={!fieldName.trim()}
             onClick={() => {
               const key = fieldName.trim();
+              if (secretFieldName.test(key)) {
+                host.onError('密码、Token 和私钥请存入账号的秘密字段。');
+                return;
+              }
               if (
                 Object.hasOwn(form.value.fields, key) ||
                 ['__proto__', 'prototype', 'constructor'].includes(key)

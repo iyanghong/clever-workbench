@@ -1,3 +1,6 @@
+import { closeNewRecord, saveNewRecord } from '../../shared/new-record';
+import { DocumentReferences } from './RecordFields';
+import { connectionAddress, resourceConnectionText } from '../../ledger-fields';
 import { PageHeading } from '../../shared/WorkspaceUI';
 import {
   LedgerCopyProvider,
@@ -35,7 +38,13 @@ import { AccessEntryEditor } from './AccessEntryEditor';
 import { AccountEditor } from './Accounts';
 import { AccountList } from './AccountList';
 import { QuickAccess, QuickServer } from './LedgerCaptureForm';
-import { QuickAccount, QuickResource, QuickService, QuickSystem } from './QuickRecord';
+import {
+  QuickAccount,
+  QuickResource,
+  QuickService,
+  QuickSystem,
+  QuickOperation,
+} from './QuickRecord';
 import { SystemExportDialog } from './SystemExportDialog';
 import { SystemActionsMenu } from './SystemActionsMenu';
 import { FavoriteButton } from '../home/FavoriteButton';
@@ -340,6 +349,15 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
   }
   async function createDocument(context: Partial<ObjectContext>) {
     const result = await run({ type: 'document.create', context });
+    const service = snapshot?.services.find((s) => s.id === selected);
+    if (service && result.createdId)
+      await run({
+        type: 'service.save',
+        id: service.id,
+        systemId: service.systemId,
+        name: service.name,
+        documentIds: [...(service.documentIds ?? []), result.createdId],
+      });
     await navigate({ module: 'documents', objectId: result.createdId });
   }
   const host: EditorHost = {
@@ -369,7 +387,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
     setBusy(true);
     try {
       await saves.flush();
-      const target = await operation();
+      const target = await saveNewRecord(operation);
       if (target.module !== 'ledger') {
         setCapture(null);
         await navigate(target);
@@ -418,7 +436,12 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
       systemId: r.systemId,
       environmentId: r.environmentId,
       address: r.address + (r.port ? `:${r.port}` : ''),
-      notes: r.notes + ' ' + Object.values(r.fields).join(' '),
+      notes:
+        r.notes +
+        ' ' +
+        Object.values(r.fields).join(' ') +
+        ' ' +
+        resourceConnectionText(r, snapshot.resources),
       kind: r.kind === 'server' ? ('servers' as const) : ('resources' as const),
       extra:
         r.fields['用途'] ??
@@ -444,7 +467,13 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
       name: r.name,
       systemId: r.systemId,
       address: r.repository,
-      notes: r.notes,
+      notes:
+        r.notes +
+        ' ' +
+        snapshot.deploymentNodes
+          .filter((n) => n.serviceId === r.id)
+          .map((n) => [n.name, n.address, n.port, ...Object.values(n.fields ?? {})].join(' '))
+          .join(' '),
       kind: 'services' as const,
       extra: `${snapshot.deploymentNodes.filter((n) => n.serviceId === r.id).length} 个部署节点 · ${stateName[scopeFor(snapshot.scopes, 'service', r.id).status ?? 'active']}`,
     })),
@@ -454,7 +483,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
       systemId: r.systemId,
       environmentId: r.environmentId,
       address: r.frequency,
-      notes: r.notes,
+      notes: r.notes + ' ' + Object.values(r.fields ?? {}).join(' '),
       kind: 'operations' as const,
       extra: `${r.kind === 'backup' ? '备份策略' : '运行作业'} · ${stateName[r.status]}`,
     })),
@@ -1169,6 +1198,63 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                           '暂未填写'}
                       </p>
                     </section>
+                    {resource && resource.kind !== 'server' && (
+                      <section>
+                        <h3>连接信息</h3>
+                        {(resource.connections ?? []).map((c) => (
+                          <div className="workspace-node" key={c.id}>
+                            <strong>
+                              {c.label}
+                              {c.id === resource.preferredConnectionId ? '（常用）' : ''}
+                            </strong>
+                            <CopyableField
+                              value={
+                                connectionAddress(c, snapshot.resources) +
+                                (c.port ? ':' + c.port : '')
+                              }
+                              label={`连接 ${c.label}`}
+                              onError={setError}
+                              currentValue={(next) => {
+                                const r = currentRecord(next.resources, resource.id);
+                                const live = r.connections?.find((v) => v.id === c.id);
+                                if (!live) throw new Error('连接已删除，请重新选择。');
+                                return (
+                                  connectionAddress(live, next.resources) +
+                                  (live.port ? ':' + live.port : '')
+                                );
+                              }}
+                            />
+                            <p>
+                              {c.role}
+                              {c.serverId
+                                ? ` · ${snapshot.resources.find((r) => r.id === c.serverId)?.name}`
+                                : ''}
+                            </p>
+                            {!c.address && c.serverId && <small>地址来自服务器</small>}
+                          </div>
+                        ))}
+                      </section>
+                    )}
+                    {service && (
+                      <DocumentReferences
+                        value={service.documentIds ?? []}
+                        systemId={systemId}
+                        snapshot={snapshot}
+                        onOpen={(id) => void navigate({ module: 'documents', objectId: id })}
+                      />
+                    )}
+                    {operation && (
+                      <dl className="workspace-properties">
+                        {Object.entries(operation.fields ?? {})
+                          .filter(([, v]) => v)
+                          .map(([key, value]) => (
+                            <div key={key}>
+                              <dt>{key}</dt>
+                              <dd>{value}</dd>
+                            </div>
+                          ))}
+                      </dl>
+                    )}
                     {resource && (
                       <details className="compact-details">
                         <summary>基本信息与配置</summary>
@@ -1250,6 +1336,24 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                                 />
                                 {!n.address && server && <small>地址来自服务器</small>}
                                 <p>{n.notes}</p>
+                                <dl className="workspace-properties">
+                                  {Object.entries(n.fields ?? {})
+                                    .filter(([, v]) => v)
+                                    .map(([key, value]) => (
+                                      <div key={key}>
+                                        <dt>{key}</dt>
+                                        <dd>{value}</dd>
+                                      </div>
+                                    ))}
+                                </dl>
+                                <DocumentReferences
+                                  value={n.documentIds ?? []}
+                                  systemId={systemId}
+                                  snapshot={snapshot}
+                                  onOpen={(id) =>
+                                    void navigate({ module: 'documents', objectId: id })
+                                  }
+                                />
                                 <button className="text-button" onClick={() => setNode(n)}>
                                   编辑节点
                                 </button>
@@ -1338,32 +1442,35 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                             ))}
                         </section>
                       )}
-                    {snapshot.documents.some(
-                      (d) =>
-                        d.systemId === systemId &&
-                        d.deletedAt === null &&
-                        (!resource || d.resourceId === resource.id),
-                    ) && (
-                      <details className="compact-details">
-                        <summary>相关文档</summary>
-                        {snapshot.documents
-                          .filter(
-                            (d) =>
-                              d.systemId === systemId &&
-                              d.deletedAt === null &&
-                              (!resource || d.resourceId === resource.id),
-                          )
-                          .map((d) => (
-                            <button
-                              className="workspace-link"
-                              key={d.id}
-                              onClick={() => void navigate({ module: 'documents', objectId: d.id })}
-                            >
-                              {d.title || '未命名文档'}
-                            </button>
-                          ))}
-                      </details>
-                    )}
+                    {!service &&
+                      snapshot.documents.some(
+                        (d) =>
+                          d.systemId === systemId &&
+                          d.deletedAt === null &&
+                          (!resource || d.resourceId === resource.id),
+                      ) && (
+                        <details className="compact-details">
+                          <summary>相关文档</summary>
+                          {snapshot.documents
+                            .filter(
+                              (d) =>
+                                d.systemId === systemId &&
+                                d.deletedAt === null &&
+                                (!resource || d.resourceId === resource.id),
+                            )
+                            .map((d) => (
+                              <button
+                                className="workspace-link"
+                                key={d.id}
+                                onClick={() =>
+                                  void navigate({ module: 'documents', objectId: d.id })
+                                }
+                              >
+                                {d.title || '未命名文档'}
+                              </button>
+                            ))}
+                        </details>
+                      )}
                   </>
                 )}
               </aside>
@@ -1470,7 +1577,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
             context={captureContext}
             busy={busy}
             execute={execute}
-            cancel={() => setCapture(null)}
+            cancel={() => closeNewRecord(() => setCapture(null))}
           />
         </Dialog>
       )}
@@ -1482,53 +1589,13 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
           onClose={() => !busy && setCapture(null)}
           error={error}
         >
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void execute(async () => {
-                const result = await window.desktop.mutate({
-                  type: 'operation.save',
-                  value: {
-                    systemId,
-                    environmentId: captureContext.environmentId ?? null,
-                    serviceId: null,
-                    resourceId: null,
-                    documentId: null,
-                    name: operationName,
-                    kind: 'job',
-                    frequency: '',
-                    status: 'unverified',
-                    notes: '',
-                  },
-                });
-                setOperationName('');
-                return { module: 'ledger', objectId: result.createdId };
-              });
-            }}
-          >
-            <label className="field-label">
-              名称
-              <input
-                autoFocus
-                required
-                value={operationName}
-                onChange={(e) => setOperationName(e.target.value)}
-              />
-            </label>
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="secondary-button"
-                disabled={busy}
-                onClick={() => setCapture(null)}
-              >
-                取消
-              </button>
-              <button className="primary-button" disabled={busy || !operationName.trim()}>
-                创建运维记录
-              </button>
-            </div>
-          </form>
+          <QuickOperation
+            snapshot={snapshot}
+            context={captureContext}
+            busy={busy}
+            execute={execute}
+            cancel={() => closeNewRecord(() => setCapture(null))}
+          />
         </Dialog>
       )}
       {capture === 'paste' && (

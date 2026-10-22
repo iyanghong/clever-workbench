@@ -3,6 +3,7 @@ import yauzl from 'yauzl';
 import { renderDocx, renderHtml } from '../electron/export-documents';
 import { portableMarkdown, exportImageNames } from '../electron/export-markdown';
 import { marked } from 'marked';
+import { restorePdfLinks } from '../electron/export-pdf-links';
 
 async function entries(bytes: Buffer) {
   return new Promise<Map<string, Buffer>>((resolve, reject) => {
@@ -27,6 +28,34 @@ async function entries(bytes: Buffer) {
     });
   });
 }
+
+test('资料包链接按受控清单输出，正文中的其他本地链接仍不开放', async () => {
+  const source = '文档/001-guide.md',
+    target = '文档/001-guide.docx';
+  const markdown = `[操作手册](${source}) [本机文件](file:///etc/passwd) [未知相对路径](../secret.txt)`;
+  const links = new Map([[source, target]]);
+  const html = renderHtml(markdown, new Map(), links);
+  expect(html).toContain(`href="${target}"`);
+  expect(html).not.toContain('href="file:');
+  expect(html).not.toContain('href="../secret.txt');
+  const word = await entries(await renderDocx(markdown, new Map(), links));
+  const rels = word.get('word/_rels/document.xml.rels')!.toString();
+  expect(rels).toContain(target);
+  expect(rels).not.toContain('/etc/passwd');
+  const placeholder = `https://workbench-export.invalid/${'x'.repeat(1024)}`;
+  const bytes = Buffer.from(
+    `%PDF-1.7\n/A <</Type /Action\n/S /URI\n/URI (${placeholder})>>\nendobj\nxref`,
+    'latin1',
+  );
+  const patched = restorePdfLinks(bytes, new Map([[placeholder, '文档/001-操作手册.pdf']]));
+  expect(patched.length).toBe(bytes.length);
+  expect(patched.indexOf('xref')).toBe(bytes.indexOf('xref'));
+  expect(patched.toString('latin1')).toContain('/S /GoToR');
+  expect(() => restorePdfLinks(bytes, new Map([[placeholder, '../secret.pdf']]))).toThrow('路径');
+  expect(() =>
+    restorePdfLinks(Buffer.from('changed-output'), new Map([[placeholder, '文档/guide.pdf']])),
+  ).toThrow('链接未生成');
+});
 
 test('Word 保留中文、实体、表格、代码和内嵌图片；打印 HTML 不执行原始 HTML 或请求外网图片', async () => {
   const src = `workbench-asset://image/${'a'.repeat(64)}.png`;

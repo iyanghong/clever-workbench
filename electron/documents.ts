@@ -1,3 +1,4 @@
+import { documentRefOwners } from './ledger-details';
 import { randomUUID } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import type {
@@ -103,6 +104,19 @@ export class Documents {
           command.environmentId === old.environmentId &&
           command.resourceId === old.resourceId,
       );
+      const invalidRefs = documentRefOwners(this.db, String(old.id)).filter(
+        (r) => context.systemId !== null && r.systemId !== context.systemId,
+      );
+      invalidRefs.push(
+        ...this.db
+          .prepare('SELECT systemId,name FROM operations WHERE documentId=?')
+          .all(old.id)
+          .filter((r) => r.systemId !== context.systemId),
+      );
+      if (invalidRefs.length)
+        throw new Error(
+          `文档仍被 ${invalidRefs.map((r) => r.name).join('、')} 引用，请先解除关联再调整归属。`,
+        );
       this.db
         .prepare(
           'UPDATE documents SET title=?,markdown=?,content=?,projectId=?,systemId=?,environmentId=?,resourceId=?,updatedAt=? WHERE id=?',
@@ -119,6 +133,9 @@ export class Documents {
           old.id,
         );
     } else if (command.type === 'document.delete') {
+      const refs = documentRefOwners(this.db, String(old.id));
+      if (refs.length)
+        throw new Error(`文档仍被 ${refs.map((r) => r.name).join('、')} 引用，请先解除关联。`);
       if (this.db.prepare('SELECT 1 FROM operations WHERE documentId=?').get(old.id))
         throw new Error('文档仍被运维记录引用，请先解除关联。');
       this.db

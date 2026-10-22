@@ -1,3 +1,4 @@
+import { requireSavedRecord } from './shared/new-record';
 import type { CreationContext } from './app/actions';
 import { QuickCreate } from './app/QuickCreate';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
@@ -37,7 +38,14 @@ export function App() {
       if (save.current === handler) save.current = async () => {};
     };
   }, []);
-  useEffect(() => window.desktop.onFlush(() => save.current()), []);
+  useEffect(
+    () =>
+      window.desktop.onFlush(async () => {
+        await requireSavedRecord();
+        await save.current();
+      }),
+    [],
+  );
   useEffect(
     () =>
       window.desktop.onDataRestored(() => {
@@ -55,6 +63,7 @@ export function App() {
   const navigate = useCallback(async (next: Route) => {
     const expected = generation.current;
     try {
+      await requireSavedRecord();
       await save.current();
       if (expected !== generation.current) return;
       setError('');

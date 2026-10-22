@@ -1,3 +1,4 @@
+import { systemDocuments } from '../../ledger-fields';
 import { useState } from 'react';
 import type { Snapshot } from '../../types';
 import { exportFormatLabels, type ExportFormat, type SystemExportResult } from '../../export-types';
@@ -27,9 +28,7 @@ export function SystemExportDialog({
   const accounts = snapshot.accounts.filter((account) => account.systemId === systemId);
   const count = (kind: SecretKind) =>
     accounts.filter((account) => account.secretKinds.includes(kind)).length;
-  const documents = snapshot.documents.filter(
-    (item) => item.systemId === systemId && item.deletedAt === null,
-  ).length;
+  const documents = systemDocuments(snapshot, systemId).length;
   const tasks = snapshot.tasks.filter(
     (item) => item.systemId === systemId && item.deletedAt === null,
   ).length;

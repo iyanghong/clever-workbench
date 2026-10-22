@@ -1,3 +1,4 @@
+import { ledgerFields } from './ledger-details';
 import { randomBytes } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import type { DatabaseSync } from 'node:sqlite';
@@ -504,56 +505,92 @@ export class Vault {
     if (
       !input ||
       typeof input !== 'object' ||
-      !['access', 'server'].includes(input.kind) ||
-      ['password', 'username', 'address', 'purpose'].some(
-        (key) =>
-          input[key as keyof LedgerCapture] !== undefined &&
-          typeof input[key as keyof LedgerCapture] !== 'string',
-      ) ||
-      (input.fields !== undefined &&
-        (!input.fields || typeof input.fields !== 'object' || Array.isArray(input.fields)))
+      !['access', 'server', 'database', 'redis', 'other', 'account'].includes(input.kind)
     )
       throw new Error('台账录入内容无效。');
-    const key = input.password ? this.requireKey() : null;
+    for (const name of [
+      'password',
+      'token',
+      'privateKey',
+      'username',
+      'address',
+      'port',
+      'purpose',
+      'accountName',
+      'notes',
+    ] as const)
+      if (input[name] !== undefined && typeof input[name] !== 'string')
+        throw new Error('台账录入内容无效。');
+    if (input.fields !== undefined) ledgerFields(input.fields);
+    const secrets = (['password', 'token', 'privateKey'] as const).filter((kind) => input[kind]);
+    const key = secrets.length ? this.requireKey() : null;
     return this.copyTransaction(() => {
       const now = Date.now();
-      const id =
-        input.kind === 'access'
-          ? this.store.ledger.accessEntries.save(
-              {
-                type: 'access.save',
-                systemId: input.systemId,
-                environmentId: input.environmentId,
-                name: input.name,
-                addresses: input.address ? [{ label: '主地址', url: input.address }] : [],
-              },
-              now,
-            )
-          : this.store.ledger.saveResource(
-              {
-                type: 'resource.save',
-                systemId: input.systemId,
-                environmentId: input.environmentId,
-                kind: 'server',
-                name: input.name,
-                address: input.address,
-                fields: { ...input.fields, ...(input.purpose ? { 用途: input.purpose } : {}) },
-              },
-              now,
-            );
-      if (input.username || input.password) {
-        const accountId = this.store.ledger.saveAccount(
+      let id: string;
+      if (input.kind === 'account')
+        id = this.store.ledger.saveAccount(
           {
             type: 'account.save',
-            environmentId: input.environmentId,
-            resourceId: input.kind === 'server' ? id : null,
-            accessId: input.kind === 'access' ? id : null,
-            name: '默认账号',
+            name: input.name,
             username: input.username,
+            notes: input.notes,
+            environmentId: input.environmentId,
+            resourceId: input.resourceId ?? null,
+            accessId: input.accessId ?? null,
           },
           now,
         );
-        if (key) this.writeSecret(accountId, 'password', input.password, key);
+      else if (input.kind === 'access')
+        id = this.store.ledger.accessEntries.save(
+          {
+            type: 'access.save',
+            systemId: input.systemId,
+            environmentId: input.environmentId,
+            name: input.name,
+            notes: input.notes,
+            addresses:
+              input.addresses ?? (input.address ? [{ label: '主地址', url: input.address }] : []),
+          },
+          now,
+        );
+      else
+        id = this.store.ledger.saveResource(
+          {
+            type: 'resource.save',
+            systemId: input.systemId,
+            environmentId: input.environmentId,
+            kind: input.kind,
+            name: input.name,
+            address: input.address,
+            port: input.port,
+            notes: input.notes,
+            connections: input.connections,
+            preferredConnectionId: input.preferredConnectionId,
+            fields: {
+              ...ledgerFields(input.fields ?? {}),
+              ...(input.purpose ? { 用途: input.purpose } : {}),
+            },
+          },
+          now,
+        );
+      if (input.kind === 'account' && this.store.ledger.account(id).systemId !== input.systemId)
+        throw new Error('账号与所选系统不一致。');
+      if (input.kind === 'account' || input.username || input.accountName || secrets.length) {
+        const accountId =
+          input.kind === 'account'
+            ? id
+            : this.store.ledger.saveAccount(
+                {
+                  type: 'account.save',
+                  environmentId: input.environmentId,
+                  resourceId: input.kind === 'access' ? null : id,
+                  accessId: input.kind === 'access' ? id : null,
+                  name: input.accountName?.trim() || '默认账号',
+                  username: input.username,
+                },
+                now,
+              );
+        if (key) for (const kind of secrets) this.writeSecret(accountId, kind, input[kind], key);
       }
       return id;
     });
@@ -634,7 +671,14 @@ export class Vault {
               r.name.toLowerCase() === row.name.trim().toLowerCase() ||
               (row.address &&
                 ('address' in r
-                  ? r.address === row.address
+                  ? r.address === row.address ||
+                    (r.connections ?? []).some(
+                      (c) =>
+                        c.address === row.address ||
+                        (!c.address &&
+                          c.serverId &&
+                          this.store.ledger.resource(c.serverId).address === row.address),
+                    )
                   : r.addresses.some((a) => a.url === row.address))),
           )
         )
@@ -693,6 +737,7 @@ export class Vault {
             frequency: row.frequency ?? '',
             status: row.status ?? 'unverified',
             notes: row.notes ?? '',
+            fields: row.fields,
           });
         else if (input.kind === 'node') {
           if (
@@ -711,6 +756,7 @@ export class Vault {
             notes: row.notes ?? '',
             mode: row.mode ?? 'fixed',
             count: row.count ?? '',
+            fields: row.fields,
           });
         } else {
           if (

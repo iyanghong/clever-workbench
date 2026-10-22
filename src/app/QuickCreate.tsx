@@ -1,3 +1,4 @@
+import { closeNewRecord, saveNewRecord } from '../shared/new-record';
 import { useEffect, useRef, useState } from 'react';
 import { PlusIcon, CaretLeftIcon, CaretRightIcon } from '@phosphor-icons/react';
 import { modules, type ModuleProps } from './modules';
@@ -50,9 +51,11 @@ export function QuickCreate({
   }
   function cancel() {
     if (!working.current) {
-      setSnapshot(null);
-      setAction(null);
-      setError('');
+      closeNewRecord(() => {
+        setSnapshot(null);
+        setAction(null);
+        setError('');
+      });
     }
   }
   async function execute(operation: () => Promise<Parameters<ModuleProps['navigate']>[0]>) {
@@ -61,7 +64,7 @@ export function QuickCreate({
     setBusy(true);
     setError('');
     try {
-      await navigate(await operation());
+      await navigate(await saveNewRecord(operation));
       setSnapshot(null);
       setAction(null);
     } catch (cause) {
@@ -122,7 +125,7 @@ export function QuickCreate({
               <button
                 className="text-button quick-back"
                 disabled={busy}
-                onClick={() => setAction(null)}
+                onClick={() => closeNewRecord(() => setAction(null))}
               >
                 <CaretLeftIcon size={13} />
                 其他类型

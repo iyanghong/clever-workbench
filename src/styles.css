@@ -4069,3 +4069,61 @@
   outline: none !important;
   box-shadow: inset 2px 0 var(--line);
 }
+
+/* Optional ledger details use the same compact controls as the existing editors. */
+.connection-fields {
+  min-width: 0;
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 8px);
+}
+.connection-fields legend {
+  color: var(--secondary);
+  font-size: var(--font-small);
+}
+.connection-fields .text-button {
+  margin-right: var(--space-3);
+}
+.document-reference {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin: var(--space-2) 0;
+  overflow-wrap: anywhere;
+}
+.document-reference label {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+.secret-input {
+  -webkit-text-security: disc;
+}
+form[data-new-record] > label {
+  display: block;
+  margin: var(--space-3) 0;
+}
+form[data-new-record] label > input:not([type='checkbox']):not([type='radio']),
+form[data-new-record] label > textarea,
+form[data-new-record] label > select {
+  width: 100%;
+}
+form[data-new-record] textarea {
+  min-height: 64px;
+}
+@media (max-width: 680px) {
+  .connection-fields .record-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.new-record-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.new-record-fields:disabled {
+  opacity: 0.75;
+}

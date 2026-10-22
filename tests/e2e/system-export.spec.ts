@@ -242,12 +242,18 @@ test('系统资料分别导出 Markdown、Word、PDF，取消解锁无输出，�
         ),
         '现场.png',
       );
-      const id = (await api.mutate({ type: 'document.create', context: { systemId } })).createdId!;
+      const id = (await api.mutate({ type: 'document.create' })).createdId!;
       await api.mutate({
         ...(await api.document(id)),
         type: 'document.edit',
         title: '排障说明',
         markdown: `## 处理步骤\n\n检查 **应用节点**。\n\n| 指标 | 状态 |\n| --- | --- |\n| 内存 | 正常 |\n\n![现场](${image.src})`,
+      });
+      await api.mutate({
+        type: 'service.save',
+        systemId,
+        name: '引用手册的应用',
+        documentIds: [id],
       });
       await api.mutate({
         type: 'task.create',
@@ -295,6 +301,20 @@ test('系统资料分别导出 Markdown、Word、PDF，取消解锁无输出，�
     expect([...entries.keys()].filter((name) => name.endsWith('.docx'))).toHaveLength(2);
     expect([...entries.keys()].filter((name) => name.endsWith('.pdf'))).toHaveLength(2);
     expect(entries.get('PDF/系统总览.pdf')!.subarray(0, 4).toString()).toBe('%PDF');
+    const pdf = entries.get('PDF/系统总览.pdf')!;
+    expect(pdf.toString('latin1')).toContain('/S /GoToR');
+    expect(pdf.toString('latin1')).not.toContain('workbench-export.invalid');
+    const targetHex = /\/UF <FEFF([0-9a-f]+)>/.exec(pdf.toString('latin1'))![1];
+    const pdfTarget = Buffer.from(targetHex, 'hex').swap16().toString('utf16le');
+    expect(entries.has(`PDF/${pdfTarget}`)).toBe(true);
+    await fs.writeFile(testInfo.outputPath('overview-links.pdf'), pdf);
+    const wordPath = testInfo.outputPath('overview-links.docx');
+    await fs.writeFile(wordPath, entries.get('Word/系统总览.docx')!);
+    const word = await readZip(wordPath);
+    const relation = word.get('word/_rels/document.xml.rels')!.toString();
+    const wordTarget = /Target="([^"]+\.docx)"/.exec(relation)![1];
+    expect(entries.has(`Word/${decodeURIComponent(wordTarget)}`)).toBe(true);
+
     expect([...entries.keys()].some((name) => name.startsWith('Markdown/图片/'))).toBe(true);
     expect(JSON.stringify(await page.evaluate(() => window.desktop.snapshot()))).not.toContain(
       'fictional-server-export-password',

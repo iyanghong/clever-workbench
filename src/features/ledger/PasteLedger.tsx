@@ -1,3 +1,10 @@
+import { serverConfigurationFields } from '../../ledger-types';
+import {
+  resourceTemplate,
+  nodeFields,
+  operationFields,
+  connectionAddress,
+} from '../../ledger-fields';
 import { useEffect, useRef, useState } from 'react';
 import type { Snapshot } from '../../types';
 import type { LedgerBatch } from '../../ledger-workspace-types';
@@ -16,7 +23,7 @@ const baseFields = [
   ['frequency', '频率'],
   ['status', '状态'],
   ['count', '节点数量'],
-  ['mode', '部署方式'],
+  ['mode', '运行方式'],
 ] as const;
 const aliases: Record<string, string> = {
   名称: 'name',
@@ -183,11 +190,28 @@ export function PasteLedger({
             : kind === 'access'
               ? ['name', 'address', 'notes', 'username', 'password', 'accountName']
               : ['name', 'address', 'port', 'notes', 'username', 'password', 'accountName'];
-  const hasFields = ['server', 'database', 'redis', 'other'].includes(kind);
+  const hasFields = ['server', 'database', 'redis', 'other', 'node', 'job', 'backup'].includes(
+    kind,
+  );
+  const templateFields =
+    kind === 'node'
+      ? nodeFields
+      : kind === 'job' || kind === 'backup'
+        ? operationFields[kind]
+        : ['server', 'database', 'redis', 'other'].includes(kind)
+          ? resourceTemplate(kind as 'server' | 'database' | 'redis' | 'other')
+          : [];
+  const visibleFields = [
+    ...new Set([
+      ...(kind === 'server' ? serverConfigurationFields : []),
+      ...templateFields,
+      ...extraFields,
+    ]),
+  ];
   const supported = baseFields.filter(([key]) => allowed.includes(key));
   const columns: [string, string][] = [
     ...supported.map(([key, label]): [string, string] => [key, key === 'name' ? '名称' : label]),
-    ...extraFields.map((key): [string, string] => [`field:${key}`, key]),
+    ...visibleFields.map((key): [string, string] => [`field:${key}`, key]),
   ];
   const mappingError = mapping.some(
     (key, i) =>
@@ -288,7 +312,7 @@ export function PasteLedger({
           : row.status && !['active', 'inactive', 'unverified'].includes(row.status)
             ? '状态需为在用、停用或待确认'
             : row.mode && !['fixed', 'scheduled'].includes(row.mode)
-              ? '部署方式需为固定或按需'
+              ? '运行方式需为固定或按需'
               : '');
     if (kind === 'access' && row.address) {
       try {
@@ -316,7 +340,10 @@ export function PasteLedger({
             r.name.toLowerCase() === row.name.trim().toLowerCase() ||
             (row.address &&
               ('address' in r
-                ? r.address === row.address
+                ? r.address === row.address ||
+                  ('connections' in r ? (r.connections ?? []) : []).some(
+                    (c) => connectionAddress(c, snapshot.resources) === row.address,
+                  )
                 : 'addresses' in r
                   ? r.addresses.some((a) => a.url === row.address)
                   : false)) ||

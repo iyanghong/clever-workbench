@@ -1,3 +1,4 @@
+import { resourceConnectionText } from '../src/ledger-fields';
 import { WorkspaceLedger } from './ledger-workspace';
 import { scopeFor } from '../src/ledger-workspace-types';
 import type { DatabaseSync } from 'node:sqlite';
@@ -20,6 +21,12 @@ export function searchWorkspace(db: DatabaseSync, ledger: Ledger, query: unknown
   if (terms.length > 30) throw new Error('搜索关键词过多。');
   const data = { ...ledger.snapshot(), ...new WorkspaceLedger(db).snapshot() },
     entries: Entry[] = [];
+  const documentTitles = new Map(
+    db
+      .prepare('SELECT id,title FROM documents WHERE deletedAt IS NULL')
+      .all()
+      .map((r) => [String(r.id), String(r.title)]),
+  );
   const systems = new Map(data.systems.map((item) => [item.id, item])),
     environments = new Map(data.environments.map((item) => [item.id, item])),
     resources = new Map(data.resources.map((item) => [item.id, item]));
@@ -121,7 +128,7 @@ export function searchWorkspace(db: DatabaseSync, ledger: Ledger, query: unknown
         context: context({ systemId: item.systemId }),
         summary: item.repository,
       },
-      item.notes,
+      `${item.notes} ${(item.documentIds ?? []).map((id) => documentTitles.get(id) ?? '').join(' ')}`,
     );
   for (const item of data.resources) {
     add(
@@ -132,7 +139,7 @@ export function searchWorkspace(db: DatabaseSync, ledger: Ledger, query: unknown
         context: context({ systemId: item.systemId, environmentId: item.environmentId }),
         summary: [kindWords[item.kind], item.address, item.port].filter(Boolean).join(' · '),
       },
-      `${item.notes} ${Object.entries(item.fields).flat().join(' ')}`,
+      `${item.notes} ${Object.entries(item.fields).flat().join(' ')} ${resourceConnectionText(item, data.resources)}`,
     );
   }
   for (const item of data.accessEntries) {
@@ -184,7 +191,7 @@ export function searchWorkspace(db: DatabaseSync, ledger: Ledger, query: unknown
           { active: '在用', inactive: '停用', unverified: '待确认' }[item.status],
         ].join(' · '),
       },
-      item.notes,
+      `${item.notes} ${Object.values(item.fields ?? {}).join(' ')}`,
     );
   for (const node of data.deploymentNodes) {
     const service = data.services.find((s) => s.id === node.serviceId);
@@ -197,7 +204,7 @@ export function searchWorkspace(db: DatabaseSync, ledger: Ledger, query: unknown
         context: context({ systemId: service?.systemId, environmentId: node.environmentId }),
         summary: node.address || server?.address || '服务器待补充',
       },
-      `${service?.name ?? ''} ${server?.name ?? ''} ${node.port} ${node.count} ${node.notes}`,
+      `${service?.name ?? ''} ${server?.name ?? ''} ${node.port} ${node.count} ${node.notes} ${Object.values(node.fields ?? {}).join(' ')} ${(node.documentIds ?? []).map((id) => documentTitles.get(id) ?? '').join(' ')}`,
     );
   }
   for (const kind of ['task', 'document'] as const) {
@@ -220,7 +227,20 @@ export function searchWorkspace(db: DatabaseSync, ledger: Ledger, query: unknown
             context(row as Partial<ObjectContext>, row.projectId as string | null) || '未分类',
           summary: plain.slice(0, 120),
         },
-        body,
+        body +
+          (kind === 'document'
+            ? ' ' +
+              [
+                ...data.services
+                  .filter((s) => s.documentIds?.includes(String(row.id)))
+                  .map((s) => s.name),
+                ...data.deploymentNodes
+                  .filter((n) => n.documentIds?.includes(String(row.id)))
+                  .map((n) =>
+                    [n.name, data.services.find((s) => s.id === n.serviceId)?.name].join(' '),
+                  ),
+              ].join(' ')
+            : ''),
       );
     }
   }

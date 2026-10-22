@@ -1,3 +1,4 @@
+import { resourceConnectionText } from '../src/ledger-fields';
 import type { Snapshot } from '../src/types';
 import type { DeploymentNode, ScopeKind } from '../src/ledger-workspace-types';
 import { inEnvironment, scopeFor } from '../src/ledger-workspace-types';
@@ -117,13 +118,20 @@ export function collectLedgerCopy(
       ['所属系统', system.name],
       ['服务', service.name],
       ['部署环境', environmentName(node.environmentId)],
-      ['部署方式', node.mode === 'scheduled' ? '按需调度' : '固定部署'],
+      ['运行方式', node.mode === 'scheduled' ? '按需调度' : '固定部署'],
       ['节点规模', node.count],
       ['服务器', r?.name],
       ['地址', node.address || r?.address],
       ['地址来源', !node.address && r?.address ? `服务器 ${r.name}` : ''],
       ['端口', node.port],
       ['说明', node.notes],
+      ...Object.entries(node.fields ?? {}),
+      [
+        '操作文档',
+        (node.documentIds ?? [])
+          .map((id) => snapshot.documents.find((d) => d.id === id)?.title ?? '')
+          .join('、'),
+      ],
     ]);
   }
   for (const ref of selection.objects) {
@@ -141,6 +149,7 @@ export function collectLedgerCopy(
         [r.kind === 'server' ? 'IP' : '地址', r.address],
         ['端口', r.port],
         ...Object.entries(r.fields),
+        ['连接信息', resourceConnectionText(r, snapshot.resources)],
         ['说明', r.notes],
       ]);
       owners.set(key, r.name);
@@ -173,6 +182,12 @@ export function collectLedgerCopy(
           ['状态', states[state.status ?? 'active']],
           ['状态说明', state.statusNotes],
           ['说明', s.notes],
+          [
+            '操作文档',
+            (s.documentIds ?? [])
+              .map((id) => snapshot.documents.find((d) => d.id === id)?.title ?? '')
+              .join('、'),
+          ],
         ]),
         ...nodeList.map(nodeText),
       ]
@@ -206,6 +221,7 @@ export function collectLedgerCopy(
       }
       text = lines([
         ['运行维护', o.name],
+        ...Object.entries(o.fields ?? {}),
         ...scope('operation', o.id, o.environmentId),
         ['类型', o.kind === 'backup' ? '备份策略' : '运行作业'],
         ['频率', o.frequency],

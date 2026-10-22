@@ -3,10 +3,16 @@ import { randomUUID } from 'node:crypto';
 import { exportImageNames } from './export-markdown';
 import { renderDocx, renderHtml, type ExportImages } from './export-documents';
 import type { DocumentRenderer } from './system-export';
+import { restorePdfLinks } from './export-pdf-links';
 
 export const exportScheme = 'workbench-export';
 
-export const renderExportDocument: DocumentRenderer = async (format, markdown, assets) => {
+export const renderExportDocument: DocumentRenderer = async (
+  format,
+  markdown,
+  assets,
+  bundleLinks = new Map(),
+) => {
   const images: ExportImages = new Map();
   for (const name of exportImageNames(markdown)) {
     const bytes = assets.get(name);
@@ -16,8 +22,15 @@ export const renderExportDocument: DocumentRenderer = async (format, markdown, a
     const size = image.getSize();
     images.set(`workbench-asset://image/${name}`, { bytes: image.toPNG(), ...size });
   }
-  if (format === 'docx') return renderDocx(markdown, images);
-  const html = renderHtml(markdown, images);
+  if (format === 'docx') return renderDocx(markdown, images, bundleLinks);
+  const printLinks = new Map<string, string>(),
+    targets = new Map<string, string>();
+  for (const [source, target] of bundleLinks) {
+    const placeholder = `https://workbench-export.invalid/${targets.size}/${'x'.repeat(1024)}`;
+    printLinks.set(source, placeholder);
+    targets.set(placeholder, decodeURIComponent(target));
+  }
+  const html = renderHtml(markdown, images, printLinks);
   const printSession = session.fromPartition(`workbench-export-${randomUUID()}`, { cache: false });
   const url = `${exportScheme}://document/index.html`;
   printSession.webRequest.onBeforeRequest((details, callback) =>
@@ -45,12 +58,13 @@ export const renderExportDocument: DocumentRenderer = async (format, markdown, a
   });
   try {
     await window.loadURL(url);
-    return await window.webContents.printToPDF({
+    const pdf = await window.webContents.printToPDF({
       printBackground: true,
       preferCSSPageSize: true,
       generateDocumentOutline: true,
       generateTaggedPDF: true,
     });
+    return restorePdfLinks(pdf, targets);
   } finally {
     window.destroy();
     printSession.protocol.unhandle(exportScheme);

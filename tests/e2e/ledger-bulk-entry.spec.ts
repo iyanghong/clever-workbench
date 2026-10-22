@@ -183,7 +183,7 @@ test('全部十类可直接录入，账号按所属对象查重，服务与节�
       await form.getByLabel('第 1 行状态').selectOption('');
     }
     if (kind === 'node') {
-      await form.getByLabel('第 1 行部署方式').selectOption('scheduled');
+      await form.getByLabel('第 1 行运行方式').selectOption('scheduled');
       await form.getByLabel('第 1 行节点数量').fill('2～4');
     }
     await form.getByRole('button', { name: '确认新增', exact: true }).click();

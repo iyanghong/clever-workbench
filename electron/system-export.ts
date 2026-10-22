@@ -1,3 +1,4 @@
+import { connectionAddress, systemDocuments } from '../src/ledger-fields';
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -23,6 +24,7 @@ export type DocumentRenderer = (
   format: Exclude<ExportFormat, 'markdown'>,
   markdown: string,
   images: Map<string, Buffer>,
+  bundleLinks?: ReadonlyMap<string, string>,
 ) => Promise<Buffer>;
 const escape = (value: string) =>
   value.replace(/&/g, '&amp;').replace(/[\\`*_{}\[\]<>#|!]/g, '\\$&');
@@ -106,9 +108,7 @@ export class SystemExports {
   fileExtension(options: SystemExportOptions) {
     const hasDocuments =
       options.includeDocuments &&
-      this.store
-        .snapshot()
-        .documents.some((item) => item.systemId === options.systemId && item.deletedAt === null);
+      systemDocuments(this.store.snapshot(), options.systemId).length > 0;
     if (hasDocuments) return 'zip';
     if (options.formats.length !== 1) throw new Error('单文件导出请选择一种文件格式。');
     return options.formats[0] === 'markdown' ? 'md' : options.formats[0];
@@ -176,9 +176,17 @@ export class SystemExports {
         item.startedAt >= first &&
         item.startedAt < last,
     );
-    const records = snapshot.documents.filter(
-      (item) => options.includeDocuments && item.systemId === system.id && item.deletedAt === null,
-    );
+    const records = options.includeDocuments ? systemDocuments(snapshot, system.id) : [];
+    const documentLinks = (ids: string[] = []) =>
+      ids
+        .map((id) => {
+          const index = records.findIndex((d) => d.id === id);
+          const doc = snapshot.documents.find((d) => d.id === id);
+          return index < 0
+            ? heading(doc?.title || '未命名文档')
+            : `[${heading(doc?.title || '未命名文档')}](${fileLink(`文档/${filename(records[index].title, index)}.md`)})`;
+        })
+        .join('、');
     let overview = `# ${heading(system.name)} 系统总览\n\n本资料包含该系统的完整台账及所选任务、文档。导出时间采用 UTC。\n\n`;
     if (hasSecrets) overview += '**包含明文秘密，请妥善保存和交接。**\n\n';
     overview += table([
@@ -220,6 +228,12 @@ export class SystemExports {
         table([
           ['仓库', service.repository],
           ['说明', service.notes],
+          [
+            '操作文档',
+            (service.documentIds ?? [])
+              .map((id) => snapshot.documents.find((d) => d.id === id)?.title ?? '')
+              .join('、'),
+          ],
           ...range('service', service.id),
           [
             '状态',
@@ -229,9 +243,11 @@ export class SystemExports {
           ],
           ['状态说明', scopeFor(snapshot.scopes, 'service', service.id).statusNotes ?? ''],
         ]);
+      if (service.documentIds?.length)
+        overview += `操作文档：${documentLinks(service.documentIds)}\n\n`;
       for (const deployment of snapshot.deploymentNodes.filter(
         (item) => item.serviceId === service.id,
-      ))
+      )) {
         overview += table([
           ['节点', deployment.name],
           ['环境', environmentName(deployment.environmentId)],
@@ -253,10 +269,20 @@ export class SystemExports {
           ],
           ['端口', deployment.port],
           ['说明', deployment.notes],
+          ...Object.entries(deployment.fields ?? {}),
+          [
+            '操作文档',
+            (deployment.documentIds ?? [])
+              .map((id) => snapshot.documents.find((d) => d.id === id)?.title ?? '')
+              .join('、'),
+          ],
         ]);
+        if (deployment.documentIds?.length)
+          overview += `操作文档：${documentLinks(deployment.documentIds)}\n\n`;
+      }
     }
     if (resources.length) overview += '## 资源与服务器\n\n';
-    for (const resource of resources)
+    for (const resource of resources) {
       overview +=
         `### ${heading(resource.name)}\n\n` +
         table([
@@ -272,6 +298,17 @@ export class SystemExports {
           ...Object.entries(resource.fields),
           ['说明', resource.notes],
         ]);
+      for (const c of resource.connections ?? [])
+        overview += table([
+          ['连接', c.label],
+          ['常用', c.id === resource.preferredConnectionId ? '是' : '否'],
+          ['地址', connectionAddress(c, snapshot.resources)],
+          ['端口', c.port],
+          ['角色', c.role],
+          ['服务器', snapshot.resources.find((r) => r.id === c.serverId)?.name ?? ''],
+          ['地址来源', !c.address && c.serverId ? '关联服务器' : '独立地址'],
+        ]);
+    }
     if (entries.length) overview += '## 访问入口\n\n';
     for (const entry of entries) {
       overview +=
@@ -330,6 +367,7 @@ export class SystemExports {
               '',
           ],
           ['步骤文档', snapshot.documents.find((d) => d.id === operation.documentId)?.title ?? ''],
+          ...Object.entries(operation.fields ?? {}),
           ['说明', operation.notes],
         ]);
     if (tasks.length) overview += '## 关联任务\n\n';
@@ -425,7 +463,14 @@ export class SystemExports {
           );
         } else {
           if (!this.renderDocument) throw new Error('当前环境无法生成所选文档格式。');
-          bytes = await this.renderDocument(format, document.markdown, assets);
+          const bundleLinks = new Map(
+            document.name === '系统总览.md'
+              ? documents
+                  .filter((d) => d.name.startsWith('文档/'))
+                  .map((d) => [fileLink(d.name), fileLink(d.name.replace(/\.md$/, `.${format}`))])
+              : [],
+          );
+          bytes = await this.renderDocument(format, document.markdown, assets, bundleLinks);
         }
         assertCurrent();
         return bytes;

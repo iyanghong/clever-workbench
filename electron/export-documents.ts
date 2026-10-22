@@ -50,7 +50,11 @@ function tableWidths(table: Tokens.Table, total: number) {
   return widths;
 }
 
-export function renderHtml(markdown: string, images: ExportImages) {
+export function renderHtml(
+  markdown: string,
+  images: ExportImages,
+  bundleLinks: ReadonlyMap<string, string> = new Map(),
+) {
   const parser = new Marked({ gfm: true, async: false });
   parser.use({
     renderer: {
@@ -65,7 +69,8 @@ export function renderHtml(markdown: string, images: ExportImages) {
       },
       link({ href, tokens }) {
         const label = this.parser.parseInline(tokens);
-        return safeLink(href) ? `<a href="${xml(href)}">${label}</a>` : label;
+        const target = bundleLinks.get(href) ?? (safeLink(href) ? href : null);
+        return target ? `<a href="${xml(target)}">${label}</a>` : label;
       },
       table(token) {
         const columns = tableWidths(token, 100)
@@ -99,7 +104,11 @@ export function renderHtml(markdown: string, images: ExportImages) {
   </style></head><body>${parser.parse(markdown)}</body></html>`;
 }
 
-export async function renderDocx(markdown: string, images: ExportImages) {
+export async function renderDocx(
+  markdown: string,
+  images: ExportImages,
+  bundleLinks: ReadonlyMap<string, string> = new Map(),
+) {
   const width = 9936;
   const textRun = (text: string, style: IRunOptions = {}) => new TextRun({ ...style, text });
   function inline(tokens: Token[] = [], style: IRunOptions = {}, maxWidth = 660): ParagraphChild[] {
@@ -123,9 +132,8 @@ export async function renderDocx(markdown: string, images: ExportImages) {
             : [textRun(token.text, style)];
         case 'link': {
           const children = inline(token.tokens, style, maxWidth);
-          return safeLink(token.href)
-            ? [new ExternalHyperlink({ link: token.href, children })]
-            : children;
+          const target = bundleLinks.get(token.href) ?? (safeLink(token.href) ? token.href : null);
+          return target ? [new ExternalHyperlink({ link: target, children })] : children;
         }
         case 'image': {
           const image = imageFor(token.href, images);

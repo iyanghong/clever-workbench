@@ -1,3 +1,6 @@
+import { closeNewRecord, saveNewRecord } from '../../shared/new-record';
+import { OptionalFields, DocumentReferences } from './RecordFields';
+import { nodeFields, operationFields } from '../../ledger-fields';
 import { useEffect, useState } from 'react';
 import type { Snapshot, Command } from '../../types';
 import type { ScopeKind, DeploymentNode, Operation } from '../../ledger-workspace-types';
@@ -134,7 +137,12 @@ export function ServiceEditor({
 }: EditorHost & { id: string; snapshot: Snapshot }) {
   const service = snapshot.services.find((s) => s.id === id)!;
   const form = useAutosave(
-    { name: service.name, repository: service.repository, notes: service.notes },
+    {
+      name: service.name,
+      repository: service.repository,
+      notes: service.notes,
+      documentIds: service.documentIds ?? [],
+    },
     async (value) =>
       host.onSnapshot(
         (
@@ -161,6 +169,13 @@ export function ServiceEditor({
           />
         </label>
       ))}
+      <DocumentReferences
+        value={form.value.documentIds}
+        systemId={service.systemId}
+        snapshot={snapshot}
+        onChange={(documentIds) => form.change({ ...form.value, documentIds })}
+        onOpen={(id) => void host.navigate({ module: 'documents', objectId: id })}
+      />
       <button
         className="save-indicator"
         onClick={() => void form.flush().catch((e) => host.onError(String(e)))}
@@ -186,18 +201,42 @@ export function OperationEditor({
   const value = form.value;
   return (
     <div className="workspace-fields">
+      <OperationFields
+        value={value}
+        snapshot={snapshot}
+        onChange={(next) => form.change({ ...value, ...next })}
+      />
+      <button
+        className="save-indicator"
+        onClick={() => void form.flush().catch((e) => host.onError(String(e)))}
+      >
+        {form.status}
+      </button>
+    </div>
+  );
+}
+
+export function OperationFields({
+  value,
+  snapshot,
+  onChange,
+}: {
+  value: Omit<Operation, 'id'> & { id?: string };
+  snapshot: Snapshot;
+  onChange: (value: Omit<Operation, 'id'> & { id?: string }) => void;
+}) {
+  return (
+    <>
       <label className="field-label">
         名称
-        <input
-          value={value.name}
-          onChange={(e) => form.change({ ...value, name: e.target.value })}
-        />
+        <input value={value.name} onChange={(e) => onChange({ ...value, name: e.target.value })} />
       </label>
       <label className="field-label">
         类型
         <select
+          aria-label="运维类型"
           value={value.kind}
-          onChange={(e) => form.change({ ...value, kind: e.target.value as Operation['kind'] })}
+          onChange={(e) => onChange({ ...value, kind: e.target.value as Operation['kind'] })}
         >
           <option value="job">运行作业</option>
           <option value="backup">备份策略</option>
@@ -208,14 +247,14 @@ export function OperationEditor({
         <input
           placeholder="例如：每日 02:00"
           value={value.frequency}
-          onChange={(e) => form.change({ ...value, frequency: e.target.value })}
+          onChange={(e) => onChange({ ...value, frequency: e.target.value })}
         />
       </label>
       <label className="field-label">
         状态
         <select
           value={value.status}
-          onChange={(e) => form.change({ ...value, status: e.target.value as Operation['status'] })}
+          onChange={(e) => onChange({ ...value, status: e.target.value as Operation['status'] })}
         >
           <option value="active">在用</option>
           <option value="inactive">停用</option>
@@ -226,7 +265,7 @@ export function OperationEditor({
         环境
         <select
           value={value.environmentId ?? ''}
-          onChange={(e) => form.change({ ...value, environmentId: e.target.value || null })}
+          onChange={(e) => onChange({ ...value, environmentId: e.target.value || null })}
         >
           <option value="">系统通用</option>
           {snapshot.environments
@@ -250,7 +289,7 @@ export function OperationEditor({
           }
           onChange={(e) => {
             const [kind, id] = e.target.value.split(':');
-            form.change({
+            onChange({
               ...value,
               serviceId: kind === 'service' ? id : null,
               resourceId: kind === 'resource' ? id : null,
@@ -278,7 +317,7 @@ export function OperationEditor({
         步骤文档
         <select
           value={value.documentId ?? ''}
-          onChange={(e) => form.change({ ...value, documentId: e.target.value || null })}
+          onChange={(e) => onChange({ ...value, documentId: e.target.value || null })}
         >
           <option value="">稍后补充</option>
           {snapshot.documents
@@ -294,16 +333,18 @@ export function OperationEditor({
         说明
         <textarea
           value={value.notes}
-          onChange={(e) => form.change({ ...value, notes: e.target.value })}
+          onChange={(e) => onChange({ ...value, notes: e.target.value })}
         />
       </label>
-      <button
-        className="save-indicator"
-        onClick={() => void form.flush().catch((e) => host.onError(String(e)))}
-      >
-        {form.status}
-      </button>
-    </div>
+      <details className="compact-details">
+        <summary>作业／备份资料（可选）</summary>
+        <OptionalFields
+          value={value.fields ?? {}}
+          names={operationFields[value.kind]}
+          onChange={(fields) => onChange({ ...value, fields })}
+        />
+      </details>
+    </>
   );
 }
 
@@ -357,7 +398,10 @@ export function NodeDialog({
     setBusy(true);
     try {
       if (node) await form.flush();
-      else onSaved((await window.desktop.mutate({ type: 'node.save', value })).snapshot);
+      else
+        onSaved(
+          (await saveNewRecord(() => window.desktop.mutate({ type: 'node.save', value }))).snapshot,
+        );
       onClose();
     } catch (e) {
       setError(String(e));
@@ -368,78 +412,29 @@ export function NodeDialog({
   function close() {
     if (busy) return;
     if (node) void saveAndClose();
-    else onClose();
+    else closeNewRecord(onClose);
   }
   return (
     <Dialog title={node ? '编辑部署节点' : '新增部署节点'} error={error} onClose={close}>
       <form
+        data-new-record={node ? undefined : ''}
+        aria-busy={busy}
+        onChangeCapture={(e) => {
+          if (!node) e.currentTarget.dataset.dirty = 'true';
+        }}
         onSubmit={(e) => {
           e.preventDefault();
           void saveAndClose();
         }}
       >
-        <label className="field-label">
-          节点名称
-          <input
-            required
-            autoFocus
-            value={value.name}
-            onChange={(e) => setValue({ ...value, name: e.target.value })}
+        <fieldset disabled={busy} className="new-record-fields">
+          <DeploymentFields
+            value={value}
+            onChange={(next) => setValue({ ...value, ...next })}
+            snapshot={snapshot}
+            systemId={systemId}
           />
-        </label>
-        <label className="field-label">
-          部署环境
-          <select
-            required
-            aria-label="部署环境"
-            value={value.environmentId}
-            onChange={(e) => setValue({ ...value, environmentId: e.target.value })}
-          >
-            <option value="">选择环境</option>
-            {snapshot.environments
-              .filter((e) => e.systemId === systemId)
-              .map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
-          </select>
-        </label>
-        <label className="field-label">
-          方式
-          <select
-            value={value.mode}
-            onChange={(e) => setValue({ ...value, mode: e.target.value as DeploymentNode['mode'] })}
-          >
-            <option value="fixed">固定部署</option>
-            <option value="scheduled">按需调度</option>
-          </select>
-        </label>
-        <label className="field-label">
-          服务器（可后补）
-          <select
-            value={value.serverId ?? ''}
-            onChange={(e) => setValue({ ...value, serverId: e.target.value || null })}
-          >
-            <option value="">未关联服务器</option>
-            {snapshot.resources
-              .filter((r) => r.systemId === systemId && r.kind === 'server')
-              .map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-          </select>
-        </label>
-        {(['address', 'port', 'count', 'notes'] as const).map((key, i) => (
-          <label key={key} className="field-label">
-            {['独立地址（留空展示服务器地址）', '端口', '节点数量／规模说明', '备注'][i]}
-            <input
-              value={value[key]}
-              onChange={(e) => setValue({ ...value, [key]: e.target.value })}
-            />
-          </label>
-        ))}
+        </fieldset>
         {node && (
           <button
             type="button"
@@ -462,6 +457,103 @@ export function NodeDialog({
         </div>
       </form>
     </Dialog>
+  );
+}
+
+export function DeploymentFields({
+  value,
+  onChange,
+  snapshot,
+  systemId,
+}: {
+  value: Omit<DeploymentNode, 'id' | 'serviceId'>;
+  onChange: (value: Omit<DeploymentNode, 'id' | 'serviceId'>) => void;
+  snapshot: Snapshot;
+  systemId: string;
+}) {
+  return (
+    <>
+      <label className="field-label">
+        节点名称
+        <input
+          required
+          autoFocus
+          value={value.name}
+          onChange={(e) => onChange({ ...value, name: e.target.value })}
+        />
+      </label>
+      <label className="field-label">
+        部署环境
+        <select
+          required
+          aria-label="部署环境"
+          value={value.environmentId}
+          onChange={(e) => onChange({ ...value, environmentId: e.target.value })}
+        >
+          <option value="">选择环境</option>
+          {snapshot.environments
+            .filter((e) => e.systemId === systemId)
+            .map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.name}
+              </option>
+            ))}
+        </select>
+      </label>
+      <label className="field-label">
+        运行方式
+        <select
+          value={value.mode}
+          onChange={(e) => onChange({ ...value, mode: e.target.value as DeploymentNode['mode'] })}
+        >
+          <option value="fixed">固定部署</option>
+          <option value="scheduled">按需调度</option>
+        </select>
+      </label>
+      <label className="field-label">
+        服务器（可后补）
+        <select
+          value={value.serverId ?? ''}
+          onChange={(e) => onChange({ ...value, serverId: e.target.value || null })}
+        >
+          <option value="">未关联服务器</option>
+          {snapshot.resources
+            .filter((r) => r.systemId === systemId && r.kind === 'server')
+            .map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+        </select>
+      </label>
+      {(['address', 'port', 'count', 'notes'] as const).map((key, i) => (
+        <label key={key} className="field-label">
+          {['独立地址（留空展示服务器地址）', '端口', '节点数量／规模说明', '备注'][i]}
+          <input
+            value={value[key]}
+            onChange={(e) => onChange({ ...value, [key]: e.target.value })}
+          />
+        </label>
+      ))}
+      <details className="compact-details">
+        <summary>部署与排障资料（可选）</summary>
+        <OptionalFields
+          value={value.fields ?? {}}
+          names={nodeFields.filter(
+            (name) =>
+              !['命名空间', '工作负载'].includes(name) ||
+              /kubernetes|k8s/i.test(value.fields?.['部署方式'] ?? ''),
+          )}
+          onChange={(fields) => onChange({ ...value, fields })}
+        />
+      </details>
+      <DocumentReferences
+        value={value.documentIds ?? []}
+        systemId={systemId}
+        snapshot={snapshot}
+        onChange={(documentIds) => onChange({ ...value, documentIds })}
+      />
+    </>
   );
 }
 
@@ -563,7 +655,7 @@ function EnvironmentEditor({
   host: EditorHost;
 }) {
   const form = useAutosave(
-    { name: environment.name },
+    { name: environment.name, notes: environment.notes },
     async (value) =>
       host.onSnapshot(
         (
@@ -583,7 +675,13 @@ function EnvironmentEditor({
       <input
         aria-label={`环境名称 ${environment.name}`}
         value={form.value.name}
-        onChange={(event) => form.change({ name: event.target.value })}
+        onChange={(event) => form.change({ ...form.value, name: event.target.value })}
+      />
+      <textarea
+        aria-label={`环境说明 ${environment.name}`}
+        value={form.value.notes}
+        onChange={(e) => form.change({ ...form.value, notes: e.target.value })}
+        placeholder="环境说明（可选）"
       />
       <button
         className="save-indicator"
@@ -609,6 +707,7 @@ export function SystemConfiguration({
       ),
     host.onError,
   );
+  const [environmentNotes, setEnvironmentNotes] = useState('');
   const [environment, setEnvironment] = useState(''),
     [section, setSection] = useState<'basic' | 'environments' | 'projects'>('basic');
   useEffect(() => host.registerFlush(form.flush), [host.registerFlush, form.flush]);
@@ -729,11 +828,17 @@ export function SystemConfiguration({
           className="ledger-quick"
           onSubmit={(e) => {
             e.preventDefault();
-            void mutate({ type: 'environment.save', systemId: id, name: environment }).then(
-              (ok) => {
-                if (ok) setEnvironment('');
-              },
-            );
+            void mutate({
+              type: 'environment.save',
+              systemId: id,
+              name: environment,
+              notes: environmentNotes,
+            }).then((ok) => {
+              if (ok) {
+                setEnvironment('');
+                setEnvironmentNotes('');
+              }
+            });
           }}
         >
           <input
@@ -741,6 +846,12 @@ export function SystemConfiguration({
             placeholder="生产、测试…"
             value={environment}
             onChange={(e) => setEnvironment(e.target.value)}
+          />
+          <input
+            aria-label="新环境说明"
+            placeholder="环境说明（可选）"
+            value={environmentNotes}
+            onChange={(e) => setEnvironmentNotes(e.target.value)}
           />
           <button className="secondary-button" disabled={!environment.trim()}>
             新增环境

@@ -74,7 +74,7 @@ for (const kind of ['access', 'server'] as const)
       }
     });
 
-test('系统通用入口同屏录入地址与密码，服务器不建环境也可记录用途和多账号', async ({}, testInfo) => {
+test('系统通用入口同屏录入地址与密码，服务器可一次保存端口、账号和密码', async ({}, testInfo) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-system-ledger-ui-'));
   const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
   delete env.ELECTRON_RUN_AS_NODE;
@@ -99,7 +99,24 @@ test('系统通用入口同屏录入地址与密码，服务器不建环境也�
     await page.getByRole('button', { name: '新增服务器', exact: true }).click();
     await page.getByLabel('服务器名称', { exact: true }).fill('应用节点 1');
     await page.getByLabel('服务器 IP', { exact: true }).fill('192.0.2.10');
+    await page.getByLabel('服务器端口', { exact: true }).fill('65536');
+    await page.getByLabel('首个账号用户名', { exact: true }).fill('root');
+    await page.getByLabel('首个账号密码', { exact: true }).fill('fictional-server-secret');
+    await expect(page.getByLabel('首个账号密码', { exact: true })).toHaveAttribute(
+      'type',
+      'password',
+    );
     await page.getByLabel('服务器用途', { exact: true }).fill('订单应用与定时任务');
+    await page.getByRole('button', { name: '创建服务器', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: '新增服务器' }).getByRole('alert')).toContainText(
+      '端口应为 1 到 65535',
+    );
+    await expect(page.getByLabel('首个账号用户名', { exact: true })).toHaveValue('root');
+    await expect(page.getByLabel('首个账号密码', { exact: true })).toHaveValue(
+      'fictional-server-secret',
+    );
+    expect((await page.evaluate(() => window.desktop.snapshot())).resources).toHaveLength(0);
+    await page.getByLabel('服务器端口', { exact: true }).fill('2222');
     await page.getByText('操作系统与硬件配置（可选）', { exact: true }).click();
     await page.getByLabel('服务器操作系统', { exact: true }).fill('Kylin Linux V10');
     await page.getByLabel('服务器CPU', { exact: true }).fill('Intel Core Processor / 16 核');
@@ -109,6 +126,16 @@ test('系统通用入口同屏录入地址与密码，服务器不建环境也�
     await expect(
       page.locator('.workspace-inspector p').filter({ hasText: '订单应用与定时任务' }),
     ).toBeVisible();
+    await page.getByText('基本信息与配置', { exact: true }).click();
+    await expect(
+      page.getByRole('complementary', { name: '台账详情' }).getByText('2222', { exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole('complementary', { name: '台账详情' })
+      .getByRole('button', { name: '编辑', exact: true })
+      .click();
+    await expect(page.getByLabel('资源端口', { exact: true })).toHaveValue('2222');
+    await page.getByRole('button', { name: '完成编辑', exact: true }).click();
     for (const role of ['运维', '只读']) {
       await openLedgerRecord(page, '服务器', '应用节点 1');
       await page
@@ -139,6 +166,8 @@ test('系统通用入口同屏录入地址与密码，服务器不建环境也�
     expect(state.accessEntries).toHaveLength(1);
     expect(state.resources[0]).toMatchObject({
       environmentId: null,
+      address: '192.0.2.10',
+      port: '2222',
       fields: {
         用途: '订单应用与定时任务',
         操作系统: 'Kylin Linux V10',
@@ -147,7 +176,84 @@ test('系统通用入口同屏录入地址与密码，服务器不建环境也�
         硬盘: '500G',
       },
     });
-    expect(state.accounts.filter((a) => a.resourceId === state.resources[0].id)).toHaveLength(2);
+    expect(state.accounts.filter((a) => a.resourceId === state.resources[0].id)).toHaveLength(3);
+    const account = state.accounts.find(
+      (a) => a.resourceId === state.resources[0].id && a.username === 'root',
+    )!;
+    expect(account.secretKinds).toEqual(['password']);
+    expect(await page.evaluate((id) => window.desktop.readSecret(id, 'password'), account.id)).toBe(
+      'fictional-server-secret',
+    );
+    expect(JSON.stringify(state)).not.toContain('fictional-server-secret');
+  } finally {
+    await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('快速新建服务器在深浅主题及窄窗口中可填写连接信息，仍支持只填名称', async ({}, info) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-server-capture-'));
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env });
+  try {
+    const page = await app.firstWindow();
+    await page.evaluate(() => window.desktop.mutate({ type: 'system.save', name: '连接信息验证' }));
+    const trigger = page.getByRole('button', { name: '快速新建', exact: true });
+    const dialog = page.getByRole('dialog', { name: '新服务器', exact: true });
+    for (const theme of ['light', 'dark'] as const) {
+      await page.setViewportSize(
+        theme === 'light' ? { width: 1280, height: 800 } : { width: 820, height: 600 },
+      );
+      await page.emulateMedia({ colorScheme: theme });
+      await page.evaluate(
+        (accessible) =>
+          window.desktop.mutate({
+            type: 'settings',
+            theme: 'system',
+            highContrast: accessible,
+            reduceTransparency: accessible,
+            reduceMotion: accessible,
+          }),
+        theme === 'dark',
+      );
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await trigger.click();
+      await page.getByRole('button', { name: '新服务器', exact: true }).click();
+      await expect(page.getByLabel('服务器名称', { exact: true })).toBeFocused();
+      const port = page.getByLabel('服务器端口', { exact: true });
+      await expect(port).toHaveValue('');
+      await expect(port).toBeInViewport();
+      await port.focus();
+      await page.keyboard.press('Tab');
+      await expect(page.getByLabel('首个账号用户名', { exact: true })).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(page.getByLabel('首个账号密码', { exact: true })).toBeFocused();
+      await expect(page.getByLabel('首个账号密码', { exact: true })).toBeInViewport();
+      expect(
+        await dialog.evaluate((element) => element.scrollWidth - element.clientWidth),
+      ).toBeLessThanOrEqual(1);
+      await page.screenshot({
+        animations: 'disabled',
+        path: info.outputPath(`server-capture-${theme}.png`),
+      });
+      await page.getByText('操作系统与硬件配置（可选）', { exact: true }).click();
+      await page.getByRole('button', { name: '创建服务器', exact: true }).scrollIntoViewIfNeeded();
+      await expect(page.getByRole('button', { name: '创建服务器', exact: true })).toBeInViewport();
+      if (theme === 'light')
+        await dialog.getByRole('button', { name: '关闭新服务器', exact: true }).click();
+      else await page.keyboard.press('Escape');
+      await expect(dialog).toHaveCount(0);
+      await expect(trigger).toBeFocused();
+    }
+    await trigger.click();
+    await page.getByRole('button', { name: '新服务器', exact: true }).click();
+    await page.getByLabel('服务器名称', { exact: true }).fill('待补充连接的节点');
+    await page.getByRole('button', { name: '创建服务器', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    const state = await page.evaluate(() => window.desktop.snapshot());
+    expect(state.resources[0]).toMatchObject({ name: '待补充连接的节点', port: '' });
+    expect(state.accounts).toHaveLength(0);
   } finally {
     await app.close();
     await fs.rm(directory, { recursive: true, force: true });
