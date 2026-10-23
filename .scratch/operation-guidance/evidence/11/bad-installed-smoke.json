@@ -1,0 +1,10 @@
+{
+  "app": "/Users/kuku/code/.cwb-guidance-tickets/11-bad/release/mac-arm64/Clever Workbench.app",
+  "isolatedData": "/var/folders/73/c35nxr410f11hfh3ls36xjlc0000gn/T/cwb-guidance-bad-ui-gKBcP3",
+  "version": "99.4.12",
+  "automaticReleaseFallback": true,
+  "validGuideCount": 46,
+  "invalidGuideExcluded": true,
+  "missingImageTextFallback": "图片暂不可用：Redis 表格预览，三列已映射名称、地址和端口，两行同名记录的第二行提示疑似重复且无法直接确认新增",
+  "normalWorkspaceAvailable": true
+}

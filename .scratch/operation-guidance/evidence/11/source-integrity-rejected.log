@@ -1,0 +1,9 @@
+file:///Users/kuku/code/.cwb-guidance-tickets/11-bad/scripts/release-tools/local.mjs:134
+    throw Error('固定 tag 的已跟踪源码已被修改，停止使用混合来源。');
+          ^
+
+Error: 固定 tag 的已跟踪源码已被修改，停止使用混合来源。
+    at releaseSourceContext (file:///Users/kuku/code/.cwb-guidance-tickets/11-bad/scripts/release-tools/local.mjs:134:11)
+    at file:///Users/kuku/code/.cwb-guidance-tickets/11-bad/scripts/check-operation-guidance.mjs:23:7
+
+Node.js v25.8.1

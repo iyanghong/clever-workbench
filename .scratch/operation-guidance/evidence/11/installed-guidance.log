@@ -1,0 +1,98 @@
+
+> clever-workbench@99.4.11 test:e2e
+> playwright test tests/e2e/guidance.spec.ts tests/e2e/guidance-versions.spec.ts tests/e2e/daily-guidance.spec.ts tests/e2e/ledger-guidance.spec.ts tests/e2e/operations-guidance.spec.ts tests/e2e/maintenance-guidance.spec.ts tests/e2e/backup-guidance.spec.ts tests/e2e/zip-guidance.spec.ts
+
+
+Running 49 tests using 1 worker
+
+(node:35442) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/e2e/backup-guidance.spec.ts:64:1 › 备份密码指引从设置就近打开；取消与保存各自保持独立备份配置 (4.4s)
+  ✓   2 tests/e2e/backup-guidance.spec.ts:86:1 › 更新历史指引只导航；历史显示恢复材料、阶段和缺失文件的处理反馈 (1.7s)
+  ✓   3 tests/e2e/backup-guidance.spec.ts:132:1 › 手动与自动备份指引只导航；导出、立即备份及目录失败反馈可见 (2.6s)
+  ✓   4 tests/e2e/backup-guidance.spec.ts:188:1 › 恢复指引只前往入口；错误密码、取消及目标解锁后整份恢复各有反馈 (5.6s)
+  ✓   5 tests/e2e/daily-guidance.spec.ts:67:1 › 首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具 (1.4s)
+  ✓   6 tests/e2e/daily-guidance.spec.ts:121:1 › 搜索新建旁指引只导航，九项选择可取消且键盘搜索可打开任务 (1.4s)
+  ✓   7 tests/e2e/daily-guidance.spec.ts:170:1 › 任务指引关闭保留详情，计划、标签与批量归属可按说明操作 (3.3s)
+  ✓   8 tests/e2e/daily-guidance.spec.ts:223:1 › 阅读任务指引期间创建快捷键不会提交底层草稿 (1.6s)
+  ✓   9 tests/e2e/daily-guidance.spec.ts:249:1 › 文档附近和设置可查看共用编辑指引，源码与本地图片保存后仍可阅读 (3.4s)
+  ✓  10 tests/e2e/daily-guidance.spec.ts:330:1 › 工作回顾指引与月份、系统全貌入口一致，打开任务后可返回 (2.1s)
+  ✓  11 tests/e2e/guidance-versions.spec.ts:42:1 › 首次只显示当前绑定版本，成功展示后关闭和重启不重复，设置可手动重看 (5.5s)
+  ✓  12 tests/e2e/guidance-versions.spec.ts:79:1 › 跨版本按功能合并不同变化，目标无新增操作仍提示，失败标签不进入历史 (5.0s)
+  ✓  13 tests/e2e/guidance-versions.spec.ts:144:1 › 持续输入与中文组合期间不抢焦点，结束并保存后再提示 (4.0s)
+  ✓  14 tests/e2e/guidance-versions.spec.ts:173:1 › 主界面资料尚未就绪时不显示，等载入完成才开始提示 (2.7s)
+  ✘  15 tests/e2e/guidance-versions.spec.ts:210:1 › 更新重启提示等待当前指引关闭，版本提示也避让更新重启窗口 (5.9s)
+(node:35841) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  16 tests/e2e/guidance-versions.spec.ts:275:1 › 真实恢复旧业务备份不回退设备提示记录，另一设备恢复后按首次提示 (10.1s)
+  ✓  17 tests/e2e/guidance-versions.spec.ts:345:3 › 设备记录损坏只考虑当前版本 (5.8s)
+  ✓  18 tests/e2e/guidance-versions.spec.ts:345:3 › 设备记录写入失败如实提示并在当前进程去重 (5.5s)
+  ✓  19 tests/e2e/guidance-versions.spec.ts:392:1 › 未实际显示的提示不被消费，等待期间退出后下一次仍可提示 (4.0s)
+  ✓  20 tests/e2e/guidance-versions.spec.ts:426:1 › 自动提示等待保存失败修复，保留输入且不反复抢焦点 (5.2s)
+  ✓  21 tests/e2e/guidance-versions.spec.ts:467:1 › 正常关闭等待已显示提示记录落盘，避免快速退出后重复提示 (2.7s)
+  ✓  22 tests/e2e/guidance-versions.spec.ts:515:1 › 原生文件选择期间自动与手动版本窗口均避让，取消后可以继续查看 (3.3s)
+  ✓  23 tests/e2e/guidance-versions.spec.ts:564:1 › 明确无变化时安静启动，缺失当前说明和移除功能在手动历史中如实说明 (5.7s)
+  ✓  24 tests/e2e/guidance.spec.ts:13:1 › 离线从设置和更新旁阅读同一指引，步骤、关闭与安全前往功能可用 (1.9s)
+  ✓  25 tests/e2e/guidance.spec.ts:94:1 › 从更新弹窗切换到指引后可关闭，导航不会遗留更新弹窗 (1.5s)
+  ✓  26 tests/e2e/guidance.spec.ts:140:1 › 指引导航保存失败保留输入，恢复保存后可以重试 (3.3s)
+  ✓  27 tests/e2e/guidance.spec.ts:201:1 › 原生文件选择期间不打开指引，结束后允许重新查看 (1.6s)
+  ✓  28 tests/e2e/guidance.spec.ts:252:1 › 前往功能等待期间关闭指引，不执行迟到导航 (778ms)
+  ✓  29 tests/e2e/ledger-guidance.spec.ts:84:1 › 空台账可读指引，七类清单共享就近入口，阅读与取消保留当前对象 (4.2s)
+  ✓  30 tests/e2e/ledger-guidance.spec.ts:126:1 › 系统菜单指引返回焦点，系统环境编辑与项目沿革按说明保留归属 (2.3s)
+  ✓  31 tests/e2e/ledger-guidance.spec.ts:169:1 › 项目档案附近指引保留未提交名称，归档恢复不会自动恢复当前项目 (2.2s)
+  ✓  32 tests/e2e/ledger-guidance.spec.ts:230:1 › 访问入口指引支持地址编辑、范围筛选和资料复制，保存失败时导航保持输入 (4.2s)
+  ✓  33 tests/e2e/ledger-guidance.spec.ts:308:1 › 入口副本指引区分秘密选项，取消复制与删除保留原入口 (2.6s)
+  ✓  34 tests/e2e/ledger-guidance.spec.ts:377:1 › 账号指引不触发解锁或新建，按步骤保存秘密、收藏和调整同系统归属 (4.9s)
+  ✓  35 tests/e2e/maintenance-guidance.spec.ts:38:1 › 外观旁的离线指引遵守主题和辅助偏好，关闭返回焦点并从集中入口导航 (2.1s)
+  ✓  36 tests/e2e/maintenance-guidance.spec.ts:118:1 › 秘密保护指引只导航，启用解锁与更改关闭可取消且保留备份配置 (5.4s)
+  ✓  37 tests/e2e/maintenance-guidance.spec.ts:186:1 › 任务回收站指引只导航，恢复、单条删除和清空均保留各自边界 (3.5s)
+  ✓  38 tests/e2e/maintenance-guidance.spec.ts:234:1 › 文档回收站指引可集中到达，逐篇恢复和删除确认不提供批量清空 (2.6s)
+  ✓  39 tests/e2e/operations-guidance.spec.ts:99:1 › 系统导出菜单附近有操作指引，关闭后保留当前系统及焦点 (1.7s)
+  ✓  40 tests/e2e/operations-guidance.spec.ts:122:1 › 表格粘贴入口旁可查阅指引，不会打开批量录入或新增记录 (1.7s)
+  ✓  41 tests/e2e/operations-guidance.spec.ts:141:1 › 资源指引对应服务器配置、其他类型、独立复制与引用删除保护 (3.9s)
+  ✓  42 tests/e2e/operations-guidance.spec.ts:266:1 › 部署和运维指引对应节点地址回退、状态筛选、引用限制及相关任务 (3.1s)
+  ✓  43 tests/e2e/operations-guidance.spec.ts:353:1 › 粘贴指引对应十类映射、逐行取消、确认新增和未提交放弃 (2.3s)
+  ✓  44 tests/e2e/operations-guidance.spec.ts:412:1 › 导出指引对应编辑保存、取消解锁和明文文件结果 (3.0s)
+  ✓  45 tests/e2e/zip-guidance.spec.ts:8:1 › 工具目录可以打开 ZIP 文本归档的使用指引 (1.5s)
+  ✓  46 tests/e2e/zip-guidance.spec.ts:24:1 › 四种模式的就近帮助随选项切换，离线可阅读并安全关闭 (2.4s)
+  ✓  47 tests/e2e/zip-guidance.spec.ts:70:1 › 首页收藏工具旁可以直接查阅 ZIP 指引 (1.7s)
+  ✓  48 tests/e2e/zip-guidance.spec.ts:90:1 › 从指引前往 ZIP 功能会打开工具本身 (1.6s)
+  ✓  49 tests/e2e/zip-guidance.spec.ts:123:1 › 取消选取来源仍保留原路径与未开始状态 (1.5s)
+
+
+  1) tests/e2e/guidance-versions.spec.ts:210:1 › 更新重启提示等待当前指引关闭，版本提示也避让更新重启窗口 ──────────────────────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('dialog', { name: '更新已准备好', exact: true })
+    Expected: visible
+    Timeout: 4000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('dialog', { name: '更新已准备好', exact: true }) with timeout 4000ms
+      - waiting for getByRole('dialog', { name: '更新已准备好', exact: true })
+
+
+      241 |     await page.keyboard.press('Escape');
+      242 |     const restart = page.getByRole('dialog', { name: '更新已准备好', exact: true });
+    > 243 |     await expect(restart).toBeVisible({ timeout: 4000 });
+          |                           ^
+      244 |     await restart.getByRole('button', { name: '稍后重启', exact: true }).click();
+      245 |     const current = await app.evaluate(({ app }) => app.getVersion());
+      246 |     await versions(app, [release(current, '关闭更新重启提示后查看', 'pending')]);
+        at /Users/kuku/code/.cwb-guidance-tickets/11-package/tests/e2e/guidance-versions.spec.ts:243:27
+
+    Error Context: test-results/guidance-versions-更新重启提示等待当前指引关闭，版本提示也避让更新重启窗口/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/guidance-versions-更新重启提示等待当前指引关闭，版本提示也避让更新重启窗口/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/guidance-versions-更新重启提示等待当前指引关闭，版本提示也避让更新重启窗口/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests/e2e/guidance-versions.spec.ts:210:1 › 更新重启提示等待当前指引关闭，版本提示也避让更新重启窗口 ───────────────────────
+  48 passed (2.7m)

@@ -1,0 +1,29 @@
+{
+  "verificationKind": "isolated-local-fixture-not-published",
+  "sourceSha": "319072ec799b686d9ad73ada0ca84780e21700d2",
+  "releaseSha": "b2f18e9e21d31371ffee5bf2796c4d388f02dd28",
+  "tag": "v99.4.13",
+  "appVersion": "99.4.13",
+  "boundVersion": "99.4.13",
+  "boundSourceSha": "319072ec799b686d9ad73ada0ca84780e21700d2",
+  "boundTag": "v99.4.13",
+  "boundPublication": "pending",
+  "boundRecordExact": true,
+  "rawFeatureCount": 47,
+  "rawFeatureExactCount": 47,
+  "correctedEditorTitleIncluded": true,
+  "userSummaryEqual": true,
+  "userGuideReferencesPresent": true,
+  "expectedLocalImagesPresent": true,
+  "localImageAssets": [
+    "/dist/assets/application-update-about-yg7eIdrd.png",
+    "/dist/assets/ledger-paste-review-BLZ0rtTo.png",
+    "/dist/assets/system-export-options-CjI7BM93.png"
+  ],
+  "warningCodes": [
+    "missing-review",
+    "unreviewed-step"
+  ],
+  "gitAuthor": "ikuku-tt <267023805+ikuku-tt@users.noreply.github.com>",
+  "gitCommitter": "ikuku-tt <267023805+ikuku-tt@users.noreply.github.com>"
+}

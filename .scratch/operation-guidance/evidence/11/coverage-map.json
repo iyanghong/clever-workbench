@@ -1,0 +1,770 @@
+{
+  "sourceSha": "319072ec799b686d9ad73ada0ca84780e21700d2",
+  "fixtureTag": "v99.4.13",
+  "status": "配置步骤和隔离安装版阅读已验证；每个业务动作的运行范围见对应任务实施证据，真实发布未验证",
+  "groups": [
+    {
+      "number": "01",
+      "name": "工作台基础",
+      "nearbyEntry": "工作台顶部；常用工具卡片旁",
+      "guides": [
+        {
+          "id": "workspace-basics",
+          "stepIds": [
+            "modules",
+            "capture",
+            "open",
+            "complete",
+            "undo",
+            "recent",
+            "write"
+          ]
+        },
+        {
+          "id": "workspace-favorites",
+          "stepIds": [
+            "choose",
+            "pin",
+            "finish",
+            "order",
+            "open",
+            "access",
+            "account",
+            "remove"
+          ]
+        },
+        {
+          "id": "workspace-window",
+          "stepIds": [
+            "window",
+            "view",
+            "edit",
+            "commands",
+            "save",
+            "close"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-05.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "02",
+      "name": "搜索与新建",
+      "nearbyEntry": "顶部搜索和新建旁",
+      "guides": [
+        {
+          "id": "search-and-open",
+          "stepIds": [
+            "open",
+            "query",
+            "select",
+            "website",
+            "copy",
+            "cancel"
+          ]
+        },
+        {
+          "id": "search-and-create",
+          "stepIds": [
+            "open",
+            "type",
+            "name",
+            "context",
+            "submit",
+            "cancel"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-05.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "03",
+      "name": "系统、环境与项目",
+      "nearbyEntry": "系统“更多”菜单；项目档案页",
+      "guides": [
+        {
+          "id": "systems-environments",
+          "stepIds": [
+            "create",
+            "basic",
+            "project",
+            "add-environment",
+            "rename-environment",
+            "delete-environment",
+            "finish"
+          ]
+        },
+        {
+          "id": "projects-history",
+          "stepIds": [
+            "create",
+            "edit",
+            "assign",
+            "archive",
+            "restore",
+            "delete"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-06.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "04",
+      "name": "台账浏览与复制",
+      "nearbyEntry": "台账当前分类顶部",
+      "guides": [
+        {
+          "id": "ledger-browsing",
+          "stepIds": [
+            "system",
+            "category",
+            "filter",
+            "detail",
+            "edit",
+            "return",
+            "empty"
+          ]
+        },
+        {
+          "id": "ledger-scope",
+          "stepIds": [
+            "open",
+            "environments",
+            "tags",
+            "save",
+            "operation"
+          ]
+        },
+        {
+          "id": "ledger-copy",
+          "stepIds": [
+            "field",
+            "one",
+            "selection",
+            "many",
+            "accounts",
+            "password",
+            "cancel"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-06.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "05",
+      "name": "访问入口",
+      "nearbyEntry": "台账 → 访问入口顶部",
+      "guides": [
+        {
+          "id": "access-entries",
+          "stepIds": [
+            "create",
+            "edit",
+            "addresses",
+            "preferred",
+            "reorder",
+            "remove-address",
+            "use-address",
+            "accounts",
+            "finish"
+          ]
+        },
+        {
+          "id": "access-copy-delete",
+          "stepIds": [
+            "copy",
+            "secrets",
+            "confirm",
+            "cancel",
+            "delete",
+            "delete-confirm"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-06.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "06",
+      "name": "资源",
+      "nearbyEntry": "台账 → 服务器／数据库／中间件顶部",
+      "guides": [
+        {
+          "id": "resource-server",
+          "stepIds": [
+            "create",
+            "edit",
+            "fields",
+            "account",
+            "link"
+          ]
+        },
+        {
+          "id": "resource-datastores",
+          "stepIds": [
+            "create",
+            "connect",
+            "extra",
+            "accounts"
+          ]
+        },
+        {
+          "id": "resource-copy-delete",
+          "stepIds": [
+            "copy",
+            "secrets",
+            "confirm-copy",
+            "delete"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-07.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "07",
+      "name": "账号",
+      "nearbyEntry": "台账 → 账号顶部及关联账号区",
+      "guides": [
+        {
+          "id": "accounts-secrets",
+          "stepIds": [
+            "create",
+            "metadata",
+            "secret",
+            "reveal",
+            "copy",
+            "row",
+            "favorite",
+            "remove-secret"
+          ]
+        },
+        {
+          "id": "accounts-ownership",
+          "stepIds": [
+            "copy",
+            "include",
+            "move",
+            "constraints",
+            "cancel",
+            "delete"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-06.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "08",
+      "name": "服务与部署",
+      "nearbyEntry": "台账 → 应用部署顶部",
+      "guides": [
+        {
+          "id": "services-deployments",
+          "stepIds": [
+            "service",
+            "scope",
+            "node",
+            "address",
+            "edit-delete-node",
+            "delete-service"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-07.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "09",
+      "name": "运维与相关工作",
+      "nearbyEntry": "台账 → 运行维护顶部及相关工作",
+      "guides": [
+        {
+          "id": "operations-maintenance",
+          "stepIds": [
+            "create",
+            "kind-frequency",
+            "scope-related",
+            "filter",
+            "delete"
+          ]
+        },
+        {
+          "id": "ledger-related-work",
+          "stepIds": [
+            "open",
+            "document",
+            "task",
+            "reopen"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-07.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "10",
+      "name": "表格批量录入",
+      "nearbyEntry": "台账 → 粘贴表格旁",
+      "guides": [
+        {
+          "id": "ledger-paste",
+          "stepIds": [
+            "kind-owner",
+            "paste-source",
+            "layout-header",
+            "map-columns",
+            "review-rows",
+            "submit",
+            "leave"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-07.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "11",
+      "name": "系统资料导出",
+      "nearbyEntry": "系统“更多” → 导出资料旁",
+      "guides": [
+        {
+          "id": "system-export",
+          "stepIds": [
+            "select-system",
+            "choose-content",
+            "task-dates",
+            "choose-format",
+            "secrets",
+            "save-result"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-07.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "12",
+      "name": "工作任务",
+      "nearbyEntry": "工作任务顶部；任务详情编辑器",
+      "guides": [
+        {
+          "id": "tasks-capture",
+          "stepIds": [
+            "quick",
+            "detail",
+            "write",
+            "create",
+            "resume",
+            "discard"
+          ]
+        },
+        {
+          "id": "tasks-edit",
+          "stepIds": [
+            "open",
+            "edit",
+            "expand",
+            "system",
+            "ledger",
+            "dates",
+            "complete",
+            "reopen",
+            "delete"
+          ]
+        },
+        {
+          "id": "tasks-planning",
+          "stepIds": [
+            "open",
+            "due",
+            "urgent",
+            "correct",
+            "clear",
+            "observe"
+          ]
+        },
+        {
+          "id": "tasks-filter",
+          "stepIds": [
+            "system",
+            "status",
+            "query",
+            "tags",
+            "layout",
+            "group",
+            "select",
+            "assign",
+            "cancel"
+          ]
+        },
+        {
+          "id": "tasks-tags",
+          "stepIds": [
+            "open",
+            "add",
+            "edit",
+            "apply",
+            "delete"
+          ]
+        },
+        {
+          "id": "editor-formatting",
+          "stepIds": [
+            "mode",
+            "text",
+            "list",
+            "quote",
+            "table",
+            "history",
+            "save"
+          ]
+        },
+        {
+          "id": "editor-images",
+          "stepIds": [
+            "choose",
+            "paste",
+            "drop",
+            "wait",
+            "preview",
+            "verify"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-05.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "13",
+      "name": "文档与编辑器",
+      "nearbyEntry": "文档顶部；文档编辑器",
+      "guides": [
+        {
+          "id": "documents-and-editor",
+          "stepIds": [
+            "create",
+            "write",
+            "scope",
+            "search",
+            "system",
+            "context",
+            "return",
+            "retry"
+          ]
+        },
+        {
+          "id": "editor-formatting",
+          "stepIds": [
+            "mode",
+            "text",
+            "list",
+            "quote",
+            "table",
+            "history",
+            "save"
+          ]
+        },
+        {
+          "id": "editor-images",
+          "stepIds": [
+            "choose",
+            "paste",
+            "drop",
+            "wait",
+            "preview",
+            "verify"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-05.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "14",
+      "name": "工作回顾",
+      "nearbyEntry": "工作回顾顶部",
+      "guides": [
+        {
+          "id": "work-review",
+          "stepIds": [
+            "month",
+            "change",
+            "current",
+            "system",
+            "overview",
+            "monthly",
+            "detail"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-05.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "15",
+      "name": "回收站",
+      "nearbyEntry": "侧栏回收站；文档回收站页",
+      "guides": [
+        {
+          "id": "recycle-tasks",
+          "stepIds": [
+            "read",
+            "restore",
+            "purge",
+            "empty",
+            "documents"
+          ]
+        },
+        {
+          "id": "recycle-documents",
+          "stepIds": [
+            "open",
+            "read",
+            "restore",
+            "purge"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-08.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "16",
+      "name": "外观",
+      "nearbyEntry": "设置 → 外观",
+      "guides": [
+        {
+          "id": "appearance",
+          "stepIds": [
+            "theme",
+            "transparency",
+            "contrast",
+            "motion",
+            "system-preferences"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-08.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "17",
+      "name": "凭据保护",
+      "nearbyEntry": "设置 → 秘密保护",
+      "guides": [
+        {
+          "id": "secret-protection",
+          "stepIds": [
+            "system",
+            "enable",
+            "unlock",
+            "hide-copy",
+            "lock"
+          ]
+        },
+        {
+          "id": "master-password-manage",
+          "stepIds": [
+            "change",
+            "cancel",
+            "save",
+            "disable"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-08.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "18",
+      "name": "备份密码",
+      "nearbyEntry": "设置 → 备份与迁移 → 独立备份密码",
+      "guides": [
+        {
+          "id": "backup-password",
+          "stepIds": [
+            "open",
+            "enter",
+            "cancel",
+            "change"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-09.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "19",
+      "name": "完整备份",
+      "nearbyEntry": "设置 → 备份与迁移 → 导出／自动备份",
+      "guides": [
+        {
+          "id": "full-backup",
+          "stepIds": [
+            "start",
+            "choose-file",
+            "keep",
+            "verify-scope"
+          ]
+        },
+        {
+          "id": "automatic-backup",
+          "stepIds": [
+            "enable",
+            "directory",
+            "result",
+            "retention"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-09.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "20",
+      "name": "恢复与迁移",
+      "nearbyEntry": "设置 → 备份与迁移 → 从备份恢复",
+      "guides": [
+        {
+          "id": "restore-and-migrate",
+          "stepIds": [
+            "choose",
+            "password",
+            "preview",
+            "confirm",
+            "verify"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-09.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "21",
+      "name": "应用更新",
+      "nearbyEntry": "设置 → 关于；更新弹窗",
+      "guides": [
+        {
+          "id": "application-update",
+          "stepIds": [
+            "check",
+            "download",
+            "restart-choice",
+            "prepare",
+            "verify"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-01.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "22",
+      "name": "更新历史与恢复",
+      "nearbyEntry": "设置 → 关于 → 更新历史；更新弹窗",
+      "guides": [
+        {
+          "id": "update-history-and-recovery",
+          "stepIds": [
+            "open-history",
+            "interpret-health",
+            "locate-materials",
+            "isolation",
+            "recover",
+            "cleanup"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-09.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "23",
+      "name": "文件归档",
+      "nearbyEntry": "工具 → ZIP 文本归档 → 归档文件",
+      "guides": [
+        {
+          "id": "zip-archive-files",
+          "stepIds": [
+            "select-source",
+            "choose-output",
+            "password-run",
+            "check-result"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-10.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "24",
+      "name": "Git 筛选归档",
+      "nearbyEntry": "工具 → ZIP 文本归档 → Git 筛选归档",
+      "guides": [
+        {
+          "id": "zip-archive-git",
+          "stepIds": [
+            "repository",
+            "filter",
+            "select-preview",
+            "pack"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-10.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "25",
+      "name": "分片目录还原",
+      "nearbyEntry": "工具 → ZIP 文本归档 → 目录还原",
+      "guides": [
+        {
+          "id": "zip-restore-directory",
+          "stepIds": [
+            "parts-directory",
+            "output-password",
+            "run-check",
+            "recover-failure"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-10.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    },
+    {
+      "number": "26",
+      "name": "剪贴板还原",
+      "nearbyEntry": "工具 → ZIP 文本归档 → 剪贴板还原",
+      "guides": [
+        {
+          "id": "zip-restore-clipboard",
+          "stepIds": [
+            "collect",
+            "repair",
+            "output-password",
+            "check"
+          ]
+        }
+      ],
+      "ticketEvidence": ".scratch/operation-guidance/implementation-10.md",
+      "installedUiEvidence": ".scratch/operation-guidance/evidence/11/final-installed-all-guides.json"
+    }
+  ],
+  "guidanceFeature": {
+    "id": "using-guidance",
+    "stepIds": [
+      "open",
+      "read",
+      "versions",
+      "navigate"
+    ],
+    "entry": "设置 → 使用指引",
+    "evidence": ".scratch/operation-guidance/implementation-01.md；implementation-02.md"
+  }
+}

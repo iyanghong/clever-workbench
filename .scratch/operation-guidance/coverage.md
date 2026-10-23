@@ -1,10 +1,10 @@
 # 首批操作指引全量覆盖清单
 
-Status: in-progress
+Status: ready-for-human
 
-日期：2026-10-21。状态：源码清点完成；以下是待编写、待运行核对的范围，不是已经完成的用户指引。
+初始源码清点日期：2026-10-21。下方“功能矩阵”保留当时确定的 26 组验收范围；当前交付结果见文末逐项映射，不能把初始“待编写”表述当作现状。
 
-本地基线：`5ea5782bdba7565831766a373670ec20b2bbd43c`，应用版本 `0.1.11`。已存在的远端引用：`origin/master` 的 `4dc5b58c34ae22c67c83a97adb07b3ae521f278e`。本次未合并、未发布、未启动应用验证功能，仅静态核对源码。
+初始调查基线：`5ea5782bdba7565831766a373670ec20b2bbd43c`，应用版本 `0.1.11`；当时的远端引用为 `4dc5b58c34ae22c67c83a97adb07b3ae521f278e`。最终实施选定源码 `319072ec799b686d9ad73ada0ca84780e21700d2` 已包含导出变化及跨平台文案修订；任务 11 用隔离本地绑定包 `v99.4.13` 核对，未推送或公开该测试版本。
 
 ## 覆盖口径
 
@@ -14,7 +14,7 @@ Q15 要求首批覆盖全部现有功能。下面按 26 组用户流程组织，
 
 ## 功能矩阵
 
-以下各行当前均为“待编写／未运行核对”。建议标识在实际配置登记时固定，后续不因改名随意更换。
+下表是初始需求清单，标识为当时的建议名。实际指引有拆分和复用，以文末逐项映射及包内配置为准。
 
 | 编号／建议标识 | 流程与必须覆盖的操作 | 入口与源码依据 |
 | --- | --- | --- |
@@ -49,15 +49,15 @@ Q15 要求首批覆盖全部现有功能。下面按 26 组用户流程组织，
 
 ### 导出功能的本地与远端差异
 
-本地基线固定包含系统文档与任务，只能选择格式及秘密类型，总是保存 ZIP。已存在的 `origin/master 4dc5b58` 另有文档／任务包含开关、任务开始日期范围（含首尾、空值不限），以及单格式且无输出文档时保存单文件并嵌图的逻辑。
+初始本地基线固定包含系统文档与任务，只能选择格式及秘密类型，总是保存 ZIP；当时的远端 `4dc5b58` 已有文档／任务包含开关、任务开始日期范围（含首尾、空值不限），以及单格式且无输出文档时保存单文件并嵌图的逻辑。
 
-这些远端流程纳入第 11 组的待核对范围；本次未将其合入本地、未证明已经发布。正式编写绑定选定源码：若含该变化必须完整讲解；若未包含则不能在当前指引中显示尚不存在的控件。
+实施时已合入该导出功能；`system-export` 的 `choose-content`、`task-dates`、`choose-format` 和 `save-result` 步骤按选定源码及隔离 Electron 导出结果核对。是否已由 GitHub 正式发布仍以实际 Release 为准。
 
 ### 三种密码不要混用
 
 当前源码及 ADR 0011 已将新备份恢复密码与日常主密码分离；原有根规范中“备份生成时的主密码”不能作为所有新备份的说明。新备份使用生成时的独立备份密码，历史备份按实际格式使用生成时的旧密码。ZIP 文本归档的密码又独立于这两者，仅用于该次归档／还原。
 
-此差异在已确认规范中明确标注；本轮未修改根规范或密码实现。正式交付指引时应同步修正过时的根规范表述，避免长期存在两个口径。
+此差异在已确认规范中明确标注；任务 09 已同步修正根规范和使用文档，未改变密码实现。
 
 ### 菜单文字与实际行为
 
@@ -67,12 +67,39 @@ Q15 要求首批覆盖全部现有功能。下面按 26 组用户流程组织，
 
 当前真实发布／在线自动安装以 macOS Apple Silicon 为准，不宣称 Windows 或 Intel 安装更新已验收。任务、文档有对应回收站；不能将其他台账实体的直接删除写成可从这些回收站找回。工作回顾显示日历跨度，不能称为实际工时。
 
-## 后续填写的覆盖证据
+## 当前交付的逐项覆盖证据
 
-每个子流程记录以下字段，允许同一指引复用到多个组：
+2026-10-23 隔离本地绑定安装包 `v99.4.13`（业务源码 `319072e`）从包内原始 JSON 读取 47 篇有效功能正文。逐篇从“设置 → 查看全部使用指引”打开，翻阅 **269 个真实步骤**，核对每步标题、预期结果、最后完成结果及三张本地图片加载，结果见[安装版逐步阅读记录](evidence/11/final-installed-all-guides.json)。完整的 26 组 → guideId → 每一个稳定 stepId、实际附近位置和任务证据保存在[全步骤映射](evidence/11/coverage-map.json)；下表列关键步骤便于定位。该阅读检查不等于 269 个业务动作都已逐一实际执行；动作测试与静态核对的界限由每项实施记录说明。
 
-| 覆盖项 | 指引 ID／步骤 | 核对源码／版本 | 平台与环境 | 正文／图片状态 | 实际核对结果与证据 | 缺项与原因 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 待按上述矩阵展开 | 未编写 | 未核对 | 未运行 | 待编写 | 未验证 | 不得填为通过 |
+| 组 | 附近入口／实际 guideId | 关键 stepId（全量见映射） | 操作依据与范围 |
+| --- | --- | --- | --- |
+| 01 工作台基础 | 工作台顶部；常用工具卡片旁：`workspace-basics`、`workspace-favorites`、`workspace-window` | `workspace-basics/capture、workspace-favorites/order、workspace-window/commands` | [任务 05](implementation-05.md)：首页、菜单与保存链已核对；原生窗口鼠标另记总验收。 |
+| 02 搜索与新建 | 顶部搜索和新建旁：`search-and-open`、`search-and-create` | `search-and-open/select、search-and-create/context、search-and-create/cancel` | [任务 05](implementation-05.md)：九种选项可见且取消安全；并非九类均逐条创建。 |
+| 03 系统、环境与项目 | 系统“更多”菜单；项目档案页：`systems-environments`、`projects-history` | `systems-environments/project、projects-history/archive、projects-history/restore` | [任务 06](implementation-06.md)：当前项目、沿革和归档恢复实际操作已验。 |
+| 04 台账浏览与复制 | 台账当前分类顶部：`ledger-browsing`、`ledger-scope`、`ledger-copy` | `ledger-browsing/detail、ledger-scope/environments、ledger-copy/password` | [任务 06](implementation-06.md)：七类、范围与显式秘密复制按真实台账运行。 |
+| 05 访问入口 | 台账 → 访问入口顶部：`access-entries`、`access-copy-delete` | `access-entries/addresses、access-entries/preferred、access-copy-delete/secrets` | [任务 06](implementation-06.md)：地址排序、常用、秘密复制及取消路径已验。 |
+| 06 资源 | 台账 → 服务器／数据库／中间件顶部：`resource-server`、`resource-datastores`、`resource-copy-delete` | `resource-server/fields、resource-datastores/connect、resource-copy-delete/delete` | [任务 07](implementation-07.md)：资源配置、独立副本和被引用删除保护已验。 |
+| 07 账号 | 台账 → 账号顶部及关联账号区：`accounts-secrets`、`accounts-ownership` | `accounts-secrets/secret、accounts-secrets/row、accounts-ownership/move` | [任务 06](implementation-06.md)：显示／复制秘密、收藏与归属调整已验。 |
+| 08 服务与部署 | 台账 → 应用部署顶部：`services-deployments` | `services-deployments/node、services-deployments/address、services-deployments/delete-service` | [任务 07](implementation-07.md)：节点地址回退、按需状态及删除限制已验。 |
+| 09 运维与相关工作 | 台账 → 运行维护顶部及相关工作：`operations-maintenance`、`ledger-related-work` | `operations-maintenance/kind-frequency、ledger-related-work/document、ledger-related-work/task` | [任务 07](implementation-07.md)：作业／备份策略与相关系统工作已验。 |
+| 10 表格批量录入 | 台账 → 粘贴表格旁：`ledger-paste` | `ledger-paste/map-columns、ledger-paste/review-rows、ledger-paste/leave` | [任务 07](implementation-07.md)：十类映射可见，逐行跳过与新增已验。 |
+| 11 系统资料导出 | 系统“更多” → 导出资料旁：`system-export` | `system-export/choose-content、system-export/task-dates、system-export/secrets` | [任务 07](implementation-07.md)：内容／日期／格式选择、保存前同步和解锁取消已验。 |
+| 12 工作任务 | 工作任务顶部；任务详情编辑器：`tasks-capture`、`tasks-edit`、`tasks-planning`、`tasks-filter`、`tasks-tags`、`editor-formatting`、`editor-images` | `tasks-capture/discard、tasks-planning/due、tasks-filter/assign、tasks-tags/delete` | [任务 05](implementation-05.md)：录入、计划、标签、归属和保存失败已验；个别控件见任务记录的静态核对。 |
+| 13 文档与编辑器 | 文档顶部；文档编辑器：`documents-and-editor`、`editor-formatting`、`editor-images` | `documents-and-editor/context、editor-formatting/table、editor-images/preview` | [任务 05](implementation-05.md)：源码、格式、图片与重开已验；原生拖拽仍未单独执行。 |
+| 14 工作回顾 | 工作回顾顶部：`work-review` | `work-review/month、work-review/system、work-review/detail` | [任务 05](implementation-05.md)：月度／系统回顾与日历跨度已验。 |
+| 15 回收站 | 侧栏回收站；文档回收站页：`recycle-tasks`、`recycle-documents` | `recycle-tasks/empty、recycle-documents/restore、recycle-documents/purge` | [任务 08](implementation-08.md)：任务和文档恢复、永久删除的范围分别核对。 |
+| 16 外观 | 设置 → 外观：`appearance` | `appearance/theme、appearance/contrast、appearance/motion` | [任务 08](implementation-08.md)：浅深主题及辅助偏好、焦点返回已验。 |
+| 17 凭据保护 | 设置 → 秘密保护：`secret-protection`、`master-password-manage` | `secret-protection/unlock、secret-protection/lock、master-password-manage/disable` | [任务 08](implementation-08.md)：主密码启停、解锁和秘密保护已验；系统真实钥匙串授权不由模拟夹具证明。 |
+| 18 备份密码 | 设置 → 备份与迁移 → 独立备份密码：`backup-password` | `backup-password/enter、backup-password/cancel、backup-password/change` | [任务 09](implementation-09.md)：独立备份密码配置与取消已验。 |
+| 19 完整备份 | 设置 → 备份与迁移 → 导出／自动备份：`full-backup`、`automatic-backup` | `full-backup/verify-scope、automatic-backup/result、automatic-backup/retention` | [任务 09](implementation-09.md)：真实加密备份、自动备份失败保留已验。 |
+| 20 恢复与迁移 | 设置 → 备份与迁移 → 从备份恢复：`restore-and-migrate` | `restore-and-migrate/password、restore-and-migrate/preview、restore-and-migrate/confirm` | [任务 09](implementation-09.md)：错误密码、取消、目标解锁与整份恢复已验。 |
+| 21 应用更新 | 设置 → 关于；更新弹窗：`application-update` | `application-update/check、application-update/restart-choice、application-update/verify` | [任务 01](implementation-01.md)：弹窗、保存避让与测试状态已验；真实 GitHub 下载安装未在本任务执行。 |
+| 22 更新历史与恢复 | 设置 → 关于 → 更新历史；更新弹窗：`update-history-and-recovery` | `update-history-and-recovery/interpret-health、update-history-and-recovery/recover` | [任务 09](implementation-09.md)：隔离更新历史与材料定位已验；人工恢复和健康安装未执行。 |
+| 23 文件归档 | 工具 → ZIP 文本归档 → 归档文件：`zip-archive-files` | `zip-archive-files/select-source、zip-archive-files/password-run、zip-archive-files/check-result` | [任务 10](implementation-10.md)：实际归档／还原及原目标不覆盖已验。 |
+| 24 Git 筛选归档 | 工具 → ZIP 文本归档 → Git 筛选归档：`zip-archive-git` | `zip-archive-git/filter、zip-archive-git/select-preview、zip-archive-git/pack` | [任务 10](implementation-10.md)：提交筛路径、当前磁盘内容与缺失项已验。 |
+| 25 分片目录还原 | 工具 → ZIP 文本归档 → 目录还原：`zip-restore-directory` | `zip-restore-directory/parts-directory、zip-restore-directory/recover-failure` | [任务 10](implementation-10.md)：完整分片、密码错误与文件哈希已验。 |
+| 26 剪贴板还原 | 工具 → ZIP 文本归档 → 剪贴板还原：`zip-restore-clipboard` | `zip-restore-clipboard/collect、zip-restore-clipboard/repair、zip-restore-clipboard/check` | [任务 10](implementation-10.md)：乱序／重复／混包、后台和退出约束已验。 |
 
-初始全量覆盖是本次功能完成条件；用户仍可按已确认策略带着警告发布，但不能据此把未编写项记为已经覆盖。后续版本发生操作变化时更新相应行及发布说明。
+指引功能本身由 `using-guidance/open`、`read`、`versions`、`navigate` 覆盖，设置集中入口和升级后一次提示参见[任务 01](implementation-01.md)与[任务 02](implementation-02.md)。共享编辑步骤在 12／13 复用，不另算一篇。配置中不存在为完成组数而放置的空标题：每篇均含用途、准备条件、入口、动作、可观察结果、完成结果和常见问题；这一结论由[内容检查](evidence/11/guidance-report-summary.json)和实际包内逐步显示共同支持。
+
+截至此表编写时，47 篇指引及三张本地图片可离线阅读。发布核对记录仍有人工签认警告；实际 GitHub Release、真实网络更新、生产系统钥匙串授权、Windows／Intel 安装均不在此本地验收结果内。安装版原生鼠标、最终异常内容链路和正式交付结论以[任务 11 实施记录](implementation-11.md)为准。
