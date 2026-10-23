@@ -214,26 +214,46 @@ test('更新重启提示等待当前指引关闭，版本提示也避让更新�
   const app = await electron.launch({ args: ['.'], env });
   try {
     const expected = await expectedUpdateGuide(app);
+    const installedVersion = await app.evaluate(({ app }) => app.getVersion());
+    const [major, minor, patch] = installedVersion.split('.').map(Number);
+    const scenarioVersion = `${major}.${minor}.${patch + 1}`;
+    const targetVersion = `${major}.${minor}.${patch + 2}`;
     const page = await app.firstWindow();
+    const bundled = await page.evaluate(() => window.desktop.guidanceVersions());
+    if (
+      bundled.releases.some(
+        (item) => item.version === installedVersion && item.operationChange === 'changed',
+      )
+    ) {
+      const firstUse = page.getByRole('dialog', { name: '版本操作指引', exact: true });
+      await expect(firstUse).toBeVisible({ timeout: 6000 });
+      await page.keyboard.press('Escape');
+      await expect(firstUse).toHaveCount(0);
+      await expect
+        .poll(() => page.evaluate(() => window.desktop.guidanceState()))
+        .toMatchObject({ shownThrough: installedVersion, persisted: true });
+    }
     await page.getByRole('button', { name: '设置', exact: true }).click();
     await page.getByRole('button', { name: '应用更新使用指引', exact: true }).click();
     const guide = page.getByRole('dialog', { name: expected?.title ?? '使用指引', exact: true });
     await expect(guide).toBeVisible();
     if (!expected) await expect(guide).toContainText('此指引暂不可用');
-    await app.evaluate(({ BrowserWindow }) =>
-      BrowserWindow.getAllWindows()[0].webContents.send('update-state', {
-        status: 'ready',
-        currentVersion: '0.1.12',
-        preparedId: 'modal-fixture',
-        release: {
-          version: '0.2.0',
-          notes: '验收示例',
-          pageUrl: '',
-          publishedAt: '',
-          zip: { name: 'example.zip', size: 1, url: '' },
-          checksums: { name: 'SHA256SUMS', size: 1, url: '' },
-        },
-      }),
+    await app.evaluate(
+      ({ BrowserWindow }, { installedVersion, targetVersion }) =>
+        BrowserWindow.getAllWindows()[0].webContents.send('update-state', {
+          status: 'ready',
+          currentVersion: installedVersion,
+          preparedId: 'modal-fixture',
+          release: {
+            version: targetVersion,
+            notes: '验收示例',
+            pageUrl: '',
+            publishedAt: '',
+            zip: { name: 'example.zip', size: 1, url: '' },
+            checksums: { name: 'SHA256SUMS', size: 1, url: '' },
+          },
+        }),
+      { installedVersion, targetVersion },
     );
     await page.waitForTimeout(400);
     await expect(page.locator('dialog[open]')).toHaveCount(1);
@@ -242,22 +262,27 @@ test('更新重启提示等待当前指引关闭，版本提示也避让更新�
     const restart = page.getByRole('dialog', { name: '更新已准备好', exact: true });
     await expect(restart).toBeVisible({ timeout: 4000 });
     await restart.getByRole('button', { name: '稍后重启', exact: true }).click();
-    const current = await app.evaluate(({ app }) => app.getVersion());
-    await versions(app, [release(current, '关闭更新重启提示后查看', 'pending')]);
-    await app.evaluate(({ BrowserWindow }) =>
-      BrowserWindow.getAllWindows()[0].webContents.send('update-state', {
-        status: 'ready',
-        currentVersion: '0.1.12',
-        preparedId: 'modal-fixture-2',
-        release: {
-          version: '0.2.0',
-          notes: '验收示例',
-          pageUrl: '',
-          publishedAt: '',
-          zip: { name: 'example.zip', size: 1, url: '' },
-          checksums: { name: 'SHA256SUMS', size: 1, url: '' },
-        },
-      }),
+    await versions(
+      app,
+      [release(scenarioVersion, '关闭更新重启提示后查看', 'pending')],
+      scenarioVersion,
+    );
+    await app.evaluate(
+      ({ BrowserWindow }, { scenarioVersion, targetVersion }) =>
+        BrowserWindow.getAllWindows()[0].webContents.send('update-state', {
+          status: 'ready',
+          currentVersion: scenarioVersion,
+          preparedId: 'modal-fixture-2',
+          release: {
+            version: targetVersion,
+            notes: '验收示例',
+            pageUrl: '',
+            publishedAt: '',
+            zip: { name: 'example.zip', size: 1, url: '' },
+            checksums: { name: 'SHA256SUMS', size: 1, url: '' },
+          },
+        }),
+      { scenarioVersion, targetVersion },
     );
     await expect(restart).toBeVisible();
     await page.waitForTimeout(1600);
