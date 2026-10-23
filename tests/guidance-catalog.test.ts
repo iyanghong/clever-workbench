@@ -25,6 +25,29 @@ const feature = {
 };
 
 describe('操作指引内容契约', () => {
+  it('首批清单要求的具体文件无效时，其他路径的同名正文不能掩盖警告', () => {
+    const result = loadGuidanceCatalog([
+      {
+        file: 'manifest.json',
+        text: JSON.stringify({
+          schemaVersion: 1,
+          kind: 'manifest',
+          requiredFeatures: ['application-update'],
+        }),
+      },
+      { file: 'features/application-update.json', text: '{损坏' },
+      { file: 'features/other.json', text: JSON.stringify(feature) },
+    ]);
+    expect(result.features.map((item) => item.id)).toEqual(['application-update']);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'unavailable-feature-guide',
+          file: 'features/application-update.json',
+        }),
+      ]),
+    );
+  });
   it('坏文件不影响有效指引，未知格式、占位内容与重复身份不会被选中', () => {
     const source = (file: string, value: unknown) => ({ file, text: JSON.stringify(value) });
     const result = loadGuidanceCatalog([

@@ -341,7 +341,12 @@ export function loadGuidanceCatalog(
           message: `首批必备功能指引文件缺失：${id}。`,
           suggestion: '补回对应 JSON 正文，或经维护者核对后修订清单；此警告不阻断发布。',
         });
-      else if (!result.features.some((feature) => feature.id === id))
+      else if (
+        !candidates.some(
+          (candidate) =>
+            candidate.file === file && candidate.guide.id === id && counts.get(id) === 1,
+        )
+      )
         result.warnings.push({
           code: 'unavailable-feature-guide',
           file,
