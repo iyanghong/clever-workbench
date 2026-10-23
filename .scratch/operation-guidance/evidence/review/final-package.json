@@ -1,0 +1,18 @@
+{
+  "verificationKind": "isolated-local-fixture-not-published",
+  "sourceSha": "eafdb571cf05206502e8b4249e4fa60cf3d26d2d",
+  "releaseSha": "459835a2c74f86c7f8c9bd0e88baad4bedb70536",
+  "tag": "v99.4.15",
+  "appVersion": "99.4.15",
+  "boundVersion": "99.4.15",
+  "boundSourceSha": "eafdb571cf05206502e8b4249e4fa60cf3d26d2d",
+  "boundPublication": "pending",
+  "rawFeatureCount": 47,
+  "rawFeatureExactCount": 47,
+  "manifestExact": true,
+  "sameSourceSummary": true,
+  "warningCodes": [
+    "missing-review",
+    "unreviewed-step"
+  ]
+}
