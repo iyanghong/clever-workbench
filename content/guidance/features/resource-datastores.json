@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "resource-datastores",
+  "revision": 1,
+  "title": "记录数据库、Redis 与其他资源",
+  "platforms": ["darwin", "win32"],
+  "placements": ["ledger-resources"],
+  "purpose": "按资源类型保存地址、配置、附加字段和关联账号。",
+  "prerequisites": {
+    "items": [
+      "先选择系统；需要环境归属时先建立环境。",
+      "将账号和秘密作为专门的账号记录，普通配置只写非秘密信息。"
+    ],
+    "notApplicableReason": ""
+  },
+  "entry": { "label": "台账 → 数据库／中间件 → 新增数据库／中间件", "target": "ledger-resources" },
+  "steps": [
+    {
+      "id": "create",
+      "title": "按类型新建资源",
+      "action": "点击“新增数据库／中间件”，填写名称、系统和环境；在“类型”选择数据库、Redis 或其他资源，再点击“创建资源”。",
+      "expectedResult": "先有名称即可创建；默认类型是 Redis，提交前应核对真实类型。"
+    },
+    {
+      "id": "connect",
+      "title": "完善连接资料",
+      "action": "打开详情并点击“编辑”，填写地址、端口与资源说明；数据库可补类型、版本、实例、库名、主备、目录、配置和日志。",
+      "expectedResult": "数据库使用专用配置字段，Redis 和其他资源仍可用附加字段保存普通配置；端口例如 6379 只是占位提示，须以实际值为准。"
+    },
+    {
+      "id": "extra",
+      "title": "增加非秘密字段",
+      "action": "展开“附加信息”，用“新字段名称”“新字段值”添加连接方式、数据库编号等，按需复制或移除。",
+      "expectedResult": "普通字段可与已有字段一起保存和复制；密码、Token 和私钥应移到账号秘密字段。"
+    },
+    {
+      "id": "accounts",
+      "title": "关联账号并核对适用范围",
+      "action": "在详情的“账号”区点击“新增账号”，填写用途和用户名，再单独保存秘密；在“适用范围与标签”选择环境与标签。",
+      "expectedResult": "账号属于该资源，跨多个适用环境仍只维护一份资源；普通台账摘要默认不包含秘密。"
+    }
+  ],
+  "completion": "类型、地址端口、普通配置、关联账号和环境范围均与实际资源一致。",
+  "faq": {
+    "items": [
+      {
+        "question": "数据库没有某个专用字段怎么办？",
+        "answer": "可在“附加信息”添加普通字段；涉及凭据的值请用账号秘密字段。"
+      },
+      {
+        "question": "同名或同地址会自动合并吗？",
+        "answer": "不会。系统内复用应调整原记录适用范围；独立副本仍是另一条记录。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}

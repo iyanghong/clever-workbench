@@ -60,6 +60,10 @@ test('系统动作收纳后支持键盘、保存及弹窗关闭焦点链', async
       menu.getByRole('menuitem', { name: '系统与环境使用指引', exact: true }),
     ).toBeFocused();
     await page.keyboard.press('ArrowUp');
+    await expect(
+      menu.getByRole('menuitem', { name: '导出资料使用指引', exact: true }),
+    ).toBeFocused();
+    await page.keyboard.press('ArrowUp');
     await expect(menu.getByRole('menuitem', { name: '导出资料', exact: true })).toBeFocused();
     await page.keyboard.press('Enter');
     const exporter = page.getByRole('dialog', { name: '导出系统资料', exact: true });

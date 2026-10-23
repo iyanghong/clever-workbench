@@ -4,10 +4,12 @@ import { useEffect, useId, useRef, useState } from 'react';
 export function SystemActionsMenu({
   onInfo,
   onExport,
+  onExportGuidance,
   onGuidance,
 }: {
   onInfo: () => void;
   onExport: () => void;
+  onExportGuidance: () => void;
   onGuidance: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -58,7 +60,7 @@ export function SystemActionsMenu({
         onKeyDown={(event) => {
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
             event.preventDefault();
-            initialItem.current = event.key === 'ArrowUp' ? 2 : 0;
+            initialItem.current = event.key === 'ArrowUp' ? 3 : 0;
             setOpen(true);
           }
         }}
@@ -102,6 +104,9 @@ export function SystemActionsMenu({
           </button>
           <button role="menuitem" tabIndex={-1} onClick={() => activate(onExport)}>
             导出资料
+          </button>
+          <button role="menuitem" tabIndex={-1} onClick={() => activate(onExportGuidance)}>
+            导出资料使用指引
           </button>
           <button role="menuitem" tabIndex={-1} onClick={() => activate(onGuidance)}>
             系统与环境使用指引

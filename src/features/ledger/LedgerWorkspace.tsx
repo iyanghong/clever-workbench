@@ -695,6 +695,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
             <SystemActionsMenu
               onInfo={() => void transition(() => setInfo(true))}
               onExport={() => void transition(() => setExporting(true))}
+              onExportGuidance={() => guidance.openLibrary('system-export')}
               onGuidance={() => guidance.openLibrary('systems')}
             />
             <FavoriteButton
@@ -721,6 +722,11 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
               ))}
             </nav>
             <div className="workspace-category-actions">
+              <GuidanceButton
+                placement="ledger-import"
+                label="粘贴指引"
+                accessibleLabel="表格粘贴使用指引"
+              />
               <button className="secondary-button" onClick={() => captureNew('paste')}>
                 粘贴表格
               </button>
