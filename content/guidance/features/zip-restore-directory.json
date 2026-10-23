@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "zip-restore-directory",
+  "revision": 1,
+  "title": "从 TXT 分片目录还原文件",
+  "platforms": ["darwin", "win32"],
+  "placements": ["tools", "zip-text-archive"],
+  "purpose": "从完整的 ZIP 文本分片目录中解密并还原原始文件和目录结构。",
+  "prerequisites": {
+    "items": [
+      "把同一归档的全部 part-000001.txt 等分片放在一个可读取目录中，不混入其他归档的片。",
+      "准备归档时使用的密码，以及能新建 restored 目录的输出位置。"
+    ],
+    "notApplicableReason": ""
+  },
+  "entry": { "label": "工具 → ZIP 文本归档 → 目录还原", "target": "zip-text-archive" },
+  "steps": [
+    {
+      "id": "parts-directory",
+      "title": "选择分片目录",
+      "action": "切到“目录还原”，在“文本分片目录”选包含全部 TXT 分片的目录。选择窗口按取消时保持原路径。",
+      "expectedResult": "页面显示分片目录；还原不需要知道原来设置的“每个 TXT 大小上限”。"
+    },
+    {
+      "id": "output-password",
+      "title": "选择输出并输入原密码",
+      "action": "按需指定“输出位置”，留空则在分片目录内输出；在“归档密码”输入创建归档时的密码。",
+      "expectedResult": "目标位置将新建 restored 目录。已有同名目标会被拒绝而不会覆盖；密码只用于本次还原，不保存到设置或备份。"
+    },
+    {
+      "id": "run-check",
+      "title": "开始并检查还原结果",
+      "action": "点击“开始还原”，等右侧处理状态结束，再打开结果目录核对文件结构和内容。",
+      "expectedResult": "完整且密码正确时出现“本次结果”；任务切页后继续运行，处理中退出应用会被阻止。"
+    },
+    {
+      "id": "recover-failure",
+      "title": "按错误原因修正后重试",
+      "action": "若提示分片缺失、损坏、混入别的归档或密码错误，先核对分片集合和原密码，再选择空闲输出位置重试。",
+      "expectedResult": "失败提示保留在工具页，已存在的目标目录和源分片不被覆盖；不能用不完整的分片推断还原成功。"
+    }
+  ],
+  "completion": "新的 restored 目录包含原始结构及文件，源分片保持原样；同名现有目录未被覆盖。",
+  "faq": {
+    "items": [
+      {
+        "question": "没有全部分片或忘记密码还能还原吗？",
+        "answer": "不能保证。请向归档提供者补齐同一归档的分片并确认原密码；密码错误或分片损坏会报错，不会把错误内容当作成功结果。"
+      },
+      {
+        "question": "处理中能取消或直接退出吗？",
+        "answer": "文件选择窗口可以取消；已经开始的处理没有取消按钮。可以切到其他页面等待，运行期间退出应用会被阻止。失败时清理本次创建的临时资源，不删除原有分片或已有目标。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}

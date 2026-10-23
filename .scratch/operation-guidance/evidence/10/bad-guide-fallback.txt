@@ -1,0 +1,10 @@
+build: exit=0
+
+
+advisory: exit=0
+警告 [invalid-json] content/guidance/features/zip-archive-git.json#$：JSON 无法解析。
+
+desktop: exit=0
+  5 passed (10.0s)
+
+restored-build: exit=0

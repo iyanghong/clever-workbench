@@ -348,6 +348,12 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
                       ))}
                     </div>
                   )}
+                  {item.kind === 'tool' && item.id === 'zip-text' && (
+                    <GuidanceButton
+                      placement="zip-text-archive"
+                      accessibleLabel="ZIP 文本归档使用指引"
+                    />
+                  )}
                   <div className="favorite-order">
                     <button
                       aria-label={`上移常用 ${info.title}`}
