@@ -5,9 +5,10 @@
 ## 内容与资源
 
 - 实际功能正文：`content/guidance/features/*.json`；随包历史：`content/guidance/releases/*.json`；下一次发布说明：`content/guidance/pending.json`。每个文件独立解析。
+- `content/guidance/manifest.json` 列出首批必备的稳定功能 ID，正文文件按 `features/<ID>.json` 命名；共享解析器同时用于应用与发布检查。清单缺失／损坏、文件缺失／无效均给出精确警告，不作为构建或发布门槛。
 - 本地截图放在 `content/guidance/assets/`，步骤沿用 `image.src/alt/caption`，其中 src 形如 `assets/application-update-about.png`。支持 PNG、JPEG、WebP、GIF；不允许 URL、绝对路径、上级路径或脚本资源。
 - 功能字段与编写模板一致：schemaVersion、kind、id、revision、title、platforms、placements、purpose、prerequisites、entry、steps、completion、faq。稳定步骤 ID 不随显示文案变更。准备条件及常见问题的 items 为空时必须给出具体不适用原因。
-- 首批已交付 `application-update`（覆盖组 21）和 `using-guidance`（指引自身说明）。截图来自隔离资料下的真实开发界面，用受控更新状态展示按钮；版本号是示例，不是远端最新版断言。
+- 首批 47 篇正文覆盖 26 组现有功能及 `using-guidance`（指引自身说明），实际验收范围见任务 11；三张截图来自隔离示例资料，版本号仅为示例。
 
 ## 共享解释边界
 
@@ -37,7 +38,7 @@ publication 可为 `pending` 或 `published`：**当前实际运行版本可以�
 - `useGuidance()`：提供 openGuide(id)、openLibrary(placement?)，供现有菜单使用。不要直接操作底层 Dialog 状态。
 - 在已有功能弹窗中提供帮助时，可给按钮 beforeOpen 回调关闭该功能弹窗；先保留来源焦点，再进入指引。不要在指引外绕过保存执行功能动作。
 - 设置中的集中入口为 SettingsGuidance。功能正文登记由目录自动发现，新增 JSON 不需要修改中央 import 列表。
-- 受控目的地和展示位置在 `registry.ts` 中登记。现有 ledger 类目的地先进入台账选择流程，不携带记忆对象 ID，不自动弹出创建、导出或删除对话框；后续功能任务可安全细化纯导航入口。
+- 受控目的地和展示位置在 `registry.ts` 中登记。台账类目的地携带分类进入对应清单；没有系统时进入系统选择流程，不携带记忆对象 ID，也不自动弹出创建、导出或删除对话框。
 - 设置 route.section 支持 appearance、vault、backup、about、guidance，对应页面内锚点；未知 section 不执行任意选择器。
 
 ## 导航、模态和忙状态
@@ -47,6 +48,8 @@ App 保留原有 `navigate(): Promise<void>` 契约，并为指引提供显式 `
 `window.desktop.guidanceAvailability()` 经原有 secureHandler、preload generation 进入主进程，返回 `{available,reason?}`。该读接口检查更新冻结、恢复、凭据变更、关闭、备份和 activeOperations。原生文件选择位于活动 IPC 内，因而在没有 DOM dialog 的情况下也会阻止指引打开。它只报告时点状态，不授予永久锁；后续自动提示必须继续协调 DOM 模态、实际显示确认、页面就绪与输入空闲。
 
 共享 Dialog 的 `exclusive` 用于指引及更新重启提示：显示前同步检查现有模态，忙时保持隐藏并等待；普通业务弹窗仍可嵌套，但会等待已显示的独占提示关闭。`onShown` 仅在 `showModal()` 成功且存在可见布局后触发，排队和显示失败不会消费提示。自动版本提示另检查页面 `aria-busy`、输入及中文组合空闲、保存结果和主进程可用性；异步检查后重新核对活动代次与 DOM 模态。
+
+待显示提示使用输入、页面就绪与弹窗变化、窗口可见性及 `onGuidanceAvailabilityChanged` 操作完成事件排程一次检查。连续输入后的 1 秒空闲由单次计时确认；忙状态不循环轮询。普通弹窗关闭通过 DOM 变化唤醒等待中的独占窗口。
 
 ## 版本提示与设备记录
 
@@ -60,6 +63,8 @@ App 保留原有 `navigate(): Promise<void>` 契约，并为指引提供显式 `
 ## 台账附近入口（任务 06）
 
 台账顶部共用一个 `GuidanceButton`，可访问名称为“台账使用指引”，表格、摘要和详情状态均沿用同一入口。无系统时使用 `ledger`；当前分类的 placement 为：访问入口 `ledger-access`、账号 `ledger-accounts`、服务器及数据库／中间件 `ledger-resources`、应用部署 `ledger-deployments`、运行维护 `ledger-operations`、文档 `documents`。后续资源、部署、运维内容直接配置对应 placement，不再增加同类帮助按钮。
+
+展示位置与“前往功能”目标是两种标识：服务器、数据库／中间件共用附近的 `ledger-resources` 指引列表，但服务器正文前往 `ledger-servers` 分类，数据库／中间件正文前往 `ledger-resources` 分类。导航清空旧分类筛选与选中对象，系统不存在时仍停在可选择系统的页面。
 
 “更多”菜单新增“系统与环境使用指引”，打开 `systems` 主题列表；菜单先把焦点归还持久触发按钮，指引关闭后返回该按钮。独立项目档案页使用 `projects`。这些入口只阅读，不强行关闭系统信息、新建或秘密编辑弹窗；所有“前往功能”继续经过统一保存与受控目的地检查。
 

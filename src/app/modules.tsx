@@ -58,6 +58,8 @@ export type Route = {
   section?: string;
   system?: string;
   module: string;
+  ledgerCategory?:
+    'access' | 'accounts' | 'servers' | 'resources' | 'services' | 'operations' | 'documents';
   project?: string;
   objectId?: string;
   trash?: boolean;

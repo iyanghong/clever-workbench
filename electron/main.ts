@@ -123,13 +123,15 @@ function secureHandler(channel: string, handler: (...args: any[]) => any) {
       if (updateFrozen && !updateReadChannels.has(channel))
         throw new Error('正在准备安装更新，请等待完成。');
       const operation = Promise.resolve().then(() => handler(...args));
-      if (!updateReadChannels.has(channel) && channel !== 'update-install')
-        activeOperations.add(operation);
+      const tracked = !updateReadChannels.has(channel) && channel !== 'update-install';
+      if (tracked) activeOperations.add(operation);
       let result;
       try {
         result = await operation;
       } finally {
-        activeOperations.delete(operation);
+        if (tracked && activeOperations.delete(operation) && activeOperations.size === 0)
+          if (window && !window.isDestroyed())
+            window.webContents.send('guidance-availability-changed');
       }
       if (
         !['data-generation', 'restore-backup'].includes(channel) &&

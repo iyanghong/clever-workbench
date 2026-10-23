@@ -7,6 +7,7 @@ import {
 } from '../../guidance/versions';
 import type { GuidanceDeviceState, GuidanceVersions, ReleaseGuide } from '../../guidance/types';
 import { bundledGuidance } from './bundled';
+import { manualGuidanceAvailability } from './manual-open';
 
 export function VersionGuidance({
   manualRequest,
@@ -24,23 +25,15 @@ export function VersionGuidance({
   const [runtime, setRuntime] = useState<GuidanceVersions | null>(null);
   const [device, setDevice] = useState<GuidanceDeviceState | null>(null);
   const [view, setView] = useState<{ records?: ReleaseGuide[]; automatic?: boolean } | null>(null);
+  const [wasShown, setWasShown] = useState(false);
   const [warning, setWarning] = useState('');
   const [notice, setNotice] = useState('');
   const handledManual = useRef(0);
   const shownInSession = useRef(false);
   const activity = useRef({ time: Date.now(), sequence: 0, composing: false });
   const displayGuard = useRef<() => boolean>(() => false);
-  useEffect(() => {
-    const touch = (event: Event) => {
-      activity.current.time = Date.now();
-      activity.current.sequence++;
-      if (event.type === 'compositionstart') activity.current.composing = true;
-      if (event.type === 'compositionend') activity.current.composing = false;
-    };
-    const events = ['keydown', 'input', 'pointerdown', 'compositionstart', 'compositionend'];
-    events.forEach((name) => document.addEventListener(name, touch, true));
-    return () => events.forEach((name) => document.removeEventListener(name, touch, true));
-  }, []);
+  const currentView = useRef(view);
+  currentView.current = view;
   useEffect(() => {
     let active = true;
     setView(null);
@@ -67,32 +60,29 @@ export function VersionGuidance({
     handledManual.current = manualRequest;
     let active = true;
     setNotice('');
-    void window.desktop
-      .guidanceAvailability()
-      .then((availability) => {
-        if (!active) return;
-        if (!availability.available)
-          setNotice(availability.reason ?? '请等待当前操作完成后查看版本说明。');
-        else if (document.querySelector('dialog[open], [role="alertdialog"]'))
-          setNotice('请先关闭当前弹窗，再查看版本说明。');
-        else setView({});
-      })
-      .catch(() => {
-        if (active) setNotice('暂时无法打开版本说明，请稍后重试。');
-      });
+    void manualGuidanceAvailability({
+      busy: '请等待当前操作完成后查看版本说明。',
+      modal: '请先关闭当前弹窗，再查看版本说明。',
+      unavailable: '暂时无法打开版本说明，请稍后重试。',
+    }).then((result) => {
+      if (!active) return;
+      if (result.ok) setView({});
+      else setNotice(result.message);
+    });
     return () => {
       active = false;
     };
   }, [manualRequest, disabled, generation]);
   useEffect(() => {
-    if (!runtime || !device || disabled || shownInSession.current || view) return;
+    if (!runtime || !device || disabled || wasShown || shownInSession.current) return;
     const records = planVersionGuidance(runtime, device);
     if (
       !records.some((record) => record.operationChange === 'changed' && record.changes.length > 0)
     )
       return;
     let active = true,
-      checking = false;
+      checking = false,
+      timer: number | undefined;
     const ready = () =>
       !document.hidden &&
       !activity.current.composing &&
@@ -102,8 +92,14 @@ export function VersionGuidance({
         'dialog[open], [role="alertdialog"], .module-loading, .loading, [aria-busy="true"]',
       );
     displayGuard.current = ready;
-    const timer = window.setInterval(() => {
-      if (checking || !ready()) return;
+    const attempt = () => {
+      timer = undefined;
+      if (!active || shownInSession.current || !ready()) return;
+      if (currentView.current) {
+        document.dispatchEvent(new Event('guidance-dialog-retry'));
+        return;
+      }
+      if (checking) return;
       checking = true;
       const sequence = activity.current.sequence;
       void (async () => {
@@ -116,13 +112,44 @@ export function VersionGuidance({
         .catch(() => {})
         .finally(() => {
           checking = false;
+          if (sequence !== activity.current.sequence) schedule();
         });
-    }, 300);
+    };
+    const schedule = () => {
+      if (!active || shownInSession.current || checking) return;
+      if (timer !== undefined) clearTimeout(timer);
+      timer = window.setTimeout(attempt, Math.max(0, 1000 - (Date.now() - activity.current.time)));
+    };
+    const touch = (event: Event) => {
+      activity.current.time = Date.now();
+      activity.current.sequence++;
+      if (event.type === 'compositionstart') activity.current.composing = true;
+      if (event.type === 'compositionend') activity.current.composing = false;
+      schedule();
+    };
+    const events = ['keydown', 'input', 'pointerdown', 'compositionstart', 'compositionend'];
+    events.forEach((name) => document.addEventListener(name, touch, true));
+    const observer = new MutationObserver(schedule);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['open', 'aria-busy', 'class'],
+    });
+    const offAvailability = window.desktop.onGuidanceAvailabilityChanged(schedule);
+    document.addEventListener('visibilitychange', schedule);
+    window.addEventListener('focus', schedule);
+    schedule();
     return () => {
       active = false;
-      clearInterval(timer);
+      if (timer !== undefined) clearTimeout(timer);
+      observer.disconnect();
+      offAvailability();
+      events.forEach((name) => document.removeEventListener(name, touch, true));
+      document.removeEventListener('visibilitychange', schedule);
+      window.removeEventListener('focus', schedule);
     };
-  }, [runtime, device, disabled, generation, view, preparePrompt]);
+  }, [runtime, device, disabled, generation, preparePrompt, wasShown]);
   useEffect(() => {
     if (disabled) setView(null);
   }, [disabled]);
@@ -145,6 +172,7 @@ export function VersionGuidance({
       onShown={() => {
         if (!view.automatic || !runtime || shownInSession.current) return;
         shownInSession.current = true;
+        setWasShown(true);
         void window.desktop
           .guidanceAcknowledge(runtime.currentVersion)
           .then((state) => {

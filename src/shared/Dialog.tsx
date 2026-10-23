@@ -35,6 +35,7 @@ export function Dialog({
   useLayoutEffect(() => {
     let previous: HTMLElement | null = null;
     let presented = false;
+    let observer: MutationObserver | undefined;
     const element = dialog.current;
     if (!element) return;
     const tryShow = () => {
@@ -50,6 +51,7 @@ export function Dialog({
         element.showModal();
         if (element.open && element.getClientRects().length) {
           presented = true;
+          observer?.disconnect();
           shown.current?.();
         }
       } catch {
@@ -57,9 +59,23 @@ export function Dialog({
       }
     };
     tryShow();
-    const timer = window.setInterval(tryShow, 100);
+    if (!presented) {
+      observer = new MutationObserver(tryShow);
+      observer.observe(document.body, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['open'],
+      });
+      document.addEventListener('guidance-dialog-retry', tryShow);
+      document.addEventListener('visibilitychange', tryShow);
+      window.addEventListener('focus', tryShow);
+    }
     return () => {
-      clearInterval(timer);
+      observer?.disconnect();
+      document.removeEventListener('guidance-dialog-retry', tryShow);
+      document.removeEventListener('visibilitychange', tryShow);
+      window.removeEventListener('focus', tryShow);
       element?.close();
       if (presented && previous?.isConnected) previous.focus({ preventScroll: true });
     };

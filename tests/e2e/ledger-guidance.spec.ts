@@ -123,6 +123,62 @@ test('空台账可读指引，七类清单共享就近入口，阅读与取消�
   }
 });
 
+test('从旧台账分类阅读指引后前往对应分类，不选中过期对象', async () => {
+  const { app, page, close } = await launch();
+  try {
+    await page.evaluate(() =>
+      window.desktop.mutate({ type: 'system.save', name: '指引分类示例系统' }),
+    );
+    const cases = [
+      ['access-entries', '访问入口'],
+      ['accounts-secrets', '账号'],
+      ['resource-server', '服务器'],
+      ['resource-datastores', '数据库／中间件'],
+      ['services-deployments', '应用部署'],
+      ['operations-maintenance', '运行维护'],
+    ] as const;
+    for (const [id, category] of cases) {
+      await page.getByRole('button', { name: '台账', exact: true }).click();
+      await page
+        .getByRole('navigation', { name: '系统资料类型' })
+        .getByRole('button', { name: '账号', exact: true })
+        .click();
+      await page.getByRole('button', { name: '设置', exact: true }).click();
+      await page.getByRole('button', { name: '查看全部使用指引', exact: true }).click();
+      const feature = await expectedFeatureGuide(app, id);
+      if (!feature) {
+        await expect(
+          page.getByRole('dialog', { name: '使用指引', exact: true }).getByRole('button', {
+            name: authoredTitles[id] ?? id,
+            exact: true,
+          }),
+        ).toHaveCount(0);
+        test.info().annotations.push({
+          type: 'guidance-content-warning',
+          description: `${id} 正文不可用；该包跳过对应分类导航，已验证目录降级。`,
+        });
+        await page.keyboard.press('Escape');
+        continue;
+      }
+      await page
+        .getByRole('dialog', { name: '使用指引', exact: true })
+        .getByRole('button', { name: feature.title, exact: true })
+        .click();
+      const guide = page.getByRole('dialog', { name: feature.title, exact: true });
+      await guide.getByRole('button', { name: '前往功能', exact: true }).click();
+      await expect(guide).toHaveCount(0);
+      await expect(
+        page
+          .getByRole('navigation', { name: '系统资料类型' })
+          .getByRole('button', { name: category, exact: true }),
+      ).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('complementary', { name: '台账详情' })).toHaveCount(0);
+    }
+  } finally {
+    await close();
+  }
+});
+
 test('系统菜单指引返回焦点，系统环境编辑与项目沿革按说明保留归属', async () => {
   const { app, page, close } = await launch();
   try {

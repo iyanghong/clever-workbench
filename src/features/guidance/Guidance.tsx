@@ -6,6 +6,7 @@ import type { FeatureGuide } from '../../guidance/types';
 import { bundledGuidance, guidanceImage } from './bundled';
 import './guidance.css';
 import { VersionGuidance } from './VersionGuidance';
+import { manualGuidanceAvailability } from './manual-open';
 
 export type GuidanceNavigationResult = { ok: boolean; message?: string };
 type GuidanceContextValue = {
@@ -57,24 +58,15 @@ export function GuidanceProvider({
     origin.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     if (disabledRef.current) return;
     setNotice('');
-    void window.desktop
-      .guidanceAvailability()
-      .then((availability) => {
-        if (token !== request.current || disabledRef.current) return;
-        if (!availability.available) {
-          setNotice(availability.reason ?? '请等待当前操作完成后查看指引。');
-          return;
-        }
-        // Recheck after asynchronous availability; do not place a guide over a newly opened modal.
-        if (document.querySelector('dialog[open], [role="alertdialog"]')) {
-          setNotice('请先关闭当前弹窗，再查看使用指引。');
-          return;
-        }
-        setSelection(next);
-      })
-      .catch(() => {
-        if (token === request.current) setNotice('暂时无法打开指引，请稍后重试。');
-      });
+    void manualGuidanceAvailability({
+      busy: '请等待当前操作完成后查看指引。',
+      modal: '请先关闭当前弹窗，再查看使用指引。',
+      unavailable: '暂时无法打开指引，请稍后重试。',
+    }).then((result) => {
+      if (token !== request.current || disabledRef.current) return;
+      if (result.ok) setSelection(next);
+      else setNotice(result.message);
+    });
   };
   const features = bundledGuidance.features.filter((guide) =>
     guide.platforms.includes(window.desktop.platform as 'darwin'),

@@ -118,12 +118,10 @@ test('跨版本按功能合并不同变化，目标无新增操作仍提示，�
       await expect(
         prompt.getByText('此功能指引已移除或暂不可用，历史摘要仍可阅读。', { exact: true }),
       ).toHaveCount(1);
-      test
-        .info()
-        .annotations.push({
-          type: 'guidance-content-warning',
-          description: '当前功能正文不可用，版本变化仍按同一功能合并，并验证了不可用说明。',
-        });
+      test.info().annotations.push({
+        type: 'guidance-content-warning',
+        description: '当前功能正文不可用，版本变化仍按同一功能合并，并验证了不可用说明。',
+      });
     }
     await expect(prompt).toContainText('支持下载后稍后重启');
     await expect(prompt).toContainText('加入安装失败恢复入口');
@@ -207,6 +205,42 @@ test('主界面资料尚未就绪时不显示，等载入完成才开始提示',
   }
 });
 
+test('后台操作繁忙时不反复检查可用性，操作结束后仍显示一次', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-version-idle-'));
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env });
+  try {
+    const current = await app.evaluate(({ app }) => app.getVersion());
+    const initial = await app.firstWindow();
+    await initial.getByRole('button', { name: '工作台', exact: true }).waitFor();
+    await app.evaluate(({ ipcMain }) => {
+      (globalThis as any).guidanceBusyChecks = 0;
+      (globalThis as any).guidanceBusy = true;
+      ipcMain.removeHandler('guidance-availability');
+      ipcMain.handle('guidance-availability', () => {
+        (globalThis as any).guidanceBusyChecks++;
+        return { available: !(globalThis as any).guidanceBusy };
+      });
+    });
+    const page = await versions(app, [release(current, '繁忙结束后显示操作变化', 'pending')]);
+    await page.waitForTimeout(2300);
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    expect(await app.evaluate(() => (globalThis as any).guidanceBusyChecks)).toBeLessThanOrEqual(2);
+    await app.evaluate(({ BrowserWindow }) => {
+      (globalThis as any).guidanceBusy = false;
+      BrowserWindow.getAllWindows()[0].webContents.send('guidance-availability-changed');
+    });
+    await expect(page.getByRole('dialog', { name: '版本操作指引', exact: true })).toContainText(
+      '繁忙结束后显示操作变化',
+      { timeout: 5000 },
+    );
+  } finally {
+    await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('更新重启提示等待当前指引关闭，版本提示也避让更新重启窗口', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-version-modal-'));
   const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
@@ -262,14 +296,12 @@ test('更新重启提示等待当前指引关闭，版本提示也避让更新�
     const restart = page.getByRole('dialog', { name: '更新已准备好', exact: true });
     await expect(restart).toBeVisible({ timeout: 4000 });
     await restart.getByRole('button', { name: '稍后重启', exact: true }).click();
-    await versions(
-      app,
-      [release(scenarioVersion, '关闭更新重启提示后查看', 'pending')],
-      scenarioVersion,
-    );
+    // Keep the fixture in the snapshot source across reload: a one-off event may precede
+    // the renderer's subscription, whereas the real updater also retains its snapshot.
     await app.evaluate(
-      ({ BrowserWindow }, { scenarioVersion, targetVersion }) =>
-        BrowserWindow.getAllWindows()[0].webContents.send('update-state', {
+      ({ ipcMain }, { scenarioVersion, targetVersion }) => {
+        ipcMain.removeHandler('update-snapshot');
+        ipcMain.handle('update-snapshot', () => ({
           status: 'ready',
           currentVersion: scenarioVersion,
           preparedId: 'modal-fixture-2',
@@ -281,8 +313,14 @@ test('更新重启提示等待当前指引关闭，版本提示也避让更新�
             zip: { name: 'example.zip', size: 1, url: '' },
             checksums: { name: 'SHA256SUMS', size: 1, url: '' },
           },
-        }),
+        }));
+      },
       { scenarioVersion, targetVersion },
+    );
+    await versions(
+      app,
+      [release(scenarioVersion, '关闭更新重启提示后查看', 'pending')],
+      scenarioVersion,
     );
     await expect(restart).toBeVisible();
     await page.waitForTimeout(1600);

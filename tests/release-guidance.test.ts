@@ -78,6 +78,58 @@ test('相同内容在独立 Node 检查入口与本地发布得到一致警告�
   }
 });
 
+test('首批清单能报告未被当前发布引用的缺失正文和损坏正文，检查仍成功', async () => {
+  const f = await fixture();
+  try {
+    await fs.writeFile(
+      path.join(f.root, 'content/guidance/manifest.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        kind: 'manifest',
+        requiredFeatures: ['application-update', 'work-review', 'damaged-guide'],
+      }),
+    );
+    await fs.rename(
+      path.join(f.root, 'content/guidance/features/update.json'),
+      path.join(f.root, 'content/guidance/features/application-update.json'),
+    );
+    await fs.writeFile(path.join(f.root, 'content/guidance/features/damaged-guide.json'), '{坏');
+    const output = path.join(f.root, 'report.json');
+    const run = spawnSync(process.execPath, [checker, '--directory', f.root, '--output', output], {
+      encoding: 'utf8',
+    });
+    expect(run.status).toBe(0);
+    const report = JSON.parse(await fs.readFile(output, 'utf8'));
+    expect(report.catalog.features.map((item: { id: string }) => item.id)).toEqual([
+      'application-update',
+    ]);
+    expect(report.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'missing-feature-file',
+          file: 'content/guidance/features/work-review.json',
+        }),
+        expect.objectContaining({
+          code: 'unavailable-feature-guide',
+          file: 'content/guidance/features/damaged-guide.json',
+        }),
+      ]),
+    );
+    await fs.rm(path.join(f.root, 'content/guidance/manifest.json'));
+    const withoutManifest = await guidance.inspectOperationGuidance(f.root);
+    expect(withoutManifest.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'missing-manifest',
+          file: 'content/guidance/manifest.json',
+        }),
+      ]),
+    );
+  } finally {
+    await f.cleanup();
+  }
+});
+
 test('核对记录的失效步骤、未覆盖变化和错误通过状态只警告，并保留真实结果与缺项', async () => {
   const f = await fixture();
   try {

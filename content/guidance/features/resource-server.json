@@ -14,7 +14,7 @@
     ],
     "notApplicableReason": ""
   },
-  "entry": { "label": "台账 → 服务器 → 新增服务器或选择已有服务器", "target": "ledger-resources" },
+  "entry": { "label": "台账 → 服务器 → 新增服务器或选择已有服务器", "target": "ledger-servers" },
   "steps": [
     {
       "id": "create",

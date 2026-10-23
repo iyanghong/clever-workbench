@@ -36,6 +36,8 @@ export function loadGuidanceCatalog(
   const candidates: { guide: FeatureGuide; file: string }[] = [];
   const releaseCandidates: { guide: ReleaseGuide; file: string }[] = [];
   const releaseFiles: { guide: ReleaseGuide | ReleaseDraft; file: string }[] = [];
+  let manifestPresent = false;
+  let requiredFeatures: string[] | undefined;
   for (const { file, text } of sources) {
     const warn = (
       code: string,
@@ -43,11 +45,39 @@ export function loadGuidanceCatalog(
       message: string,
       suggestion = '按照操作指引模板修正此字段。',
     ) => result.warnings.push({ code, file, field, message, suggestion });
+    if (file === 'manifest.json') manifestPresent = true;
     let value: unknown;
     try {
       value = JSON.parse(text);
     } catch {
       warn('invalid-json', '$', 'JSON 无法解析。', '检查引号、逗号和括号，保留其他有效文件。');
+      if (file === 'manifest.json')
+        warn(
+          'invalid-manifest',
+          '$',
+          '首批功能指引清单无法解析。',
+          '修正清单 JSON，保留其他有效正文。',
+        );
+      continue;
+    }
+    if (file === 'manifest.json') {
+      if (
+        object(value) &&
+        value.schemaVersion === 1 &&
+        value.kind === 'manifest' &&
+        Array.isArray(value.requiredFeatures) &&
+        value.requiredFeatures.length > 0 &&
+        value.requiredFeatures.every(identifier) &&
+        new Set(value.requiredFeatures).size === value.requiredFeatures.length
+      )
+        requiredFeatures = value.requiredFeatures as string[];
+      else
+        warn(
+          'invalid-manifest',
+          'requiredFeatures',
+          '首批功能指引清单格式无效。',
+          '使用 schemaVersion 1、kind manifest 和非空且不重复的稳定指引 ID 列表。',
+        );
       continue;
     }
     if (!object(value) || value.schemaVersion !== 1) {
@@ -291,6 +321,35 @@ export function loadGuidanceCatalog(
       });
     else result.features.push(guide);
   }
+  if (!manifestPresent)
+    result.warnings.push({
+      code: 'missing-manifest',
+      file: 'manifest.json',
+      field: '$',
+      message: '未提供首批必备功能指引清单，无法发现未被版本说明引用的缺项。',
+      suggestion: '添加 manifest.json，列出首批全部稳定指引 ID；此警告不阻断使用或发布。',
+    });
+  if (requiredFeatures)
+    for (const id of requiredFeatures) {
+      const file = `features/${id}.json`;
+      const source = sources.find((item) => item.file === file);
+      if (!source)
+        result.warnings.push({
+          code: 'missing-feature-file',
+          file,
+          field: 'requiredFeatures',
+          message: `首批必备功能指引文件缺失：${id}。`,
+          suggestion: '补回对应 JSON 正文，或经维护者核对后修订清单；此警告不阻断发布。',
+        });
+      else if (!result.features.some((feature) => feature.id === id))
+        result.warnings.push({
+          code: 'unavailable-feature-guide',
+          file,
+          field: 'requiredFeatures',
+          message: `首批必备功能指引无有效正文：${id}。`,
+          suggestion: '按该文件的格式警告修正正文；其他有效指引仍可使用。',
+        });
+    }
   for (const { guide, file } of releaseCandidates) {
     if (releaseCandidates.filter((item) => item.guide.version === guide.version).length > 1)
       result.warnings.push({

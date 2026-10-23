@@ -160,6 +160,7 @@ export type BackupInfo = {
 };
 export interface DesktopAPI {
   guidanceAvailability(): Promise<import('./guidance/types').GuidanceAvailability>;
+  onGuidanceAvailabilityChanged(handler: () => void): () => void;
   guidanceVersions(): Promise<import('./guidance/types').GuidanceVersions>;
   guidanceState(): Promise<import('./guidance/types').GuidanceDeviceState>;
   guidanceAcknowledge(version: string): Promise<import('./guidance/types').GuidanceDeviceState>;

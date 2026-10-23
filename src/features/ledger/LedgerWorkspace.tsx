@@ -273,6 +273,15 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                 tag: 'all',
               }
             : {}),
+          ...(route.ledgerCategory
+            ? {
+                category: route.ledgerCategory,
+                environment: 'all',
+                query: '',
+                tag: 'all',
+                scroll: 0,
+              }
+            : {}),
         });
         setSelected(target.id ?? null);
       })

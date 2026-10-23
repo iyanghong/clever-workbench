@@ -6,6 +6,8 @@
 
 复制 [feature.template.json](feature.template.json)，替换标识、标题、用途、入口、步骤与结果。只列实际适用的平台；当前模板的 `darwin` 是 macOS 示例，并不表示其他功能仅支持 macOS。
 
+首批必备功能由 [manifest.json](../../content/guidance/manifest.json) 按稳定 ID 登记，对应文件名为 `content/guidance/features/<ID>.json`。增加、拆分或移除这批正文时同步维护清单；检查器会指出未被本次发布说明引用的缺文件或无效正文。清单或正文有问题只报告警告，不阻断构建与发布。
+
 准备条件与常见问题的 `items` 有内容时，`notApplicableReason` 留空。确实不适用时清空 `items` 并填写具体原因；二者都空视为未编写。
 
 图片按需放入受控仓库资源目录；在相应步骤增加以下对象，路径只是格式示例，不是已存在的截图：

@@ -1,7 +1,14 @@
 /** Stable navigation destinations: a guide may select a page, never execute a command. */
 export const guidanceTargets: Record<
   string,
-  { module: string; section?: string; objectId?: string; trash?: boolean; label: string }
+  {
+    module: string;
+    section?: string;
+    objectId?: string;
+    trash?: boolean;
+    ledgerCategory?: import('../app/modules').Route['ledgerCategory'];
+    label: string;
+  }
 > = {
   home: { module: 'home', label: '工作台' },
   search: { module: 'home', label: '工作台顶部搜索' },
@@ -10,11 +17,16 @@ export const guidanceTargets: Record<
   systems: { module: 'ledger', label: '台账 → 选择系统' },
   environments: { module: 'ledger', label: '台账 → 系统信息' },
   projects: { module: 'archive', label: '项目档案' },
-  'ledger-access': { module: 'ledger', label: '台账 → 访问入口' },
-  'ledger-resources': { module: 'ledger', label: '台账 → 资源' },
-  'ledger-accounts': { module: 'ledger', label: '台账 → 账号' },
-  'ledger-deployments': { module: 'ledger', label: '台账 → 应用部署' },
-  'ledger-operations': { module: 'ledger', label: '台账 → 运行维护' },
+  'ledger-access': { module: 'ledger', ledgerCategory: 'access', label: '台账 → 访问入口' },
+  'ledger-servers': { module: 'ledger', ledgerCategory: 'servers', label: '台账 → 服务器' },
+  'ledger-resources': {
+    module: 'ledger',
+    ledgerCategory: 'resources',
+    label: '台账 → 数据库／中间件',
+  },
+  'ledger-accounts': { module: 'ledger', ledgerCategory: 'accounts', label: '台账 → 账号' },
+  'ledger-deployments': { module: 'ledger', ledgerCategory: 'services', label: '台账 → 应用部署' },
+  'ledger-operations': { module: 'ledger', ledgerCategory: 'operations', label: '台账 → 运行维护' },
   'ledger-import': { module: 'ledger', label: '台账 → 粘贴表格' },
   'system-export': { module: 'ledger', label: '台账 → 系统资料导出' },
   tasks: { module: 'tasks', label: '工作任务' },
@@ -39,6 +51,7 @@ export const guidancePlacements = [
   'environments',
   'projects',
   'ledger-access',
+  'ledger-servers',
   'ledger-resources',
   'ledger-accounts',
   'ledger-deployments',
