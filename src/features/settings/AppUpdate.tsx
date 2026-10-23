@@ -195,6 +195,11 @@ export function UpdateDetails({
             <p>私有仓库更新使用本机 Git 保存的 GitHub 登录；此电脑的账号须有仓库读取权限。</p>
           </div>
         </details>
+        <GuidanceButton
+          guideId="update-history-and-recovery"
+          accessibleLabel="更新历史使用指引"
+          beforeOpen={onBeforeGuidance}
+        />
         <UpdateHistory />
       </div>
       <footer className="update-footer">

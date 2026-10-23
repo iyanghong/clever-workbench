@@ -1,0 +1,15 @@
+
+> clever-workbench@0.1.12 test:e2e
+> playwright test tests/e2e/backup-guidance.spec.ts
+
+
+Running 4 tests using 1 worker
+
+(node:15870) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/e2e/backup-guidance.spec.ts:67:1 › 备份密码指引从设置就近打开；取消与保存各自保持独立备份配置 (2.5s)
+  ✓  2 tests/e2e/backup-guidance.spec.ts:89:1 › 更新历史指引只导航；历史显示恢复材料、阶段和缺失文件的处理反馈 (1.3s)
+  ✓  3 tests/e2e/backup-guidance.spec.ts:134:1 › 手动与自动备份指引只导航；导出、立即备份及目录失败反馈可见 (2.5s)
+  ✓  4 tests/e2e/backup-guidance.spec.ts:176:1 › 恢复指引只前往入口；错误密码、取消及目标解锁后整份恢复各有反馈 (5.8s)
+
+  4 passed (12.3s)
