@@ -81,7 +81,7 @@ export async function launchUpdateHelper(options: {
       '旧应用和本次下载目录仅在新版健康启动确认前保留；确认成功后自动清理，完整加密备份和本目录日志继续保留。',
       `完整加密备份：${options.backup}`,
       `更新版本：${options.currentVersion} → ${prepared.version}`,
-      '先保留现有资料。新版本可能已经迁移数据库；不要直接用旧应用打开新数据。需要恢复时，由你明确选择兼容版本和备份，使用备份生成时的主密码。',
+      '先保留现有资料。新版本可能已经迁移数据库；不要直接用旧应用打开新数据。需要恢复时，由你明确选择兼容版本和备份，使用该份备份生成时的密码：新格式用独立备份密码，旧格式用当时的旧密码。',
       '更新助手不会自动回退或覆盖数据库。可从 https://github.com/iyanghong/clever-workbench/releases 下载历史安装包。',
       '',
     ].join('\n'),

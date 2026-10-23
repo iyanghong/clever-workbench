@@ -345,15 +345,18 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
                 <strong>独立备份密码</strong>
                 <p>配置一次，恢复时使用。与本机主密码分别管理。</p>
               </div>
-              <button
-                className="secondary-button"
-                disabled={Boolean(busy)}
-                onClick={() =>
-                  void vault.ensureBackup(true).catch((cause) => setError(message(cause)))
-                }
-              >
-                {vault.status.backupConfigured ? '更改备份密码' : '设置备份密码'}
-              </button>
+              <div className="setting-actions">
+                <GuidanceButton guideId="backup-password" accessibleLabel="备份密码使用指引" />
+                <button
+                  className="secondary-button"
+                  disabled={Boolean(busy)}
+                  onClick={() =>
+                    void vault.ensureBackup(true).catch((cause) => setError(message(cause)))
+                  }
+                >
+                  {vault.status.backupConfigured ? '更改备份密码' : '设置备份密码'}
+                </button>
+              </div>
             </div>
             <div className="setting-row">
               <div>
@@ -364,14 +367,17 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
                     : '未启用：首次备份时设置独立备份密码。'}
                 </p>
               </div>
-              <input
-                role="switch"
-                aria-label="自动备份"
-                type="checkbox"
-                disabled={Boolean(busy)}
-                checked={Boolean(vault.status.backupConfigured && snapshot.settings.autoBackup)}
-                onChange={(event) => void automaticBackup(event.target.checked)}
-              />
+              <div className="setting-actions">
+                <GuidanceButton guideId="automatic-backup" accessibleLabel="自动备份使用指引" />
+                <input
+                  role="switch"
+                  aria-label="自动备份"
+                  type="checkbox"
+                  disabled={Boolean(busy)}
+                  checked={Boolean(vault.status.backupConfigured && snapshot.settings.autoBackup)}
+                  onChange={(event) => void automaticBackup(event.target.checked)}
+                />
+              </div>
             </div>
             <div className="setting-row">
               <div>
@@ -424,6 +430,7 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
               )}
             </div>
             <div className="backup-actions">
+              <GuidanceButton guideId="full-backup" accessibleLabel="完整备份使用指引" />
               <button
                 className="primary-button"
                 disabled={Boolean(busy)}
@@ -432,6 +439,7 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
                 <DownloadSimpleIcon size={17} />
                 导出完整备份
               </button>
+              <GuidanceButton guideId="restore-and-migrate" accessibleLabel="恢复与迁移使用指引" />
               <button
                 className="secondary-button"
                 disabled={Boolean(busy)}
