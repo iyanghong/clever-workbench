@@ -43,5 +43,12 @@ finally:
     if process.poll() is None:
         process.terminate()
         process.wait(timeout=10)
-    if directory.is_relative_to(pathlib.Path(tempfile.gettempdir()).resolve()):
-        shutil.rmtree(directory)
+    # macOS may spell the same temporary root as /var/... or /private/var/....
+    resolved = directory.resolve()
+    temporary_root = pathlib.Path(tempfile.gettempdir()).resolve()
+    if (
+        resolved.parent == temporary_root
+        and resolved.name.startswith("cwb-guidance-review-native-")
+        and resolved.is_dir()
+    ):
+        shutil.rmtree(resolved)
