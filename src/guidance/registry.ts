@@ -1,7 +1,7 @@
 /** Stable navigation destinations: a guide may select a page, never execute a command. */
 export const guidanceTargets: Record<
   string,
-  { module: string; section?: string; trash?: boolean; label: string }
+  { module: string; section?: string; objectId?: string; trash?: boolean; label: string }
 > = {
   home: { module: 'home', label: '工作台' },
   search: { module: 'home', label: '工作台顶部搜索' },
@@ -28,7 +28,7 @@ export const guidanceTargets: Record<
   'settings-about': { module: 'settings', section: 'about', label: '设置 → 关于' },
   'settings-guidance': { module: 'settings', section: 'guidance', label: '设置 → 使用指引' },
   tools: { module: 'tools', label: '工具' },
-  'zip-text-archive': { module: 'tools', label: '工具 → ZIP 文本归档' },
+  'zip-text-archive': { module: 'tools', objectId: 'zip-text', label: '工具 → ZIP 文本归档' },
 };
 export const guidancePlacements = [
   'home',

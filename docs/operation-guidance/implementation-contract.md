@@ -62,3 +62,7 @@ App 保留原有 `navigate(): Promise<void>` 契约，并为指引提供显式 `
 台账顶部共用一个 `GuidanceButton`，可访问名称为“台账使用指引”，表格、摘要和详情状态均沿用同一入口。无系统时使用 `ledger`；当前分类的 placement 为：访问入口 `ledger-access`、账号 `ledger-accounts`、服务器及数据库／中间件 `ledger-resources`、应用部署 `ledger-deployments`、运行维护 `ledger-operations`、文档 `documents`。后续资源、部署、运维内容直接配置对应 placement，不再增加同类帮助按钮。
 
 “更多”菜单新增“系统与环境使用指引”，打开 `systems` 主题列表；菜单先把焦点归还持久触发按钮，指引关闭后返回该按钮。独立项目档案页使用 `projects`。这些入口只阅读，不强行关闭系统信息、新建或秘密编辑弹窗；所有“前往功能”继续经过统一保存与受控目的地检查。
+
+## ZIP 文本归档附近入口（任务 10）
+
+工具目录的 ZIP 卡片与首页已收藏的 ZIP 工具提供 `zip-text-archive` 主题入口；工具页面的“使用指引”随当前标签直接打开 `zip-archive-files`、`zip-archive-git`、`zip-restore-directory` 或 `zip-restore-clipboard`。正文共用 `tools` 与 `zip-text-archive` 展示位置。`zip-text-archive` 受控目的地进入工具本身，不启动任务或自动选择本地路径；用户仍需选择对应模式并确认输入。坏正文沿用目录过滤与直接入口不可用提示，不影响归档运行。

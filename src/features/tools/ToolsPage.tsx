@@ -4,6 +4,7 @@ import { ArrowRightIcon, WrenchIcon } from '@phosphor-icons/react';
 import type { ModuleProps } from '../../app/modules';
 import type { Snapshot } from '../../types';
 import { FavoriteButton } from '../home/FavoriteButton';
+import { GuidanceButton } from '../guidance/Guidance';
 import { findTool, registeredTools } from './registry';
 import './tools.css';
 
@@ -84,6 +85,12 @@ export function ToolsPage({ route, navigate, setContext, registerFlush }: Module
                   >
                     打开工具 <ArrowRightIcon size={16} />
                   </button>
+                  {tool.id === 'zip-text' && (
+                    <GuidanceButton
+                      placement="zip-text-archive"
+                      accessibleLabel="ZIP 文本归档使用指引"
+                    />
+                  )}
                 </article>
               ))}
             </div>

@@ -15,6 +15,7 @@ import {
   type ZipState,
 } from '../../tool-types';
 import type { ToolPageProps } from './registry';
+import { GuidanceButton } from '../guidance/Guidance';
 
 type Mode = 'pack' | 'git' | 'restore' | 'paste';
 type Draft = ZipSettings & {
@@ -45,11 +46,11 @@ let remembered: Draft | null = null;
 window.desktop.onDataRestored(() => {
   remembered = null;
 });
-const modes: { id: Mode; title: string }[] = [
-  { id: 'pack', title: '归档文件' },
-  { id: 'git', title: 'Git 筛选归档' },
-  { id: 'restore', title: '目录还原' },
-  { id: 'paste', title: '剪贴板还原' },
+const modes: { id: Mode; title: string; guideId: string }[] = [
+  { id: 'pack', title: '归档文件', guideId: 'zip-archive-files' },
+  { id: 'git', title: 'Git 筛选归档', guideId: 'zip-archive-git' },
+  { id: 'restore', title: '目录还原', guideId: 'zip-restore-directory' },
+  { id: 'paste', title: '剪贴板还原', guideId: 'zip-restore-clipboard' },
 ];
 const settingsOf = (draft: Draft): ZipSettings => ({
   source: draft.source,
@@ -292,12 +293,19 @@ export function ZipTextPage({ registerFlush }: ToolPageProps) {
     setPassword('');
     setConfirm('');
   }
+  const activeMode = modes.find((mode) => mode.id === draft.mode)!;
   return (
     <>
       <PageHeading
         title="ZIP 文本归档"
         eyebrow="本地工具"
         description="把文件或 Git 变更整理为加密文本，也可还原已有分片。"
+        actions={
+          <GuidanceButton
+            guideId={activeMode.guideId}
+            accessibleLabel={`${activeMode.title}使用指引`}
+          />
+        }
       />
       <div className="tool-tabs" role="tablist" aria-label="归档操作">
         {modes.map((mode, index) => (
