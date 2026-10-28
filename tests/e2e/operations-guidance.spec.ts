@@ -119,19 +119,19 @@ test('系统导出菜单附近有操作指引，关闭后保留当前系统及�
   }
 });
 
-test('表格粘贴入口旁可查阅指引，不会打开批量录入或新增记录', async () => {
+test('批量录入入口旁可查阅指引，不会打开批量录入或新增记录', async () => {
   const { app, page, close } = await launch();
   try {
     await page.evaluate(() => window.desktop.mutate({ type: 'system.save', name: '批量示例系统' }));
     await page.getByRole('button', { name: '台账', exact: true }).click();
-    const trigger = page.getByRole('button', { name: '表格粘贴使用指引', exact: true });
+    const trigger = page.getByRole('button', { name: '批量录入使用指引', exact: true });
     await trigger.click({ timeout: 4000 });
     const opened = await read(app, page, 'ledger-paste', 'ledger-import');
     if (opened && !(await verifyUnavailableOrNoTarget(page, opened.feature))) {
       await opened.dialog.getByRole('button', { name: '前往功能', exact: true }).click();
       await expectGuidanceDestination(page, opened.feature);
     }
-    await expect(page.getByRole('dialog', { name: '粘贴表格 · 校对后新增' })).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: '批量录入 · 校对后新增' })).toHaveCount(0);
     expect((await page.evaluate(() => window.desktop.snapshot())).resources).toHaveLength(0);
   } finally {
     await close();
@@ -350,17 +350,17 @@ test('部署和运维指引对应节点地址回退、状态筛选、引用限�
   }
 });
 
-test('粘贴指引对应十类映射、逐行取消、确认新增和未提交放弃', async ({}, info) => {
+test('批量录入指引对应手填、粘贴追加、逐行取消和未提交放弃', async ({}, info) => {
   const { app, page, close } = await launch();
   try {
     await page.evaluate(() => window.desktop.mutate({ type: 'system.save', name: '批量核对系统' }));
     await page.getByRole('button', { name: '台账', exact: true }).click();
     await closeGuide(
       page,
-      await nearby(app, page, 'ledger-paste', 'ledger-import', '表格粘贴使用指引'),
+      await nearby(app, page, 'ledger-paste', 'ledger-import', '批量录入使用指引'),
     );
-    await page.getByRole('button', { name: '粘贴表格', exact: true }).click();
-    const paste = page.getByRole('dialog', { name: '粘贴表格 · 校对后新增', exact: true });
+    await page.getByRole('button', { name: '批量录入', exact: true }).click();
+    const paste = page.getByRole('dialog', { name: '批量录入 · 校对后新增', exact: true });
     await expect(paste.getByLabel('批量条目类型').locator('option')).toHaveText([
       '访问入口',
       '服务器',
@@ -374,6 +374,7 @@ test('粘贴指引对应十类映射、逐行取消、确认新增和未提交�
       '部署节点',
     ]);
     await paste.getByLabel('批量条目类型').selectOption('redis');
+    await paste.getByLabel('第 1 行名称', { exact: true }).fill('手填缓存');
     await paste
       .getByRole('textbox', { name: '粘贴表格', exact: true })
       .fill('名称\t地址\t端口\n订单缓存\t192.0.2.21\t6379\n订单缓存\t192.0.2.22\t6379');
@@ -382,28 +383,32 @@ test('粘贴指引对应十类映射、逐行取消、确认新增和未提交�
     await expect(paste.getByLabel('映射第 2 列')).toHaveValue('address');
     await expect(paste.getByLabel('映射第 3 列')).toHaveValue('port');
     await expect(paste.getByRole('button', { name: '确认新增', exact: true })).toBeDisabled();
+    await paste.getByRole('button', { name: '追加到录入表格（2 行）', exact: true }).click();
+    await expect(paste.getByLabel('第 2 行名称', { exact: true })).toHaveValue('订单缓存');
+    await expect(paste.getByLabel('第 3 行名称', { exact: true })).toHaveValue('订单缓存');
     await paste.screenshot({ path: info.outputPath('ledger-paste-review.png') });
-    await paste.getByLabel('录入第 2 行').uncheck();
+    await paste.getByLabel('录入第 3 行').uncheck();
     await expect(paste.getByRole('button', { name: '确认新增', exact: true })).toBeEnabled();
     await paste.getByRole('button', { name: '取消', exact: true }).click();
     await expect(paste.getByRole('alert')).toContainText('尚未提交');
     await paste.getByRole('button', { name: '继续校对', exact: true }).click();
-    await expect(paste.getByLabel('录入第 2 行')).not.toBeChecked();
+    await expect(paste.getByLabel('录入第 3 行')).not.toBeChecked();
     await paste.getByRole('button', { name: '确认新增', exact: true }).click();
-    await expect(paste.getByRole('status')).toContainText('已创建 1 条，跳过 1 条');
+    await expect(paste.getByRole('status')).toContainText('已创建 2 条，跳过 1 条');
     await paste.getByRole('button', { name: '完成', exact: true }).click();
-    expect((await page.evaluate(() => window.desktop.snapshot())).resources).toHaveLength(1);
-    await page.getByRole('button', { name: '粘贴表格', exact: true }).click();
+    expect((await page.evaluate(() => window.desktop.snapshot())).resources).toHaveLength(2);
+    await page.getByRole('button', { name: '批量录入', exact: true }).click();
     await paste
       .getByRole('textbox', { name: '粘贴表格', exact: true })
       .fill('名称\t另一个缓存\n地址\t192.0.2.23');
     await paste.getByRole('button', { name: '读取文本', exact: true }).click();
     await paste.getByLabel('表格预览方式').selectOption('card');
+    await paste.getByRole('button', { name: '追加到录入表格（1 行）', exact: true }).click();
     await expect(paste.getByLabel('第 1 行名称')).toHaveValue('另一个缓存');
     await paste.getByRole('button', { name: '取消', exact: true }).click();
     await paste.getByRole('button', { name: '放弃并离开', exact: true }).click();
     await expect(paste).toHaveCount(0);
-    expect((await page.evaluate(() => window.desktop.snapshot())).resources).toHaveLength(1);
+    expect((await page.evaluate(() => window.desktop.snapshot())).resources).toHaveLength(2);
   } finally {
     await close();
   }

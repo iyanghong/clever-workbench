@@ -762,8 +762,8 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
             <div className="workspace-category-actions">
               <GuidanceButton
                 placement="ledger-import"
-                label="粘贴指引"
-                accessibleLabel="表格粘贴使用指引"
+                label="录入指引"
+                accessibleLabel="批量录入使用指引"
               />
               <button className="secondary-button" onClick={() => captureNew('paste')}>
                 批量录入

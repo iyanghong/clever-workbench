@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "feature",
   "id": "resource-copy-delete",
-  "revision": 1,
+  "revision": 2,
   "title": "复制或删除资源",
   "platforms": ["darwin", "win32"],
   "placements": ["ledger-resources"],
@@ -35,7 +35,7 @@
       "id": "confirm-copy",
       "title": "创建并核对副本",
       "action": "确认名称和目标后点击“创建副本”，再查看新资源的地址、账号和适用范围。",
-      "expectedResult": "新副本可独立编辑；改动不会回写原资源，跨系统复制不会自动复用原系统的范围标签。"
+      "expectedResult": "新副本可独立编辑；同系统复制数据库或中间件时保留各组具名连接及其服务器关联，改动不会回写原资源。服务器跨系统复制不会自动复用原系统的范围标签。"
     },
     {
       "id": "delete",

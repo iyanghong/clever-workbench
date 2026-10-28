@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "feature",
   "id": "system-export",
-  "revision": 1,
+  "revision": 2,
   "title": "导出可阅读的系统资料",
   "platforms": ["darwin", "win32"],
   "placements": ["system-export"],
@@ -29,7 +29,7 @@
       "id": "choose-content",
       "title": "选择附加内容",
       "action": "勾选或取消“文档”和“任务”；不勾选时仍会导出所选系统的台账与总览。",
-      "expectedResult": "任务汇入系统总览，文档作为独立文件；弹窗显示当前系统可选的文档、任务数量。"
+      "expectedResult": "任务汇入系统总览，文档作为独立文件；文档数量包含本系统文档和服务／节点直接引用的通用文档，同一文档只导出一次。弹窗显示可选数量。"
     },
     {
       "id": "task-dates",
@@ -40,8 +40,8 @@
     {
       "id": "choose-format",
       "title": "选择文件格式",
-      "action": "至少选择 Markdown、Word、PDF 中的一种，并阅读选项下方显示的输出形式提示。",
-      "expectedResult": "仅选一种格式且未包含实际文档时直接保存单个 md／docx／pdf 文件并嵌入图片；多格式或包含文档时保存 ZIP 资料包。",
+      "action": "查看是否实际包含文档：没有文档或取消“文档”时，从 Markdown、Word、PDF 中单选一种；实际包含文档时可勾选一种或多种格式。阅读下方的输出形式提示。",
+      "expectedResult": "未包含实际文档时只保存一个 md／docx／pdf 文件并嵌入图片；实际包含文档时保存 ZIP 资料包。切回单文件时默认保留最后选中的格式。",
       "image": {
         "src": "assets/system-export-options.png",
         "alt": "系统资料导出弹窗，依次显示附加内容、任务开始日期、文件格式和账号秘密选项",
@@ -66,7 +66,11 @@
     "items": [
       {
         "question": "为什么有时是单文件，有时是 ZIP？",
-        "answer": "输出形式由格式数量和是否包含实际文档决定；弹窗在保存前会显示本次形式。"
+        "answer": "只有实际包含文档时才保存 ZIP，此时可以选多种格式；没有实际文档时只能选一种格式、直接保存单文件。弹窗会显示本次形式。"
+      },
+      {
+        "question": "为什么导出的文档数量包含通用文档？",
+        "answer": "本系统的应用服务或部署节点直接引用的通用文档也会纳入，同一正文只导出一次并保留跳转。未引用的通用文档和其他系统文档不会纳入。"
       },
       {
         "question": "日期筛选为什么没有改变文档数量？",
