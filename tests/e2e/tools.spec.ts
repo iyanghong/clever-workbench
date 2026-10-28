@@ -23,6 +23,7 @@ test('10 个分片乱序收集，重复项自动跳过并保留原片，收齐�
   const partsDirectory = await encryptPath(source, 'test', root, 1);
   const names = (await fs.readdir(partsDirectory)).sort();
   expect(names).toHaveLength(10);
+  await fs.mkdir(path.join(root, 'data'));
   const env: Record<string, string> = {
     ...process.env,
     CLEVER_WORKBENCH_DATA_DIR: path.join(root, 'data'),
@@ -204,6 +205,7 @@ test('粘贴快捷键保留路径、密码、搜索及其他页面的普通文�
 test('工具收藏、后台运行与退出保护、目录及剪贴板还原', async ({}, info) => {
   test.setTimeout(120000);
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-tools-ui-'));
+  await fs.mkdir(path.join(root, 'data'));
   const env: Record<string, string> = {
     ...process.env,
     CLEVER_WORKBENCH_DATA_DIR: path.join(root, 'data'),
@@ -336,6 +338,7 @@ test('Git 提交筛选预览并打包当前磁盘文件', async ({}, info) => {
   git('add', '.');
   git('commit', '-m', '示例提交');
   await fs.writeFile(path.join(source, 'file.txt'), 'current content');
+  await fs.mkdir(path.join(root, 'data'));
   const env: Record<string, string> = {
     ...process.env,
     CLEVER_WORKBENCH_DATA_DIR: path.join(root, 'data'),

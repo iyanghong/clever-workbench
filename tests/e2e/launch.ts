@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 // Run the same behavior checks against development output or an installed executable.
 export const electron = {
-  launch(options: NonNullable<Parameters<typeof _electron.launch>[0]>) {
+  async launch(options: NonNullable<Parameters<typeof _electron.launch>[0]>) {
     const executablePath = process.env.CWB_TEST_EXECUTABLE;
     const env: Record<string, string> = {};
     for (const [key, value] of Object.entries(options.env ?? process.env))
@@ -35,11 +35,36 @@ export const electron = {
     const args = executablePath ? [] : [...(options.args ?? [])];
     if (mockKeychain && !args.includes('--use-mock-keychain')) args.unshift('--use-mock-keychain');
     if (executablePath) delete env.VITE_DEV_SERVER_URL;
-    return _electron.launch({
+    const app = await _electron.launch({
       ...options,
       env,
       ...(executablePath ? { executablePath } : {}),
       args,
     });
+    if (executablePath && env.CWB_TEST_KEEP_VERSION_GUIDANCE !== '1') {
+      try {
+        const page = await app.firstWindow();
+        const versions = await page.evaluate(() => window.desktop.guidanceVersions());
+        const state = await page.evaluate(() => window.desktop.guidanceState());
+        if (
+          versions.releases.some(
+            (release) =>
+              release.version === versions.currentVersion && release.operationChange === 'changed',
+          ) &&
+          state.shownThrough !== versions.currentVersion
+        ) {
+          // Unrelated installed-app tests begin after first-use guidance is recorded.
+          await page.evaluate(
+            (version) => window.desktop.guidanceAcknowledge(version),
+            versions.currentVersion,
+          );
+          await page.reload();
+        }
+      } catch (error) {
+        await app.close();
+        throw error;
+      }
+    }
+    return app;
   },
 };

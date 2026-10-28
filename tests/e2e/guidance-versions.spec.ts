@@ -6,6 +6,13 @@ import path from 'node:path';
 import type { ReleaseGuide } from '../../src/guidance/types';
 import { expectedUpdateGuide } from './guidance-content';
 
+test.beforeEach(() => {
+  process.env.CWB_TEST_KEEP_VERSION_GUIDANCE = '1';
+});
+test.afterEach(() => {
+  delete process.env.CWB_TEST_KEEP_VERSION_GUIDANCE;
+});
+
 const release = (
   version: string,
   summary: string,
@@ -206,7 +213,8 @@ test('等待版本说明期间新建资料时不主动弹出放弃确认', async
       .poll(() => app.evaluate(() => (globalThis as any).guidanceCheckCalls))
       .toBeGreaterThan(0);
     await page.getByRole('button', { name: '快速新建', exact: true }).click();
-    await page.getByRole('dialog', { name: '快速新建', exact: true })
+    await page
+      .getByRole('dialog', { name: '快速新建', exact: true })
       .getByRole('button', { name: '新系统', exact: true })
       .click();
     const form = page.getByRole('dialog', { name: '新系统', exact: true });
@@ -217,7 +225,8 @@ test('等待版本说明期间新建资料时不主动弹出放弃确认', async
     await expect(page.getByRole('dialog', { name: '放弃未提交的资料？' })).toHaveCount(0);
     await expect(page.getByRole('dialog', { name: '版本操作指引' })).toHaveCount(0);
     await form.getByRole('button', { name: '关闭新系统', exact: true }).click();
-    await page.getByRole('dialog', { name: '放弃未提交的资料？' })
+    await page
+      .getByRole('dialog', { name: '放弃未提交的资料？' })
       .getByRole('button', { name: '放弃录入', exact: true })
       .click();
     await expect(page.getByRole('dialog', { name: '版本操作指引' })).toContainText(
@@ -334,6 +343,11 @@ test('更新重启提示等待当前指引关闭，版本提示也避让更新�
         .poll(() => page.evaluate(() => window.desktop.guidanceState()))
         .toMatchObject({ shownThrough: installedVersion, persisted: true });
     }
+    await expect
+      .poll(async () => (await page.evaluate(() => window.desktop.updateSnapshot())).status, {
+        timeout: 30000,
+      })
+      .not.toBe('checking');
     await page.getByRole('button', { name: '设置', exact: true }).click();
     await page.getByRole('button', { name: '应用更新使用指引', exact: true }).click();
     const guide = page.getByRole('dialog', { name: expected?.title ?? '使用指引', exact: true });
