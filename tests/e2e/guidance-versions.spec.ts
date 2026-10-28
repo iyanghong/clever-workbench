@@ -168,6 +168,73 @@ test('持续输入与中文组合期间不抢焦点，结束并保存后再提�
   }
 });
 
+test('等待版本说明期间新建资料时不主动弹出放弃确认', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-version-new-record-'));
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env });
+  try {
+    const page = await app.firstWindow();
+    await page.getByRole('button', { name: '工作台', exact: true }).waitFor();
+    const current = await app.evaluate(({ app }) => app.getVersion());
+    await app.evaluate(
+      ({ app, ipcMain }, record) => {
+        ipcMain.removeHandler('guidance-versions');
+        ipcMain.handle('guidance-versions', () => ({
+          currentVersion: app.getVersion(),
+          releases: [record],
+        }));
+        (globalThis as any).guidanceCheckCalls = 0;
+        (globalThis as any).releaseGuidanceCheck = undefined;
+        (globalThis as any).holdGuidanceCheck = true;
+        ipcMain.removeHandler('guidance-availability');
+        ipcMain.handle('guidance-availability', () => {
+          (globalThis as any).guidanceCheckCalls++;
+          if (!(globalThis as any).holdGuidanceCheck) return { available: true };
+          return new Promise((resolve) => {
+            (globalThis as any).releaseGuidanceCheck = () => {
+              (globalThis as any).holdGuidanceCheck = false;
+              resolve({ available: true });
+            };
+          });
+        });
+      },
+      release(current, '等新建资料完成后提示', 'pending'),
+    );
+    await page.reload();
+    await expect
+      .poll(() => app.evaluate(() => (globalThis as any).guidanceCheckCalls))
+      .toBeGreaterThan(0);
+    await page.getByRole('button', { name: '快速新建', exact: true }).click();
+    await page.getByRole('dialog', { name: '快速新建', exact: true })
+      .getByRole('button', { name: '新系统', exact: true })
+      .click();
+    const form = page.getByRole('dialog', { name: '新系统', exact: true });
+    await form.getByLabel('快速新建系统名称').fill('尚未提交的系统');
+    await app.evaluate(() => (globalThis as any).releaseGuidanceCheck());
+    await page.waitForTimeout(300);
+    await expect(form.getByLabel('快速新建系统名称')).toHaveValue('尚未提交的系统');
+    await expect(page.getByRole('dialog', { name: '放弃未提交的资料？' })).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: '版本操作指引' })).toHaveCount(0);
+    await form.getByRole('button', { name: '关闭新系统', exact: true }).click();
+    await page.getByRole('dialog', { name: '放弃未提交的资料？' })
+      .getByRole('button', { name: '放弃录入', exact: true })
+      .click();
+    await expect(page.getByRole('dialog', { name: '版本操作指引' })).toContainText(
+      '等新建资料完成后提示',
+      { timeout: 6000 },
+    );
+  } finally {
+    await app
+      .evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows().forEach((window) => window.destroy()),
+      )
+      .catch(() => {});
+    await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('主界面资料尚未就绪时不显示，等载入完成才开始提示', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-version-loading-'));
   const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };

@@ -123,10 +123,15 @@ export function App() {
   const prepareGuidancePrompt = useCallback(async () => {
     const expected = generation.current;
     try {
-      if (installingRef.current) return false;
-      await requireSavedRecord();
+      // Automatic guidance must never trigger the discard confirmation of a newly opened form.
+      if (installingRef.current || document.querySelector('dialog[open], [role="alertdialog"]'))
+        return false;
       await save.current();
-      return expected === generation.current && !installingRef.current;
+      return (
+        expected === generation.current &&
+        !installingRef.current &&
+        !document.querySelector('dialog[open], [role="alertdialog"]')
+      );
     } catch {
       return false;
     }
