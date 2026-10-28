@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { BookOpenIcon, ArrowRightIcon } from '@phosphor-icons/react';
+import { BookOpenIcon, ArrowRightIcon, ClockCounterClockwiseIcon } from '@phosphor-icons/react';
 import { Dialog } from '../../shared/Dialog';
 import { guidanceTarget, type GuidancePlacement } from '../../guidance/registry';
 import type { FeatureGuide } from '../../guidance/types';
@@ -193,16 +193,21 @@ export function SettingsGuidance() {
   const { openVersions } = useGuidance();
   return (
     <section
-      className="settings-guidance"
+      className="settings-guidance setting-row"
       id="settings-guidance"
       aria-labelledby="guidance-heading"
     >
-      <h3 id="guidance-heading">使用指引</h3>
-      <p>查阅功能的准备条件、操作步骤和常见问题。内容随版本提供，离线可用。</p>
-      <GuidanceButton label="查看全部使用指引" />
-      <button className="guidance-button" onClick={openVersions}>
-        查看版本操作说明
-      </button>
+      <div className="settings-guidance-copy">
+        <h3 id="guidance-heading">使用指引</h3>
+        <p>查阅功能的准备条件、操作步骤和常见问题。内容随版本提供，离线可用。</p>
+      </div>
+      <div className="settings-guidance-actions">
+        <GuidanceButton label="查看全部使用指引" />
+        <button className="guidance-button" onClick={openVersions}>
+          <ClockCounterClockwiseIcon size={16} aria-hidden="true" />
+          查看版本操作说明
+        </button>
+      </div>
     </section>
   );
 }

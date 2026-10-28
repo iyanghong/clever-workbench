@@ -11,9 +11,52 @@
 .guidance-button:hover {
   background: var(--hover);
 }
-.settings-guidance > p {
-  color: var(--secondary);
+.settings-guidance {
+  flex-wrap: wrap;
+  margin-top: var(--space-5);
+}
+.settings-guidance-copy {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.settings-guidance-copy h3 {
+  margin: 0;
+  font-size: var(--font-body);
+  font-weight: 600;
+}
+.settings-guidance-copy p {
+  margin: var(--space-1) 0 0;
+  color: var(--muted);
+  font-size: var(--font-small);
   line-height: var(--leading-normal);
+}
+.settings-guidance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.settings-guidance-actions .guidance-button {
+  min-height: var(--control-height);
+  padding: 6px var(--space-3);
+  border: var(--border);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  box-shadow: var(--shadow-control);
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.settings-guidance-actions .guidance-button svg {
+  color: var(--accent);
+}
+.settings-guidance-actions .guidance-button:hover {
+  background: var(--hover);
+}
+@media (max-width: 1050px) {
+  .settings-guidance-actions {
+    justify-content: flex-start;
+  }
 }
 .modal.shared-dialog.guidance-dialog {
   width: 680px;
