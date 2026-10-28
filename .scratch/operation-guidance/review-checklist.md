@@ -46,4 +46,4 @@
 
 - 远端 `v0.1.15` 的六个提交已合入干净集成工作区，`App.tsx`、`LedgerWorkspace.tsx` 和 `Dialog.tsx` 的冲突已按保存与关闭语义处理；见[整合记录](implementation-release-integration.md)。
 - 合并后全量 Vitest 为 214 通过、3 跳过；整合后的 `operations-guidance` 六项及针对弹窗、版本提示、批量录入、资源连接、系统导出和系统保护的 32 项 Electron 用例通过。构建和内容检查通过；内容检查仍有十项真实的人工核对警告。
-- 隔离 macOS 包已从业务 SHA `41a1fd8` 构建：签名校验通过，包内 47 篇正文、275 步和三张图片核对通过；安装版 3 项 Electron 用例通过，原生鼠标验证版本提示、目录、批量录入新图和关闭焦点。详情见[整合记录](implementation-release-integration.md)。维护者最终界面试用、真实 GitHub 发布和旧版在线升级仍待完成。Windows 与 Intel macOS 未在本次本机验收范围内。
+- 隔离 macOS 最终试用包已从业务 SHA `c700180` 构建：签名校验通过，包内 47 篇正文、275 步和三张图片核对通过；安装版 4 项 Electron 用例通过。修复前包实际复现自动提示意外触发放弃窗口，修复后完整版本提示回归 15 项通过。原生鼠标验证版本提示关闭与设置入口；目录、新图和焦点在修复前包验证，相关 UI 源码未改变。详情见[整合记录](implementation-release-integration.md)。维护者最终界面试用、真实 GitHub 发布和旧版在线升级仍待完成。Windows 与 Intel macOS 未在本次本机验收范围内。
