@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "kind": "release",
+  "operationChange": "changed",
+  "summary": "新增离线操作指引，可从功能附近或设置集中查阅，了解功能入口、步骤和完成结果。",
+  "changes": [
+    {
+      "id": "offline-operation-guidance",
+      "summary": "点击使用指引逐步阅读操作说明，需要实践时通过前往功能安全进入对应页面。",
+      "guideIds": [
+        "using-guidance"
+      ]
+    },
+    {
+      "id": "update-operation-guidance",
+      "summary": "检查更新时可就近查阅下载、立即或稍后重启以及安装结果的说明。",
+      "guideIds": [
+        "application-update"
+      ]
+    },
+    {
+      "id": "release-operation-guidance",
+      "summary": "升级后有操作变化时，在空闲且保存完成后提示一次版本指引；关闭后仍可在设置中查看当前用法与历史摘要。",
+      "guideIds": [
+        "using-guidance"
+      ]
+    }
+  ],
+  "review": {
+    "status": "pending",
+    "reviewer": "",
+    "checkedAt": "",
+    "source": "",
+    "environment": "",
+    "checks": [],
+    "knownGaps": [
+      "首批功能正文已完成代理验收，维护者仍需按拟发布源码和实际安装包人工复核步骤、截图与入口。",
+      "维护者尚未填写本次实际发布源码的人工核对记录；各任务的开发与打包证据不替代维护者核对。"
+    ]
+  },
+  "version": "0.1.16",
+  "tag": "v0.1.16",
+  "sourceSha": "7776f9d8d8e5c1f6010c30cf5af0a21446e4ff65",
+  "publication": "pending"
+}
