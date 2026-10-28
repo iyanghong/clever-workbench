@@ -124,7 +124,7 @@ test('资源普通字段编辑与跨环境复制互不影响', async () =>
     });
     await page.getByRole('button', { name: '台账', exact: true }).click();
     await openLedgerRecord(page, '数据库／中间件', '订单缓存', true);
-    await page.getByLabel('资源端口', { exact: true }).fill('6379');
+    await page.getByLabel('连接 1 端口', { exact: true }).fill('6379');
     await page.getByRole('button', { name: '复制资源', exact: true }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('副本目标环境', { exact: true }).selectOption(ids.b);
@@ -134,7 +134,7 @@ test('资源普通字段编辑与跨环境复制互不影响', async () =>
       .getByRole('complementary', { name: '台账详情' })
       .getByRole('button', { name: '编辑', exact: true })
       .click();
-    await page.getByLabel('资源地址', { exact: true }).fill('192.0.2.3');
+    await page.getByLabel('连接 1 地址', { exact: true }).fill('192.0.2.3');
     await page.getByRole('button', { name: '工作台', exact: true }).click();
     const data = await page.evaluate(() => window.desktop.snapshot());
     expect(data.resources.find((r) => r.name === '订单缓存')?.address).toBe('192.0.2.2');

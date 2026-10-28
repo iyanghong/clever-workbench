@@ -291,3 +291,54 @@
 .ledger-workspace .system-actions-menu button:is(:hover, :focus-visible) {
   background: var(--selected);
 }
+.modal.shared-dialog.paste-ledger {
+  width: 1100px;
+}
+.batch-grid table {
+  table-layout: auto;
+}
+.batch-grid td:not(:first-child) {
+  min-width: 160px;
+  vertical-align: top;
+}
+.batch-grid th {
+  z-index: 2;
+}
+.batch-grid th:nth-child(2),
+.batch-grid td:nth-child(2) {
+  position: sticky;
+  left: 0;
+  background: var(--panel);
+  border-right: var(--border);
+  z-index: 1;
+}
+.batch-grid th:nth-child(2) {
+  z-index: 3;
+}
+.batch-grid textarea,
+.batch-grid select {
+  width: 100%;
+  min-height: 36px;
+}
+.batch-grid textarea {
+  resize: vertical;
+}
+.batch-grid .batch-row-actions {
+  min-width: 200px;
+}
+.batch-row-actions > * {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+.batch-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+.batch-toolbar label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}

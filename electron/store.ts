@@ -1,3 +1,4 @@
+import { migrateLedgerDetails } from './ledger-details';
 import { WorkspaceLedger } from './ledger-workspace';
 import { migrateWorkbench } from './workbench-migration';
 import { migrateTaskPlanning } from './task-migration';
@@ -29,7 +30,7 @@ import { Documents, initializeDocuments } from './documents';
 import { Ledger, initializeLedger } from './ledger';
 import { migrateSystemLedger } from './ledger-migration';
 
-export const schemaVersion = 12;
+export const schemaVersion = 13;
 export const schemaTables = [
   'projects',
   'tasks',
@@ -46,6 +47,7 @@ export const schemaTables = [
   'deployment_nodes',
   'operations',
   'ledger_batches',
+  'ledger_document_refs',
   'documents',
   'secrets',
   'task_tags',
@@ -197,6 +199,7 @@ export class Store {
     initializeVault(db);
     migrateWorkbench(db);
     migrateTaskPlanning(db);
+    migrateLedgerDetails(db);
     db.exec(`PRAGMA user_version=${schemaVersion}`);
     this.ledger = new Ledger(db);
     this.documents = new Documents(db, this.ledger, (value) => this.validateDraft(value));
@@ -437,6 +440,10 @@ export class Store {
         }
         case 'service.save': {
           const id = this.ledger.saveService(command, now);
+          if (command.firstNode) {
+            if (command.id) throw new Error('首个部署节点仅用于新建应用。');
+            new WorkspaceLedger(this.db).saveNode({ ...command.firstNode, serviceId: id });
+          }
           if (!command.id) createdId = id;
           break;
         }

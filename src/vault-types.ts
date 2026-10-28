@@ -4,7 +4,6 @@ export type VaultStatus = {
   unlocked: boolean;
   mode?: 'system' | 'password' | 'unconfigured';
   backupConfigured?: boolean;
-  systemAvailable?: boolean;
 };
 export const secretLabels: Record<SecretKind, string> = {
   password: '密码',

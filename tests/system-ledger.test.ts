@@ -49,6 +49,7 @@ test(
         environmentId: null,
         name: '应用节点',
         address: '192.0.2.10',
+        port: ' 2222 ',
         purpose: '订单与定时任务',
         fields: {
           操作系统: 'Kylin Linux V10',
@@ -59,6 +60,7 @@ test(
         username: 'deploy',
         password: 'fictional-server-password',
       });
+      expect(store.snapshot().resources[0].port).toBe('2222');
       expect(store.snapshot().resources[0].fields).toEqual({
         用途: '订单与定时任务',
         操作系统: 'Kylin Linux V10',
@@ -362,44 +364,88 @@ test('系统访问入口保存多个具名地址和角色账号，切换常用�
   });
 });
 
-test('一次录入入口与密码必须整体保存，锁定或秘密写入失败不留下半条记录且可原样重试', async () => {
+test.each(['', '1', '65535'])('新增服务器允许端口 %j，账号可留空', (port) => {
   const store = open(),
     vault = new Vault(store);
   const systemId = store.mutate({ type: 'system.save', name: '订单平台' }).createdId!;
-  const input = {
-    kind: 'access' as const,
+  const result = vault.capture({
+    kind: 'server',
     systemId,
     environmentId: null,
-    name: 'GitLab',
-    address: 'https://git.example.test',
-    username: 'operator',
-    password: 'fictional-access-secret',
-  };
-  expect(() => vault.capture(input)).toThrow('解锁');
-  expect(store.snapshot().accessEntries).toHaveLength(0);
-  await vault.initialize('fictional-capture-master');
-  try {
-    store.db.exec(
-      "CREATE TRIGGER reject_capture BEFORE INSERT ON secrets BEGIN SELECT RAISE(ABORT,'模拟磁盘写入失败'); END",
-    );
-    expect(() => vault.capture(input)).toThrow('模拟磁盘');
-    expect(store.snapshot().accessEntries).toHaveLength(0);
-    expect(store.snapshot().accounts).toHaveLength(0);
-    store.db.exec('DROP TRIGGER reject_capture');
-    const result = vault.capture(input);
-    expect(result.snapshot.accessEntries).toHaveLength(1);
-    const account = result.snapshot.accounts[0];
-    expect(account).toMatchObject({
-      accessId: result.createdId,
-      name: '默认账号',
-      username: 'operator',
-    });
-    expect(vault.read(account.id, 'password')).toBe(input.password);
-    expect(JSON.stringify(result.snapshot)).not.toContain(input.password);
-  } finally {
-    vault.lock();
-  }
+    name: '节点',
+    port,
+  });
+  expect(result.snapshot.resources[0].port).toBe(port);
+  expect(result.snapshot.accounts).toHaveLength(0);
 });
+
+test.each(['0', '65536', '22.5', 'ssh', 22, null])(
+  '新增服务器拒绝无效端口 %j，不留下记录或账号',
+  (port) => {
+    const store = open(),
+      vault = new Vault(store);
+    const systemId = store.mutate({ type: 'system.save', name: '订单平台' }).createdId!;
+    expect(() =>
+      vault.capture({
+        kind: 'server',
+        systemId,
+        environmentId: null,
+        name: '节点',
+        port: port as string,
+        username: 'root',
+      }),
+    ).toThrow();
+    expect(store.snapshot().resources).toHaveLength(0);
+    expect(store.snapshot().accounts).toHaveLength(0);
+  },
+);
+
+test.each(['access', 'server'] as const)(
+  '一次录入 %s 与密码必须整体保存，锁定或秘密写入失败不留下半条记录且可原样重试',
+  async (kind) => {
+    const store = open(),
+      vault = new Vault(store);
+    const systemId = store.mutate({ type: 'system.save', name: '订单平台' }).createdId!;
+    const input = {
+      kind,
+      systemId,
+      environmentId: null,
+      name: 'GitLab',
+      address: 'https://git.example.test',
+      port: kind === 'server' ? '2222' : undefined,
+      username: 'operator',
+      password: 'fictional-access-secret',
+    };
+    const records = kind === 'server' ? 'resources' : 'accessEntries';
+    expect(() => vault.capture(input)).toThrow('解锁');
+    expect(store.snapshot()[records]).toHaveLength(0);
+    await vault.initialize('fictional-capture-master');
+    try {
+      store.db.exec(
+        "CREATE TRIGGER reject_capture BEFORE INSERT ON secrets BEGIN SELECT RAISE(ABORT,'模拟磁盘写入失败'); END",
+      );
+      expect(() => vault.capture(input)).toThrow('模拟磁盘');
+      expect(store.snapshot()[records]).toHaveLength(0);
+      expect(store.snapshot().accounts).toHaveLength(0);
+      store.db.exec('DROP TRIGGER reject_capture');
+      const result = vault.capture(input);
+      expect(result.snapshot[records]).toHaveLength(1);
+      const account = result.snapshot.accounts[0];
+      expect(account).toMatchObject({
+        [kind === 'server' ? 'resourceId' : 'accessId']: result.createdId,
+        name: '默认账号',
+        username: 'operator',
+      });
+      expect(vault.read(account.id, 'password')).toBe(input.password);
+      expect(JSON.stringify(result.snapshot)).not.toContain(input.password);
+      expect(JSON.stringify(store.db.prepare('SELECT * FROM secrets').all())).not.toContain(
+        input.password,
+      );
+    } finally {
+      vault.lock();
+    }
+  },
+);
 
 test('跨系统复制入口保留地址和账号元数据，秘密仅经解锁操作复制且副本独立', async () => {
   const store = open(),

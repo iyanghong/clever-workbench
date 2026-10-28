@@ -70,6 +70,20 @@ test('勾选内容、开始日期筛选和单文件输出在主题、窄窗口�
     await dialog.getByLabel('导出文档', { exact: true }).focus();
     await page.keyboard.press('Space');
     await expect(dialog).toContainText('直接保存一个文件');
+    await dialog.getByLabel('PDF', { exact: true }).check();
+    await submit.click();
+    await expect(dialog.getByRole('status')).toContainText('系统资料.pdf');
+    expect(
+      (await fs.readFile(path.join(outputDirectory, '筛选平台-系统资料.pdf')))
+        .subarray(0, 4)
+        .toString(),
+    ).toBe('%PDF');
+    await expect(dialog.getByLabel('Markdown', { exact: true })).not.toBeChecked();
+    await dialog.getByLabel('Markdown', { exact: true }).check();
+    await dialog.getByLabel('Markdown', { exact: true }).focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(dialog.getByLabel('Word', { exact: true })).toBeChecked();
+    await dialog.getByLabel('Markdown', { exact: true }).check();
     await dialog.screenshot({ path: info.outputPath('export-options-light.png') });
     await submit.click();
     await expect(dialog.getByRole('status')).toContainText('共 1 个文件');
@@ -90,7 +104,6 @@ test('勾选内容、开始日期筛选和单文件输出在主题、窄窗口�
     markdown = await fs.readFile(markdownPath, 'utf8');
     expect(markdown).toContain('范围内任务正文');
     expect(markdown).not.toContain('范围外任务正文');
-    await dialog.getByLabel('Markdown', { exact: true }).uncheck();
     for (const [label, extension, signature] of [
       ['Word', 'docx', 'PK'],
       ['PDF', 'pdf', '%PDF'],
@@ -108,7 +121,6 @@ test('勾选内容、开始日期筛选和单文件输出在主题、窄窗口�
         expect(entries.get('word/document.xml')!.toString()).not.toContain('范围外任务正文');
         expect([...entries.keys()].some((name) => name.startsWith('word/media/'))).toBe(true);
       }
-      await dialog.getByLabel(label, { exact: true }).uncheck();
     }
     await dialog.getByLabel('Markdown', { exact: true }).check();
     await dialog.getByLabel('导出任务', { exact: true }).uncheck();
@@ -125,6 +137,24 @@ test('勾选内容、开始日期筛选和单文件输出在主题、窄窗口�
       '不选时不导出的文档正文',
     );
     expect(bundle.get('Markdown/系统总览.md')!.toString()).not.toContain('任务正文');
+    await dialog.getByLabel('Word', { exact: true }).check();
+    await dialog.getByLabel('PDF', { exact: true }).check();
+    await dialog.getByLabel('导出文档', { exact: true }).uncheck();
+    await expect(dialog.getByRole('status')).toHaveCount(0);
+    await expect(dialog.getByLabel('PDF', { exact: true })).toBeChecked();
+    for (const label of ['Word', 'Markdown'])
+      await expect(dialog.getByLabel(label, { exact: true })).not.toBeChecked();
+    await submit.click();
+    await expect(dialog.getByRole('status')).toContainText('系统资料.pdf');
+    await dialog.getByLabel('导出文档', { exact: true }).check();
+    for (const label of ['Markdown', 'Word', 'PDF'])
+      await dialog.getByLabel(label, { exact: true }).uncheck();
+    await expect(submit).toBeDisabled();
+    await dialog.getByLabel('导出文档', { exact: true }).uncheck();
+    await expect(dialog.getByLabel('Markdown', { exact: true })).toBeChecked();
+    await expect(submit).toBeEnabled();
+    await dialog.getByLabel('导出文档', { exact: true }).check();
+    await dialog.getByLabel('Markdown', { exact: true }).check();
     await dialog.getByLabel('导出任务', { exact: true }).check();
     await page.setViewportSize({ width: 760, height: 600 });
     await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce', contrast: 'more' });
@@ -212,12 +242,18 @@ test('系统资料分别导出 Markdown、Word、PDF，取消解锁无输出，�
         ),
         '现场.png',
       );
-      const id = (await api.mutate({ type: 'document.create', context: { systemId } })).createdId!;
+      const id = (await api.mutate({ type: 'document.create' })).createdId!;
       await api.mutate({
         ...(await api.document(id)),
         type: 'document.edit',
         title: '排障说明',
         markdown: `## 处理步骤\n\n检查 **应用节点**。\n\n| 指标 | 状态 |\n| --- | --- |\n| 内存 | 正常 |\n\n![现场](${image.src})`,
+      });
+      await api.mutate({
+        type: 'service.save',
+        systemId,
+        name: '引用手册的应用',
+        documentIds: [id],
       });
       await api.mutate({
         type: 'task.create',
@@ -265,6 +301,20 @@ test('系统资料分别导出 Markdown、Word、PDF，取消解锁无输出，�
     expect([...entries.keys()].filter((name) => name.endsWith('.docx'))).toHaveLength(2);
     expect([...entries.keys()].filter((name) => name.endsWith('.pdf'))).toHaveLength(2);
     expect(entries.get('PDF/系统总览.pdf')!.subarray(0, 4).toString()).toBe('%PDF');
+    const pdf = entries.get('PDF/系统总览.pdf')!;
+    expect(pdf.toString('latin1')).toContain('/S /GoToR');
+    expect(pdf.toString('latin1')).not.toContain('workbench-export.invalid');
+    const targetHex = /\/UF <FEFF([0-9a-f]+)>/.exec(pdf.toString('latin1'))![1];
+    const pdfTarget = Buffer.from(targetHex, 'hex').swap16().toString('utf16le');
+    expect(entries.has(`PDF/${pdfTarget}`)).toBe(true);
+    await fs.writeFile(testInfo.outputPath('overview-links.pdf'), pdf);
+    const wordPath = testInfo.outputPath('overview-links.docx');
+    await fs.writeFile(wordPath, entries.get('Word/系统总览.docx')!);
+    const word = await readZip(wordPath);
+    const relation = word.get('word/_rels/document.xml.rels')!.toString();
+    const wordTarget = /Target="([^"]+\.docx)"/.exec(relation)![1];
+    expect(entries.has(`Word/${decodeURIComponent(wordTarget)}`)).toBe(true);
+
     expect([...entries.keys()].some((name) => name.startsWith('Markdown/图片/'))).toBe(true);
     expect(JSON.stringify(await page.evaluate(() => window.desktop.snapshot()))).not.toContain(
       'fictional-server-export-password',

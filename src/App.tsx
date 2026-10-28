@@ -1,5 +1,6 @@
 import { GuidanceProvider } from './features/guidance/Guidance';
 import { guidanceTarget } from './guidance/registry';
+import { requireSavedRecord } from './shared/new-record';
 import type { CreationContext } from './app/actions';
 import { QuickCreate } from './app/QuickCreate';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
@@ -41,7 +42,14 @@ export function App() {
       if (save.current === handler) save.current = async () => {};
     };
   }, []);
-  useEffect(() => window.desktop.onFlush(() => save.current()), []);
+  useEffect(
+    () =>
+      window.desktop.onFlush(async () => {
+        await requireSavedRecord();
+        await save.current();
+      }),
+    [],
+  );
   useEffect(
     () =>
       window.desktop.onDataRestored(() => {
@@ -61,6 +69,7 @@ export function App() {
       const expected = generation.current;
       try {
         if (installingRef.current) throw Error('正在安装更新，请等待完成。');
+        await requireSavedRecord();
         if (guidance) {
           const availability = await window.desktop.guidanceAvailability();
           if (!availability.available) throw Error(availability.reason);
@@ -115,6 +124,7 @@ export function App() {
     const expected = generation.current;
     try {
       if (installingRef.current) return false;
+      await requireSavedRecord();
       await save.current();
       return expected === generation.current && !installingRef.current;
     } catch {

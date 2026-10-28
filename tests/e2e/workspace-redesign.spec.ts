@@ -182,7 +182,8 @@ test('表格粘贴映射预览后建立服务器，密码不进入普通字段',
     );
     await page.evaluate(() => window.desktop.initializeVault('fictional-paste-master-password'));
     await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('button', { name: '粘贴表格', exact: true }).click();
+    await page.getByRole('button', { name: '批量录入', exact: true }).click();
+    await page.getByLabel('批量条目类型').selectOption('server');
     await page.getByLabel('粘贴表格', { exact: true }).evaluate((element) => {
       const clipboard = new DataTransfer();
       clipboard.setData(
@@ -194,10 +195,13 @@ test('表格粘贴映射预览后建立服务器，密码不进入普通字段',
       );
     });
     await page.getByRole('button', { name: '取消', exact: true }).click();
-    await expect(page.getByText('这些资料尚未提交，离开将丢弃本次粘贴内容。')).toBeVisible();
+    await expect(page.getByText('这些资料尚未提交，离开将丢弃本次录入内容。')).toBeVisible();
     await page.getByRole('button', { name: '继续校对', exact: true }).click();
-    await expect(page.locator('.paste-preview')).not.toContainText('fictional-paste-secret');
+    await expect(
+      page.getByRole('region', { name: '待追加表格预览', exact: true }),
+    ).not.toContainText('fictional-paste-secret');
     await expect(page.getByRole('button', { name: '确认新增', exact: true })).toBeDisabled();
+    await page.getByRole('button', { name: '追加到录入表格（3 行）', exact: true }).click();
     await page.getByLabel('录入第 2 行', { exact: true }).uncheck();
     await page.getByLabel('疑似重复，仍新增独立记录').check();
     await page.getByRole('button', { name: '确认新增', exact: true }).click();
@@ -215,6 +219,9 @@ test('表格粘贴映射预览后建立服务器，密码不进入普通字段',
       }),
     ).toBe('fictional-paste-secret');
   } finally {
+    await app
+      .evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().forEach((w) => w.destroy()))
+      .catch(() => {});
     await app.close();
     await fs.rm(directory, { recursive: true, force: true });
   }

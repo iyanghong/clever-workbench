@@ -28,6 +28,7 @@ export type ServiceRecord = {
   repository: string;
   notes: string;
   createdAt: number;
+  documentIds?: string[];
 };
 export type DeploymentRecord = {
   id: string;
@@ -64,15 +65,33 @@ export type AccessSave = {
   preferredAccountId?: string | null;
 };
 export type LedgerCapture = {
-  kind: 'access' | 'server';
+  kind: 'access' | ResourceKind | 'account';
   systemId: string;
   environmentId: string | null;
   name: string;
   address?: string;
+  port?: string;
   purpose?: string;
   fields?: Record<string, string>;
   username?: string;
   password?: string;
+  token?: string;
+  privateKey?: string;
+  accountName?: string;
+  notes?: string;
+  resourceId?: string | null;
+  accessId?: string | null;
+  addresses?: AccessSave['addresses'];
+  connections?: ResourceConnection[];
+  preferredConnectionId?: string | null;
+};
+export type ResourceConnection = {
+  id: string;
+  label: string;
+  address: string;
+  port: string;
+  role: string;
+  serverId: string | null;
 };
 export type ResourceRecord = {
   id: string;
@@ -84,6 +103,8 @@ export type ResourceRecord = {
   port: string;
   notes: string;
   fields: Record<string, string>;
+  connections?: ResourceConnection[];
+  preferredConnectionId?: string | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -140,6 +161,8 @@ export type LedgerCommand =
       port?: string;
       notes?: string;
       fields?: Record<string, string>;
+      connections?: ResourceConnection[];
+      preferredConnectionId?: string | null;
     }
   | {
       type: 'resource.copy';
@@ -165,6 +188,8 @@ export type LedgerCommand =
       name: string;
       repository?: string;
       notes?: string;
+      documentIds?: string[];
+      firstNode?: Omit<import('./ledger-workspace-types').DeploymentNode, 'id' | 'serviceId'>;
     }
   | {
       type: 'deployment.save';

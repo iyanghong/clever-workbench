@@ -47,7 +47,7 @@ Status: resolved
 
 ## 第二轮结论
 
-Q5、Q6、Q8、Q9 采用建议；Q7 明确选择仅提示，不设置指引发布阻断。仓库分发和发布绑定决定记录于 [ADR 0012](../../docs/adr/0012-bundle-operation-guides-with-releases.md)。
+Q5、Q6、Q8、Q9 采用建议；Q7 明确选择仅提示，不设置指引发布阻断。仓库分发和发布绑定决定记录于 [ADR 0014](../../docs/adr/0014-bundle-operation-guides-with-releases.md)。
 
 ## 第三轮结论
 

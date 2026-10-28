@@ -2,7 +2,7 @@
 
 状态：已实现并完成隔离 macOS arm64 安装版的代理联合验收。用户在 Q20 确认的内容与发布规则已接入；实际覆盖、测试来源和未验证边界见[任务 11 实施记录](../.scratch/operation-guidance/implementation-11.md)。维护者对拟发布源码的人工核对仍待进行；本地验收不表示已经推送或公开 Release。
 
-依据：[设计访谈](../.scratch/operation-guidance/interview.md)、[ADR 0012](adr/0012-bundle-operation-guides-with-releases.md)、[项目术语](../CONTEXT.md)。
+依据：[设计访谈](../.scratch/operation-guidance/interview.md)、[ADR 0014](adr/0014-bundle-operation-guides-with-releases.md)、[项目术语](../CONTEXT.md)。
 
 ## 1. 目标与范围
 

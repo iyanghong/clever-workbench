@@ -1,3 +1,10 @@
+import {
+  ledgerFields as resourceFields,
+  checkConnections,
+  documentIds,
+  saveDocumentRefs,
+  writeLedgerFields,
+} from './ledger-details';
 import { WorkspaceLedger } from './ledger-workspace';
 import type { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
@@ -19,20 +26,31 @@ function field(value: unknown, max: number) {
   return value;
 }
 
-function resourceFields(value: unknown): Record<string, string> {
-  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length > 50)
-    throw new Error('附加字段格式无效，最多支持 50 项。');
-  const result: Record<string, string> = {};
-  for (const [key, item] of Object.entries(value)) {
-    if (!key.trim() || key.length > 80 || ['__proto__', 'prototype', 'constructor'].includes(key))
-      throw new Error('附加字段名称无效。');
-    result[key] = field(item, 3000);
-  }
-  return result;
-}
-function resourceRow(row: Record<string, unknown>): ResourceRecord {
+function resourceRow(row: Record<string, unknown>, db: DatabaseSync): ResourceRecord {
+  const connections = checkConnections(
+    db,
+    String(row.systemId),
+    JSON.parse(String(row.connections ?? '[]')),
+  );
+  const selected = connections.find((c) => c.id === row.preferredConnectionId) ?? connections[0];
   return {
     ...row,
+    connections,
+    preferredConnectionId: selected?.id ?? null,
+    ...(row.kind === 'server'
+      ? {}
+      : {
+          address: selected
+            ? selected.address ||
+              (selected.serverId
+                ? String(
+                    db.prepare('SELECT address FROM resources WHERE id=?').get(selected.serverId)
+                      ?.address ?? '',
+                  )
+                : '')
+            : '',
+          port: selected?.port ?? '',
+        }),
     fields: resourceFields(JSON.parse(field(row.fields, 200_000))),
   } as ResourceRecord;
 }
@@ -105,13 +123,17 @@ export class Ledger {
       resources: this.db
         .prepare('SELECT * FROM resources ORDER BY createdAt,rowid')
         .all()
-        .map(resourceRow),
+        .map((row) => resourceRow(row, this.db)),
       environments: this.db
         .prepare('SELECT * FROM environments ORDER BY createdAt,rowid')
         .all() as unknown as EnvironmentRecord[],
       services: this.db
         .prepare('SELECT * FROM services ORDER BY createdAt,rowid')
-        .all() as unknown as ServiceRecord[],
+        .all()
+        .map((r) => ({
+          ...r,
+          documentIds: documentIds(this.db, 'service', String(r.id)),
+        })) as unknown as ServiceRecord[],
       deployments: this.db
         .prepare('SELECT * FROM deployments ORDER BY rowid')
         .all() as unknown as DeploymentRecord[],
@@ -213,6 +235,7 @@ export class Ledger {
         field(command.notes ?? previous?.notes ?? '', 100_000),
         previous?.createdAt ?? now,
       );
+    saveDocumentRefs(this.db, 'service', id, command.systemId, command.documentIds);
     return id;
   }
   saveDeployment(command: Extract<LedgerCommand, { type: 'deployment.save' }>) {
@@ -476,7 +499,7 @@ export class Ledger {
   resource(id: string): ResourceRecord {
     const row = this.db.prepare('SELECT * FROM resources WHERE id=?').get(field(id, 100));
     if (!row) throw new Error('资源不存在。');
-    return resourceRow(row);
+    return resourceRow(row, this.db);
   }
   saveResource(command: Extract<LedgerCommand, { type: 'resource.save' }>, now: number) {
     const previous = command.id ? this.resource(command.id) : null;
@@ -507,7 +530,70 @@ export class Ledger {
     const port = field(command.port ?? previous?.port ?? '', 8).trim();
     if (port && (!/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535))
       throw new Error('端口应为 1 到 65535，或留空。');
-    const fields = resourceFields(command.fields ?? previous?.fields ?? {});
+    if (previous?.kind === 'server' && command.kind !== 'server')
+      this.protectResourceReferences(previous.id);
+    let connections =
+      command.connections === undefined ? (previous?.connections ?? []) : command.connections;
+    if (
+      command.preferredConnectionId !== undefined &&
+      command.preferredConnectionId !== null &&
+      (typeof command.preferredConnectionId !== 'string' ||
+        command.preferredConnectionId.length > 100)
+    )
+      throw new Error('常用连接标识无效。');
+    if (command.connections !== undefined) checkConnections(this.db, systemId, command.connections);
+    if (
+      command.kind !== 'server' &&
+      command.connections === undefined &&
+      (command.address !== undefined || command.port !== undefined || previous?.kind === 'server')
+    ) {
+      const selected =
+        connections.find((c) => c.id === previous?.preferredConnectionId) ?? connections[0];
+      if (selected)
+        connections = connections.map((c) =>
+          c.id === selected.id
+            ? {
+                ...c,
+                address: command.address === undefined ? c.address : address,
+                port: command.port === undefined ? c.port : port,
+              }
+            : c,
+        );
+      else if (address || port)
+        connections = [
+          { id: randomUUID(), label: '主连接', address, port, role: '', serverId: null },
+        ];
+    }
+    if (command.kind === 'server' && connections.length)
+      throw new Error('该资源已有连接信息，请先明确移除连接，或新建服务器。');
+    connections = checkConnections(this.db, systemId, connections);
+    connections = connections.map((connection) => {
+      const old = previous?.connections?.find((c) => c.id === connection.id);
+      return old?.serverId && !connection.serverId && !connection.address
+        ? { ...connection, address: old.address || this.resource(old.serverId).address }
+        : connection;
+    });
+    const preferredConnectionId =
+      command.preferredConnectionId === undefined
+        ? previous?.preferredConnectionId
+        : command.preferredConnectionId;
+    if (
+      command.preferredConnectionId &&
+      !connections.some((c) => c.id === command.preferredConnectionId) &&
+      !command.connections?.some(
+        (c) =>
+          c.id === command.preferredConnectionId &&
+          !c.label.trim() &&
+          !c.address.trim() &&
+          !c.port.trim() &&
+          !c.role.trim() &&
+          c.serverId === null,
+      )
+    )
+      throw new Error('常用连接不存在。');
+    const selectedConnection =
+      connections.find((c) => c.id === preferredConnectionId) ?? connections[0];
+    const fields = writeLedgerFields(command.fields ?? previous?.fields ?? {}, previous?.fields);
     const id = previous?.id ?? randomUUID();
     this.db
       .prepare(
@@ -520,13 +606,16 @@ export class Ledger {
         command.environmentId,
         command.kind,
         name,
-        address,
-        port,
+        command.kind === 'server' ? address : '',
+        command.kind === 'server' ? port : '',
         field(command.notes ?? previous?.notes ?? '', 100_000),
         JSON.stringify(fields),
         previous?.createdAt ?? now,
         now,
       );
+    this.db
+      .prepare('UPDATE resources SET connections=?,preferredConnectionId=? WHERE id=?')
+      .run(JSON.stringify(connections), selectedConnection?.id ?? null, id);
     if (previous && previous.environmentId !== command.environmentId)
       this.db
         .prepare('UPDATE accounts SET environmentId=? WHERE resourceId=?')
@@ -568,6 +657,15 @@ export class Ledger {
       )
         name = `${source.name.slice(0, 960)} 副本 ${index++}`;
     }
+    const copiedConnections = (source.connections ?? []).map((c) => ({
+      ...c,
+      id: randomUUID(),
+      address:
+        systemId !== source.systemId && !c.address && c.serverId
+          ? this.resource(c.serverId).address
+          : c.address,
+      serverId: systemId === source.systemId ? c.serverId : null,
+    }));
     const id = this.saveResource(
       {
         type: 'resource.save',
@@ -579,6 +677,11 @@ export class Ledger {
         port: source.port,
         notes: source.notes,
         fields: source.fields,
+        connections: copiedConnections,
+        preferredConnectionId:
+          copiedConnections[
+            (source.connections ?? []).findIndex((c) => c.id === source.preferredConnectionId)
+          ]?.id ?? null,
       },
       now,
     );
@@ -602,6 +705,13 @@ export class Ledger {
     }
   }
   private protectResourceReferences(id: string) {
+    for (const row of this.db.prepare('SELECT connections FROM resources WHERE id<>?').all(id))
+      if (
+        (JSON.parse(String(row.connections)) as { serverId: string | null }[]).some(
+          (c) => c.serverId === id,
+        )
+      )
+        throw new Error('服务器仍被资源连接引用，请先解除关联。');
     if (
       this.db
         .prepare(
@@ -638,7 +748,12 @@ export function validateLedger(db: DatabaseSync) {
     field(row.notes, 100_000);
   }
   for (const raw of db.prepare('SELECT * FROM resources').all()) {
-    const row = resourceRow(raw);
+    const row = resourceRow(raw, db);
+    if (
+      raw.preferredConnectionId !== null &&
+      !(row.connections ?? []).some((c) => c.id === raw.preferredConnectionId)
+    )
+      throw new Error('备份常用连接无效。');
     ledger.system(field(row.systemId, 100));
     if (
       row.environmentId !== null &&

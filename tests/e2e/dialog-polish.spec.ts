@@ -59,8 +59,8 @@ test('台账弹窗有固定关闭入口，表单统一且退出保留保存与�
     expect(
       await page.evaluate(async () => (await window.desktop.snapshot()).systems[0].notes),
     ).toBe('保持简单、快速查询。');
-    await page.getByRole('button', { name: '粘贴表格', exact: true }).click();
-    const paste = page.getByRole('dialog', { name: '粘贴表格 · 校对后新增', exact: true });
+    await page.getByRole('button', { name: '批量录入', exact: true }).click();
+    const paste = page.getByRole('dialog', { name: '批量录入 · 校对后新增', exact: true });
     await expect
       .poll(() =>
         paste
@@ -89,8 +89,8 @@ test('台账弹窗有固定关闭入口，表单统一且退出保留保存与�
       el.scrollTop = el.scrollHeight;
     });
     expect(await paste.evaluate((el) => el.scrollTop)).toBeGreaterThan(100);
-    await paste.getByRole('button', { name: '关闭粘贴表格 · 校对后新增', exact: true }).click();
-    await expect(paste.getByText('这些资料尚未提交，离开将丢弃本次粘贴内容。')).toBeVisible();
+    await paste.getByRole('button', { name: '关闭批量录入 · 校对后新增', exact: true }).click();
+    await expect(paste.getByText('这些资料尚未提交，离开将丢弃本次录入内容。')).toBeVisible();
     await expect(paste.getByRole('button', { name: '继续校对', exact: true })).toBeInViewport();
     await expect(paste.getByRole('button', { name: '继续校对', exact: true })).toBeFocused();
     await paste.getByRole('button', { name: '放弃并离开', exact: true }).click();

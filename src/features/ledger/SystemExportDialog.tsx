@@ -1,3 +1,4 @@
+import { systemDocuments } from '../../ledger-fields';
 import { useState } from 'react';
 import type { Snapshot } from '../../types';
 import { exportFormatLabels, type ExportFormat, type SystemExportResult } from '../../export-types';
@@ -27,12 +28,12 @@ export function SystemExportDialog({
   const accounts = snapshot.accounts.filter((account) => account.systemId === systemId);
   const count = (kind: SecretKind) =>
     accounts.filter((account) => account.secretKinds.includes(kind)).length;
-  const documents = snapshot.documents.filter(
-    (item) => item.systemId === systemId && item.deletedAt === null,
-  ).length;
+  const documents = systemDocuments(snapshot, systemId).length;
   const tasks = snapshot.tasks.filter(
     (item) => item.systemId === systemId && item.deletedAt === null,
   ).length;
+  const hasDocuments = includeDocuments && documents > 0;
+  const selectedFormats = hasDocuments ? formats : [formats.at(-1) ?? 'markdown'];
   const dateError =
     includeTasks && taskStartDate && taskEndDate && taskStartDate > taskEndDate
       ? '开始日期不能晚于结束日期。'
@@ -47,7 +48,7 @@ export function SystemExportDialog({
       setResult(
         await window.desktop.exportSystem({
           systemId,
-          formats,
+          formats: selectedFormats,
           secretKinds,
           includeDocuments,
           includeTasks,
@@ -67,7 +68,7 @@ export function SystemExportDialog({
         导出{snapshot.systems.find((system) => system.id === systemId)?.name}的完整台账。
         任务合并到系统总览，文档独立成文件。
       </p>
-      <fieldset className="export-options" disabled={busy}>
+      <fieldset className="export-options" disabled={busy} onChange={() => setResult(null)}>
         <legend>附加内容</legend>
         <label className="secret-show">
           <input
@@ -89,7 +90,7 @@ export function SystemExportDialog({
         </label>
       </fieldset>
       {includeTasks && (
-        <fieldset className="export-options" disabled={busy}>
+        <fieldset className="export-options" disabled={busy} onChange={() => setResult(null)}>
           <legend>任务日期范围</legend>
           <div className="context-fields">
             <label>
@@ -116,19 +117,22 @@ export function SystemExportDialog({
           </span>
         </fieldset>
       )}
-      <fieldset className="export-options" disabled={busy}>
+      <fieldset className="export-options" disabled={busy} onChange={() => setResult(null)}>
         <legend>文件格式</legend>
         {(Object.keys(exportFormatLabels) as ExportFormat[]).map((format) => (
           <label key={format} className="secret-show">
             <input
-              type="checkbox"
+              type={hasDocuments ? 'checkbox' : 'radio'}
+              name="system-export-format"
               aria-label={exportFormatLabels[format]}
-              checked={formats.includes(format)}
+              checked={selectedFormats.includes(format)}
               onChange={(event) =>
                 setFormats(
-                  event.target.checked
-                    ? [...formats, format]
-                    : formats.filter((item) => item !== format),
+                  !hasDocuments
+                    ? [format]
+                    : event.target.checked
+                      ? [...formats, format]
+                      : formats.filter((item) => item !== format),
                 )
               }
             />
@@ -137,11 +141,11 @@ export function SystemExportDialog({
         ))}
       </fieldset>
       <p className="field-hint">
-        {formats.length === 1 && (!includeDocuments || documents === 0)
-          ? '直接保存一个文件，图片嵌入文件。'
-          : '多种格式或包含文档时，保存为 ZIP 资料包。'}
+        {hasDocuments
+          ? '文档独立成文件，保存为 ZIP 资料包；可选择多种格式。'
+          : '选择一种格式，直接保存一个文件，图片嵌入文件。'}
       </p>
-      <fieldset className="export-options" disabled={busy}>
+      <fieldset className="export-options" disabled={busy} onChange={() => setResult(null)}>
         <legend>账号秘密</legend>
         {(Object.keys(secretLabels) as SecretKind[]).map((kind) => (
           <label key={kind} className="secret-show">
@@ -178,7 +182,7 @@ export function SystemExportDialog({
         </button>
         <button
           className="primary-button"
-          disabled={busy || !formats.length || !!dateError}
+          disabled={busy || !selectedFormats.length || !!dateError}
           onClick={() => void submit()}
         >
           {busy ? '正在整理资料…' : '导出资料'}

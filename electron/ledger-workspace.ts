@@ -1,3 +1,10 @@
+import {
+  ledgerFields,
+  writeLedgerFields,
+  validateOperationDate,
+  documentIds,
+  saveDocumentRefs,
+} from './ledger-details';
 import type { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import type {
@@ -79,10 +86,19 @@ export class WorkspaceLedger {
       scopes: this.scopes(),
       deploymentNodes: this.db
         .prepare('SELECT * FROM deployment_nodes ORDER BY rowid')
-        .all() as unknown as DeploymentNode[],
+        .all()
+        .map((r) => ({
+          ...r,
+          fields: ledgerFields(JSON.parse(String(r.fields))),
+          documentIds: documentIds(this.db, 'node', String(r.id)),
+        })) as unknown as DeploymentNode[],
       operations: this.db
         .prepare('SELECT * FROM operations ORDER BY rowid')
-        .all() as unknown as Operation[],
+        .all()
+        .map((r) => ({
+          ...r,
+          fields: ledgerFields(JSON.parse(String(r.fields))),
+        })) as unknown as Operation[],
     };
   }
   saveScope(kind: ScopeKind, ownerId: string, input: ScopeInput) {
@@ -165,7 +181,7 @@ export class WorkspaceLedger {
       throw new Error('已有同名部署节点。');
     this.db
       .prepare(
-        `INSERT INTO deployment_nodes VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET environmentId=excluded.environmentId,name=excluded.name,serverId=excluded.serverId,address=excluded.address,port=excluded.port,notes=excluded.notes,mode=excluded.mode,count=excluded.count`,
+        `INSERT INTO deployment_nodes(id,serviceId,environmentId,name,serverId,address,port,notes,mode,count) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET environmentId=excluded.environmentId,name=excluded.name,serverId=excluded.serverId,address=excluded.address,port=excluded.port,notes=excluded.notes,mode=excluded.mode,count=excluded.count`,
       )
       .run(
         id,
@@ -179,6 +195,19 @@ export class WorkspaceLedger {
         input.mode,
         text(input.count, 100),
       );
+    if (input.fields !== undefined)
+      this.db
+        .prepare('UPDATE deployment_nodes SET fields=? WHERE id=?')
+        .run(
+          JSON.stringify(
+            writeLedgerFields(
+              input.fields,
+              ledgerFields(JSON.parse(String(this.get('deployment_nodes', id).fields))),
+            ),
+          ),
+          id,
+        );
+    saveDocumentRefs(this.db, 'node', id, systemId, input.documentIds);
     return id;
   }
   saveOperation(input: Omit<Operation, 'id'> & { id?: string }) {
@@ -210,7 +239,7 @@ export class WorkspaceLedger {
       throw new Error('已有同名运维记录。');
     this.db
       .prepare(
-        `INSERT INTO operations VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET environmentId=excluded.environmentId,serviceId=excluded.serviceId,resourceId=excluded.resourceId,documentId=excluded.documentId,name=excluded.name,kind=excluded.kind,frequency=excluded.frequency,status=excluded.status,notes=excluded.notes`,
+        `INSERT INTO operations(id,systemId,environmentId,serviceId,resourceId,documentId,name,kind,frequency,status,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET environmentId=excluded.environmentId,serviceId=excluded.serviceId,resourceId=excluded.resourceId,documentId=excluded.documentId,name=excluded.name,kind=excluded.kind,frequency=excluded.frequency,status=excluded.status,notes=excluded.notes`,
       )
       .run(
         id,
@@ -225,6 +254,14 @@ export class WorkspaceLedger {
         status(input.status),
         text(input.notes, 100000),
       );
+    if (input.fields !== undefined) {
+      const fields = writeLedgerFields(
+        input.fields,
+        ledgerFields(JSON.parse(String(this.get('operations', id).fields))),
+      );
+      validateOperationDate(fields);
+      this.db.prepare('UPDATE operations SET fields=? WHERE id=?').run(JSON.stringify(fields), id);
+    }
     const scope = this.scopes().find((s) => s.kind === 'operation' && s.ownerId === id);
     if (scope)
       this.saveScope('operation', id, {
@@ -240,6 +277,9 @@ export class WorkspaceLedger {
     if (command.type === 'operation.save') return this.saveOperation(command.value);
     if (command.type === 'node.delete') {
       this.get('deployment_nodes', command.id);
+      this.db
+        .prepare("DELETE FROM ledger_document_refs WHERE ownerKind='node' AND ownerId=?")
+        .run(command.id);
       this.db.prepare('DELETE FROM deployment_nodes WHERE id=?').run(command.id);
       this.db.prepare('DELETE FROM deployments WHERE id=?').run(command.id);
       return;
@@ -266,6 +306,9 @@ export class WorkspaceLedger {
     if (command.type === 'service.delete') {
       this.get('services', command.id);
       try {
+        this.db
+          .prepare("DELETE FROM ledger_document_refs WHERE ownerKind='service' AND ownerId=?")
+          .run(command.id);
         this.db.prepare('DELETE FROM services WHERE id=?').run(command.id);
         this.db
           .prepare("DELETE FROM ledger_scopes WHERE kind='service' AND ownerId=?")

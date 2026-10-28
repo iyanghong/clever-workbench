@@ -42,6 +42,113 @@ async function files(filename: string) {
   });
 }
 
+test('应用引用的通用文档只导出一份，多连接和部署运维配置进入资料包', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workbench-export-details-'));
+  roots.push(root);
+  const store = new Store(root);
+  stores.push(store);
+  const vault = new Vault(store);
+  vaults.push(vault);
+  const systemId = store.mutate({ type: 'system.save', name: '资料验证' }).createdId!;
+  const environmentId = store.mutate({
+    type: 'environment.save',
+    systemId,
+    name: '生产',
+  }).createdId!;
+  const doc = store.mutate({ type: 'document.create' }).createdId!;
+  store.mutate({
+    ...store.document(doc),
+    type: 'document.edit',
+    title: '共用手册',
+    markdown: '共享的操作正文',
+  });
+  store.mutate({ type: 'document.create' });
+  const serviceId = store.mutate({
+    type: 'service.save',
+    systemId,
+    name: '应用',
+    documentIds: [doc],
+    firstNode: {
+      name: '节点',
+      environmentId,
+      serverId: null,
+      address: '',
+      port: '8080',
+      mode: 'fixed',
+      count: '',
+      notes: '',
+      fields: { 部署方式: 'Docker', 日志位置: '/srv/app/logs' },
+      documentIds: [doc],
+    },
+  }).createdId!;
+  store.mutate({
+    type: 'resource.save',
+    systemId,
+    environmentId: null,
+    kind: 'database',
+    name: '多连接数据库',
+    connections: [
+      {
+        id: 'business',
+        label: '业务连接',
+        address: 'db.example.test',
+        port: '5432',
+        role: '主',
+        serverId: null,
+      },
+      {
+        id: 'management',
+        label: '管理连接',
+        address: 'admin.example.test',
+        port: '9000',
+        role: '管理',
+        serverId: null,
+      },
+    ],
+  });
+  store.mutate({
+    type: 'operation.save',
+    value: {
+      systemId,
+      environmentId,
+      serviceId,
+      resourceId: null,
+      documentId: null,
+      name: '备份',
+      kind: 'backup',
+      frequency: '每日',
+      status: 'active',
+      notes: '',
+      fields: { 目标位置: '/archive', 保留周期: '30 天' },
+    },
+  });
+  const exporter = new SystemExports(store, vault);
+  const options: SystemExportOptions = {
+    systemId,
+    formats: ['markdown'],
+    includeDocuments: true,
+    includeTasks: false,
+    secretKinds: [],
+  };
+  expect(exporter.fileExtension(options)).toBe('zip');
+  const target = path.join(root, 'details.zip');
+  await exporter.write(options, target);
+  const entries = await files(target);
+  expect([...entries.keys()].filter((key) => key.startsWith('Markdown/文档/'))).toHaveLength(1);
+  const overview = entries.get('Markdown/系统总览.md')!.toString();
+  for (const value of [
+    'admin.example.test',
+    '9000',
+    '/srv/app/logs',
+    'Docker',
+    '/archive',
+    '30 天',
+  ])
+    expect(overview).toContain(value);
+  expect(overview.match(/操作文档：\[共用手册\]/g)).toHaveLength(2);
+  expect(exporter.fileExtension({ ...options, includeDocuments: false })).toBe('md');
+});
+
 test('可排除文档和任务，按本地开始日期含首尾筛选任务，无文档直接导出一个文件', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workbench-export-selection-'));
   roots.push(root);
@@ -112,6 +219,7 @@ test('可排除文档和任务，按本地开始日期含首尾筛选任务，�
     { taskStartDate: '2026-02-30' },
     { taskEndDate: '2025-02-29' },
     { taskStartDate: '2025-10-22', taskEndDate: '2025-10-20' },
+    { formats: ['markdown', 'pdf'] },
   ]) {
     await expect(
       exporter.write({ ...options, ...invalid } as SystemExportOptions, target),
@@ -125,7 +233,7 @@ test('可排除文档和任务，按本地开始日期含首尾筛选任务，�
   });
 });
 
-test('任务合并保留各自引用链接，单文件图片内嵌，多格式仅包含各格式总览', async () => {
+test('任务合并保留各自引用链接和内嵌图片，无文档时拒绝以多格式生成 ZIP', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workbench-export-inline-'));
   roots.push(root);
   const store = new Store(root);
@@ -172,17 +280,11 @@ test('任务合并保留各自引用链接，单文件图片内嵌，多格式�
   expect(markdown).toContain('[第二项链接](<https://example.test/second>)');
   expect(markdown.match(/!\[图片\]\(data:image\/png;base64,/g)).toHaveLength(2);
   expect(markdown).toContain(`\`\`\`text\n${image.src}\n\`\`\``);
-  const multiple = { ...options, formats: ['markdown', 'docx', 'pdf'] as const };
-  expect(exporter.fileExtension({ ...multiple, formats: [...multiple.formats] })).toBe('zip');
+  const multiple: SystemExportOptions = { ...options, formats: ['markdown', 'docx', 'pdf'] };
+  expect(() => exporter.fileExtension(multiple)).toThrow('单文件导出请选择一种文件格式');
   const bundle = path.join(root, '资料.zip');
-  expect(
-    (await exporter.write({ ...multiple, formats: [...multiple.formats] }, bundle)).files,
-  ).toBe(3);
-  expect([...(await files(bundle)).keys()]).toEqual([
-    'Markdown/系统总览.md',
-    'Word/系统总览.docx',
-    'PDF/系统总览.pdf',
-  ]);
+  await expect(exporter.write(multiple, bundle)).rejects.toThrow('单文件导出请选择一种文件格式');
+  expect(fs.existsSync(bundle)).toBe(false);
   for (const format of ['docx', 'pdf'] as const) {
     expect(exporter.fileExtension({ ...options, formats: [format] })).toBe(format);
     expect(

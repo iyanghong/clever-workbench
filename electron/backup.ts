@@ -1,3 +1,4 @@
+import { migrateLedgerDetails, validateDocumentRefs } from './ledger-details';
 import { WorkspaceLedger } from './ledger-workspace';
 import { migrateWorkbench } from './workbench-migration';
 import { migrateTaskPlanning } from './task-migration';
@@ -556,6 +557,7 @@ async function validateDatabase(
       migrateSystemLedger(db);
       migrateWorkbench(db);
       migrateTaskPlanning(db);
+      migrateLedgerDetails(db);
       db.exec(`PRAGMA user_version=${schemaVersion}`);
     }
     validateLedger(db);
@@ -641,6 +643,7 @@ async function validateDatabase(
           if (!manifest.files[`assets/${name}`]) throw new Error('草稿图片缺失。');
       }
     }
+    validateDocumentRefs(db);
     const documents = db.prepare('SELECT * FROM documents').all();
     for (const row of documents) {
       const document = row as unknown as DocumentRecord;

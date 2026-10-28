@@ -51,6 +51,8 @@ export type DeploymentNode = {
   notes: string;
   mode: 'fixed' | 'scheduled';
   count: string;
+  fields?: Record<string, string>;
+  documentIds?: string[];
 };
 export type Operation = {
   id: string;
@@ -64,6 +66,7 @@ export type Operation = {
   frequency: string;
   status: 'active' | 'inactive' | 'unverified';
   notes: string;
+  fields?: Record<string, string>;
 };
 export type WorkspaceLedgerCommand =
   | { type: 'scope.save'; kind: ScopeKind; ownerId: string; scope: ScopeInput }
