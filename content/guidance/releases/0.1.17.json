@@ -38,8 +38,8 @@
       "维护者尚未填写本次实际发布源码的人工核对记录；各任务的开发与打包证据不替代维护者核对。"
     ]
   },
-  "version": "0.1.16",
-  "tag": "v0.1.16",
-  "sourceSha": "7776f9d8d8e5c1f6010c30cf5af0a21446e4ff65",
+  "version": "0.1.17",
+  "tag": "v0.1.17",
+  "sourceSha": "2bd0f3c2879f9a606062d02d30ab7d6e32b49f3d",
   "publication": "pending"
 }
