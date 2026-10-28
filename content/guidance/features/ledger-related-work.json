@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "ledger-related-work",
+  "revision": 1,
+  "title": "从系统和资源查看相关工作",
+  "platforms": ["darwin", "win32"],
+  "placements": ["ledger-operations", "ledger-resources", "ledger-deployments"],
+  "purpose": "从当前系统或台账对象进入任务和文档，并在系统相关工作中打开已有资料。",
+  "prerequisites": {
+    "items": ["先在台账选择系统；若从对象详情进入，请确认选中的是预期对象。"],
+    "notApplicableReason": ""
+  },
+  "entry": {
+    "label": "台账顶部 → 相关工作；或台账对象详情 → 为当前对象写文档／记录工作任务",
+    "target": "ledger-operations"
+  },
+  "steps": [
+    {
+      "id": "open",
+      "title": "打开系统相关工作",
+      "action": "在台账顶部点击“相关工作”，查看当前系统下的文档与任务。",
+      "expectedResult": "系统相关工作弹窗显示已有记录和新增入口；指引不会自动创建任何对象。"
+    },
+    {
+      "id": "document",
+      "title": "为当前背景写文档",
+      "action": "在系统相关工作点击“写文档”，或在台账对象详情点击“为当前对象写文档”；进入文档页后补充标题与内容并等待保存。",
+      "expectedResult": "系统入口带入系统背景，资源等对象详情可带入已确认的对象背景；保存后可从相应系统再次查找。"
+    },
+    {
+      "id": "task",
+      "title": "快速记录系统任务",
+      "action": "在相关工作输入框填写一件事并按回车，或点击详情里的“记录工作任务”。",
+      "expectedResult": "任务归属以系统为准，资源背景只是辅助上下文；输入仍未提交时切勿将其误认为已保存。"
+    },
+    {
+      "id": "reopen",
+      "title": "展开已有资料",
+      "action": "在系统相关工作中展开“已有记录”，点击文档或任务名称打开详情。",
+      "expectedResult": "可回到该系统下已保存的对象；工作回顾展示的是任务开始至完成的日历跨度，不是实际工时。"
+    }
+  ],
+  "completion": "任务或文档已保存到正确系统，并能从相应背景的相关工作入口找回。",
+  "faq": {
+    "items": [
+      {
+        "question": "为什么资源区看到的任务属于整个系统？",
+        "answer": "任务的业务归属只有系统；相关工作用系统范围展示任务，资源仅为进入文档等流程提供背景。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}

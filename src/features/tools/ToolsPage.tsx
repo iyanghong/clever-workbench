@@ -4,6 +4,7 @@ import { ArrowRightIcon, WrenchIcon } from '@phosphor-icons/react';
 import type { ModuleProps } from '../../app/modules';
 import type { Snapshot } from '../../types';
 import { FavoriteButton } from '../home/FavoriteButton';
+import { GuidanceButton } from '../guidance/Guidance';
 import { findTool, registeredTools } from './registry';
 import './tools.css';
 
@@ -28,7 +29,7 @@ export function ToolsPage({ route, navigate, setContext, registerFlush }: Module
       />
     );
   return (
-    <main className="main tools-page">
+    <main className="main tools-page" aria-busy={!snapshot}>
       <header className="window-toolbar">
         <div className="breadcrumb">
           <WrenchIcon size={17} />
@@ -52,7 +53,13 @@ export function ToolsPage({ route, navigate, setContext, registerFlush }: Module
           </p>
         )}
         {selected ? (
-          <Suspense fallback={<p role="status">正在打开工具…</p>}>
+          <Suspense
+            fallback={
+              <p role="status" aria-busy="true">
+                正在打开工具…
+              </p>
+            }
+          >
             <selected.Page registerFlush={registerFlush} />
           </Suspense>
         ) : (
@@ -78,6 +85,12 @@ export function ToolsPage({ route, navigate, setContext, registerFlush }: Module
                   >
                     打开工具 <ArrowRightIcon size={16} />
                   </button>
+                  {tool.id === 'zip-text' && (
+                    <GuidanceButton
+                      placement="zip-text-archive"
+                      accessibleLabel="ZIP 文本归档使用指引"
+                    />
+                  )}
                 </article>
               ))}
             </div>

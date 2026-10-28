@@ -1,0 +1,59 @@
+操作指引检查（仅警告，不阻止发布）
+检查源码：7b4b420d0ba7f9957c1ace703a46655e11a855f3
+绑定版本：v99.4.12
+操作说明：新增离线操作指引，可从功能附近或设置集中查阅，了解功能入口、步骤和完成结果。
+  点击使用指引逐步阅读操作说明，需要实践时通过前往功能安全进入对应页面。（指引：using-guidance、removed-test-guide）
+  检查更新时可就近查阅下载、立即或稍后重启以及安装结果的说明。（指引：application-update）
+  升级后有操作变化时，在空闲且保存完成后提示一次版本指引；关闭后仍可在设置中查看当前用法与历史摘要。（指引：using-guidance）
+人工核对：pending；已知缺项 2 项
+  已知缺项：全量现有功能指引由各内容任务交付，尚待最终安装版联合核对。
+  已知缺项：维护者尚未填写本次实际发布源码的人工核对记录；各任务的开发与打包证据不替代维护者核对。
+可用功能指引 46 项，版本记录 1 项，警告 24 项。
+警告 [missing-image] content/guidance/features/ledger-paste.json#steps.4.image.src：图片文件不存在。
+  修正建议：补充对应图片；正文及替代文字仍可阅读。
+警告 [invalid-json] content/guidance/features/resource-server.json#$：JSON 无法解析。
+  修正建议：检查引号、逗号和括号，保留其他有效文件。
+警告 [missing-review] content/guidance/pending.json#review：未提供完整的人工核对记录。
+  修正建议：据实记录核对人、源码、环境、对应步骤、结果和缺项；这项警告不阻断发布。
+警告 [missing-review] content/guidance/releases/99.4.12.json#review：未提供完整的人工核对记录。
+  修正建议：据实记录核对人、源码、环境、对应步骤、结果和缺项；这项警告不阻断发布。
+警告 [missing-guide] content/guidance/pending.json#changes.offline-operation-guidance.guideIds：功能指引不存在或无效：removed-test-guide
+  修正建议：补充有效功能指引或更正引用；保留可读版本摘要。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：using-guidance/open
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：using-guidance/read
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：using-guidance/versions
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：using-guidance/navigate
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：application-update/check
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：application-update/download
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：application-update/restart-choice
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：application-update/prepare
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：application-update/verify
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [missing-guide] content/guidance/releases/99.4.12.json#changes.offline-operation-guidance.guideIds：功能指引不存在或无效：removed-test-guide
+  修正建议：补充有效功能指引或更正引用；保留可读版本摘要。
+警告 [unreviewed-step] content/guidance/releases/99.4.12.json#review.checks：操作变化关联步骤尚无核对记录：using-guidance/open
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/99.4.12.json#review.checks：操作变化关联步骤尚无核对记录：using-guidance/read
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/99.4.12.json#review.checks：操作变化关联步骤尚无核对记录：using-guidance/versions
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/99.4.12.json#review.checks：操作变化关联步骤尚无核对记录：using-guidance/navigate
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/99.4.12.json#review.checks：操作变化关联步骤尚无核对记录：application-update/check
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/99.4.12.json#review.checks：操作变化关联步骤尚无核对记录：application-update/download
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/99.4.12.json#review.checks：操作变化关联步骤尚无核对记录：application-update/restart-choice
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/99.4.12.json#review.checks：操作变化关联步骤尚无核对记录：application-update/prepare
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/99.4.12.json#review.checks：操作变化关联步骤尚无核对记录：application-update/verify
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。

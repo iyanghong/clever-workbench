@@ -1,0 +1,33 @@
+
+> clever-workbench@99.4.12 build
+> tsc --noEmit && vite build && node scripts/build-electron.mjs
+
+vite v8.3.4 building client environment for production...
+transforming...
+<script src="./editor-vendor/dist/js/icons/ant.js"> in "/index.html" can't be bundled without type="module" attribute
+✓ 4936 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                      0.88 kB │ gzip:   0.48 kB
+dist/assets/system-export-options-CjI7BM93.png      49.58 kB
+dist/assets/ledger-paste-review-BLZ0rtTo.png        65.32 kB
+dist/assets/application-update-about-yg7eIdrd.png   70.19 kB
+dist/assets/Guidance-hmy8QX6N.css                    2.54 kB │ gzip:   0.87 kB
+dist/assets/LedgerWorkspace-CX0hbyVn.css             4.94 kB │ gzip:   1.24 kB
+dist/assets/ToolsPage-Dzqc8M6m.css                   6.84 kB │ gzip:   1.61 kB
+dist/assets/Editor-1ukmnEbC.css                     40.55 kB │ gzip:   8.15 kB
+dist/assets/index-8WKiIJLk.css                      88.00 kB │ gzip:  15.17 kB
+dist/assets/ToolsPage-CP50HzF6.js                    2.16 kB │ gzip:   1.07 kB
+dist/assets/FavoriteButton-bcoy8hS-.js               5.28 kB │ gzip:   2.09 kB
+dist/assets/DocumentsPage-DYzeo-eG.js                9.23 kB │ gzip:   3.22 kB
+dist/assets/ZipTextPage-DSbr5VYw.js                 23.35 kB │ gzip:   7.86 kB
+dist/assets/SettingsPage-3C3K_vFw.js                25.16 kB │ gzip:   7.35 kB
+dist/assets/TaskWorkspace-CAnhDZQp.js               40.90 kB │ gzip:  12.41 kB
+dist/assets/LedgerWorkspace-CZzNbxBG.js            122.64 kB │ gzip:  31.71 kB
+dist/assets/code-highlighting-fEbDMtbu.js          182.69 kB │ gzip:  59.25 kB
+dist/assets/Guidance-CsDLzFe3.js                   206.65 kB │ gzip:  59.33 kB
+dist/assets/editor-model-BhdfYWu4.js               251.81 kB │ gzip:  77.27 kB
+dist/assets/index-D_R8LWmV.js                      376.46 kB │ gzip: 108.83 kB
+dist/assets/Editor-BqrJTSEn.js                     489.37 kB │ gzip: 140.93 kB
+
+✓ built in 533ms

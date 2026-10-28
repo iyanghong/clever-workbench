@@ -1,4 +1,5 @@
 import { PageHeading } from '../../shared/WorkspaceUI';
+import { GuidanceButton } from '../guidance/Guidance';
 import { scopeFor } from '../../ledger-workspace-types';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -170,13 +171,14 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
       ]
     : [];
   return (
-    <main className="main home-page">
+    <main className="main home-page" aria-busy={!snapshot}>
       <header className="window-toolbar">
         <div className="breadcrumb">
           <StackIcon size={17} />
           <span>个人工作台</span>
         </div>
         <div className="spacer" />
+        <GuidanceButton placement="home" accessibleLabel="工作台使用指引" />
         <button className="toolbar-new" onClick={() => void createDocument()}>
           <NotePencilIcon size={16} />
           写一份方案
@@ -345,6 +347,12 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
                         />
                       ))}
                     </div>
+                  )}
+                  {item.kind === 'tool' && item.id === 'zip-text' && (
+                    <GuidanceButton
+                      placement="zip-text-archive"
+                      accessibleLabel="ZIP 文本归档使用指引"
+                    />
                   )}
                   <div className="favorite-order">
                     <button

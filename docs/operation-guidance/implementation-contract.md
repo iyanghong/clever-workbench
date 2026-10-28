@@ -1,0 +1,73 @@
+# 操作指引实现契约
+
+本页记录离线阅读、版本提示、设备记录与发布绑定的共同接口。各项是否已验收，以对应任务的实施证据为准；不能仅凭本页认为已正式发布或完成安装版总验收。
+
+## 内容与资源
+
+- 实际功能正文：`content/guidance/features/*.json`；随包历史：`content/guidance/releases/*.json`；下一次发布说明：`content/guidance/pending.json`。每个文件独立解析。
+- `content/guidance/manifest.json` 列出首批必备的稳定功能 ID，正文文件按 `features/<ID>.json` 命名；共享解析器同时用于应用与发布检查。清单缺失／损坏、文件缺失／无效均给出精确警告，不作为构建或发布门槛。
+- 本地截图放在 `content/guidance/assets/`，步骤沿用 `image.src/alt/caption`，其中 src 形如 `assets/application-update-about.png`。支持 PNG、JPEG、WebP、GIF；不允许 URL、绝对路径、上级路径或脚本资源。
+- 功能字段与编写模板一致：schemaVersion、kind、id、revision、title、platforms、placements、purpose、prerequisites、entry、steps、completion、faq。稳定步骤 ID 不随显示文案变更。准备条件及常见问题的 items 为空时必须给出具体不适用原因。
+- 首批 47 篇正文覆盖 26 组现有功能及 `using-guidance`（指引自身说明），实际验收范围见任务 11；三张截图来自隔离示例资料，版本号仅为示例。
+
+## 共享解释边界
+
+`src/guidance/catalog.ts` 导出的 `loadGuidanceCatalog(sources, { assets? })` 以 `{file, text}` 数组接收原始文件，返回 `features/releases/drafts/warnings`。输入损坏时不抛出内容异常。每条 warning 含 code、file、field、message、suggestion。这里的文件名仅用作诊断，不用于打开文件。
+
+纯契约、类型和入口登记位于 `src/guidance/`，没有 React、Electron、Node 文件访问依赖；Node 发布脚本可用现有 Node 类型擦除能力直接导入。渲染层 `bundled.ts` 仅负责 Vite raw glob 和本地图片 URL，不能在发布脚本中引用。
+
+发布适配 `scripts/release-tools/guidance.mjs` 提供 `inspectOperationGuidance(directory, { sourceSha?, releaseTag? })`：只读取传入的已检出目录，返回 `content`（当前选定说明或 null）、完整 `catalog`、图片路径 `assets` 和汇总 `warnings`。省略 releaseTag 时只选择唯一有效的 `pending.json`，指定时选择该 tag 的正式记录；不自动把缺失转换成 none。`formatOperationGuidance(report)` 生成本地终端预览。实际绑定任务复用此接口和内容，不重写解析器。
+
+`scripts/check-operation-guidance.mjs` 是同一检查的 Node CLI，输出可选 JSON、Actions annotation 和 summary；无新增运行依赖。内容读取与格式问题产生警告；程序调用错误、报告写入错误仍失败。正式来源选择、版本绑定与同源正文生成属于后续发布编排；报告不会执行 Git 写操作。
+
+解析器保留有效正文，排除未知格式、占位正文与重复身份；缺图保留替代文字，未登记入口保留正文但禁止跳转。正式内容质量由覆盖核对报告判断，不能用针对当前正文的强制测试断言重新引入发布阻断。
+
+## 版本记录边界
+
+待发布说明沿用 release-draft 模板。绑定记录使用 kind `release`，增加 version、tag、sourceSha、publication，固定放在 `releases/<version>.json`；放错位置或重复的记录警告并跳过。version 为正式三段版本号，tag 与之对应；sourceSha 为选定业务源码的完整 SHA。tag 指向的版本准备提交 SHA 另存构建证据，避免把提交自身 SHA 写回。
+
+publication 可为 `pending` 或 `published`：**当前实际运行版本可以展示本包自己的绑定记录，即使构建时尚为 pending**；只有经确认的既往 published 记录参与历史升级范围。不能把失败或草稿 tag 当作用户已经历的正式版本。发布工具在下一版准备时依据 GitHub 正式发布状态与固定 tag 原始内容重建历史，额外保留 `publicationEvidence` 的 Release ID、发布时间及 tag 提交；缺失或无法确认的旧记录排除并警告。固定 tag 重跑直接使用该 tag 的绑定内容，不能事后改写已经发布的安装包。
+
+发布版本提交的恢复元信息保留 `sourceSha`（业务源码），必要时增加 `preparedFromSha`（失败换号的直接父提交）及 `guidanceFiles`（精确版本记录允许清单）。校验沿失败换号链检查每次允许变更，不能把源码修改伪装成版本准备。CI 检查器通过 `--release-tag` 自动获取业务 SHA，不把版本提交 SHA 当作人工核对来源。
+
+缺失、未知和 none 是不同状态。changed 的缺项生成警告，不自动改成 none。review 为真实核对记录，格式异常可省略并警告，不自动补造人员、日期或通过结果。
+
+## 页面接入
+
+- `GuidanceButton`：传 guideId 直接阅读；传 placement 打开该位置的主题列表；无参数打开全部列表。默认文字“使用指引”，可用 accessibleLabel 区分附近入口。
+- `useGuidance()`：提供 openGuide(id)、openLibrary(placement?)，供现有菜单使用。不要直接操作底层 Dialog 状态。
+- 在已有功能弹窗中提供帮助时，可给按钮 beforeOpen 回调关闭该功能弹窗；先保留来源焦点，再进入指引。不要在指引外绕过保存执行功能动作。
+- 设置中的集中入口为 SettingsGuidance。功能正文登记由目录自动发现，新增 JSON 不需要修改中央 import 列表。
+- 受控目的地和展示位置在 `registry.ts` 中登记。台账类目的地携带分类进入对应清单；没有系统时进入系统选择流程，不携带记忆对象 ID，也不自动弹出创建、导出或删除对话框。
+- 设置 route.section 支持 appearance、vault、backup、about、guidance，对应页面内锚点；未知 section 不执行任意选择器。
+
+## 导航、模态和忙状态
+
+App 保留原有 `navigate(): Promise<void>` 契约，并为指引提供显式 `{ok,message?}` 结果。指引前往功能等待页面登记的 flush；失败保留输入和当前页面。安装冻结、恢复代次、其他模态和已关闭请求在异步之后再次确认。仍有效的请求才能完成导航；关闭指引会使待处理导航取消。
+
+`window.desktop.guidanceAvailability()` 经原有 secureHandler、preload generation 进入主进程，返回 `{available,reason?}`。该读接口检查更新冻结、恢复、凭据变更、关闭、备份和 activeOperations。原生文件选择位于活动 IPC 内，因而在没有 DOM dialog 的情况下也会阻止指引打开。它只报告时点状态，不授予永久锁；后续自动提示必须继续协调 DOM 模态、实际显示确认、页面就绪与输入空闲。
+
+共享 Dialog 的 `exclusive` 用于指引及更新重启提示：显示前同步检查现有模态，忙时保持隐藏并等待；普通业务弹窗仍可嵌套，但会等待已显示的独占提示关闭。`onShown` 仅在 `showModal()` 成功且存在可见布局后触发，排队和显示失败不会消费提示。自动版本提示另检查页面 `aria-busy`、输入及中文组合空闲、保存结果和主进程可用性；异步检查后重新核对活动代次与 DOM 模态。
+
+待显示提示使用输入、页面就绪与弹窗变化、窗口可见性及 `onGuidanceAvailabilityChanged` 操作完成事件排程一次检查。连续输入后的 1 秒空闲由单次计时确认；忙状态不循环轮询。普通弹窗关闭通过 DOM 变化唤醒等待中的独占窗口。
+
+## 版本提示与设备记录
+
+- `guidanceVersions()` 返回实际运行版本和随包版本记录。主进程通过同一内容解释器读取 `dist-electron/guidance` 的原始 JSON；构建保持 feature、release、pending 的相对路径，以便有效引用有同一解释上下文。坏 JSON 和缺文件不会成为新构建门槛，图片仍由渲染产物携带，不重复复制。
+- `guidanceState()` 记录本次启动并返回设备状态；`guidanceAcknowledge(currentVersion)` 仅接受当前运行版本，在实际显示之后确认。两者沿用来源、主 frame、资料代次、更新冻结和写入保护，不能从渲染层指定文件路径。
+- 设备记录位于隔离能力同样适用的 userData 下、业务 `data` 外。首次版本界定回看下界，已启动版本不会消费尚待显示的变化，已提示上界防止重启与降级后再升级重复。业务备份和恢复不携带这份记录。
+- 当前版本可以读取本包自己的 pending 绑定；既往范围只使用 published 记录。同功能仅出现一个当前用法入口，不同变化保留；旧版缺口明确声明，缺失不能改写为无新增操作。
+- 设备记录采用串行临时写入、同步及原子替换，正常关闭等待队列完成。`persisted: false` 表示只保证本进程去重，界面明确提醒重启后可能再次显示；损坏记录按首次处理，既不回放全部历史，也不把失败写入当成持久成功。
+- 设置中的 `openVersions()` 提供手动历史入口；历史摘要保持原文，功能按钮使用当前有效指引。手动查看不重置自动去重状态，来源不可用时保持可理解的降级说明。
+
+## 台账附近入口（任务 06）
+
+台账顶部共用一个 `GuidanceButton`，可访问名称为“台账使用指引”，表格、摘要和详情状态均沿用同一入口。无系统时使用 `ledger`；当前分类的 placement 为：访问入口 `ledger-access`、账号 `ledger-accounts`、服务器及数据库／中间件 `ledger-resources`、应用部署 `ledger-deployments`、运行维护 `ledger-operations`、文档 `documents`。后续资源、部署、运维内容直接配置对应 placement，不再增加同类帮助按钮。
+
+展示位置与“前往功能”目标是两种标识：服务器、数据库／中间件共用附近的 `ledger-resources` 指引列表，但服务器正文前往 `ledger-servers` 分类，数据库／中间件正文前往 `ledger-resources` 分类。导航清空旧分类筛选与选中对象，系统不存在时仍停在可选择系统的页面。
+
+“更多”菜单新增“系统与环境使用指引”，打开 `systems` 主题列表；菜单先把焦点归还持久触发按钮，指引关闭后返回该按钮。独立项目档案页使用 `projects`。这些入口只阅读，不强行关闭系统信息、新建或秘密编辑弹窗；所有“前往功能”继续经过统一保存与受控目的地检查。
+
+## ZIP 文本归档附近入口（任务 10）
+
+工具目录的 ZIP 卡片与首页已收藏的 ZIP 工具提供 `zip-text-archive` 主题入口；工具页面的“使用指引”随当前标签直接打开 `zip-archive-files`、`zip-archive-git`、`zip-restore-directory` 或 `zip-restore-clipboard`。正文共用 `tools` 与 `zip-text-archive` 展示位置。`zip-text-archive` 受控目的地进入工具本身，不启动任务或自动选择本地路径；用户仍需选择对应模式并确认输入。坏正文沿用目录过滤与直接入口不可用提示，不影响归档运行。

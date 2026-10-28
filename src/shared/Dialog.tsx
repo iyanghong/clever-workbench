@@ -1,6 +1,6 @@
 import { closeNewRecord } from './new-record';
 import { XIcon } from '@phosphor-icons/react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 export function Dialog({
   title,
@@ -11,6 +11,9 @@ export function Dialog({
   description,
   closeLabel,
   closeDisabled = false,
+  onShown,
+  exclusive = false,
+  canShow,
 }: {
   title: string;
   children: ReactNode;
@@ -20,32 +23,79 @@ export function Dialog({
   description?: string;
   closeLabel?: string;
   closeDisabled?: boolean;
+  onShown?: () => void;
+  /** Low-priority prompts wait for all other modals; ordinary business dialogs may still nest. */
+  exclusive?: boolean;
+  canShow?: () => boolean;
 }) {
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   const [discard, setDiscard] = useState<(() => void) | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const shown = useRef(onShown);
+  shown.current = onShown;
+  const guard = useRef(canShow);
+  guard.current = canShow;
+  useLayoutEffect(() => {
+    let previous: HTMLElement | null = null;
+    let presented = false;
+    let observer: MutationObserver | undefined;
     const element = dialog.current;
-    const request = (event: Event) => {
+    if (!element) return;
+    const requestDiscard = (event: Event) => {
       if ((event.target as HTMLElement).closest('dialog') !== element) return;
       event.stopPropagation();
-      if (element?.querySelector('form[aria-busy="true"]')) return;
-      const close = (event as CustomEvent).detail ?? (() => closeRef.current());
+      if (element.querySelector('form[aria-busy="true"]')) return;
+      const close = (event as CustomEvent<() => void>).detail ?? (() => closeRef.current());
       setDiscard(() => () => {
-        const form = element?.querySelector<HTMLFormElement>('form[data-new-record]');
+        const form = element.querySelector<HTMLFormElement>('form[data-new-record]');
         if (form) form.dataset.dirty = 'false';
         setDiscard(null);
         close();
       });
     };
-    element?.addEventListener('record-discard', request);
-    element?.showModal();
+    element.addEventListener('record-discard', requestDiscard);
+    const tryShow = () => {
+      if (element.open || !element.isConnected || (guard.current && !guard.current())) return;
+      const others = [...document.querySelectorAll('dialog[open], [role="alertdialog"]')].filter(
+        (item) => item !== element,
+      );
+      if (others.some((item) => exclusive || item.hasAttribute('data-exclusive-dialog'))) return;
+      previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      try {
+        // Check and show are synchronous, so two queued React dialogs cannot both claim the slot.
+        element.style.display = '';
+        element.showModal();
+        if (element.open && element.getClientRects().length) {
+          presented = true;
+          observer?.disconnect();
+          shown.current?.();
+        }
+      } catch {
+        element.style.display = 'none';
+      }
+    };
+    tryShow();
+    if (!presented) {
+      observer = new MutationObserver(tryShow);
+      observer.observe(document.body, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['open'],
+      });
+      document.addEventListener('guidance-dialog-retry', tryShow);
+      document.addEventListener('visibilitychange', tryShow);
+      window.addEventListener('focus', tryShow);
+    }
     return () => {
-      element?.removeEventListener('record-discard', request);
-      element?.close();
-      if (previous?.isConnected) previous.focus({ preventScroll: true });
+      element.removeEventListener('record-discard', requestDiscard);
+      observer?.disconnect();
+      document.removeEventListener('guidance-dialog-retry', tryShow);
+      document.removeEventListener('visibilitychange', tryShow);
+      window.removeEventListener('focus', tryShow);
+      element.close();
+      if (presented && previous?.isConnected) previous.focus({ preventScroll: true });
     };
   }, []);
   function requestClose() {
@@ -58,6 +108,8 @@ export function Dialog({
     <dialog
       ref={dialog}
       className={`${className} shared-dialog`}
+      data-exclusive-dialog={exclusive ? '' : undefined}
+      style={{ display: 'none' }}
       aria-label={title}
       onCancel={(event) => {
         event.preventDefault();

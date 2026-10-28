@@ -1,0 +1,188 @@
+{
+  "baseline": {
+    "sourceSha": null,
+    "tag": null,
+    "featureCount": 47,
+    "releaseCount": 0,
+    "selectedSummary": "新增离线操作指引，可从功能附近或设置集中查阅，了解功能入口、步骤和完成结果。",
+    "warningCounts": {
+      "missing-review": 1,
+      "unreviewed-step": 9
+    },
+    "warningLocations": [
+      {
+        "code": "missing-review",
+        "file": "content/guidance/pending.json",
+        "field": "review"
+      },
+      {
+        "code": "unreviewed-step",
+        "file": "content/guidance/pending.json",
+        "field": "review.checks"
+      }
+    ]
+  },
+  "firstBound": {
+    "sourceSha": "33b582220f7a8992bb35f24dbe584d61c172aaf6",
+    "tag": "v99.4.11",
+    "featureCount": 47,
+    "releaseCount": 1,
+    "selectedSummary": "新增离线操作指引，可从功能附近或设置集中查阅，了解功能入口、步骤和完成结果。",
+    "warningCounts": {
+      "missing-review": 2,
+      "unreviewed-step": 18
+    },
+    "warningLocations": [
+      {
+        "code": "missing-review",
+        "file": "content/guidance/pending.json",
+        "field": "review"
+      },
+      {
+        "code": "missing-review",
+        "file": "content/guidance/releases/99.4.11.json",
+        "field": "review"
+      },
+      {
+        "code": "unreviewed-step",
+        "file": "content/guidance/pending.json",
+        "field": "review.checks"
+      },
+      {
+        "code": "unreviewed-step",
+        "file": "content/guidance/releases/99.4.11.json",
+        "field": "review.checks"
+      }
+    ]
+  },
+  "finalBound": {
+    "sourceSha": "319072ec799b686d9ad73ada0ca84780e21700d2",
+    "tag": "v99.4.13",
+    "featureCount": 47,
+    "releaseCount": 1,
+    "selectedSummary": "新增离线操作指引，可从功能附近或设置集中查阅，了解功能入口、步骤和完成结果。",
+    "warningCounts": {
+      "missing-review": 2,
+      "unreviewed-step": 18
+    },
+    "warningLocations": [
+      {
+        "code": "missing-review",
+        "file": "content/guidance/pending.json",
+        "field": "review"
+      },
+      {
+        "code": "missing-review",
+        "file": "content/guidance/releases/99.4.13.json",
+        "field": "review"
+      },
+      {
+        "code": "unreviewed-step",
+        "file": "content/guidance/pending.json",
+        "field": "review.checks"
+      },
+      {
+        "code": "unreviewed-step",
+        "file": "content/guidance/releases/99.4.13.json",
+        "field": "review.checks"
+      }
+    ]
+  },
+  "badPreview": {
+    "sourceSha": "7b4b420d0ba7f9957c1ace703a46655e11a855f3",
+    "tag": null,
+    "featureCount": 46,
+    "releaseCount": 0,
+    "selectedSummary": "新增离线操作指引，可从功能附近或设置集中查阅，了解功能入口、步骤和完成结果。",
+    "warningCounts": {
+      "invalid-json": 1,
+      "missing-guide": 1,
+      "missing-image": 1,
+      "missing-review": 1,
+      "unreviewed-step": 9
+    },
+    "warningLocations": [
+      {
+        "code": "invalid-json",
+        "file": "content/guidance/features/resource-server.json",
+        "field": "$"
+      },
+      {
+        "code": "missing-guide",
+        "file": "content/guidance/pending.json",
+        "field": "changes.offline-operation-guidance.guideIds"
+      },
+      {
+        "code": "missing-image",
+        "file": "content/guidance/features/ledger-paste.json",
+        "field": "steps.4.image.src"
+      },
+      {
+        "code": "missing-review",
+        "file": "content/guidance/pending.json",
+        "field": "review"
+      },
+      {
+        "code": "unreviewed-step",
+        "file": "content/guidance/pending.json",
+        "field": "review.checks"
+      }
+    ]
+  },
+  "badBound": {
+    "sourceSha": "7b4b420d0ba7f9957c1ace703a46655e11a855f3",
+    "tag": "v99.4.12",
+    "featureCount": 46,
+    "releaseCount": 1,
+    "selectedSummary": "新增离线操作指引，可从功能附近或设置集中查阅，了解功能入口、步骤和完成结果。",
+    "warningCounts": {
+      "invalid-json": 1,
+      "missing-guide": 2,
+      "missing-image": 1,
+      "missing-review": 2,
+      "unreviewed-step": 18
+    },
+    "warningLocations": [
+      {
+        "code": "invalid-json",
+        "file": "content/guidance/features/resource-server.json",
+        "field": "$"
+      },
+      {
+        "code": "missing-guide",
+        "file": "content/guidance/pending.json",
+        "field": "changes.offline-operation-guidance.guideIds"
+      },
+      {
+        "code": "missing-guide",
+        "file": "content/guidance/releases/99.4.12.json",
+        "field": "changes.offline-operation-guidance.guideIds"
+      },
+      {
+        "code": "missing-image",
+        "file": "content/guidance/features/ledger-paste.json",
+        "field": "steps.4.image.src"
+      },
+      {
+        "code": "missing-review",
+        "file": "content/guidance/pending.json",
+        "field": "review"
+      },
+      {
+        "code": "missing-review",
+        "file": "content/guidance/releases/99.4.12.json",
+        "field": "review"
+      },
+      {
+        "code": "unreviewed-step",
+        "file": "content/guidance/pending.json",
+        "field": "review.checks"
+      },
+      {
+        "code": "unreviewed-step",
+        "file": "content/guidance/releases/99.4.12.json",
+        "field": "review.checks"
+      }
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "release-draft",
+  "operationChange": "changed",
+  "summary": "请填写面向用户的更新摘要",
+  "changes": [
+    {
+      "id": "replace-with-change-id",
+      "summary": "请说明操作方式如何变化，或新增功能能完成什么",
+      "guideIds": ["replace-with-stable-guide-id"]
+    }
+  ],
+  "review": {
+    "status": "pending",
+    "reviewer": "",
+    "checkedAt": "",
+    "source": "",
+    "environment": "",
+    "checks": [],
+    "knownGaps": []
+  }
+}

@@ -1,3 +1,5 @@
+import { GuidanceProvider } from './features/guidance/Guidance';
+import { guidanceTarget } from './guidance/registry';
 import { requireSavedRecord } from './shared/new-record';
 import type { CreationContext } from './app/actions';
 import { QuickCreate } from './app/QuickCreate';
@@ -19,6 +21,8 @@ export function App() {
   }, []);
   const update = useAppUpdate();
   const installing = update?.status === 'preparing' || update?.status === 'installing';
+  const installingRef = useRef(installing);
+  installingRef.current = installing;
   const [route, setRoute] = useState<Route>({ module: 'home' });
   const [error, setError] = useState('');
   const [dataVersion, setDataVersion] = useState(0);
@@ -60,23 +64,78 @@ export function App() {
       }),
     [],
   );
-  const navigate = useCallback(async (next: Route) => {
+  const navigateChecked = useCallback(
+    async (next: Route, guidance = false, stillCurrent?: () => boolean) => {
+      const expected = generation.current;
+      try {
+        if (installingRef.current) throw Error('正在安装更新，请等待完成。');
+        await requireSavedRecord();
+        if (guidance) {
+          const availability = await window.desktop.guidanceAvailability();
+          if (!availability.available) throw Error(availability.reason);
+        }
+        await save.current();
+        if (guidance) {
+          const availability = await window.desktop.guidanceAvailability();
+          if (!availability.available) throw Error(availability.reason);
+        }
+        if (expected !== generation.current) throw Error('资料已切换，请重新操作。');
+        if (stillCurrent && !stillCurrent())
+          return { ok: false, message: '指引已关闭，导航已取消。' };
+        if (
+          guidance &&
+          document.querySelector('dialog[open]:not(.guidance-dialog), [role="alertdialog"]')
+        )
+          throw Error('请先完成当前弹窗中的操作，再前往功能。');
+        if (installingRef.current) throw Error('正在安装更新，请等待完成。');
+        setError('');
+        setNotice('');
+        updateContext({});
+        setContextReady(false);
+        setRoute(next);
+        setPageVersion((version) => version + 1);
+        return { ok: true };
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        if (!guidance) setError(message);
+        return { ok: false, message };
+      }
+    },
+    [],
+  );
+  const navigate = useCallback(
+    async (next: Route) => {
+      await navigateChecked(next);
+    },
+    [navigateChecked],
+  );
+  const navigateGuidance = useCallback(
+    async (id: string, stillCurrent?: () => boolean) => {
+      const target = guidanceTarget(id);
+      if (!target) return { ok: false, message: '此功能入口已移除或暂不可用。' };
+      const { label, ...destination } = target;
+      // Stable routes intentionally omit remembered object IDs; the page asks for current context.
+      return navigateChecked(destination, true, stillCurrent);
+    },
+    [navigateChecked],
+  );
+  const selected = modules.find((item) => item.id === route.module) ?? modules[0];
+  const prepareGuidancePrompt = useCallback(async () => {
     const expected = generation.current;
     try {
-      await requireSavedRecord();
+      // Automatic guidance must never trigger the discard confirmation of a newly opened form.
+      if (installingRef.current || document.querySelector('dialog[open], [role="alertdialog"]'))
+        return false;
       await save.current();
-      if (expected !== generation.current) return;
-      setError('');
-      setNotice('');
-      updateContext({});
-      setContextReady(false);
-      setRoute(next);
-      setPageVersion((version) => version + 1);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      return (
+        expected === generation.current &&
+        !installingRef.current &&
+        !document.querySelector('dialog[open], [role="alertdialog"]')
+      );
+    } catch {
+      return false;
     }
   }, []);
-  const selected = modules.find((item) => item.id === route.module) ?? modules[0];
   const Page = selected.Page;
   const navigation = (section: 'workspace' | 'utility') => (
     <nav aria-label={section === 'workspace' ? '工作空间' : '辅助功能'}>
@@ -97,7 +156,12 @@ export function App() {
     </nav>
   );
   return (
-    <>
+    <GuidanceProvider
+      navigate={navigateGuidance}
+      disabled={installing}
+      generation={dataVersion}
+      preparePrompt={prepareGuidancePrompt}
+    >
       <div className={`app-shell ${window.desktop.platform}`} inert={installing}>
         <aside className="sidebar">
           <div className="sidebar-drag" />
@@ -181,6 +245,6 @@ export function App() {
           </p>
         </div>
       )}
-    </>
+    </GuidanceProvider>
   );
 }

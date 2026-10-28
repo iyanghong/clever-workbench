@@ -1,0 +1,6 @@
+  • electron-builder  version=26.15.3 os=27.0.0
+  • loaded configuration  file=package.json ("build" field)
+  • skipped dependencies rebuild  reason=npmRebuild is set to false
+  • packaging       platform=darwin arch=arm64 electron=44.9.0 appOutDir=release/mac-arm64
+
+  • downloaded      label=electron progress=100%

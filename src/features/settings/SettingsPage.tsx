@@ -1,3 +1,4 @@
+import { GuidanceButton, SettingsGuidance } from '../guidance/Guidance';
 import { PageHeading, SegmentedControl } from '../../shared/WorkspaceUI';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -20,7 +21,7 @@ import { PasswordChange } from './PasswordChange';
 import { AboutUpdate } from './AppUpdate';
 const message = (cause: unknown) =>
   String(cause).replace(/^Error: Error invoking remote method '[^']+': Error: /, '');
-export function SettingsPage({ setContext }: ModuleProps) {
+export function SettingsPage({ setContext, route }: ModuleProps) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
@@ -49,6 +50,15 @@ export function SettingsPage({ setContext }: ModuleProps) {
       activeTokens.current.clear();
     };
   }, []);
+  useEffect(() => {
+    if (
+      !snapshot ||
+      !route.section ||
+      !['appearance', 'vault', 'backup', 'about', 'guidance'].includes(route.section)
+    )
+      return;
+    document.getElementById(`settings-${route.section}`)?.scrollIntoView({ block: 'start' });
+  }, [snapshot !== null, route.section]);
   async function run(label: string, operation: () => Promise<void>) {
     if (working.current) return;
     working.current = true;
@@ -165,7 +175,7 @@ export function SettingsPage({ setContext }: ModuleProps) {
     }
   }
   return (
-    <main className="main">
+    <main className="main" aria-busy={!snapshot || !!busy}>
       <header className="window-toolbar">
         <div className="breadcrumb">
           <GearSixIcon size={17} />
@@ -180,7 +190,8 @@ export function SettingsPage({ setContext }: ModuleProps) {
         />
         {snapshot && (
           <>
-            <h3>外观</h3>
+            <h3 id="settings-appearance">外观</h3>
+            <GuidanceButton guideId="appearance" accessibleLabel="外观使用指引" />
             <div className="setting-row">
               <div>
                 <strong>界面主题</strong>
@@ -260,7 +271,8 @@ export function SettingsPage({ setContext }: ModuleProps) {
               </div>
             ))}
             <p className="backup-note">系统启用的可访问性偏好也会自动生效。</p>
-            <h3>秘密保护</h3>
+            <h3 id="settings-vault">秘密保护</h3>
+            <GuidanceButton placement="settings-vault" accessibleLabel="秘密保护使用指引" />
             <div className="setting-row">
               <div>
                 <strong>{vault.status.initialized ? '主密码已设置' : '系统加密保护'}</strong>
@@ -327,21 +339,24 @@ export function SettingsPage({ setContext }: ModuleProps) {
                 </div>
               </div>
             )}
-            <h3>备份与迁移</h3>
+            <h3 id="settings-backup">备份与迁移</h3>
             <div className="setting-row">
               <div>
                 <strong>独立备份密码</strong>
                 <p>配置一次，恢复时使用。与本机主密码分别管理。</p>
               </div>
-              <button
-                className="secondary-button"
-                disabled={Boolean(busy)}
-                onClick={() =>
-                  void vault.ensureBackup(true).catch((cause) => setError(message(cause)))
-                }
-              >
-                {vault.status.backupConfigured ? '更改备份密码' : '设置备份密码'}
-              </button>
+              <div className="setting-actions">
+                <GuidanceButton guideId="backup-password" accessibleLabel="备份密码使用指引" />
+                <button
+                  className="secondary-button"
+                  disabled={Boolean(busy)}
+                  onClick={() =>
+                    void vault.ensureBackup(true).catch((cause) => setError(message(cause)))
+                  }
+                >
+                  {vault.status.backupConfigured ? '更改备份密码' : '设置备份密码'}
+                </button>
+              </div>
             </div>
             <div className="setting-row">
               <div>
@@ -352,14 +367,17 @@ export function SettingsPage({ setContext }: ModuleProps) {
                     : '未启用：首次备份时设置独立备份密码。'}
                 </p>
               </div>
-              <input
-                role="switch"
-                aria-label="自动备份"
-                type="checkbox"
-                disabled={Boolean(busy)}
-                checked={Boolean(vault.status.backupConfigured && snapshot.settings.autoBackup)}
-                onChange={(event) => void automaticBackup(event.target.checked)}
-              />
+              <div className="setting-actions">
+                <GuidanceButton guideId="automatic-backup" accessibleLabel="自动备份使用指引" />
+                <input
+                  role="switch"
+                  aria-label="自动备份"
+                  type="checkbox"
+                  disabled={Boolean(busy)}
+                  checked={Boolean(vault.status.backupConfigured && snapshot.settings.autoBackup)}
+                  onChange={(event) => void automaticBackup(event.target.checked)}
+                />
+              </div>
             </div>
             <div className="setting-row">
               <div>
@@ -412,6 +430,7 @@ export function SettingsPage({ setContext }: ModuleProps) {
               )}
             </div>
             <div className="backup-actions">
+              <GuidanceButton guideId="full-backup" accessibleLabel="完整备份使用指引" />
               <button
                 className="primary-button"
                 disabled={Boolean(busy)}
@@ -420,6 +439,7 @@ export function SettingsPage({ setContext }: ModuleProps) {
                 <DownloadSimpleIcon size={17} />
                 导出完整备份
               </button>
+              <GuidanceButton guideId="restore-and-migrate" accessibleLabel="恢复与迁移使用指引" />
               <button
                 className="secondary-button"
                 disabled={Boolean(busy)}
@@ -432,7 +452,8 @@ export function SettingsPage({ setContext }: ModuleProps) {
             <p className="backup-note">
               项目历史、台账、账号、任务、文档、草稿和引用图片整体加密。换机使用该备份的独立备份密码；旧备份继续使用生成时的密码。
             </p>
-            <h3>关于</h3>
+            <SettingsGuidance />
+            <h3 id="settings-about">关于</h3>
             <AboutUpdate />
           </>
         )}

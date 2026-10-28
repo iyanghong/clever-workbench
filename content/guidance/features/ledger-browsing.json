@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "ledger-browsing",
+  "revision": 1,
+  "title": "查找台账与切换详情",
+  "platforms": ["darwin", "win32"],
+  "placements": [
+    "ledger",
+    "ledger-access",
+    "ledger-accounts",
+    "ledger-resources",
+    "ledger-deployments",
+    "ledger-operations",
+    "documents"
+  ],
+  "purpose": "在七类清单中找到资料，保持筛选和编辑背景。",
+  "prerequisites": {
+    "items": ["先选择要维护的系统；试操作请使用示例资料。"],
+    "notApplicableReason": ""
+  },
+  "entry": {
+    "label": "侧栏 → 台账 → 选择系统",
+    "target": "ledger"
+  },
+  "steps": [
+    {
+      "id": "system",
+      "title": "确认当前系统",
+      "action": "点击“切换系统”，搜索并选择系统；没有系统时选择“新增系统”。",
+      "expectedResult": "顶部显示当前系统，后续分类与筛选都在此系统内。"
+    },
+    {
+      "id": "category",
+      "title": "选择资料类型",
+      "action": "点击访问入口、账号、服务器、数据库／中间件、应用部署、运行维护或文档。",
+      "expectedResult": "清单只展示所选类型；文档行打开文档模块。"
+    },
+    {
+      "id": "filter",
+      "title": "缩小查找范围",
+      "action": "在“搜索台账清单”输入关键词，并选择环境和标签。",
+      "expectedResult": "条件共同生效；“全部环境”包含系统通用，具体环境也显示适用的通用资料；“仅系统通用”只显示通用对象。"
+    },
+    {
+      "id": "detail",
+      "title": "打开摘要与详情",
+      "action": "点击清单的资料名称。",
+      "expectedResult": "完整表格切为摘要清单与详情；内容区较窄时只显示详情，不代表其他记录丢失。"
+    },
+    {
+      "id": "edit",
+      "title": "编辑资料并确认保存",
+      "action": "在详情点击“编辑”，填写字段后点击“完成编辑”。",
+      "expectedResult": "保存成功后返回阅读状态；保存失败保留输入，按提示修正再重试。"
+    },
+    {
+      "id": "return",
+      "title": "回到完整清单",
+      "action": "点击“返回清单”。",
+      "expectedResult": "恢复当前分类和筛选的完整列表；未完成保存时不会离开。"
+    },
+    {
+      "id": "empty",
+      "title": "找不到时检查条件",
+      "action": "清空关键词，依次选择“全部环境”和“全部标签”，确认顶部系统。",
+      "expectedResult": "可以辨别是筛选无结果还是尚未录入；账号秘密不会作为普通搜索内容。"
+    }
+  ],
+  "completion": "能在正确系统和分类找到目标，并从详情返回同一清单。",
+  "faq": {
+    "items": [
+      {
+        "question": "阅读指引会改变选中的对象吗？",
+        "answer": "不会。关闭指引保留当前界面；“前往功能”只进入台账，缺少对象背景时由你选择，不会创建或复制资料。"
+      },
+      {
+        "question": "七类都有资料复制吗？",
+        "answer": "资料摘要复制适用于访问入口、资源、服务与运维记录；账号有用户名、秘密和整行复制，文档使用自身阅读编辑流程。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}

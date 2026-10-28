@@ -35,7 +35,7 @@ Clever Workbench 是面向技术负责人的单人本地工作台，帮助用户
 - **导出与备份用途不同**：系统资料包用于阅读、交接，不是恢复入口；完整加密备份用于恢复与迁移。
 - **普通资料与凭据分别保护**：普通台账、文档和图片不会自动加密；密码、Token、私钥走专门的秘密接口。
 
-相关依据：ADR [0001](docs/adr/0001-local-data-and-portable-backup.md)、[0002](docs/adr/0002-system-identity-across-projects.md)、[0004](docs/adr/0004-encrypt-secrets-on-demand.md)、[0006](docs/adr/0006-readable-system-exports.md)、[0007](docs/adr/0007-system-only-work-tasks.md)、[0008](docs/adr/0008-reuse-ledger-objects-within-system.md)。
+相关依据：ADR [0001](docs/adr/0001-local-data-and-portable-backup.md)、[0002](docs/adr/0002-system-identity-across-projects.md)、[0004](docs/adr/0004-encrypt-secrets-on-demand.md)、[0006](docs/adr/0006-readable-system-exports.md)、[0007](docs/adr/0007-system-only-work-tasks.md)、[0008](docs/adr/0008-reuse-ledger-objects-within-system.md)、[0011](docs/adr/0011-independent-password-for-portable-backups.md)。
 
 ## 3. 技术架构
 
@@ -121,7 +121,7 @@ React 页面与共享组件
 - **代次一致性**：存储以 `CURRENT` 指向资料代次。恢复后旧页面、旧异步请求和旧保存结果不得写入或覆盖新资料；沿用 preload 与主进程的 generation 校验。
 - **模型变更完整**：新增或修改持久化字段时，核查 schema 版本、历史迁移、输入校验、快照、备份／恢复校验和相关导出。旧版遇到更高版本资料应明确拒绝，不能自动降级数据库。
 - **秘密最小暴露**：普通快照、搜索结果、日志和偏好设置不含明文秘密。密码显示、复制和导出使用专用接口，锁定后清理展示与滞留的异步结果；复用受保护剪贴板清理逻辑。
-- **加密边界稳定**：沿用现有密钥派生、认证加密及归档验证实现；调整格式或参数需要版本兼容方案和旧产物验证。完整备份可凭备份生成时的主密码跨设备恢复，不依赖原设备密钥链。
+- **加密边界稳定**：沿用现有密钥派生、认证加密及归档验证实现；调整格式或参数需要版本兼容方案和旧产物验证。新格式完整备份使用生成时的独立备份密码跨设备恢复，旧格式使用该文件生成时的旧密码；均不依赖原设备密钥链，见 ADR 0011。
 - **文件操作可恢复**：校验导入格式、大小、路径与附件引用；写入、恢复和输出沿用暂存／原子切换机制。失败清理仅处理本次创建并确认归属的临时文件。
 - **ZIP 格式互通**：保持 `ZTXT1` 与独立工具双向兼容，验证真实旧产物及两个方向的还原，不能仅以新实现自我往返作为证明；见 [ADR 0009](docs/adr/0009-preserve-zip-text-archive-compatibility.md)。
 - **更新来源受控**：遵守固定 Release 来源、版本比较、哈希和原生包校验，私有读取凭据留在主进程，授权不转发至 CDN。安装保留备份与旧应用恢复材料，遵守系统隔离和授权机制。

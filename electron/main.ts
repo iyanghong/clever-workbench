@@ -33,6 +33,7 @@ import { UpdateInstallation } from './update-install';
 import { launchUpdateHelper, resolveUpdateTarget } from './update-launcher';
 import { UpdateJournal, UpdateHealth } from './update-recovery';
 import { exportScheme, renderExportDocument } from './export-native';
+import { GuidanceDevice, readBundledGuidance } from './guidance';
 
 protocol.registerSchemesAsPrivileged([
   { scheme: exportScheme, privileges: { standard: true, secure: true } },
@@ -64,9 +65,12 @@ function disableUpdates() {
   updates.setRecoverySummary('manual', '更新记录无法写入，在线更新已暂停；本地工作空间仍可使用。');
 }
 let installation: UpdateInstallation;
+let guidanceDevice: GuidanceDevice | undefined;
 let updateFrozen = false;
 const activeOperations = new Set<Promise<unknown>>();
 const updateReadChannels = new Set([
+  'guidance-availability',
+  'guidance-versions',
   'update-history',
   'update-health-ready',
   'update-health-confirm',
@@ -119,13 +123,15 @@ function secureHandler(channel: string, handler: (...args: any[]) => any) {
       if (updateFrozen && !updateReadChannels.has(channel))
         throw new Error('正在准备安装更新，请等待完成。');
       const operation = Promise.resolve().then(() => handler(...args));
-      if (!updateReadChannels.has(channel) && channel !== 'update-install')
-        activeOperations.add(operation);
+      const tracked = !updateReadChannels.has(channel) && channel !== 'update-install';
+      if (tracked) activeOperations.add(operation);
       let result;
       try {
         result = await operation;
       } finally {
-        activeOperations.delete(operation);
+        if (tracked && activeOperations.delete(operation) && activeOperations.size === 0)
+          if (window && !window.isDestroyed())
+            window.webContents.send('guidance-availability-changed');
       }
       if (
         !['data-generation', 'restore-backup'].includes(channel) &&
@@ -283,6 +289,7 @@ function createWindow() {
         await systemExports.whenIdle();
         if (tools.busy) throw new Error('工具任务尚未完成，请等待完成后再退出。');
         await tools.dispose();
+        await guidanceDevice?.whenIdle();
         allowClose = true;
         if (quitting) app.quit();
         else window?.close();
@@ -495,6 +502,37 @@ app
           disableUpdates();
         });
     }, 1000).unref();
+    secureHandler('guidance-availability', () => {
+      // Native file dialogs live inside active IPC operations; they have no renderer DOM modal.
+      const busy =
+        updateFrozen ||
+        restoring ||
+        rotatingProtection ||
+        closePending ||
+        quitting ||
+        backups.busy ||
+        installation?.busy ||
+        activeOperations.size > 0;
+      return busy
+        ? { available: false, reason: '请等待当前保存、文件选择、备份或安装操作完成。' }
+        : { available: true };
+    });
+    guidanceDevice = await GuidanceDevice.open(path.join(app.getPath('userData'), 'guidance'));
+    const guidanceCatalog = await readBundledGuidance(path.join(__dirname, 'guidance'));
+    secureHandler('guidance-versions', () => ({
+      currentVersion: app.getVersion(),
+      releases: guidanceCatalog.releases,
+    }));
+    secureHandler('guidance-state', () => {
+      writable();
+      return guidanceDevice!.observe(app.getVersion());
+    });
+    secureHandler('guidance-acknowledge', (version) => {
+      writable();
+      if (version !== app.getVersion()) throw Error('只能确认当前正在运行版本的指引。');
+      if (closePending || quitting) throw Error('应用正在关闭，尚未确认的指引将在下次启动时保留。');
+      return guidanceDevice!.acknowledge(version);
+    });
     secureHandler('data-generation', () => store.generation);
     secureHandler('system-appearance', systemAppearance);
     nativeTheme.on('updated', () => {

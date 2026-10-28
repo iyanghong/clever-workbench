@@ -8,6 +8,18 @@
 
 Electron 的 `net.fetch` 在手动重定向时会报 `Redirect was cancelled`，不能用 Node.js 的 fetch 测试结果替代原生验证。更新传输先用 `net.request` 取得单跳响应头并终止请求，将 3xx 交给协调器验证。非重定向地址会多一次只读取响应头的 GET；正文由禁止重定向的原生 fetch 流读取，避免将整个 ZIP 排队在主进程内存。两次请求之间若目标行为变化，下载会失败，不能自动跟随。依据：[Electron 原生问题记录](https://github.com/electron/electron/issues/43715)、[ClientRequest API](https://www.electronjs.org/docs/latest/api/client-request)。
 
+## 操作指引编写要求
+
+每次发布前按[操作指引编写与发布规范](operation-guidance.md)编写本次用户操作说明：新增功能或操作方式变化须关联对应功能指引；确实没有操作变化时明确写出“无新增操作”及原因，缺少说明不能当作没有变化。首批接入覆盖全部现有功能，范围见[功能覆盖清单](../.scratch/operation-guidance/coverage.md)。
+
+使用[JSON 模板与发布核对清单](operation-guidance/README.md)，保留步骤、截图及入口的实际核对结果和已知缺项。内容与计划发布的源码一起提交到远端；继续遵守本地 Git 身份和中文提交要求。指引问题仅警告，不新增发布阻断，也不把未完成的编写或核对记为通过。
+
+功能指引已接入离线查阅，本地发布预览及 GitHub Actions 使用同一套非阻断内容检查。维护者可用 `npm run guidance:check` 检查当前工作区，实际发布预览仅检查远端计划源码；CI 检查固定 tag 的绑定记录并使用版本提交记录中的业务源码 SHA，输出警告、步骤摘要和 `guidance-check.json` 报告，详见[检查入口与核对清单](operation-guidance/README.md)。GitHub 用户摘要与安装包从同一绑定内容生成，技术提交清单另外完整保留；发布成功不等于内容已全部核对。
+
+待发布说明放在 `content/guidance/pending.json`。发布准备生成 `content/guidance/releases/<版本号>.json`，绑定实际版本、tag 和业务源码；版本提交 SHA 留在构建证据，人工核对来源不自动改写。当前包的记录为 `pending`，安装版可阅读自身记录；下一次发布准备根据正式 GitHub Release 及其固定 tag 原文生成 `published` 历史副本。草稿、失败版本、被修改或无法确认的历史不冒充正式历史，缺口以警告保留。不会在发布后修改已签名包或已公开 tag。
+
+固定 tag 重跑始终读取该 tag 的记录；选择新号时生成新的绑定记录。内容缺失、坏 JSON、失效引用或历史读取失败只警告，可用部分保留，没有有效正文时写明“暂未提供完整操作指引”，不自动写成“无新增操作”。源码身份、版本一致性、代码构建和资产安全错误仍按原规则停止发布。
+
 ## macOS 双击发布
 
 维护者在 Finder 中双击仓库根目录的 **`发布新版本.command`**，终端会读取远端 `origin/master`，列出最新正式 Release 之后的全部提交（包含文档提交），建议新版本号，并展示本地 Git 提交身份。输入一次 `yes` 确认发布计划后，脚本在隔离目录准备版本提交、原子推送 master 和注释 tag，等待 GitHub Actions 完成验证并发布。
@@ -21,7 +33,7 @@ Electron 的 `net.fetch` 在手动重定向时会报 `Redirect was cancelled`，
 - 本地 Git 已配置本人 `user.name` 和 `user.email`。提交作者与提交者必须一致，标题和正文使用中文；身份覆盖、缺失或异常时停止，不自动修改原仓库身份。
 - 现有 Git HTTPS 凭据助手已保存具有仓库推送权限的 GitHub 登录。fine-grained token 需要 Contents 写权限，以及用于读取、重试和触发工作流的 Actions 写权限；直接在 Git 凭据助手中配置，不填入脚本或日志。使用 SSH origin 时，推送仍使用原 SSH 配置，API 读取使用本机保存的 GitHub HTTPS 登录。
 
-版本号默认在最新正式版上递增补丁号。已被 tag 占用的版本会跳过，远端应用版本更高时建议不低于该版本的新号；也可输入更高的 `vX.Y.Z`。没有新提交时直接结束。脚本只打包远端已推送内容，本地未提交、未跟踪文件和未推送提交均不纳入；版本准备只修改 `package.json`、`package-lock.json`，当前工作目录和分支保持原状。
+版本号默认在最新正式版上递增补丁号。已被 tag 占用的版本会跳过，远端应用版本更高时建议不低于该版本的新号；也可输入更高的 `vX.Y.Z`。没有新提交时直接结束。脚本只打包远端已推送内容，本地未提交、未跟踪文件和未推送提交均不纳入；版本准备只允许修改 `package.json`、`package-lock.json` 和本次生成的固定版本指引记录，允许清单写入版本提交恢复信息并核验，当前工作目录和分支保持原状。
 
 可先在终端只读预览：
 
@@ -54,6 +66,8 @@ CWB_UPDATE_ZIP="$PWD/release/Clever-Workbench-0.2.0-arm64.zip" npx vitest run te
 将示例版本替换成 `package.json` 中的版本。准备脚本会拒绝 tag 不匹配、缺失或过大的资产。真实 bundle 校验测试通过应用更新接口解压并验证应用身份、版本、架构、签名及内部链接，写入 quarantine；它不证明公网下载后的系统启动授权已经通过。
 
 原生传输回归通过更新协调器的检查和下载接口，使用明确的本地 HTTP 302 fixture 与完整 ZIP，验证授权 API、无授权 CDN 和原生包校验；它不宣称真实 GitHub 网络已经通过。此项已纳入发布工作流。
+
+桌面用例可通过 `CWB_TEST_EXECUTABLE` 指定被测安装版。若开发机的临时签名包被 macOS 钥匙串访问提示阻塞，可显式设置 `CWB_TEST_MOCK_KEYCHAIN=1` 运行界面测试；封装只在 macOS 且 `CLEVER_WORKBENCH_DATA_DIR` 的真实路径是系统临时目录内已经创建的独立目录时传入 `--use-mock-keychain`，缺少隔离、使用临时根目录或符号链接越界均拒绝启动。默认不开启，也不修改生产应用或系统钥匙串设置。此模式属于外部操作系统适配夹具，不能作为真实钥匙串授权、生产秘密保护或安装打开授权的验收证据。该参数会改变相关子系统行为，依据 [Chromium 的 macOS 构建与测试说明](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/docs/mac_build_instructions.md#avoiding-system-permissions-dialogs-after-each-build)。
 
 ## GitHub 发布
 

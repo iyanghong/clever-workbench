@@ -1,0 +1,208 @@
+.guidance-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-size: var(--font-small);
+  border-radius: var(--radius-small);
+  padding: 6px 8px;
+  app-region: no-drag;
+}
+.guidance-button:hover {
+  background: var(--hover);
+}
+.settings-guidance {
+  flex-wrap: wrap;
+  margin-top: var(--space-5);
+}
+.settings-guidance-copy {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.settings-guidance-copy h3 {
+  margin: 0;
+  font-size: var(--font-body);
+  font-weight: 600;
+}
+.settings-guidance-copy p {
+  margin: var(--space-1) 0 0;
+  color: var(--muted);
+  font-size: var(--font-small);
+  line-height: var(--leading-normal);
+}
+.settings-guidance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.settings-guidance-actions .guidance-button {
+  min-height: var(--control-height);
+  padding: 6px var(--space-3);
+  border: var(--border);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  box-shadow: var(--shadow-control);
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.settings-guidance-actions .guidance-button svg {
+  color: var(--accent);
+}
+.settings-guidance-actions .guidance-button:hover {
+  background: var(--hover);
+}
+@media (max-width: 1050px) {
+  .settings-guidance-actions {
+    justify-content: flex-start;
+  }
+}
+.modal.shared-dialog.guidance-dialog {
+  width: 680px;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.guidance-dialog .dialog-header {
+  flex: none;
+  position: static;
+  margin: 0;
+  padding: 20px 24px 16px;
+}
+.guidance-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+}
+.guidance-body p {
+  margin: 8px 0 14px;
+}
+.guidance-intro {
+  color: var(--secondary);
+}
+.guidance-preparation,
+.guidance-faq {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 12px 0;
+}
+.guidance-body summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+.guidance-body ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+.guidance-body li + li {
+  margin-top: 8px;
+}
+.guidance-dialog > .guidance-step-position {
+  flex: none;
+  margin: 0;
+  padding: 12px 24px 0;
+  color: var(--accent);
+  font-size: var(--font-small);
+  font-weight: 600;
+}
+.guidance-step h3,
+.guidance-completion h3 {
+  margin: 8px 0;
+  font-size: var(--font-subheading);
+}
+.guidance-result {
+  border-left: 3px solid var(--accent);
+  padding: 10px 14px;
+  background: var(--hover);
+  border-radius: 0 8px 8px 0;
+}
+.guidance-result strong {
+  font-size: var(--font-small);
+  color: var(--secondary);
+}
+.guidance-result p {
+  margin-bottom: 0;
+}
+.guidance-faq h4 {
+  margin: 16px 0 4px;
+  font-size: inherit;
+}
+.guidance-actions {
+  flex: none;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 24px;
+  background: var(--panel);
+}
+.guidance-actions > div {
+  display: flex;
+  gap: 8px;
+}
+.guidance-step figure {
+  margin: 16px 0;
+}
+.guidance-step img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+.guidance-step figcaption,
+.guidance-image-fallback {
+  color: var(--secondary);
+  font-size: var(--font-small);
+}
+.guidance-list {
+  list-style: none;
+  padding: 0 !important;
+  margin: 0;
+}
+.guidance-list button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.guidance-list button:hover {
+  background: var(--hover);
+}
+.guidance-list button > span {
+  flex: 1;
+  min-width: 0;
+}
+.guidance-list strong,
+.guidance-list small {
+  display: block;
+}
+.guidance-list small {
+  color: var(--secondary);
+  margin-top: 4px;
+  line-height: 1.6;
+}
+.guidance-list svg {
+  flex: none;
+}
+.guidance-notice {
+  z-index: 100;
+}
+@media (max-width: 680px) {
+  .guidance-body,
+  .guidance-dialog .dialog-header,
+  .guidance-actions {
+    padding: 14px 16px;
+  }
+}

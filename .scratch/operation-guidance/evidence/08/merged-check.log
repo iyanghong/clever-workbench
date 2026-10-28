@@ -1,0 +1,33 @@
+
+> clever-workbench@0.1.12 guidance:check
+> node scripts/check-operation-guidance.mjs --output /tmp/cwb-guidance-08-merged-warning.json
+
+操作指引检查（仅警告，不阻止发布）
+操作说明：新增离线操作指引，可从功能附近或设置集中查阅，了解功能入口、步骤和完成结果。
+  点击使用指引逐步阅读操作说明，需要实践时通过前往功能安全进入对应页面。（指引：using-guidance）
+  检查更新时可就近查阅下载、立即或稍后重启以及安装结果的说明。（指引：application-update）
+  升级后有操作变化时，在空闲且保存完成后提示一次版本指引；关闭后仍可在设置中查看当前用法与历史摘要。（指引：using-guidance）
+人工核对：pending；已知缺项 2 项
+  已知缺项：全量现有功能指引由各内容任务交付，尚待最终安装版联合核对。
+  已知缺项：维护者尚未填写本次实际发布源码的人工核对记录；各任务的开发与打包证据不替代维护者核对。
+可用功能指引 30 项，版本记录 0 项，警告 10 项。
+警告 [missing-review] content/guidance/pending.json#review：未提供完整的人工核对记录。
+  修正建议：据实记录核对人、源码、环境、对应步骤、结果和缺项；这项警告不阻断发布。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：using-guidance/open
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：using-guidance/read
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：using-guidance/versions
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：using-guidance/navigate
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：application-update/check
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：application-update/download
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：application-update/restart-choice
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：application-update/prepare
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/pending.json#review.checks：操作变化关联步骤尚无核对记录：application-update/verify
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。

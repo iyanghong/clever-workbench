@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "access-entries",
+  "revision": 1,
+  "title": "维护访问入口与多个地址",
+  "platforms": ["darwin", "win32"],
+  "placements": ["ledger-access"],
+  "purpose": "把一个外部工具的多个地址和账号放在同一访问入口下。",
+  "prerequisites": {
+    "items": ["先选择要维护的系统；试操作请使用示例资料。"],
+    "notApplicableReason": ""
+  },
+  "entry": {
+    "label": "台账 → 访问入口 → 新增或编辑",
+    "target": "ledger-access"
+  },
+  "steps": [
+    {
+      "id": "create",
+      "title": "录入访问入口",
+      "action": "选择系统与环境后点击“新增访问入口”，填写入口名称；登录地址、账号和密码可选，点击“创建访问入口”。",
+      "expectedResult": "只填名称即可建立记录；带密码时按需解锁，取消不会创建。独立部署且账号体系不同的工具应分别记录。"
+    },
+    {
+      "id": "edit",
+      "title": "进入入口编辑",
+      "action": "点击入口名称，在详情点击“编辑”。",
+      "expectedResult": "可编辑入口名称、登录地址和说明，保存反馈显示是否完成。"
+    },
+    {
+      "id": "addresses",
+      "title": "添加具名地址",
+      "action": "点击“添加地址”，分别填写“地址名称”和“登录地址”，例如内网与外网地址。",
+      "expectedResult": "一个入口保存多个地址；没有地址时仍可维护账号。"
+    },
+    {
+      "id": "preferred",
+      "title": "指定常用地址",
+      "action": "点击某地址的“设为常用地址”星标。",
+      "expectedResult": "该地址成为默认地址；不是把入口加入首页常用。"
+    },
+    {
+      "id": "reorder",
+      "title": "调整地址顺序",
+      "action": "使用地址行的“上移地址”或“下移地址”。",
+      "expectedResult": "顺序改变；第一项不能再上移，末项不能再下移。"
+    },
+    {
+      "id": "remove-address",
+      "title": "移除一个地址",
+      "action": "核对地址名后点击该行“删除地址”。",
+      "expectedResult": "该地址从编辑内容移除并保存；删除常用地址后改用剩余首项，不删除入口的账号。"
+    },
+    {
+      "id": "use-address",
+      "title": "复制或打开地址",
+      "action": "点击地址行的复制按钮，或“打开”按钮访问有效的 http／https 地址。",
+      "expectedResult": "复制先等待保存；打开由系统浏览器处理，指引本身不会打开任何外部站点。"
+    },
+    {
+      "id": "accounts",
+      "title": "增加账号并选择常用账号",
+      "action": "完成编辑后在详情点击“新增账号”；保存账号后回到入口编辑，在“入口常用账号”选择要默认使用的账号。",
+      "expectedResult": "常用账号只来自这个入口；详情可复制用户名和专用秘密，也可把入口或账号设为首页常用。"
+    },
+    {
+      "id": "finish",
+      "title": "保存说明和范围",
+      "action": "按需展开“入口说明”，填写普通说明；在“适用范围与标签”选择环境和标签，再点击“完成编辑”。",
+      "expectedResult": "同系统多环境共享同一入口及账号；普通说明不应包含秘密。"
+    }
+  ],
+  "completion": "入口地址、顺序、常用地址和常用账号准确，复制与打开使用预期地址。",
+  "faq": {
+    "items": [
+      {
+        "question": "为什么“打开”不可用？",
+        "answer": "编辑模式下只允许有效的 http／https 地址；检查协议与输入，不能把任意文件路径当网址打开。"
+      },
+      {
+        "question": "在其他环境出现是否重复录入？",
+        "answer": "适用范围可以让同一入口在多个环境显示，修改仍只发生在同一记录。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}

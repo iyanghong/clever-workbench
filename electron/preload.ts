@@ -34,6 +34,15 @@ const call = async (channel: string, ...args: unknown[]) => {
   return ipcRenderer.invoke(channel, await expected, ...args);
 };
 const api: DesktopAPI = {
+  guidanceAvailability: () => call('guidance-availability'),
+  onGuidanceAvailabilityChanged(handler) {
+    const listener = () => handler();
+    ipcRenderer.on('guidance-availability-changed', listener);
+    return () => ipcRenderer.removeListener('guidance-availability-changed', listener);
+  },
+  guidanceVersions: () => call('guidance-versions'),
+  guidanceState: () => call('guidance-state'),
+  guidanceAcknowledge: (version) => call('guidance-acknowledge', version),
   tools: {
     state: (id) => call('tool-state', id),
     command: (id, command) => call('tool-command', id, command),

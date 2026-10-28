@@ -17,6 +17,7 @@ import { useAutosave } from '../../shared/useAutosave';
 import { useSaveGroup } from '../../shared/useSaveGroup';
 import { dateLabel } from '../../domain';
 import { Dialog } from '../../shared/Dialog';
+import { GuidanceButton } from '../guidance/Guidance';
 
 export function DocumentsPage({ route, navigate, registerFlush, setContext }: ModuleProps) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
@@ -144,7 +145,7 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
           : matches === null || matches.includes(item.id)),
     ) ?? [];
   return (
-    <main className="main documents-page">
+    <main className="main documents-page" aria-busy={loading || !snapshot}>
       <header className="window-toolbar">
         <div className="breadcrumb">
           <NotePencilIcon size={18} />
@@ -155,6 +156,11 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
           </span>
         </div>
         <div className="spacer" />
+        {trash ? (
+          <GuidanceButton guideId="recycle-documents" accessibleLabel="文档回收站使用指引" />
+        ) : (
+          <GuidanceButton placement="documents" accessibleLabel="文档使用指引" />
+        )}
         <button className="toolbar-new" onClick={() => void create()}>
           <PlusIcon size={17} />
           新建文档

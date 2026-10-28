@@ -1,0 +1,560 @@
+{
+  "kind": "isolated-installed-ui-audit",
+  "app": "/Users/kuku/code/.cwb-guidance-tickets/11-final/release/mac-arm64/Clever Workbench.app",
+  "guideCount": 47,
+  "stepCount": 269,
+  "imageCount": 3,
+  "results": [
+    {
+      "id": "access-copy-delete",
+      "steps": [
+        "copy",
+        "secrets",
+        "confirm",
+        "cancel",
+        "delete",
+        "delete-confirm"
+      ],
+      "images": 0
+    },
+    {
+      "id": "access-entries",
+      "steps": [
+        "create",
+        "edit",
+        "addresses",
+        "preferred",
+        "reorder",
+        "remove-address",
+        "use-address",
+        "accounts",
+        "finish"
+      ],
+      "images": 0
+    },
+    {
+      "id": "accounts-ownership",
+      "steps": [
+        "copy",
+        "include",
+        "move",
+        "constraints",
+        "cancel",
+        "delete"
+      ],
+      "images": 0
+    },
+    {
+      "id": "accounts-secrets",
+      "steps": [
+        "create",
+        "metadata",
+        "secret",
+        "reveal",
+        "copy",
+        "row",
+        "favorite",
+        "remove-secret"
+      ],
+      "images": 0
+    },
+    {
+      "id": "appearance",
+      "steps": [
+        "theme",
+        "transparency",
+        "contrast",
+        "motion",
+        "system-preferences"
+      ],
+      "images": 0
+    },
+    {
+      "id": "application-update",
+      "steps": [
+        "check",
+        "download",
+        "restart-choice",
+        "prepare",
+        "verify"
+      ],
+      "images": 1
+    },
+    {
+      "id": "automatic-backup",
+      "steps": [
+        "enable",
+        "directory",
+        "result",
+        "retention"
+      ],
+      "images": 0
+    },
+    {
+      "id": "backup-password",
+      "steps": [
+        "open",
+        "enter",
+        "cancel",
+        "change"
+      ],
+      "images": 0
+    },
+    {
+      "id": "documents-and-editor",
+      "steps": [
+        "create",
+        "write",
+        "scope",
+        "search",
+        "system",
+        "context",
+        "return",
+        "retry"
+      ],
+      "images": 0
+    },
+    {
+      "id": "editor-formatting",
+      "steps": [
+        "mode",
+        "text",
+        "list",
+        "quote",
+        "table",
+        "history",
+        "save"
+      ],
+      "images": 0
+    },
+    {
+      "id": "editor-images",
+      "steps": [
+        "choose",
+        "paste",
+        "drop",
+        "wait",
+        "preview",
+        "verify"
+      ],
+      "images": 0
+    },
+    {
+      "id": "full-backup",
+      "steps": [
+        "start",
+        "choose-file",
+        "keep",
+        "verify-scope"
+      ],
+      "images": 0
+    },
+    {
+      "id": "ledger-browsing",
+      "steps": [
+        "system",
+        "category",
+        "filter",
+        "detail",
+        "edit",
+        "return",
+        "empty"
+      ],
+      "images": 0
+    },
+    {
+      "id": "ledger-copy",
+      "steps": [
+        "field",
+        "one",
+        "selection",
+        "many",
+        "accounts",
+        "password",
+        "cancel"
+      ],
+      "images": 0
+    },
+    {
+      "id": "ledger-paste",
+      "steps": [
+        "kind-owner",
+        "paste-source",
+        "layout-header",
+        "map-columns",
+        "review-rows",
+        "submit",
+        "leave"
+      ],
+      "images": 1
+    },
+    {
+      "id": "ledger-related-work",
+      "steps": [
+        "open",
+        "document",
+        "task",
+        "reopen"
+      ],
+      "images": 0
+    },
+    {
+      "id": "ledger-scope",
+      "steps": [
+        "open",
+        "environments",
+        "tags",
+        "save",
+        "operation"
+      ],
+      "images": 0
+    },
+    {
+      "id": "master-password-manage",
+      "steps": [
+        "change",
+        "cancel",
+        "save",
+        "disable"
+      ],
+      "images": 0
+    },
+    {
+      "id": "operations-maintenance",
+      "steps": [
+        "create",
+        "kind-frequency",
+        "scope-related",
+        "filter",
+        "delete"
+      ],
+      "images": 0
+    },
+    {
+      "id": "projects-history",
+      "steps": [
+        "create",
+        "edit",
+        "assign",
+        "archive",
+        "restore",
+        "delete"
+      ],
+      "images": 0
+    },
+    {
+      "id": "recycle-documents",
+      "steps": [
+        "open",
+        "read",
+        "restore",
+        "purge"
+      ],
+      "images": 0
+    },
+    {
+      "id": "recycle-tasks",
+      "steps": [
+        "read",
+        "restore",
+        "purge",
+        "empty",
+        "documents"
+      ],
+      "images": 0
+    },
+    {
+      "id": "resource-copy-delete",
+      "steps": [
+        "copy",
+        "secrets",
+        "confirm-copy",
+        "delete"
+      ],
+      "images": 0
+    },
+    {
+      "id": "resource-datastores",
+      "steps": [
+        "create",
+        "connect",
+        "extra",
+        "accounts"
+      ],
+      "images": 0
+    },
+    {
+      "id": "resource-server",
+      "steps": [
+        "create",
+        "edit",
+        "fields",
+        "account",
+        "link"
+      ],
+      "images": 0
+    },
+    {
+      "id": "restore-and-migrate",
+      "steps": [
+        "choose",
+        "password",
+        "preview",
+        "confirm",
+        "verify"
+      ],
+      "images": 0
+    },
+    {
+      "id": "search-and-create",
+      "steps": [
+        "open",
+        "type",
+        "name",
+        "context",
+        "submit",
+        "cancel"
+      ],
+      "images": 0
+    },
+    {
+      "id": "search-and-open",
+      "steps": [
+        "open",
+        "query",
+        "select",
+        "website",
+        "copy",
+        "cancel"
+      ],
+      "images": 0
+    },
+    {
+      "id": "secret-protection",
+      "steps": [
+        "system",
+        "enable",
+        "unlock",
+        "hide-copy",
+        "lock"
+      ],
+      "images": 0
+    },
+    {
+      "id": "services-deployments",
+      "steps": [
+        "service",
+        "scope",
+        "node",
+        "address",
+        "edit-delete-node",
+        "delete-service"
+      ],
+      "images": 0
+    },
+    {
+      "id": "system-export",
+      "steps": [
+        "select-system",
+        "choose-content",
+        "task-dates",
+        "choose-format",
+        "secrets",
+        "save-result"
+      ],
+      "images": 1
+    },
+    {
+      "id": "systems-environments",
+      "steps": [
+        "create",
+        "basic",
+        "project",
+        "add-environment",
+        "rename-environment",
+        "delete-environment",
+        "finish"
+      ],
+      "images": 0
+    },
+    {
+      "id": "tasks-capture",
+      "steps": [
+        "quick",
+        "detail",
+        "write",
+        "create",
+        "resume",
+        "discard"
+      ],
+      "images": 0
+    },
+    {
+      "id": "tasks-edit",
+      "steps": [
+        "open",
+        "edit",
+        "expand",
+        "system",
+        "ledger",
+        "dates",
+        "complete",
+        "reopen",
+        "delete"
+      ],
+      "images": 0
+    },
+    {
+      "id": "tasks-filter",
+      "steps": [
+        "system",
+        "status",
+        "query",
+        "tags",
+        "layout",
+        "group",
+        "select",
+        "assign",
+        "cancel"
+      ],
+      "images": 0
+    },
+    {
+      "id": "tasks-planning",
+      "steps": [
+        "open",
+        "due",
+        "urgent",
+        "correct",
+        "clear",
+        "observe"
+      ],
+      "images": 0
+    },
+    {
+      "id": "tasks-tags",
+      "steps": [
+        "open",
+        "add",
+        "edit",
+        "apply",
+        "delete"
+      ],
+      "images": 0
+    },
+    {
+      "id": "update-history-and-recovery",
+      "steps": [
+        "open-history",
+        "interpret-health",
+        "locate-materials",
+        "isolation",
+        "recover",
+        "cleanup"
+      ],
+      "images": 0
+    },
+    {
+      "id": "using-guidance",
+      "steps": [
+        "open",
+        "read",
+        "versions",
+        "navigate"
+      ],
+      "images": 0
+    },
+    {
+      "id": "work-review",
+      "steps": [
+        "month",
+        "change",
+        "current",
+        "system",
+        "overview",
+        "monthly",
+        "detail"
+      ],
+      "images": 0
+    },
+    {
+      "id": "workspace-basics",
+      "steps": [
+        "modules",
+        "capture",
+        "open",
+        "complete",
+        "undo",
+        "recent",
+        "write"
+      ],
+      "images": 0
+    },
+    {
+      "id": "workspace-favorites",
+      "steps": [
+        "choose",
+        "pin",
+        "finish",
+        "order",
+        "open",
+        "access",
+        "account",
+        "remove"
+      ],
+      "images": 0
+    },
+    {
+      "id": "workspace-window",
+      "steps": [
+        "window",
+        "view",
+        "edit",
+        "commands",
+        "save",
+        "close"
+      ],
+      "images": 0
+    },
+    {
+      "id": "zip-archive-files",
+      "steps": [
+        "select-source",
+        "choose-output",
+        "password-run",
+        "check-result"
+      ],
+      "images": 0
+    },
+    {
+      "id": "zip-archive-git",
+      "steps": [
+        "repository",
+        "filter",
+        "select-preview",
+        "pack"
+      ],
+      "images": 0
+    },
+    {
+      "id": "zip-restore-clipboard",
+      "steps": [
+        "collect",
+        "repair",
+        "output-password",
+        "check"
+      ],
+      "images": 0
+    },
+    {
+      "id": "zip-restore-directory",
+      "steps": [
+        "parts-directory",
+        "output-password",
+        "run-check",
+        "recover-failure"
+      ],
+      "images": 0
+    }
+  ]
+}

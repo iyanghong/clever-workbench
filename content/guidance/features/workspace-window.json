@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "workspace-window",
+  "revision": 1,
+  "title": "窗口、菜单与保存反馈",
+  "platforms": [
+    "darwin",
+    "win32"
+  ],
+  "placements": [
+    "home"
+  ],
+  "purpose": "使用原生窗口和菜单，并确认编辑确实保存完成。",
+  "prerequisites": {
+    "items": [
+      "使用本机工作资料；需要试操作时，先使用示例对象。"
+    ],
+    "notApplicableReason": ""
+  },
+  "entry": {
+    "label": "应用窗口及 macOS 顶部菜单（Windows 为窗口菜单）",
+    "target": "home"
+  },
+  "steps": [
+    {
+      "id": "window",
+      "title": "调整窗口",
+      "action": "使用窗口原生控制或“窗口”菜单的最小化、缩放操作。",
+      "expectedResult": "窗口按操作系统习惯调整；缩放窗口和正文缩放是两种操作。"
+    },
+    {
+      "id": "view",
+      "title": "调整阅读大小",
+      "action": "在“视图”菜单使用放大、缩小、实际大小或全屏。",
+      "expectedResult": "正文缩放或全屏状态改变；实际大小恢复正文默认缩放。"
+    },
+    {
+      "id": "edit",
+      "title": "使用编辑菜单",
+      "action": "先将焦点放入可编辑文字，再通过“编辑”菜单使用撤销、重做、剪切、复制、粘贴或全选。",
+      "expectedResult": "操作作用于当前编辑位置；只读字段不能编辑，秘密复制请使用专用复制入口。"
+    },
+    {
+      "id": "commands",
+      "title": "使用文件菜单",
+      "action": "选择“文件 → 新增任务”或“文件 → 搜索任务”。",
+      "expectedResult": "当前菜单虽沿用旧名称，实际打开统一的九种新建选择或全局搜索；macOS 可用 ⌘N／⌘K，Windows 对应 Ctrl。"
+    },
+    {
+      "id": "save",
+      "title": "确认保存反馈",
+      "action": "编辑任务或文档后，查看其保存状态；出现保存失败时点击保存状态重试。",
+      "expectedResult": "“已保存”才代表成功。任务新建详情的“草稿已保存”仍是未创建草稿，不等同于“创建任务”。"
+    },
+    {
+      "id": "close",
+      "title": "关闭工作窗口",
+      "action": "结束工作时使用窗口关闭按钮或“文件”菜单的关闭。",
+      "expectedResult": "应用会等待必要保存与图片导入；失败时应保留输入并处理提示，macOS 关闭窗口与退出应用并非同一操作。"
+    }
+  ],
+  "completion": "窗口和正文大小适合阅读，编辑有明确的保存结果，离开前没有未处理保存错误。",
+  "faq": {
+    "items": [
+      {
+        "question": "指引能替我执行菜单动作吗？",
+        "answer": "不能。“前往功能”只导航，关闭、复制和创建仍由你明确操作。"
+      },
+      {
+        "question": "为什么关闭或切页被阻止？",
+        "answer": "可能有未完成的保存、图片导入或后台任务。处理提示后重试，避免强制结束导致资料来不及保存。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}

@@ -1,3 +1,4 @@
+import { GuidanceButton } from '../guidance/Guidance';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowClockwiseIcon,
@@ -73,9 +74,11 @@ const descriptions: Partial<Record<UpdateSnapshot['status'], string>> = {
 export function UpdateDetails({
   state,
   allowCheck = false,
+  onBeforeGuidance,
 }: {
   state: UpdateSnapshot | null;
   allowCheck?: boolean;
+  onBeforeGuidance?: () => void;
 }) {
   const vault = useVault();
   const [error, setError] = useState('');
@@ -176,6 +179,11 @@ export function UpdateDetails({
         </p>
       )}
       <div className="update-secondary">
+        <GuidanceButton
+          guideId="application-update"
+          accessibleLabel="应用更新使用指引"
+          beforeOpen={onBeforeGuidance}
+        />
         <details className="update-disclosure update-source">
           <summary>
             <LockKeyIcon size={16} aria-hidden="true" />
@@ -187,6 +195,11 @@ export function UpdateDetails({
             <p>私有仓库更新使用本机 Git 保存的 GitHub 登录；此电脑的账号须有仓库读取权限。</p>
           </div>
         </details>
+        <GuidanceButton
+          guideId="update-history-and-recovery"
+          accessibleLabel="更新历史使用指引"
+          beforeOpen={onBeforeGuidance}
+        />
         <UpdateHistory />
       </div>
       <footer className="update-footer">
@@ -271,7 +284,6 @@ export function UpdateBadge({ state }: { state: UpdateSnapshot | null }) {
     if (state?.status === 'downloading') notified.current = undefined;
     if (state && !['ready', 'preparing', 'installing'].includes(state.status)) setPrompt(false);
     if (state?.status === 'ready' && version && notified.current !== preparedId) {
-      notified.current = preparedId;
       setOpen(false);
       setPrompt(true);
     }
@@ -306,17 +318,31 @@ export function UpdateBadge({ state }: { state: UpdateSnapshot | null }) {
       )}
       {open && !prompt && (
         <Dialog className="modal update-dialog" title="应用更新" onClose={() => setOpen(false)}>
-          <UpdateDetails state={state} />
+          <UpdateDetails state={state} onBeforeGuidance={() => setOpen(false)} />
         </Dialog>
       )}
       {prompt && state?.status === 'ready' && (
-        <UpdateRestartPrompt state={state} onClose={() => setPrompt(false)} />
+        <UpdateRestartPrompt
+          state={state}
+          onClose={() => setPrompt(false)}
+          onShown={() => {
+            notified.current = preparedId;
+          }}
+        />
       )}
     </>
   );
 }
 
-function UpdateRestartPrompt({ state, onClose }: { state: UpdateSnapshot; onClose: () => void }) {
+function UpdateRestartPrompt({
+  state,
+  onClose,
+  onShown,
+}: {
+  state: UpdateSnapshot;
+  onClose: () => void;
+  onShown: () => void;
+}) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   return (
@@ -326,6 +352,8 @@ function UpdateRestartPrompt({ state, onClose }: { state: UpdateSnapshot; onClos
       description={`v${state.release?.version} 已下载并通过校验`}
       onClose={onClose}
       closeDisabled={busy}
+      exclusive
+      onShown={onShown}
     >
       <div className="update-restart-copy">
         <div className="update-restart-icon" aria-hidden="true">

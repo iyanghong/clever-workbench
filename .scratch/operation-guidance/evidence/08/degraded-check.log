@@ -1,0 +1,19 @@
+
+> clever-workbench@0.1.12 guidance:check
+> node scripts/check-operation-guidance.mjs
+
+操作指引检查（仅警告，不阻止发布）
+操作说明缺失或无效；不会自动标记为“无新增操作”。
+可用功能指引 16 项，版本记录 0 项，警告 6 项。
+警告 [invalid-json] content/guidance/features/appearance.json#$：JSON 无法解析。
+  修正建议：检查引号、逗号和括号，保留其他有效文件。
+警告 [invalid-json] content/guidance/features/master-password-manage.json#$：JSON 无法解析。
+  修正建议：检查引号、逗号和括号，保留其他有效文件。
+警告 [invalid-json] content/guidance/features/recycle-documents.json#$：JSON 无法解析。
+  修正建议：检查引号、逗号和括号，保留其他有效文件。
+警告 [invalid-json] content/guidance/features/recycle-tasks.json#$：JSON 无法解析。
+  修正建议：检查引号、逗号和括号，保留其他有效文件。
+警告 [invalid-json] content/guidance/features/secret-protection.json#$：JSON 无法解析。
+  修正建议：检查引号、逗号和括号，保留其他有效文件。
+警告 [missing-release-guidance] content/guidance/pending.json#$：没有唯一有效的待发布操作说明。
+  修正建议：编写本次操作变化及功能引用，或明确无新增操作的原因；缺失不能推断为无新增操作。
