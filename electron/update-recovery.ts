@@ -58,7 +58,7 @@ export class UpdateJournal {
     return this.queue;
   }
   async observe(state: UpdateSnapshot) {
-    if (this.lastState === state.status && !state.message) return;
+    if (this.lastState === state.status && !state.message) return false;
     this.lastState = state.status;
     if (!this.active && ['downloading', 'preparing'].includes(state.status)) {
       this.active = randomUUID();
@@ -77,7 +77,7 @@ export class UpdateJournal {
       this.entries = this.entries.slice(0, 30);
     }
     const entry = this.entries.find((e) => e.id === this.active);
-    if (!entry) return;
+    if (!entry) return false;
     const at = this.now();
     entry.durations[entry.phase] =
       (entry.durations[entry.phase] ?? 0) + Math.max(0, at - entry.phaseStartedAt);
@@ -86,18 +86,33 @@ export class UpdateJournal {
     entry.updatedAt = new Date(at).toISOString();
     if (state.message)
       entry.message = state.message.replace(/https?:\/\/\S+/g, '[URL]').slice(0, 500);
+    if (state.status === 'error' && state.release) {
+      if (state.progress && Number.isSafeInteger(state.progress.received))
+        entry.downloadedBytes = Math.max(0, state.progress.received);
+      if (state.downloadAttempt && Number.isSafeInteger(state.downloadAttempt.current))
+        entry.downloadAttempts = Math.max(0, state.downloadAttempt.current);
+      if (
+        state.downloadErrorCode &&
+        /^(?:net::ERR_[A-Z0-9_]+|[A-Z0-9_]{1,64})$/.test(state.downloadErrorCode)
+      )
+        entry.downloadErrorCode = state.downloadErrorCode;
+    }
     entry.outcome =
       state.status === 'success'
         ? 'success'
         : state.status === 'manual'
           ? 'manual'
-          : state.status === 'error' || (state.status === 'ready' && state.message)
-            ? 'failed'
-            : state.status === 'ready'
-              ? 'ready'
-              : 'in-progress';
-    if (['failed', 'success', 'manual'].includes(entry.outcome)) this.active = undefined;
+          : state.status === 'available' && state.message === '已取消更新下载。'
+            ? 'cancelled'
+            : state.status === 'error' || (state.status === 'ready' && state.message)
+              ? 'failed'
+              : state.status === 'ready'
+                ? 'ready'
+                : 'in-progress';
+    if (['failed', 'cancelled', 'success', 'manual'].includes(entry.outcome))
+      this.active = undefined;
     await this.save();
+    return true;
   }
   async attach(
     directory: string,

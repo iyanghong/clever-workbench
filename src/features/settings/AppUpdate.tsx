@@ -90,6 +90,25 @@ export function UpdateDetails({
     );
   const canDownload = !!state?.release && (status === 'available' || status === 'error');
   const canInstall = status === 'ready';
+  const canCancelDownload = status === 'downloading';
+  const canManualInstall =
+    !!state?.release &&
+    status === 'error' &&
+    !!state.downloadErrorCode &&
+    (/^net::ERR_[A-Z0-9_]+$/.test(state.downloadErrorCode) ||
+      [
+        'NETWORK_INTERRUPTED',
+        'NETWORK_TIMEOUT',
+        'NETWORK_IDLE',
+        'INCOMPLETE_RESPONSE',
+        'DOWNLOAD_TIME_LIMIT',
+        'HTTP_408',
+        'HTTP_429',
+        'HTTP_500',
+        'HTTP_502',
+        'HTTP_503',
+        'HTTP_504',
+      ].includes(state.downloadErrorCode));
   const tone =
     status === 'error'
       ? 'error'
@@ -140,6 +159,11 @@ export function UpdateDetails({
         <div className="update-status-copy">
           <h3 role="status">{state ? labels[state.status] : '正在读取版本…'}</h3>
           <p>{description}</p>
+          {status === 'downloading' && state?.downloadAttempt && (
+            <p>
+              下载尝试 {state.downloadAttempt.current} / {state.downloadAttempt.maximum}
+            </p>
+          )}
           {state?.retryAt && <p>可重试时间：{formatDate(state.retryAt)}</p>}
         </div>
         {progress && (
@@ -154,6 +178,11 @@ export function UpdateDetails({
           </div>
         )}
       </section>
+      {canManualInstall && (
+        <p className="update-notice">
+          手动安装前请先导出完整加密备份，并核对正式 Release 中的 SHA256SUMS。
+        </p>
+      )}
       {state?.recovery && (
         <p className="update-notice" role="status">
           <InfoIcon size={17} aria-hidden="true" />
@@ -215,6 +244,19 @@ export function UpdateDetails({
             <ArrowSquareOutIcon size={15} aria-hidden="true" />
             历史版本
           </button>
+          {canManualInstall && (
+            <button
+              className="update-history-link update-manual-link"
+              onClick={() => {
+                void window.desktop
+                  .openExternal(state.release!.pageUrl)
+                  .catch(() => setError('无法打开正式 Release 页面。'));
+              }}
+            >
+              <ArrowSquareOutIcon size={15} aria-hidden="true" />
+              查看正式 Release 手动安装
+            </button>
+          )}
           <div className="update-primary-actions">
             {allowCheck && (
               <button
@@ -238,7 +280,19 @@ export function UpdateDetails({
                 }}
               >
                 <DownloadSimpleIcon size={16} aria-hidden="true" />
-                下载更新
+                {status === 'error' ? '重试下载' : '下载更新'}
+              </button>
+            )}
+            {canCancelDownload && (
+              <button
+                className="secondary-button"
+                onClick={() => {
+                  void window.desktop
+                    .cancelUpdateDownload()
+                    .catch(() => setError('无法取消下载，请稍后重试。'));
+                }}
+              >
+                取消下载
               </button>
             )}
             {canInstall && (
@@ -449,6 +503,7 @@ function UpdateHistory() {
                 {
                   success: '成功',
                   failed: '失败',
+                  cancelled: '已取消',
                   manual: '需要处理',
                   ready: '待安装',
                   'in-progress': '进行中',
@@ -457,6 +512,16 @@ function UpdateHistory() {
             }
           </p>
           {entry.message && <p>{entry.message}</p>}
+          {(entry.downloadedBytes !== undefined ||
+            entry.downloadAttempts ||
+            entry.downloadErrorCode) && (
+            <p>
+              {entry.downloadedBytes !== undefined &&
+                `已下载 ${formatBytes(entry.downloadedBytes)}`}
+              {entry.downloadAttempts ? ` · 尝试 ${entry.downloadAttempts} 次` : ''}
+              {entry.downloadErrorCode ? ` · 错误码 ${entry.downloadErrorCode}` : ''}
+            </p>
+          )}
           {entry.cleanup && (
             <p>
               {entry.cleanup === 'complete'

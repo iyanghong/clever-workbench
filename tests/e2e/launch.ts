@@ -41,7 +41,7 @@ export const electron = {
       ...(executablePath ? { executablePath } : {}),
       args,
     });
-    if (executablePath && env.CWB_TEST_KEEP_VERSION_GUIDANCE !== '1') {
+    if (env.CWB_TEST_KEEP_VERSION_GUIDANCE !== '1') {
       try {
         const page = await app.firstWindow();
         const versions = await page.evaluate(() => window.desktop.guidanceVersions());
@@ -53,7 +53,7 @@ export const electron = {
           ) &&
           state.shownThrough !== versions.currentVersion
         ) {
-          // Unrelated installed-app tests begin after first-use guidance is recorded.
+          // Unrelated desktop tests begin after first-use guidance is recorded.
           await page.evaluate(
             (version) => window.desktop.guidanceAcknowledge(version),
             versions.currentVersion,

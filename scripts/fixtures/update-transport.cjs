@@ -18,6 +18,7 @@ app
     const github = 'https://github.com/iyanghong/clever-workbench/releases/download';
     const api = 'https://api.github.com/repos/iyanghong/clever-workbench/releases';
     const requests = [];
+    let zipRequests = 0;
     const release = {
       tag_name: `v${version}`,
       draft: false,
@@ -43,6 +44,7 @@ app
         path: request.url,
         authorized,
         hasAuthorization: !!request.headers.authorization,
+        range: request.headers.range || '',
       });
       if (request.url === '/metadata') {
         response.writeHead(200, { 'Content-Type': 'application/json' });
@@ -58,8 +60,30 @@ app
         });
         response.end();
       } else if (request.url === '/cdn/app.zip') {
-        response.writeHead(200, { 'Content-Length': String(fs.statSync(archive).size) });
-        const file = fs.createReadStream(archive);
+        zipRequests++;
+        const size = fs.statSync(archive).size;
+        const match = request.headers.range?.match(/^bytes=(\d+)-$/);
+        const start = match ? Number(match[1]) : 0;
+        if (start >= size) {
+          response.writeHead(416, { 'Content-Range': `bytes */${size}` });
+          response.end();
+          return;
+        }
+        response.writeHead(match ? 206 : 200, {
+          'Content-Length': String(size - start),
+          ...(match ? { 'Content-Range': `bytes ${start}-${size - 1}/${size}` } : {}),
+        });
+        if (zipRequests === 2) {
+          const file = fs.openSync(archive, 'r');
+          const prefix = Buffer.alloc(16384);
+          const count = fs.readSync(file, prefix, 0, prefix.length, 0);
+          fs.closeSync(file);
+          response.write(prefix.subarray(0, count), () => {
+            setTimeout(() => response.destroy(), 20);
+          });
+          return;
+        }
+        const file = fs.createReadStream(archive, { start });
         response.on('close', () => file.destroy());
         file.pipe(response);
       } else if (request.url === '/cdn/SHA256SUMS') {
@@ -95,12 +119,15 @@ app
       assert.equal(downloaded.status, 'ready', JSON.stringify(downloaded));
       assert.ok(requests.filter((r) => r.path.startsWith('/assets/')).every((r) => r.authorized));
       assert.ok(requests.some((r) => r.path === '/cdn/app.zip'));
+      assert.ok(
+        requests.some((r) => r.path === '/cdn/app.zip' && /^bytes=[1-9]\d*-$/.test(r.range)),
+      );
       assert.ok(requests.some((r) => r.path === '/cdn/SHA256SUMS'));
       assert.ok(
         requests.filter((r) => r.path.startsWith('/cdn/')).every((r) => !r.hasAuthorization),
       );
       console.log(
-        'PASS native Electron 302, authenticated API, credential-free CDN, real ZIP validation (local transport fixture)',
+        'PASS native Electron 302, interrupted body, verified Range resume, credential-free CDN and real ZIP validation (local fixture)',
       );
     } finally {
       await new Promise((resolve) => server.close(resolve));

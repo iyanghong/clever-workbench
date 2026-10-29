@@ -156,9 +156,9 @@ try {
   assert.equal(downloaded.status, 'ready', JSON.stringify(downloaded));
   await assert.rejects(
     page.evaluate(() => window.desktop.installUpdate()),
-    /主密码/,
+    /备份密码/,
   );
-  await page.evaluate((value) => window.desktop.initializeVault(value), password);
+  await page.evaluate((value) => window.desktop.configureBackup(value), password);
   const id = await page.evaluate(async () => {
     const bytes = Uint8Array.from(
       atob(

@@ -166,6 +166,56 @@ test('update attempts including failed downloads survive restart and retain only
     await fs.rm(root, { recursive: true, force: true });
   }
 });
+test('download history keeps only bounded local diagnostics and distinguishes cancellation', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'update-diagnostics-'));
+  const release = {
+    version: '0.2.0',
+    publishedAt: '',
+    notes: '',
+    pageUrl: '',
+    zip: { name: 'update.zip', url: '', size: 100 },
+    checksums: { name: 'SHA256SUMS', url: '', size: 80 },
+  };
+  try {
+    const journal = await UpdateJournal.open(root);
+    await journal.observe({ currentVersion: '0.1.0', status: 'downloading', release });
+    expect(
+      await journal.observe({
+        currentVersion: '0.1.0',
+        status: 'downloading',
+        release,
+        progress: { received: 16, total: 100 },
+      }),
+    ).toBe(false);
+    await journal.observe({
+      currentVersion: '0.1.0',
+      status: 'error',
+      release,
+      message: '下载连接中断。',
+      progress: { received: 16, total: 100 },
+      downloadAttempt: { current: 3, maximum: 3 },
+      downloadErrorCode: 'net::ERR_HTTP2_PROTOCOL_ERROR',
+    });
+    const restored = await UpdateJournal.open(root);
+    expect(restored.list()[0]).toMatchObject({
+      outcome: 'failed',
+      downloadedBytes: 16,
+      downloadAttempts: 3,
+      downloadErrorCode: 'net::ERR_HTTP2_PROTOCOL_ERROR',
+    });
+    expect(JSON.stringify(restored.list())).not.toContain('Authorization');
+    await journal.observe({ currentVersion: '0.1.0', status: 'downloading', release });
+    await journal.observe({
+      currentVersion: '0.1.0',
+      status: 'available',
+      release,
+      message: '已取消更新下载。',
+    });
+    expect(journal.list()[0].outcome).toBe('cancelled');
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
 posixTest(
   'timeout preserves backup and database while exposing a manual recovery result',
   async () => {

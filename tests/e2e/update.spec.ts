@@ -236,8 +236,11 @@ test('手动检查仅在设置中，新版按钮显示在品牌旁并保留下�
       currentVersion,
       release,
       progress: { received: 64000000, total: 128000000 },
+      downloadAttempt: { current: 2, maximum: 3 },
     });
     await expect(dialog.getByText('50%', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('下载尝试 2 / 3')).toBeVisible();
+    await expect(dialog.getByRole('button', { name: '取消下载', exact: true })).toBeVisible();
     await expect(dialog.getByRole('progressbar', { name: '更新下载进度' })).toHaveJSProperty(
       'value',
       64000000,
@@ -255,10 +258,28 @@ test('手动检查仅在设置中，新版按钮显示在品牌旁并保留下�
     await expect(dialog).toHaveCount(0);
     await restart.getByRole('button', { name: '稍后重启', exact: true }).click();
     await expect(badge).toBeVisible();
-    await show({ status: 'error', currentVersion, release, message: '下载中断，请重试。' });
+    await show({
+      status: 'error',
+      currentVersion,
+      release,
+      message: '下载中断，请重试。',
+      progress: { received: 64000000, total: 128000000 },
+      downloadAttempt: { current: 3, maximum: 3 },
+      downloadErrorCode: 'net::ERR_HTTP2_PROTOCOL_ERROR',
+    });
     await badge.click();
-    await expect(dialog.getByRole('button', { name: '下载更新', exact: true })).toBeEnabled();
+    await expect(dialog.getByRole('button', { name: '重试下载', exact: true })).toBeEnabled();
+    await expect(
+      dialog.getByRole('button', { name: '查看正式 Release 手动安装' }),
+    ).toBeInViewport();
+    expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
     await expect(badge).toBeVisible();
+    await show({
+      status: 'error', currentVersion, release,
+      message: '更新暂存文件读写失败，请检查磁盘空间与目录权限。',
+      downloadErrorCode: 'STAGING_IO',
+    });
+    await expect(dialog.getByRole('button', { name: '查看正式 Release 手动安装' })).toHaveCount(0);
     await show({ status: 'manual', currentVersion, message: '新版启动确认超时，请查看恢复说明。' });
     await expect(dialog.getByText('新版启动确认超时，请查看恢复说明。')).toBeVisible();
     await expect(badge).toHaveCount(0);

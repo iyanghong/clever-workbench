@@ -2,22 +2,22 @@
   "schemaVersion": 1,
   "kind": "release-draft",
   "operationChange": "changed",
-  "summary": "新增离线操作指引，可从功能附近或设置集中查阅，了解功能入口、步骤和完成结果。",
+  "summary": "更新下载增加有限自动重试与安全续传，网络中断后可继续下载或按指引手动安装。",
   "changes": [
     {
-      "id": "offline-operation-guidance",
-      "summary": "点击使用指引逐步阅读操作说明，需要实践时通过前往功能安全进入对应页面。",
-      "guideIds": ["using-guidance"]
-    },
-    {
-      "id": "update-operation-guidance",
-      "summary": "检查更新时可就近查阅下载、立即或稍后重启以及安装结果的说明。",
+      "id": "recover-update-download",
+      "summary": "下载连接中断时查看进度与尝试次数，安全条件满足时自动续传；也可取消或重新下载。",
       "guideIds": ["application-update"]
     },
     {
-      "id": "release-operation-guidance",
-      "summary": "升级后有操作变化时，在空闲且保存完成后提示一次版本指引；关闭后仍可在设置中查看当前用法与历史摘要。",
-      "guideIds": ["using-guidance"]
+      "id": "manual-update-transition",
+      "summary": "旧版遇到反复下载失败时，先备份资料并核对正式 DMG，再经 Finder 手动替换应用。",
+      "guideIds": ["application-update", "update-history-and-recovery"]
+    },
+    {
+      "id": "update-history-diagnostics",
+      "summary": "更新历史区分下载中断、取消、安装与健康结果，并显示本机脱敏诊断。",
+      "guideIds": ["update-history-and-recovery"]
     }
   ],
   "review": {
@@ -28,8 +28,8 @@
     "environment": "",
     "checks": [],
     "knownGaps": [
-      "首批功能正文已完成代理验收，维护者仍需按拟发布源码和实际安装包人工复核步骤、截图与入口。",
-      "维护者尚未填写本次实际发布源码的人工核对记录；各任务的开发与打包证据不替代维护者核对。"
+      "更新重试、续传、取消及人工安装步骤仍需按拟发布源码与 macOS 安装包人工核对。",
+      "维护者尚未填写本次实际发布源码的人工核对记录；自动测试不替代维护者核对。"
     ]
   }
 }

@@ -33,6 +33,8 @@ export interface UpdateSnapshot {
   preparedId?: string;
   recovery?: { outcome: string; message: string };
   progress?: { received: number; total: number };
+  downloadAttempt?: { current: number; maximum: number };
+  downloadErrorCode?: string;
   status: UpdateStatus;
   currentVersion: string;
   release?: UpdateRelease;
@@ -49,7 +51,10 @@ export interface UpdateHistoryEntry {
   phase: string;
   phaseStartedAt: number;
   durations: Record<string, number>;
-  outcome: 'in-progress' | 'ready' | 'failed' | 'manual' | 'success';
+  outcome: 'in-progress' | 'ready' | 'failed' | 'cancelled' | 'manual' | 'success';
+  downloadedBytes?: number;
+  downloadAttempts?: number;
+  downloadErrorCode?: string;
   cleanup?: 'complete' | 'incomplete';
   message?: string;
   backup?: string;

@@ -61,6 +61,7 @@ const api: DesktopAPI = {
   },
   checkUpdate: () => call('update-check'),
   downloadUpdate: () => call('update-download'),
+  cancelUpdateDownload: () => call('update-download-cancel'),
   installUpdate: () => call('update-install'),
   onUpdateState(handler) {
     const listener = (_: unknown, state: Parameters<typeof handler>[0]) => handler(state);

@@ -386,7 +386,9 @@ app
       if (updateJournal && updaterAvailable)
         void updateJournal
           .observe(state)
-          .then(() => window?.webContents.send('update-history-changed'))
+          .then((changed) => {
+            if (changed) window?.webContents.send('update-history-changed');
+          })
           .catch(() => {
             disableUpdates();
           });
@@ -400,6 +402,7 @@ app
       if (!updaterAvailable) throw Error('更新记录不可写，请检查更新目录。');
       return updates.download();
     });
+    secureHandler('update-download-cancel', () => updates.cancelDownload());
     secureHandler('update-history', async () => {
       await updateJournal?.refreshCleanup();
       return updateJournal?.list() ?? [];
