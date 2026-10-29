@@ -73,6 +73,8 @@ CWB_UPDATE_ZIP="$PWD/release/Clever-Workbench-0.2.0-arm64.zip" npx vitest run te
 
 推送正式版本 tag 会启动 `Publish stable macOS Release`。工作流先校验 tag 与应用版本，运行单元测试、打包、原生包校验及已安装应用桌面测试。全部通过后创建 Draft，上传 ZIP、DMG、SHA256SUMS，通过 Release 数字 ID 读取草稿，核对远程资产名称、大小和上传状态，最后发布为 latest。中途失败保留 Draft，客户端无法发现半成品。私有仓库发布后仍仅对有权限的用户可读。
 
+目标版本在 Draft 阶段不会成为客户端固定仓库的正式 `latest`，因此不能在公开前宣称完成该目标版本的无替身 GitHub 网络升级验收。下载可靠性修复按 [ADR 0015](adr/0015-recover-release-downloads-with-verified-resume.md) 在公开前验证固定包、断流恢复和安全边界；按 [ADR 0016](adr/0016-verify-real-github-updates-after-publication.md) 在公开后立即用隔离旧安装版完成真实私有 GitHub 下载、备份、替换和健康或人工处理验收。发布说明分别标明两阶段结果。若公开后发现可复现的严重资料或安装风险，暂停问题版作为自动更新目标并公告，再使用新版本号修复；不改写已发布标签或资产。
+
 工作流用 GitHub Actions 自带的短期 token 和 job 级 `contents: write` 权限；客户端不含任何发布令牌。源码版本提交来自维护者的本地 Git 账号，Actions 只构建和发布，不创建机器人源码提交。不覆盖已经公开的 Release。修正失败后重跑只允许更新尚未公开的 Draft；已经公开的版本应通过新版本号修复。只有维护者明确准备公开时才推送版本 tag。
 
 发布工作流使用仓库级并发组串行执行，且不取消正在运行的发布。`workflow_dispatch` 的 tag 输入仅用于恢复尚未公开的既有版本。完整历史用于生成中文章节的提交说明：保留提交原始标题和链接，标明基准 Release、业务源码、版本提交及构建记录。发布前逐个核对上传状态、大小和 GitHub 计算的 SHA-256，再下载远程 SHA256SUMS 比对；同一草稿中已匹配的资产可复用，未匹配的本次资产只在草稿阶段替换。
@@ -82,6 +84,12 @@ CWB_UPDATE_ZIP="$PWD/release/Clever-Workbench-0.2.0-arm64.zip" npx vitest run te
 macOS 维持 ad-hoc 签名，不需要 Apple Developer ID。默认 Electron 打包权限包含 JIT 和 disable-library-validation；实际签名和启动必须由打包测试验证。下载资产经过 SHA-256 完整性校验，但该校验不等同于开发者身份证明。安装助手不会清除 quarantine 或关闭 Gatekeeper；系统要求授权时用户按系统提示处理。
 
 如果安装更新时提示只读隔离位置（`AppTranslocation`），说明 macOS 正在临时隔离副本中运行应用；即使 `/Applications` 中已经有同名应用，也可能出现这种情况。退出工作台，打开正式 DMG，通过 Finder 将其中的应用拷贝到“应用程序”并替换，再从“应用程序”打开。保留原有资料目录、完整备份和旧应用，系统要求授权时按提示处理。依据：[Apple 关于 Gatekeeper 隔离运行的说明](https://developer.apple.com/documentation/fileprovider/nsfileprovidererror/code/providertranslocated?language=objc)。
+
+### 已安装旧版下载中断时的人工过渡
+
+旧安装版的下载逻辑不会因新 Release 发布而改变。若下载中途反复报网络或 HTTP/2 错误，可先在旧版“设置 → 备份与迁移”导出一份完整加密备份，并妥善保存对应的独立备份密码。随后在有仓库读取权限的 GitHub 账号下打开[正式 Releases](https://github.com/iyanghong/clever-workbench/releases)，下载目标版本的 macOS arm64 `.dmg` 与 `SHA256SUMS`。在终端输入 `shasum -a 256 `，把已下载的 DMG 拖入终端以填入路径后回车；将结果与清单中该 DMG 的一行逐字核对。不一致时停止安装并重新下载。
+
+确认校验值后退出工作台，在 Finder 打开 DMG，将其中的 Clever Workbench.app 拖到原有的可写安装位置（通常是“应用程序”）并选择替换。不要直接从 DMG 运行，也不要删除应用资料目录或已有备份。重新从安装位置打开，检查“设置 → 关于”的版本与原有资料；如 macOS 要求授权，按照[Apple 的“仍要打开”说明](https://support.apple.com/en-gb/102445)在系统设置中处理，不通过移除 quarantine 或关闭 Gatekeeper 绕过保护。人工替换不记作应用内自动升级成功。
 
 安装入口先检查运行位置、所有权和父目录写权限，再保存、冻结写入和创建完整备份；启动独立助手前再次检查。位置检查失败时保持应用运行，给出具体安装步骤。通过 Finder 恢复后仍保留上次失败记录；人工安装恢复不代表已验证无人值守升级成功。
 
