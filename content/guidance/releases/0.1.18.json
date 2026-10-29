@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "kind": "release",
+  "operationChange": "changed",
+  "summary": "更新下载增加有限自动重试与安全续传，网络中断后可继续下载或按指引手动安装。",
+  "changes": [
+    {
+      "id": "recover-update-download",
+      "summary": "下载连接中断时查看进度与尝试次数，安全条件满足时自动续传；也可取消或重新下载。",
+      "guideIds": [
+        "application-update"
+      ]
+    },
+    {
+      "id": "manual-update-transition",
+      "summary": "旧版遇到反复下载失败时，先备份资料并核对正式 DMG，再经 Finder 手动替换应用。",
+      "guideIds": [
+        "application-update",
+        "update-history-and-recovery"
+      ]
+    },
+    {
+      "id": "update-history-diagnostics",
+      "summary": "更新历史区分下载中断、取消、安装与健康结果，并显示本机脱敏诊断。",
+      "guideIds": [
+        "update-history-and-recovery"
+      ]
+    }
+  ],
+  "review": {
+    "status": "pending",
+    "reviewer": "",
+    "checkedAt": "",
+    "source": "",
+    "environment": "",
+    "checks": [],
+    "knownGaps": [
+      "更新重试、续传、取消及人工安装步骤仍需按拟发布源码与 macOS 安装包人工核对。",
+      "维护者尚未填写本次实际发布源码的人工核对记录；自动测试不替代维护者核对。"
+    ]
+  },
+  "version": "0.1.18",
+  "tag": "v0.1.18",
+  "sourceSha": "ea4bbbd31e55814be8268adfb23dc252350d2e9b",
+  "publication": "pending"
+}
