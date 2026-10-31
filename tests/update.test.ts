@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { UpdateCoordinator } from '../electron/update';
+import { resolveUpdateTarget } from '../electron/update-launcher';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
 const asset = (name: string) => ({
   name,
@@ -24,6 +28,47 @@ const create = (fetcher: typeof fetch = async () => Response.json(release)) =>
     fetch: fetcher,
   });
 describe('application update operations', () => {
+  it('reports an unusable installation before download and rechecks the location before fetching assets', async () => {
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'cwb-update-location-'));
+    const translocated =
+      '/private/var/folders/test/AppTranslocation/nonce/d/Clever Workbench.app/Contents/MacOS/Clever Workbench';
+    let executable = translocated;
+    const requested: string[] = [];
+    const updates = new UpdateCoordinator({
+      currentVersion: '0.9.0',
+      packaged: true,
+      platform: 'darwin',
+      arch: 'arm64',
+      stagingDirectory: path.join(directory, 'staging'),
+      preflight: async () => {
+        await resolveUpdateTarget(executable);
+      },
+      fetch: async (url) => {
+        requested.push(String(url));
+        return Response.json(release);
+      },
+    });
+    try {
+      expect(await updates.check()).toMatchObject({
+        status: 'available',
+        release: { version: '0.10.0' },
+        installationIssue: expect.stringMatching(/macOS.*隔离/),
+      });
+      expect(await updates.download()).toMatchObject({
+        status: 'available',
+        installationIssue: expect.stringMatching(/macOS.*隔离/),
+      });
+      executable = path.join(directory, 'Installed.app/Contents/MacOS/App');
+      await fs.mkdir(path.dirname(executable), { recursive: true });
+      expect((await updates.check(true)).installationIssue).toBeUndefined();
+      executable = translocated;
+      expect((await updates.download()).installationIssue).toMatch(/macOS.*隔离/);
+      expect(requested.every((url) => url.endsWith('/releases/latest'))).toBe(true);
+      expect(await fs.readdir(directory)).toEqual(['Installed.app']);
+    } finally {
+      await fs.rm(directory, { recursive: true, force: true });
+    }
+  });
   it('checks the fixed private repository with the local GitHub credential without exposing it in state', async () => {
     let authorization: string | null = null;
     const updates = new UpdateCoordinator({

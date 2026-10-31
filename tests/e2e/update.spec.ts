@@ -1,10 +1,156 @@
 import { electron } from './launch';
-import { test, expect } from '@playwright/test';
+import { test, expect, _electron } from '@playwright/test';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { UpdateSnapshot } from '../../src/update-types';
+
+test('安装位置受限时提前提供正式安装入口，已下载更新也不再承诺重启安装', async ({}, info) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-update-blocked-'));
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env });
+  try {
+    const page = await app.firstWindow();
+    await expect(page.getByRole('button', { name: '工作台', exact: true })).toBeVisible();
+    await expect
+      .poll(async () => (await page.evaluate(() => window.desktop.updateSnapshot())).status)
+      .not.toBe('checking');
+    const { currentVersion } = await page.evaluate(() => window.desktop.updateSnapshot());
+    const release: NonNullable<UpdateSnapshot['release']> = {
+      version: '0.2.0',
+      notes: '更新说明。\n'.repeat(500),
+      publishedAt: '',
+      pageUrl: 'https://github.com/iyanghong/clever-workbench/releases/tag/v0.2.0',
+      zip: {
+        name: 'update.zip',
+        size: 1,
+        url: 'https://github.com/iyanghong/clever-workbench/releases/download/v0.2.0/update.zip',
+      },
+      checksums: {
+        name: 'SHA256SUMS',
+        size: 1,
+        url: 'https://github.com/iyanghong/clever-workbench/releases/download/v0.2.0/SHA256SUMS',
+      },
+    };
+    const installationIssue =
+      'macOS 正在从只读隔离位置运行此应用。请退出应用，通过 Finder 将正式安装包中的应用拖到“应用程序”，替换现有副本后重新打开，再检查更新。';
+    const show = (
+      status: UpdateSnapshot['status'],
+      issue: string | undefined = installationIssue,
+    ) =>
+      app.evaluate(
+        ({ BrowserWindow }, state) => {
+          BrowserWindow.getAllWindows()[0].webContents.send('update-state', state);
+        },
+        {
+          status,
+          currentVersion,
+          release,
+          installationIssue: issue,
+          preparedId: 'blocked-download',
+        },
+      );
+    await app.evaluate(({ ipcMain }) => {
+      (globalThis as any).blockedUpdateActions = [];
+      for (const channel of ['update-download', 'update-install', 'open-external']) {
+        ipcMain.removeHandler(channel);
+        ipcMain.handle(channel, (_event, _generation, value) => {
+          (globalThis as any).blockedUpdateActions.push([channel, value]);
+        });
+      }
+    });
+    const badge = page.getByRole('button', { name: '查看可用更新', exact: true });
+    await show('available');
+    await badge.click();
+    const details = page.getByRole('dialog', { name: '应用更新', exact: true });
+    await expect(details.getByRole('status')).toHaveText('需要手动安装更新');
+    await expect(details.getByText(installationIssue, { exact: true })).toBeVisible();
+    await expect(details.getByRole('button', { name: '下载更新', exact: true })).toHaveCount(0);
+    await details.getByRole('button', { name: '打开正式版本页', exact: true }).click();
+    expect(await app.evaluate(() => (globalThis as any).blockedUpdateActions)).toEqual([
+      ['open-external', release.pageUrl],
+    ]);
+    await page.keyboard.press('Escape');
+    await expect(badge).toBeFocused();
+    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await expect(
+      page.getByText(`Clever Workbench v${currentVersion}`, { exact: true }),
+    ).toBeVisible();
+    await show('available');
+    await expect(page.getByRole('button', { name: '打开正式版本页', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeEnabled();
+    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await show('ready');
+    const prompt = page.getByRole('dialog', { name: '需要手动安装更新', exact: true });
+    await expect(prompt).toBeVisible();
+    await expect(prompt.getByRole('button', { name: '立即重启并更新', exact: true })).toHaveCount(
+      0,
+    );
+    await expect(prompt.getByRole('button', { name: '继续工作', exact: true })).toBeInViewport();
+    await expect(
+      prompt.getByRole('button', { name: '打开正式版本页', exact: true }),
+    ).toBeInViewport();
+    await page.screenshot({ path: info.outputPath('manual-update-light.png') });
+    await prompt.getByRole('button', { name: '继续工作', exact: true }).click();
+    await show('ready');
+    await expect(prompt).toHaveCount(0);
+    await page.evaluate(() =>
+      window.desktop.mutate({
+        type: 'settings',
+        theme: 'dark',
+        reduceMotion: true,
+        reduceTransparency: true,
+        highContrast: true,
+      }),
+    );
+    await app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0].setContentSize(850, 620),
+    );
+    await badge.click();
+    await expect(
+      prompt.getByRole('button', { name: '打开正式版本页', exact: true }),
+    ).toBeInViewport();
+    expect(await prompt.evaluate((el) => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+    await page.screenshot({ path: info.outputPath('manual-update-dark-narrow.png') });
+    await page.keyboard.press('Escape');
+    await expect(badge).toBeFocused();
+    await show('ready', '');
+    await badge.click();
+    await expect(
+      page
+        .getByRole('dialog', { name: '更新已准备好', exact: true })
+        .getByRole('button', { name: '立即重启并更新', exact: true }),
+    ).toBeEnabled();
+    await app.evaluate(
+      ({ BrowserWindow, ipcMain }, state) => {
+        ipcMain.removeHandler('update-install');
+        ipcMain.handle('update-install', () => {
+          BrowserWindow.getAllWindows()[0].webContents.send('update-state', state);
+          throw Error(state.installationIssue);
+        });
+      },
+      {
+        status: 'ready',
+        currentVersion,
+        release,
+        installationIssue,
+        preparedId: 'blocked-download',
+      },
+    );
+    await page.getByRole('button', { name: '立即重启并更新', exact: true }).click();
+    await expect(prompt).toBeVisible();
+    await expect(prompt.getByRole('button', { name: '立即重启并更新', exact: true })).toHaveCount(
+      0,
+    );
+    await expect(prompt.getByRole('button', { name: '继续工作', exact: true })).toBeEnabled();
+    await expect(prompt.getByRole('alert')).toHaveCount(0);
+  } finally {
+    await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
 
 test('安装失败只显示可操作的原因，不泄露 IPC 错误包装', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-update-location-'));
@@ -15,6 +161,16 @@ test('安装失败只显示可操作的原因，不泄露 IPC 错误包装', asy
     'macOS 正在从只读隔离位置运行此应用。请退出应用，通过 Finder 安装到“应用程序”后重新打开。';
   try {
     const page = await app.firstWindow();
+    await app.evaluate(({ safeStorage }) => {
+      (globalThis as any).updateKeychainCalls = [];
+      for (const method of ['isEncryptionAvailable', 'encryptString', 'decryptString'] as const) {
+        safeStorage[method] = () => {
+          (globalThis as any).updateKeychainCalls.push(method);
+          throw Error('更新界面测试不得访问系统钥匙串');
+        };
+      }
+    });
+    await page.evaluate(() => window.desktop.initializeVault('fixture-update-master'));
     await page.getByRole('button', { name: '设置', exact: true }).click();
     const { currentVersion } = await page.evaluate(() => window.desktop.updateSnapshot());
     await expect(
@@ -42,12 +198,14 @@ test('安装失败只显示可操作的原因，不泄露 IPC 错误包装', asy
     await expect(backup).toBeVisible();
     await backup.getByRole('button', { name: '取消', exact: true }).click();
     expect(await app.evaluate(() => (globalThis as any).installAttempts)).toBe(0);
+    await page.evaluate(() => window.desktop.unlockVault('fixture-update-master'));
     await page.getByRole('button', { name: '重启并更新', exact: true }).click();
     await backup.getByLabel('备份密码', { exact: true }).fill('fixture-update-backup');
     await backup.getByLabel('确认备份密码', { exact: true }).fill('fixture-update-backup');
     await backup.getByRole('button', { name: '保存并继续', exact: true }).click();
     await expect(page.getByRole('alert')).toHaveText(message);
     await expect(page.getByRole('button', { name: '工作台', exact: true })).toBeEnabled();
+    expect(await app.evaluate(() => (globalThis as any).updateKeychainCalls)).toEqual([]);
   } finally {
     await app.close();
     await fs.rm(directory, { recursive: true, force: true });
@@ -430,6 +588,53 @@ test('development application exposes version details and disables online instal
     await expect(page.getByRole('button', { name: '历史版本', exact: true })).toBeVisible();
   } finally {
     await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('安装版从隔离路径夹具启动时，通过真实 IPC 在下载前报告位置限制', async () => {
+  test.skip(
+    !process.env.CWB_TEST_EXECUTABLE || process.platform !== 'darwin',
+    'Installed macOS check',
+  );
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-translocated-fixture-'));
+  const bundle = path.join(directory, 'AppTranslocation/fixture/Clever Workbench.app');
+  const data = path.join(directory, 'data');
+  let app: Awaited<ReturnType<typeof _electron.launch>> | undefined;
+  try {
+    await fs.cp(path.resolve(process.env.CWB_TEST_EXECUTABLE!, '../../..'), bundle, {
+      recursive: true,
+      verbatimSymlinks: true,
+    });
+    const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: data };
+    delete env.ELECTRON_RUN_AS_NODE;
+    delete env.VITE_DEV_SERVER_URL;
+    app = await _electron.launch({
+      executablePath: path.join(bundle, 'Contents/MacOS/Clever Workbench'),
+      args: [],
+      env,
+    });
+    const page = await app.firstWindow();
+    await expect(page.getByRole('button', { name: '工作台', exact: true })).toBeVisible();
+    expect(await app.evaluate(({ app }) => app.getPath('exe'))).toContain(
+      '/AppTranslocation/fixture/',
+    );
+    await expect
+      .poll(
+        async () => (await page.evaluate(() => window.desktop.updateSnapshot())).installationIssue,
+      )
+      .toMatch(/macOS.*隔离/);
+    expect((await page.evaluate(() => window.desktop.downloadUpdate())).installationIssue).toMatch(
+      /macOS.*隔离/,
+    );
+    expect(
+      await fs.readdir(path.join(data, 'updates', 'staging')).catch((error) => {
+        if (error.code === 'ENOENT') return [];
+        throw error;
+      }),
+    ).toEqual([]);
+  } finally {
+    await app?.close();
     await fs.rm(directory, { recursive: true, force: true });
   }
 });

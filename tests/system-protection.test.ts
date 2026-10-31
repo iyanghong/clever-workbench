@@ -53,6 +53,37 @@ test.each(['system', 'password'])('查询 %s 凭据状态与锁定不访问系�
   expect(decrypt).not.toHaveBeenCalled();
 });
 
+test('有效的系统凭据会话复用已解锁密钥，锁定或过期后才重新访问钥匙串', () => {
+  const { vault, system } = device();
+  vault.unlockSystem();
+  const decrypt = vi.spyOn(system, 'decrypt');
+  vault.unlockSystem();
+  expect(vault.status().unlocked).toBe(true);
+  expect(decrypt).not.toHaveBeenCalled();
+  vault.lock();
+  vault.unlockSystem();
+  expect(decrypt).toHaveBeenCalledTimes(1);
+  const expired = Date.now() + 16 * 60_000;
+  vi.spyOn(Date, 'now').mockReturnValue(expired);
+  vault.unlockSystem();
+  expect(decrypt).toHaveBeenCalledTimes(2);
+});
+
+test('系统凭据锁定后自动备份不访问钥匙串', async () => {
+  const { store, vault, backups, system } = device();
+  await vault.configureBackup('fixture-automatic-backup-password');
+  vault.lock();
+  const available = vi.spyOn(system, 'available');
+  const decrypt = vi.spyOn(system, 'decrypt');
+  const encrypt = vi.spyOn(system, 'encrypt');
+  await backups.automatic(true);
+  expect(store.settings().lastBackupAt).not.toBeNull();
+  expect(vault.status().unlocked).toBe(false);
+  expect(available).not.toHaveBeenCalled();
+  expect(decrypt).not.toHaveBeenCalled();
+  expect(encrypt).not.toHaveBeenCalled();
+});
+
 test.each([
   ['system', 'system'],
   ['system', 'password'],

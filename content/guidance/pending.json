@@ -2,22 +2,22 @@
   "schemaVersion": 1,
   "kind": "release-draft",
   "operationChange": "changed",
-  "summary": "更新下载增加有限自动重试与安全续传，网络中断后可继续下载或按指引手动安装。",
+  "summary": "更新前提前提示安装位置限制，并减少备份配置和凭据解锁时不必要的钥匙串请求。",
   "changes": [
     {
-      "id": "recover-update-download",
-      "summary": "下载连接中断时查看进度与尝试次数，安全条件满足时自动续传；也可取消或重新下载。",
+      "id": "update-location-preflight",
+      "summary": "当前位置无法自动安装时，直接打开正式版本页或继续工作；修复临时权限问题后可重新检查并使用已下载的包。",
       "guideIds": ["application-update"]
     },
     {
-      "id": "manual-update-transition",
-      "summary": "旧版遇到反复下载失败时，先备份资料并核对正式 DMG，再经 Finder 手动替换应用。",
-      "guideIds": ["application-update", "update-history-and-recovery"]
+      "id": "backup-protection-on-confirm",
+      "summary": "未启用应用主密码时，打开或取消备份密码配置不请求钥匙串授权，确认保存后才按需申请。",
+      "guideIds": ["backup-password"]
     },
     {
-      "id": "update-history-diagnostics",
-      "summary": "更新历史区分下载中断、取消、安装与健康结果，并显示本机脱敏诊断。",
-      "guideIds": ["update-history-and-recovery"]
+      "id": "reuse-unlocked-secret-session",
+      "summary": "已解锁且未过期时复用当前凭据会话；锁定后的保护保持不变，跨版本仍可能需要系统授权。",
+      "guideIds": ["secret-protection"]
     }
   ],
   "review": {
@@ -28,7 +28,7 @@
     "environment": "",
     "checks": [],
     "knownGaps": [
-      "更新重试、续传、取消及人工安装步骤仍需按拟发布源码与 macOS 安装包人工核对。",
+      "安装位置提示与钥匙串请求时机仍需按拟发布源码和 macOS 安装包人工核对；尚未验证跨版本免授权。",
       "维护者尚未填写本次实际发布源码的人工核对记录；自动测试不替代维护者核对。"
     ]
   }

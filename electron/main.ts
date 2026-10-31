@@ -327,6 +327,9 @@ app
       packaged: app.isPackaged,
       platform: process.platform,
       arch: process.arch,
+      preflight: async () => {
+        await resolveUpdateTarget(app.getPath('exe'));
+      },
       fetch: fetchUpdate,
       githubCredential: () => localGitHubCredential(app.getPath('userData')),
     });
@@ -421,9 +424,7 @@ app
     });
     installation = new UpdateInstallation({
       prepared: () => updates.preparedUpdate(),
-      preflight: async () => {
-        await resolveUpdateTarget(app.getPath('exe'));
-      },
+      preflight: () => updates.preflight(),
       status: (state) =>
         updates.setInstallationState(
           state as Parameters<UpdateCoordinator['setInstallationState']>[0],

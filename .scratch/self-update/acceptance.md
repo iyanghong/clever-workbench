@@ -60,3 +60,22 @@ In these historical local runs, the real quarantined full application did **not*
 ## Security and recovery boundaries
 
 The helper fixture already demonstrated local same-path replacement/relaunch and restoration after an actual filesystem rename refusal. The full-app acceptance adds the real save, encrypted backup, download extraction and startup-health path. Gatekeeper rejection of a quarantined ad-hoc package is an allowed **manual** outcome, never reported as healthy success. Neither the harness nor updater removes quarantine or changes Gatekeeper settings. App package restoration and backup restoration are separate operations; the harness restores data only into a new disposable profile with its known test password.
+
+## 2026-10-30：提前提示安装位置限制
+
+基于 `984e19a` 的工作区改动，应用版本仍为 0.1.15，未发布或替换本机正式应用。新增回归先确认旧实现没有提前传递安装限制、界面仍显示“有新版本”；修改后，版本检查、下载前及安装请求复用实际运行位置预检，快照单独保留 `installationIssue`。受限时界面提供正式版本页与继续工作入口；位置恢复后保留已下载的包。
+
+- `npm run build` 和 `npm run typecheck` 通过。构建仍有既有的编辑器图标脚本未按模块打包提示。
+- 更新检查、下载、安装、恢复四组 Vitest：40 项通过，真实 ZIP 验证用例因未设置 `CWB_UPDATE_ZIP` 跳过。本轮未修改包校验、替换助手或加密格式。
+- Electron 开发运行的更新回归：7 项通过，3 项安装版用例按条件跳过。
+- 通过 `electron-builder --mac --arm64 --dir --publish never` 在 `release/location-preflight-check/` 生成独立 ad-hoc 测试包，使用 `CWB_TEST_EXECUTABLE` 和临时资料目录运行：9 项通过，1 项开发模式用例跳过。覆盖浅色、深色高对比度、减少透明度、减少动态效果、窄窗口、关闭与 Esc、焦点返回、正式版本页目标以及安装失败后的按钮切换。
+- 打包应用另复制到临时 `AppTranslocation/fixture/` 路径，实际启动后通过真实 IPC 确认下载前返回位置限制，且不创建下载暂存文件。这是路径夹具，不能当作 macOS 实际隔离挂载或 Finder 恢复验收。
+- 首次打包回归中，旧的安装错误呈现用例在配置备份密码前访问真实钥匙串，发生授权弹窗及一次点击超时；随后重试通过。这暴露了测试隔离不足，不能把超时抹去。现已让该界面用例使用临时主密码资料，拦截并断言系统加密调用为零；最终完整打包回归通过。
+
+未执行真实 GitHub 下载、实际应用替换、Gatekeeper 授权或跨版本钥匙串免授权验收，也未重复原生鼠标拖拽命中检查。本轮未修改拖拽区域。现有 ad-hoc 签名在不同构建间身份会变化，更新后可能再次请求钥匙串授权；这项限制没有由本轮界面优化解决。历史人工恢复和失败结果保持原结论。
+
+### 2026-10-31：同步最新源码后的验证
+
+已快进到 `8e7c7a9`（应用版本 0.1.18），恢复本轮改动并处理四个重叠文件的冲突，保留远端的下载重试、续传、取消与独占指引弹窗行为。合并后类型检查、构建及格式检查通过；更新检查、下载、续传、安装、恢复与系统保护六组测试共 72 项通过，未提供真实 ZIP 的用例跳过；Electron 开发运行的更新回归 7 项通过、3 项安装版用例按条件跳过。此处记录同步后的结果，不替代上面的旧基线打包证据；未重新执行安装包或真实升级验收。
+
+应用内更新、备份密码和秘密保护指引已同步本轮操作变化，下一次发布的待发布说明保留人工核对待办。源码提交与推送不代表已发布新版或已替换本机应用。

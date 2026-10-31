@@ -4,6 +4,50 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
+test('打开或取消备份密码配置不访问钥匙串，确认保存后才申请系统保护', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-backup-keychain-'));
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env });
+  try {
+    const page = await app.firstWindow();
+    await app.evaluate(({ safeStorage }) => {
+      (globalThis as any).backupKeychainCalls = [];
+      for (const method of ['isEncryptionAvailable', 'encryptString', 'decryptString'] as const) {
+        safeStorage[method] = () => {
+          (globalThis as any).backupKeychainCalls.push(method);
+          throw Error('钥匙串当前不可用');
+        };
+      }
+    });
+    const calls = () => app.evaluate(() => (globalThis as any).backupKeychainCalls);
+    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('button', { name: '设置备份密码', exact: true }).click();
+    const setup = page.getByRole('dialog', { name: '设置备份密码', exact: true });
+    await expect(setup).toBeVisible();
+    expect(await calls()).toEqual([]);
+    await setup.getByRole('button', { name: '取消', exact: true }).click();
+    expect(await calls()).toEqual([]);
+    await page.getByRole('button', { name: '设置备份密码', exact: true }).click();
+    await setup.getByLabel('备份密码', { exact: true }).fill('fixture-backup-password');
+    await setup.getByLabel('确认备份密码', { exact: true }).fill('fixture-backup-password');
+    await setup.getByRole('button', { name: '保存并继续', exact: true }).click();
+    await expect(setup.getByRole('alert')).toContainText('钥匙串当前不可用');
+    await expect(setup.getByLabel('备份密码', { exact: true })).toHaveValue(
+      'fixture-backup-password',
+    );
+    expect(await calls()).toEqual(['isEncryptionAvailable']);
+    expect(await page.evaluate(() => window.desktop.vaultStatus())).toMatchObject({
+      unlocked: false,
+      backupConfigured: false,
+    });
+    await setup.getByRole('button', { name: '取消', exact: true }).click();
+  } finally {
+    await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('启动、浏览、主密码解锁与重启不访问系统钥匙串', async () => {
   test.skip(Boolean(process.env.CWB_TEST_EXECUTABLE), '此用例需在开发入口加载前监测系统加密调用');
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-no-keychain-'));

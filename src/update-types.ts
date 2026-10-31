@@ -30,6 +30,7 @@ export type UpdateStatus =
   | 'available'
   | 'error';
 export interface UpdateSnapshot {
+  installationIssue?: string;
   preparedId?: string;
   recovery?: { outcome: string; message: string };
   progress?: { received: number; total: number };

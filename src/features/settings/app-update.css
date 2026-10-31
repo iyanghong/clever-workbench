@@ -11,6 +11,10 @@
 .update-restart-actions {
   flex-shrink: 0;
 }
+.update-restart-icon[data-tone='warning'] {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 10%, var(--panel));
+}
 .update-restart-copy {
   overflow: auto;
   min-height: 0;

@@ -88,10 +88,17 @@ export function UpdateDetails({
     ['checking', 'downloading', 'verifying', 'preparing', 'installing', 'validating'].includes(
       status,
     );
-  const canDownload = !!state?.release && (status === 'available' || status === 'error');
-  const canInstall = status === 'ready';
+  const manualInstall =
+    !!state?.installationIssue &&
+    !!state.release &&
+    !!status &&
+    ['available', 'ready', 'error'].includes(status);
+  const canDownload =
+    !state?.installationIssue && !!state?.release && (status === 'available' || status === 'error');
+  const canInstall = status === 'ready' && !state?.installationIssue;
   const canCancelDownload = status === 'downloading';
   const canManualInstall =
+    !manualInstall &&
     !!state?.release &&
     status === 'error' &&
     !!state.downloadErrorCode &&
@@ -109,8 +116,9 @@ export function UpdateDetails({
         'HTTP_503',
         'HTTP_504',
       ].includes(state.downloadErrorCode));
-  const tone =
-    status === 'error'
+  const tone = manualInstall
+    ? 'warning'
+    : status === 'error'
       ? 'error'
       : status === 'manual' || status === 'incompatible'
         ? 'warning'
@@ -129,6 +137,7 @@ export function UpdateDetails({
           ? DownloadSimpleIcon
           : InfoIcon;
   const description =
+    (manualInstall && state?.installationIssue) ||
     state?.message ||
     (status && descriptions[status]) ||
     '在这里检查正式版本，查看更新内容与安装记录。';
@@ -157,13 +166,16 @@ export function UpdateDetails({
           <StatusIcon size={25} weight={tone === 'success' ? 'fill' : 'regular'} />
         </div>
         <div className="update-status-copy">
-          <h3 role="status">{state ? labels[state.status] : '正在读取版本…'}</h3>
+          <h3 role="status">
+            {manualInstall ? '需要手动安装更新' : state ? labels[state.status] : '正在读取版本…'}
+          </h3>
           <p>{description}</p>
           {status === 'downloading' && state?.downloadAttempt && (
             <p>
               下载尝试 {state.downloadAttempt.current} / {state.downloadAttempt.maximum}
             </p>
           )}
+          {manualInstall && <p>请从正式版本页面下载 DMG 安装包。替换应用无需删除现有资料。</p>}
           {state?.retryAt && <p>可重试时间：{formatDate(state.retryAt)}</p>}
         </div>
         {progress && (
@@ -260,7 +272,9 @@ export function UpdateDetails({
           <div className="update-primary-actions">
             {allowCheck && (
               <button
-                className={canDownload || canInstall ? 'secondary-button' : 'primary-button'}
+                className={
+                  canDownload || canInstall || manualInstall ? 'secondary-button' : 'primary-button'
+                }
                 disabled={!state || status === 'unsupported' || busy || canInstall}
                 onClick={() => {
                   setError('');
@@ -294,6 +308,9 @@ export function UpdateDetails({
               >
                 取消下载
               </button>
+            )}
+            {manualInstall && (
+              <OfficialReleaseButton url={state.release!.pageUrl} onError={setError} />
             )}
             {canInstall && (
               <button
@@ -364,7 +381,7 @@ export function UpdateBadge({ state }: { state: UpdateSnapshot | null }) {
             else setOpen(true);
           }}
           aria-label="查看可用更新"
-          title={`新版本 v${state.release!.version} · ${labels[state.status]}`}
+          title={`新版本 v${state.release!.version} · ${state.installationIssue ? '需要手动安装更新' : labels[state.status]}`}
         >
           <DownloadSimpleIcon size={12} aria-hidden="true" />
           更新
@@ -399,10 +416,11 @@ function UpdateRestartPrompt({
 }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const manualInstall = !!state.installationIssue;
   return (
     <Dialog
       className="modal update-restart-dialog"
-      title="更新已准备好"
+      title={manualInstall ? '需要手动安装更新' : '更新已准备好'}
       description={`v${state.release?.version} 已下载并通过校验`}
       onClose={onClose}
       closeDisabled={busy}
@@ -410,12 +428,25 @@ function UpdateRestartPrompt({
       onShown={onShown}
     >
       <div className="update-restart-copy">
-        <div className="update-restart-icon" aria-hidden="true">
-          <ArrowClockwiseIcon size={28} />
+        <div
+          className="update-restart-icon"
+          data-tone={manualInstall ? 'warning' : 'accent'}
+          aria-hidden="true"
+        >
+          {manualInstall ? <WarningCircleIcon size={28} /> : <ArrowClockwiseIcon size={28} />}
         </div>
-        <p>现在重启以安装新版本？重启前会保存当前工作，并创建完整加密备份。</p>
-        <p>选择稍后重启可继续工作，准备好后点击品牌旁的更新按钮即可。</p>
-        {(error || state.message) && (
+        {manualInstall ? (
+          <>
+            <p>{state.installationIssue}</p>
+            <p>请从正式版本页面下载 DMG 安装包。替换应用无需删除现有资料。</p>
+          </>
+        ) : (
+          <>
+            <p>现在重启以安装新版本？重启前会保存当前工作，并创建完整加密备份。</p>
+            <p>选择稍后重启可继续工作，准备好后点击品牌旁的更新按钮即可。</p>
+          </>
+        )}
+        {(error || (!manualInstall && state.message)) && error !== state.installationIssue && (
           <p role="alert" className="error-text">
             {error || state.message}
           </p>
@@ -423,32 +454,58 @@ function UpdateRestartPrompt({
       </div>
       <footer className="update-restart-actions">
         <button className="secondary-button" disabled={busy} onClick={onClose}>
-          稍后重启
+          {manualInstall ? '继续工作' : '稍后重启'}
         </button>
-        <button
-          className="primary-button"
-          disabled={busy}
-          onClick={() => {
-            setBusy(true);
-            setError('');
-            void window.desktop
-              .installUpdate()
-              .catch((cause) => {
-                setError(
-                  (cause instanceof Error ? cause.message : '更新准备失败，请重试。').replace(
-                    /^(?:Error: )?Error invoking remote method '[^']+': (?:Error: )?/,
-                    '',
-                  ),
-                );
-              })
-              .finally(() => setBusy(false));
-          }}
-        >
-          <ArrowClockwiseIcon size={16} aria-hidden="true" />
-          {busy ? '正在准备…' : '立即重启并更新'}
-        </button>
+        {manualInstall ? (
+          <OfficialReleaseButton url={state.release!.pageUrl} onError={setError} />
+        ) : (
+          <button
+            className="primary-button"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              setError('');
+              void window.desktop
+                .installUpdate()
+                .catch((cause) => {
+                  setError(
+                    (cause instanceof Error ? cause.message : '更新准备失败，请重试。').replace(
+                      /^(?:Error: )?Error invoking remote method '[^']+': (?:Error: )?/,
+                      '',
+                    ),
+                  );
+                })
+                .finally(() => setBusy(false));
+            }}
+          >
+            <ArrowClockwiseIcon size={16} aria-hidden="true" />
+            {busy ? '正在准备…' : '立即重启并更新'}
+          </button>
+        )}
       </footer>
     </Dialog>
+  );
+}
+function OfficialReleaseButton({
+  url,
+  onError,
+}: {
+  url: string;
+  onError: (message: string) => void;
+}) {
+  return (
+    <button
+      className="primary-button"
+      onClick={() => {
+        onError('');
+        void window.desktop
+          .openExternal(url)
+          .catch(() => onError('无法打开正式版本页面，请稍后重试。'));
+      }}
+    >
+      <ArrowSquareOutIcon size={16} aria-hidden="true" />
+      打开正式版本页
+    </button>
   );
 }
 export function AboutUpdate() {

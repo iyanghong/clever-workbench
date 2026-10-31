@@ -22,6 +22,7 @@ interface Options {
   packaged: boolean;
   platform: string;
   arch: string;
+  preflight?: () => Promise<void>;
   fetch?: typeof fetch;
   githubCredential?: () => Promise<string | undefined>;
   now?: () => number;
@@ -160,6 +161,24 @@ export class UpdateCoordinator {
   preparedUpdate() {
     return this.state.status === 'ready' && this.prepared ? { ...this.prepared } : undefined;
   }
+  async preflight(): Promise<void> {
+    try {
+      await this.options.preflight?.();
+    } catch (error) {
+      const installationIssue =
+        error instanceof Error ? error.message : '当前应用位置无法自动安装更新。';
+      this.set({ ...this.state, installationIssue });
+      throw error;
+    }
+    if (this.state.installationIssue) {
+      this.set({
+        ...this.state,
+        message:
+          this.state.message === this.state.installationIssue ? undefined : this.state.message,
+        installationIssue: undefined,
+      });
+    }
+  }
   setInstallationState(value: {
     status: 'preparing' | 'installing' | 'validating' | 'success' | 'manual' | 'error' | 'ready';
     message?: string;
@@ -187,6 +206,11 @@ export class UpdateCoordinator {
     return this.downloading;
   }
   private async downloadRelease(cancelSignal: AbortSignal) {
+    try {
+      await this.preflight();
+    } catch {
+      return this.snapshot();
+    }
     const release = this.state.release!;
     let directory: string | undefined;
     let received = 0;
@@ -560,6 +584,7 @@ export class UpdateCoordinator {
     this.state = {
       currentVersion: this.options.currentVersion,
       recovery: this.recovery,
+      installationIssue: this.state.installationIssue,
       checkedAt: new Date(this.now()).toISOString(),
       ...value,
     } as UpdateSnapshot;
@@ -584,10 +609,11 @@ export class UpdateCoordinator {
     this.timer = undefined;
   }
   async check(force = false): Promise<UpdateSnapshot> {
-    if (
-      this.downloading ||
-      ['ready', 'preparing', 'installing', 'validating'].includes(this.state.status)
-    )
+    if (this.state.status === 'ready') {
+      if (force) await this.preflight().catch(() => {});
+      return this.snapshot();
+    }
+    if (this.downloading || ['preparing', 'installing', 'validating'].includes(this.state.status))
       return this.snapshot();
     if (this.state.status === 'unsupported') return this.snapshot();
     if (this.pending) return this.pending;
@@ -600,6 +626,8 @@ export class UpdateCoordinator {
   }
   private async fetchRelease(): Promise<UpdateSnapshot> {
     this.set({ status: 'checking' });
+    // Keep release discovery available even when this copy needs a manual installation.
+    await this.preflight().catch(() => {});
     try {
       await this.readCredential();
       const response = await (this.options.fetch ?? fetch)(LATEST, {

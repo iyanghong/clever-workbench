@@ -116,7 +116,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     const current = await window.desktop.vaultStatus();
     setStatus(current);
     if (current.backupConfigured && !change) return true;
-    if (!(await ensureUnlocked())) return false;
+    // System protection is requested by configureBackup only after the user confirms saving.
+    if (current.mode !== 'system' && !(await ensureUnlocked())) return false;
     if (backupRequest.current) return backupRequest.current.promise;
     let resolve!: (value: boolean) => void;
     const promise = new Promise<boolean>((done) => {

@@ -57,6 +57,77 @@ async function fixture() {
   for await (const chunk of zip.outputStream) chunks.push(Buffer.from(chunk));
   return Buffer.concat(chunks);
 }
+test('rechecking a prepared update restores installation after a location issue without downloading again', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'prepared-update-location-'));
+  const zip = await fixture();
+  const name = 'Clever-Workbench-0.2.0-arm64.zip';
+  const sums = Buffer.from(`${createHash('sha256').update(zip).digest('hex')}  ${name}\n`);
+  const issue = '当前应用所在目录不可写。';
+  let writable = true;
+  const requests: string[] = [];
+  const updates = new UpdateCoordinator({
+    currentVersion: '0.1.0',
+    packaged: true,
+    platform: 'darwin',
+    arch: 'arm64',
+    stagingDirectory: dir,
+    preflight: async () => {
+      if (!writable) throw Error(issue);
+    },
+    fetch: async (input) => {
+      const url = String(input);
+      requests.push(url);
+      if (url.endsWith('/latest'))
+        return Response.json({
+          tag_name: 'v0.2.0',
+          draft: false,
+          prerelease: false,
+          assets: [
+            [name, zip.length],
+            ['SHA256SUMS', sums.length],
+          ].map(([name, size]) => ({
+            name,
+            size,
+            browser_download_url: `https://github.com/iyanghong/clever-workbench/releases/download/v0.2.0/${name}`,
+          })),
+        });
+      return new Response(new Uint8Array(url.endsWith('SHA256SUMS') ? sums : zip));
+    },
+    runCommand: async (command) =>
+      command.endsWith('plutil')
+        ? JSON.stringify({
+            CFBundleIdentifier: 'com.cleverworkbench.desktop',
+            CFBundleShortVersionString: '0.2.0',
+            CFBundleExecutable: 'Clever Workbench',
+          })
+        : command.endsWith('lipo')
+          ? 'arm64'
+          : '',
+  });
+  try {
+    await updates.check();
+    const ready = await updates.download();
+    expect(ready.status).toBe('ready');
+    const prepared = updates.preparedUpdate();
+    const downloaded = [...requests];
+    writable = false;
+    expect(await updates.check(true)).toMatchObject({
+      status: 'ready',
+      preparedId: ready.preparedId,
+      installationIssue: issue,
+    });
+    writable = true;
+    const recovered = await updates.check(true);
+    expect(recovered.status).toBe('ready');
+    expect(recovered.installationIssue).toBeUndefined();
+    expect(recovered.preparedId).toBe(ready.preparedId);
+    expect(updates.preparedUpdate()).toEqual(prepared);
+    expect(await fs.stat(prepared!.appPath)).toBeDefined();
+    expect(requests).toEqual(downloaded);
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
 test('private assets use authenticated GitHub API and redirects never forward credentials', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'private-update-'));
   const zip = await fixture();

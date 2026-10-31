@@ -208,6 +208,11 @@ export class Vault {
   }
   unlockSystem() {
     if (this.mode() !== 'system') throw new Error('当前凭据需要使用主密码解锁。');
+    this.checkIdle();
+    if (this.key) {
+      this.lastActivity = Date.now();
+      return;
+    }
     const current = this.store.get<SystemProtection | null>('systemProtection', null);
     if (!current && this.store.db.prepare('SELECT 1 FROM secrets LIMIT 1').get())
       throw new Error('秘密缺少保护材料，请从完整备份恢复。');
@@ -228,7 +233,6 @@ export class Vault {
         }
       }
       this.generation++;
-      this.key?.fill(0);
       this.key = Buffer.from(key);
       this.dataGeneration = this.store.generation;
       this.protectionId = config.id;
