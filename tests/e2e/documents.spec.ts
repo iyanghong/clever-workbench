@@ -109,3 +109,126 @@ test('未命名文档粘贴图片后立即切换，重启后保留正文与图�
     await fs.rm(directory, { recursive: true, force: true });
   }
 });
+
+test('居中稿纸可切换专注编辑，退出后保留标题、正文与文档列表', async ({}, testInfo) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-document-focus-'));
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env });
+  try {
+    const page = await app.firstWindow();
+    await page.getByLabel('文档', { exact: true }).click();
+    await page.getByRole('button', { name: '新建文档', exact: true }).click();
+    await expect(page.locator('.documents-index')).toBeVisible();
+    await expect(page.locator('.documents-layout')).not.toHaveClass(/focused/);
+    await page.getByRole('button', { name: '专注编辑', exact: true }).click();
+    await expect(page.locator('.documents-index')).toBeHidden();
+    await expect(page.locator('.document-metadata')).toBeHidden();
+    await expect(page.getByRole('button', { name: '退出专注', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await page.getByLabel('文档标题').fill('专注编辑中的方案');
+    await page
+      .getByRole('textbox', { name: '工作内容' })
+      .fill('隐藏列表后仍然可以持续记录，退出专注不能丢失内容。');
+    await page.getByRole('button', { name: '退出专注', exact: true }).click();
+    await expect(page.locator('.documents-index')).toBeVisible();
+    await expect(page.locator('.document-metadata')).toBeVisible();
+    await expect(page.getByRole('button', { name: '已保存', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: '文档 专注编辑中的方案', exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole('textbox', { name: '工作内容' })).toContainText(
+      '退出专注不能丢失内容',
+    );
+    await page.screenshot({ path: testInfo.outputPath('document-focus-restored.png') });
+  } finally {
+    await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('多级大纲支持长标题、三种布局和重启后的展开状态记忆', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-document-outline-'));
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  let app = await electron.launch({ args: ['.'], env });
+  const longHeading = '生产环境高峰期慢查询与跨节点连接泄漏联合排查记录';
+  try {
+    let page = await app.firstWindow();
+    await page.getByLabel('文档', { exact: true }).click();
+    await page.getByRole('button', { name: '新建文档', exact: true }).click();
+    await page.getByLabel('文档标题').fill('多级长标题大纲');
+    await page.getByRole('button', { name: 'Markdown 源码', exact: true }).click();
+    await page
+      .getByLabel('Markdown 源码内容')
+      .fill(
+        `## 问题现象\n\n正文\n\n## 排查过程\n\n正文\n\n### ${longHeading}\n\n正文\n\n## 处理方案\n\n正文\n\n## 验证结果\n\n正文`,
+      );
+    await page.getByRole('button', { name: '即时排版', exact: true }).click();
+    await page.getByRole('button', { name: '专注编辑', exact: true }).click();
+    await page.getByRole('button', { name: '大纲', exact: true }).click();
+    let panel = page.getByRole('complementary', { name: '文档大纲' });
+    await expect(panel).toHaveAttribute('data-layout', 'popover');
+    await expect(panel.getByRole('button', { name: longHeading, exact: true })).toHaveAttribute(
+      'title',
+      longHeading,
+    );
+    const parentIndent = await panel
+      .getByRole('button', { name: '排查过程', exact: true })
+      .evaluate((element) => parseFloat(getComputedStyle(element).paddingInlineStart));
+    const childIndent = await panel
+      .getByRole('button', { name: longHeading, exact: true })
+      .evaluate((element) => parseFloat(getComputedStyle(element).paddingInlineStart));
+    expect(childIndent).toBeGreaterThan(parentIndent);
+    await panel.getByRole('button', { name: '左侧', exact: true }).click();
+    await expect(panel).toHaveAttribute('data-layout', 'left');
+    await panel.getByRole('button', { name: '右侧', exact: true }).click();
+    await expect(panel).toHaveAttribute('data-layout', 'right');
+    await panel.getByRole('button', { name: longHeading, exact: true }).click();
+    await expect(panel.getByRole('button', { name: longHeading, exact: true })).toHaveAttribute(
+      'aria-current',
+      'location',
+    );
+    await expect(panel).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem('document-outline-layout'))).toBe(
+      'right',
+    );
+    expect(await page.evaluate(() => localStorage.getItem('document-outline-open'))).toBe('true');
+
+    await app.close();
+    app = await electron.launch({ args: ['.'], env });
+    page = await app.firstWindow();
+    await page.getByLabel('文档', { exact: true }).click();
+    await page.getByRole('button', { name: '文档 多级长标题大纲', exact: true }).click();
+    await page.getByRole('button', { name: '专注编辑', exact: true }).click();
+    panel = page.getByRole('complementary', { name: '文档大纲' });
+    await expect(panel).toBeVisible();
+    await expect(panel).toHaveAttribute('data-layout', 'right');
+    await panel.getByRole('button', { name: '弹出', exact: true }).click();
+    await expect(panel).toHaveAttribute('data-layout', 'popover');
+    await panel.getByRole('button', { name: '关闭大纲', exact: true }).click();
+    await expect(panel).toHaveCount(0);
+
+    await app.close();
+    app = await electron.launch({ args: ['.'], env });
+    page = await app.firstWindow();
+    await page.getByLabel('文档', { exact: true }).click();
+    await page.getByRole('button', { name: '文档 多级长标题大纲', exact: true }).click();
+    await page.getByRole('button', { name: '专注编辑', exact: true }).click();
+    await expect(page.getByRole('button', { name: '大纲', exact: true })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    await expect(page.getByRole('complementary', { name: '文档大纲' })).toHaveCount(0);
+    await page.getByRole('button', { name: '大纲', exact: true }).click();
+    await expect(page.getByRole('complementary', { name: '文档大纲' })).toHaveAttribute(
+      'data-layout',
+      'popover',
+    );
+  } finally {
+    await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});

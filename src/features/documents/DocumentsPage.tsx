@@ -7,7 +7,11 @@ import {
   ArrowUpRightIcon,
   XIcon,
   ArrowCounterClockwiseIcon,
+  ArrowsOutSimpleIcon,
+  ArrowsInSimpleIcon,
+  ListBulletsIcon,
 } from '@phosphor-icons/react';
+import { DocumentOutline, useDocumentOutline } from './DocumentOutline';
 import type { ModuleProps } from '../../app/modules';
 import type { Snapshot } from '../../types';
 import type { DocumentEdit, DocumentRecord } from '../../document-types';
@@ -27,9 +31,13 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
     [trash, setTrash] = useState(Boolean(route.trash)),
     [scope, setScope] = useState('all'),
     [error, setError] = useState(''),
+    [focusMode, setFocusMode] = useState(false),
     [loading, setLoading] = useState(true);
   const saves = useSaveGroup(registerFlush),
     busy = useRef(false);
+  useEffect(() => {
+    if (!document) setFocusMode(false);
+  }, [document]);
   const selectedSummary = snapshot?.documents.find((item) => item.id === document?.id);
   const visibleScope =
     selectedSummary &&
@@ -166,7 +174,7 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
           新建文档
         </button>
       </header>
-      <div className="documents-layout">
+      <div className={`documents-layout ${focusMode ? 'focused' : ''}`}>
         <aside className="documents-index">
           <div className="ledger-index-title">
             <h2>文档</h2>
@@ -246,6 +254,8 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
             navigate={navigate}
             registerFlush={saves.register}
             setContext={setContext}
+            focused={focusMode}
+            onToggleFocus={() => setFocusMode((focused) => !focused)}
             onSnapshot={setSnapshot}
             onError={setError}
             onDocument={setDocument}
@@ -280,6 +290,8 @@ function DocumentEditor({
   snapshot,
   navigate,
   registerFlush,
+  focused,
+  onToggleFocus,
   onSnapshot,
   onError,
   onDocument,
@@ -290,6 +302,8 @@ function DocumentEditor({
   snapshot: Snapshot;
   navigate: ModuleProps['navigate'];
   registerFlush: ModuleProps['registerFlush'];
+  focused: boolean;
+  onToggleFocus: () => void;
   onSnapshot: (snapshot: Snapshot) => void;
   onError: (message: string) => void;
   onDocument: (document: DocumentRecord | null) => void;
@@ -326,6 +340,8 @@ function DocumentEditor({
   }, [form.value.systemId, form.value.environmentId, form.value.resourceId, form.value.projectId]);
   const latest = useRef(form.value);
   latest.current = form.value;
+  const sectionRef = useRef<HTMLElement>(null);
+  const outline = useDocumentOutline(sectionRef, focused);
   useEffect(() => registerFlush(form.flush), [registerFlush, form.flush]);
   const [purge, setPurge] = useState(false),
     [busy, setBusy] = useState(false),
@@ -348,15 +364,41 @@ function DocumentEditor({
     }
   }
   return (
-    <section className="document-editor" aria-label="文档详情">
+    <section
+      ref={sectionRef}
+      className="document-editor"
+      aria-label="文档详情"
+      data-outline={focused && outline.open ? outline.layout : undefined}
+    >
       <div className="record-subheading">
         <span>{deleted ? '回收站中的文档' : `创建于 ${dateLabel(document.createdAt)}`}</span>
-        <button
-          className="save-indicator"
-          onClick={() => void form.flush().catch((cause) => onError(String(cause)))}
-        >
-          {form.status}
-        </button>
+        <div className="document-header-actions">
+          <button
+            className="save-indicator"
+            onClick={() => void form.flush().catch((cause) => onError(String(cause)))}
+          >
+            {form.status}
+          </button>
+          {focused && (
+            <button
+              className="text-button document-outline-toggle"
+              aria-expanded={outline.open}
+              aria-controls="document-focus-outline"
+              onClick={() => outline.setOpen((open) => !open)}
+            >
+              <ListBulletsIcon size={15} />
+              大纲
+            </button>
+          )}
+          <button
+            className="text-button document-focus-toggle"
+            aria-pressed={focused}
+            onClick={onToggleFocus}
+          >
+            {focused ? <ArrowsInSimpleIcon size={15} /> : <ArrowsOutSimpleIcon size={15} />}
+            {focused ? '退出专注' : '专注编辑'}
+          </button>
+        </div>
       </div>
       <input
         className="document-title"
@@ -366,60 +408,63 @@ function DocumentEditor({
         disabled={deleted}
         onChange={(event) => form.change({ ...form.value, title: event.target.value })}
       />
-      <div className="document-context">
-        <ContextPicker
-          mode="system"
-          unassignedSystemLabel="通用文档"
-          snapshot={snapshot}
-          value={form.value}
-          disabled={deleted}
-          onChange={(context) => form.change({ ...form.value, ...context })}
-        />
-        <label>
-          项目（可选）
-          <select
-            aria-label="文档所属项目"
-            value={form.value.projectId ?? ''}
+      <div className="document-metadata">
+        <div className="document-context">
+          <ContextPicker
+            mode="system"
+            unassignedSystemLabel="通用文档"
+            snapshot={snapshot}
+            value={form.value}
             disabled={deleted}
-            onChange={(event) =>
-              form.change({ ...form.value, projectId: event.target.value || null })
-            }
-          >
-            <option value="">未分类</option>
-            {snapshot.projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-                {project.archivedAt ? ' · 已归档' : ''}
-              </option>
-            ))}
-          </select>
-        </label>
-        {form.value.systemId && (
-          <button
-            className="text-button"
-            aria-label="回到关联对象"
-            onClick={() =>
-              void navigate({
-                module: 'ledger',
-                objectId: form.value.resourceId ?? form.value.environmentId ?? form.value.systemId!,
-              })
-            }
-          >
-            {contextLabel(snapshot, form.value)}
-            <ArrowUpRightIcon size={14} />
-          </button>
-        )}
+            onChange={(context) => form.change({ ...form.value, ...context })}
+          />
+          <label>
+            项目（可选）
+            <select
+              aria-label="文档所属项目"
+              value={form.value.projectId ?? ''}
+              disabled={deleted}
+              onChange={(event) =>
+                form.change({ ...form.value, projectId: event.target.value || null })
+              }
+            >
+              <option value="">未分类</option>
+              {snapshot.projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                  {project.archivedAt ? ' · 已归档' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          {form.value.systemId && (
+            <button
+              className="text-button"
+              aria-label="回到关联对象"
+              onClick={() =>
+                void navigate({
+                  module: 'ledger',
+                  objectId:
+                    form.value.resourceId ?? form.value.environmentId ?? form.value.systemId!,
+                })
+              }
+            >
+              {contextLabel(snapshot, form.value)}
+              <ArrowUpRightIcon size={14} />
+            </button>
+          )}
+        </div>
+        <details className="compact-details">
+          <summary>关联背景</summary>
+          <ContextPicker
+            mode="details"
+            snapshot={snapshot}
+            value={form.value}
+            disabled={deleted}
+            onChange={(context) => form.change({ ...form.value, ...context })}
+          />
+        </details>
       </div>
-      <details className="compact-details">
-        <summary>关联背景</summary>
-        <ContextPicker
-          mode="details"
-          snapshot={snapshot}
-          value={form.value}
-          disabled={deleted}
-          onChange={(context) => form.change({ ...form.value, ...context })}
-        />
-      </details>
       <Editor
         markdown={form.value.markdown}
         readOnly={deleted}
@@ -460,6 +505,16 @@ function DocumentEditor({
           </button>
         )}
       </div>
+      {focused && outline.open && (
+        <DocumentOutline
+          layout={outline.layout}
+          headings={outline.headings}
+          activeId={outline.activeId}
+          onLayout={outline.setLayout}
+          onClose={() => outline.setOpen(false)}
+          onNavigate={outline.navigate}
+        />
+      )}
       {purge && (
         <Dialog title="彻底删除文档" onClose={() => !busy && setPurge(false)} error={dialogError}>
           <p>“{document.title || '未命名文档'}”将无法从回收站恢复。</p>

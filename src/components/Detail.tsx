@@ -168,137 +168,143 @@ export function Detail({
           onChange={(e) => change({ ...value, title: e.target.value.replace(/\n/g, '') })}
         />
 
-        <ContextPicker
-          mode="system"
-          snapshot={snapshot}
-          value={value}
-          disabled={deleted}
-          onChange={(context) => change({ ...value, ...context })}
-        />
-        {task?.history && (
-          <details className="compact-details">
-            <summary>任务历史说明</summary>
-            <p>{task.history}</p>
-          </details>
-        )}
-        {value.systemId && (
-          <button className="text-button" onClick={() => void onOpenContext(value.systemId!)}>
-            回到关联的系统台账
+        <div className="detail-metadata">
+          <ContextPicker
+            mode="system"
+            snapshot={snapshot}
+            value={value}
+            disabled={deleted}
+            onChange={(context) => change({ ...value, ...context })}
+          />
+          {task?.history && (
+            <details className="compact-details">
+              <summary>任务历史说明</summary>
+              <p>{task.history}</p>
+            </details>
+          )}
+          {value.systemId && (
+            <button className="text-button" onClick={() => void onOpenContext(value.systemId!)}>
+              回到关联的系统台账
+            </button>
+          )}
+          <button
+            disabled={deleted}
+            className="date-summary"
+            aria-label="修改开始时间"
+            onClick={() => setDates(!dates)}
+          >
+            <CalendarBlankIcon size={15} />
+            <span>
+              {dateLabel(task?.startedAt ?? value.startedAt ?? minute())}
+              {task?.completedAt ? ` — ${dateLabel(task.completedAt)}` : '开始'}
+            </span>
+            <CaretDownIcon size={12} className={dates ? 'rotate' : ''} />
           </button>
-        )}
-        <button
-          disabled={deleted}
-          className="date-summary"
-          aria-label="修改开始时间"
-          onClick={() => setDates(!dates)}
-        >
-          <CalendarBlankIcon size={15} />
-          <span>
-            {dateLabel(task?.startedAt ?? value.startedAt ?? minute())}
-            {task?.completedAt ? ` — ${dateLabel(task.completedAt)}` : '开始'}
-          </span>
-          <CaretDownIcon size={12} className={dates ? 'rotate' : ''} />
-        </button>
-        {dates && (
-          <div className="date-fields">
-            <label>
-              开始时间
-              <input
-                type="datetime-local"
-                aria-label="开始时间"
-                value={start}
-                onChange={(e) => setStart(e.target.value)}
-              />
-            </label>
-            {task?.completedAt !== null && task && (
+          {dates && (
+            <div className="date-fields">
               <label>
-                完成时间
+                开始时间
                 <input
                   type="datetime-local"
-                  aria-label="完成时间"
-                  value={end}
-                  onChange={(e) => setEnd(e.target.value)}
+                  aria-label="开始时间"
+                  value={start}
+                  onChange={(e) => setStart(e.target.value)}
                 />
               </label>
-            )}
-            <div className="date-fields-bottom">
-              <small>
-                {task ? `录入于 ${dateLabel(task.createdAt, true)}` : '留空使用当前时间'}
-              </small>
-              <button
-                className="small-button"
-                onClick={async () => {
-                  try {
-                    await save();
-                    if (task) {
-                      const saved = await onCommand({
-                        type: 'task.dates',
-                        id: task.id,
-                        startedAt: minute(new Date(start).getTime()),
-                        completedAt:
-                          task.completedAt === null ? null : minute(new Date(end).getTime()),
-                      });
-                      if (!saved) return;
-                    } else {
-                      const startedAt = minute(new Date(start).getTime());
-                      validateTimes(startedAt, null);
-                      change({ ...latest.current, startedAt });
+              {task?.completedAt !== null && task && (
+                <label>
+                  完成时间
+                  <input
+                    type="datetime-local"
+                    aria-label="完成时间"
+                    value={end}
+                    onChange={(e) => setEnd(e.target.value)}
+                  />
+                </label>
+              )}
+              <div className="date-fields-bottom">
+                <small>
+                  {task ? `录入于 ${dateLabel(task.createdAt, true)}` : '留空使用当前时间'}
+                </small>
+                <button
+                  className="small-button"
+                  onClick={async () => {
+                    try {
+                      await save();
+                      if (task) {
+                        const saved = await onCommand({
+                          type: 'task.dates',
+                          id: task.id,
+                          startedAt: minute(new Date(start).getTime()),
+                          completedAt:
+                            task.completedAt === null ? null : minute(new Date(end).getTime()),
+                        });
+                        if (!saved) return;
+                      } else {
+                        const startedAt = minute(new Date(start).getTime());
+                        validateTimes(startedAt, null);
+                        change({ ...latest.current, startedAt });
+                      }
+                      setDates(false);
+                    } catch (e) {
+                      onError(String(e));
                     }
-                    setDates(false);
-                  } catch (e) {
-                    onError(String(e));
-                  }
-                }}
-              >
-                应用时间
-              </button>
+                  }}
+                >
+                  应用时间
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-        <details className="task-properties">
-          <summary>
-            <span>计划与标签</span>
-            {value.dueAt && (
-              <span className="muted">
-                {value.dueAt.kind === 'date' ? value.dueAt.value : dateLabel(value.dueAt.value)}{' '}
-                完成
-              </span>
-            )}
-            <TaskTagChips tags={snapshot.taskTags} ids={value.tagIds} />
-          </summary>
-          <TaskTimeField
-            label="预计完成"
-            value={value.dueAt}
-            disabled={deleted}
-            onChange={(dueAt) =>
-              change({ ...latest.current, dueAt, urgentAt: dueAt ? latest.current.urgentAt : null })
-            }
-          />
-          {value.dueAt && (
-            <>
-              <TaskTimeField
-                label="临期开始"
-                value={value.urgentAt}
-                disabled={deleted}
-                onChange={(urgentAt) => change({ ...latest.current, urgentAt })}
-              />
-              <p className="muted">未设置临期开始时间时，默认在预计完成前 24 小时突出显示。</p>
-              {value.urgentAt &&
-                taskTimeBoundary(value.urgentAt) > taskTimeBoundary(value.dueAt, true) && (
-                  <p className="error-text" role="status">
-                    当前时区下，临期开始晚于预计完成时间。已保留原计划，请调整日期。
-                  </p>
-                )}
-            </>
           )}
-          <TaskTagPicker
-            snapshot={snapshot}
-            ids={value.tagIds}
-            disabled={deleted}
-            onChange={(tagIds) => change({ ...latest.current, tagIds })}
-            onSnapshot={onSnapshot}
-          />
-        </details>
+          <details className="task-properties">
+            <summary>
+              <span>计划与标签</span>
+              {value.dueAt && (
+                <span className="muted">
+                  {value.dueAt.kind === 'date' ? value.dueAt.value : dateLabel(value.dueAt.value)}{' '}
+                  完成
+                </span>
+              )}
+              <TaskTagChips tags={snapshot.taskTags} ids={value.tagIds} />
+            </summary>
+            <TaskTimeField
+              label="预计完成"
+              value={value.dueAt}
+              disabled={deleted}
+              onChange={(dueAt) =>
+                change({
+                  ...latest.current,
+                  dueAt,
+                  urgentAt: dueAt ? latest.current.urgentAt : null,
+                })
+              }
+            />
+            {value.dueAt && (
+              <>
+                <TaskTimeField
+                  label="临期开始"
+                  value={value.urgentAt}
+                  disabled={deleted}
+                  onChange={(urgentAt) => change({ ...latest.current, urgentAt })}
+                />
+                <p className="muted">未设置临期开始时间时，默认在预计完成前 24 小时突出显示。</p>
+                {value.urgentAt &&
+                  taskTimeBoundary(value.urgentAt) > taskTimeBoundary(value.dueAt, true) && (
+                    <p className="error-text" role="status">
+                      当前时区下，临期开始晚于预计完成时间。已保留原计划，请调整日期。
+                    </p>
+                  )}
+              </>
+            )}
+            <TaskTagPicker
+              snapshot={snapshot}
+              ids={value.tagIds}
+              disabled={deleted}
+              onChange={(tagIds) => change({ ...latest.current, tagIds })}
+              onSnapshot={onSnapshot}
+            />
+          </details>
+        </div>
         <Editor
           flushRef={editorFlush}
           pendingRef={pendingImports}
