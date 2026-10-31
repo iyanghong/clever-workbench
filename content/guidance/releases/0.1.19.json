@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "kind": "release",
+  "operationChange": "changed",
+  "summary": "文档与任务详情突出正文，文档新增专注编辑和可记忆的三种大纲布局。",
+  "changes": [
+    {
+      "id": "content-first-editors",
+      "summary": "文档默认使用居中稿纸，任务详情压缩次要信息并扩大正文编辑空间。",
+      "guideIds": [
+        "documents-and-editor",
+        "tasks-edit"
+      ]
+    },
+    {
+      "id": "document-focus-outline",
+      "summary": "专注模式可隐藏列表与归属信息；大纲支持多级长标题、章节跳转，以及弹出、右侧、左侧三种图标布局，重启后恢复上次布局与开关状态。",
+      "guideIds": [
+        "documents-and-editor"
+      ]
+    }
+  ],
+  "review": {
+    "status": "completed-with-gaps",
+    "reviewer": "Kimi Code（代理辅助核对）",
+    "checkedAt": "2026-11-01T01:08:30+08:00",
+    "source": "7f9faf580917403ccbad5be5ddd9891577a8639d",
+    "environment": "macOS 开发构建 Electron，隔离 CLEVER_WORKBENCH_DATA_DIR；核对深色、浅色、正常窗口与窄窗口。",
+    "checks": [
+      {
+        "guideId": "documents-and-editor",
+        "stepIds": [
+          "write",
+          "focus",
+          "outline"
+        ],
+        "result": "passed",
+        "evidence": "文档与编辑器 Electron 回归通过；覆盖专注切换、三种大纲布局、多级长标题、章节跳转和连续两次重启后的状态恢复。"
+      },
+      {
+        "guideId": "tasks-edit",
+        "stepIds": [
+          "open",
+          "edit",
+          "expand"
+        ],
+        "result": "passed",
+        "evidence": "任务、编辑器与统一外观 Electron 回归通过，并检查正常、放大和窄窗口截图。"
+      }
+    ],
+    "knownGaps": [
+      "本次核对使用开发构建与隔离资料，不替代 GitHub Actions 的安装包构建和安装版桌面验收。",
+      "代理辅助核对不记为维护者人工验收。"
+    ]
+  },
+  "version": "0.1.19",
+  "tag": "v0.1.19",
+  "sourceSha": "4a2ed6dca326b2a552b303421d687b6e257c8794",
+  "publication": "pending"
+}
