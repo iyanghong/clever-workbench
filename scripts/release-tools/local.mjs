@@ -409,7 +409,7 @@ export async function runRelease({
         origin,
         snapshot,
       ],
-      { env },
+      { env, timeout: 30 * 60000 },
     );
     git(snapshot, ['fetch', '--quiet', 'origin', 'refs/tags/v*:refs/tags/v*'], { env });
     const head = git(snapshot, ['rev-parse', 'refs/remotes/origin/master']);
