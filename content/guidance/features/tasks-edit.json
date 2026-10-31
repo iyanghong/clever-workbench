@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "feature",
   "id": "tasks-edit",
-  "revision": 1,
+  "revision": 2,
   "title": "编辑、完成和重开任务",
   "platforms": [
     "darwin",
