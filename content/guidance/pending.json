@@ -19,7 +19,7 @@
     "status": "completed-with-gaps",
     "reviewer": "Kimi Code（代理辅助核对）",
     "checkedAt": "2026-11-01T01:08:30+08:00",
-    "source": "d765072",
+    "source": "7f9faf580917403ccbad5be5ddd9891577a8639d",
     "environment": "macOS 开发构建 Electron，隔离 CLEVER_WORKBENCH_DATA_DIR；核对深色、浅色、正常窗口与窄窗口。",
     "checks": [
       {
