@@ -146,7 +146,11 @@ test('全站共享外观在深浅主题和最小窗口可操作，长内容与�
       await discard.getByRole('button', { name: '放弃录入', exact: true }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
       await page.getByRole('button', { name: '工具', exact: true }).click();
-      await page.getByRole('button', { name: '打开工具', exact: true }).click();
+      await page
+        .getByRole('article')
+        .filter({ has: page.getByRole('heading', { name: 'ZIP 文本归档', exact: true }) })
+        .getByRole('button', { name: '打开工具', exact: true })
+        .click();
       await expect(page.getByRole('heading', { name: 'ZIP 文本归档', exact: true })).toBeVisible();
       await expect(page.getByLabel('待归档文件或目录', { exact: true })).toBeEnabled();
       await page.screenshot({
