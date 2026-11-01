@@ -41,3 +41,11 @@
 - 发布后运行 `node scripts/verify-electron-update-github.mjs 0.1.20`，真实私有 GitHub 下载、完整散列和原生包校验通过。
 - 旧版 ZIP 与 `SHA256SUMS` 来自正式 v0.1.18 Release，解包版本和签名已核对。隔离执行 `v0.1.18 → v0.1.20` 真实应用内更新，未拦截网络或替换 Release 元数据；更新前加密备份、原位置替换为 0.1.20、quarantine 保留及备份中的文档图片恢复均通过。健康回执超时，助手返回 `needs-attention:health-timeout`，因此只记为**人工处理**，不宣称无人值守健康升级成功。稳定报告为 `release/v0.1.20-real-upgrade-report.json`，事务 `5a5f8807-6841-4803-9442-c9e475c92271`。
 - 本地完整 Vitest 为 235 项通过、3 项跳过，完整开发版 Electron 回归为 136 项通过、3 项跳过；最终安装版测试以成功的 Actions 为准。日常应用目录和用户资料未用于测试。
+
+## 2026-11-01：v0.1.21 发布与真实升级验收
+
+- 业务源码 `a79dd22` 优化七类台账布局与图标操作，快捷复制默认附带首选或第一个已保存密码的账号；`edee570` 同步使用与发布指引。版本提交 `98fbfe9` 对应固定 tag `v0.1.21`，[Actions 41288303383](https://github.com/iyanghong/clever-workbench/actions/runs/41288303383) 全部通过，正式 [v0.1.21 Release](https://github.com/iyanghong/clever-workbench/releases/tag/v0.1.21) 已成为 latest。
+- GitHub 远端 ZIP 为 130477636 字节，SHA-256 `42765f5e3772182db3ccc70934b98343d0063a043961ee7cbdd45fc182c87ced`；DMG 为 131123720 字节，SHA-256 `334866c6c34df2d33b5ac23c959ea806734f3e63bee4e7d06a85afe54834ce27`，`SHA256SUMS` 已上传。
+- 发布后运行 `node scripts/verify-electron-update-github.mjs 0.1.21`，真实私有 GitHub 下载、完整散列和原生包校验通过。
+- v0.1.20 官方基线首次下载遇到 HTTP/2 流中断，未使用不完整文件；重试后 ZIP 校验、版本和签名均通过。隔离执行 `v0.1.20 → v0.1.21` 真实应用内更新，未拦截网络或替换 Release 元数据；更新前加密备份、原位置替换为 0.1.21、quarantine 保留及备份中的文档图片恢复均通过。健康回执超时，助手返回 `needs-attention:health-timeout`，因此只记为**人工处理**，不宣称无人值守健康升级成功。稳定报告为 `release/v0.1.21-real-upgrade-report.json`，事务 `b72bafac-5086-4f76-8b62-715bcce4f64f`。
+- 本地完整 Vitest 为 235 项通过、3 项跳过。完整桌面回归首轮有 2 项指引文本断言读取旧 dist，重新构建后相关 7 项全部通过；最终安装版测试以成功的 Actions 为准。日常应用目录和用户资料未用于测试。
