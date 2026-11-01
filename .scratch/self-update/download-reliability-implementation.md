@@ -33,3 +33,11 @@
 - 使用已核对正式来源的 v0.1.17 安装版，经真实 GitHub 下载 v0.1.18 时，旧版客户端在持续下载约 607 秒后因原有 10 分钟请求总超时记为 `The operation was aborted`。本次未进入备份、替换与健康确认，**不得记为自动升级成功**。这是已发布旧客户端的限制，新包不能反向修改；正式 Release 说明已追记人工 DMG 过渡步骤，未重写标签或资产。
 - 发布前以本地固定 ZIP 做隔离 v0.1.17 → v0.1.18 安装夹具，更新前备份、原位替换、quarantine 保留和备份恢复通过；临时隔离位置的新应用健康回执超时，助手明确记为人工处理。此夹具不冒充真实 GitHub 网络验收，也不等于无人值守健康成功。
 - 固定版本指引检查有 37 项非阻断警告，主要为维护者人工步骤核对尚未填写及历史说明缺口；没有把警告或真实升级失败改写为通过。日常安装与资料未改动。
+
+## 2026-11-01：v0.1.20 发布与真实升级验收
+
+- v0.1.19 标签的两次 Actions 均在安装版“真实恢复旧业务备份不回退设备提示记录”处失败，未创建 Release。定位为安装包首次真实提示已经写入 `shownThrough`，同版本测试替身不会再次显示；`aa89608` 修正测试启动状态，安装版与开发版的版本指引测试各 15 项通过。失败标签与资产未改写。
+- v0.1.20 版本提交为 `1e39f48`，[Actions 41273488463](https://github.com/iyanghong/clever-workbench/actions/runs/41273488463) 全部通过，正式 [v0.1.20 Release](https://github.com/iyanghong/clever-workbench/releases/tag/v0.1.20) 已成为 latest。ZIP 为 130470866 字节，SHA-256 `6188c6fc7bfe734188f6b2d02b773f9b984224827c2e17a16e13bd35d9ad0172`；DMG 为 131112751 字节，SHA-256 `71d8816aa69f61cc0eb8fcbac61eb6ca9e889b7b1ec27f52c807d97287aeb87a`，`SHA256SUMS` 已上传。
+- 发布后运行 `node scripts/verify-electron-update-github.mjs 0.1.20`，真实私有 GitHub 下载、完整散列和原生包校验通过。
+- 旧版 ZIP 与 `SHA256SUMS` 来自正式 v0.1.18 Release，解包版本和签名已核对。隔离执行 `v0.1.18 → v0.1.20` 真实应用内更新，未拦截网络或替换 Release 元数据；更新前加密备份、原位置替换为 0.1.20、quarantine 保留及备份中的文档图片恢复均通过。健康回执超时，助手返回 `needs-attention:health-timeout`，因此只记为**人工处理**，不宣称无人值守健康升级成功。稳定报告为 `release/v0.1.20-real-upgrade-report.json`，事务 `5a5f8807-6841-4803-9442-c9e475c92271`。
+- 本地完整 Vitest 为 235 项通过、3 项跳过，完整开发版 Electron 回归为 136 项通过、3 项跳过；最终安装版测试以成功的 Actions 为准。日常应用目录和用户资料未用于测试。
