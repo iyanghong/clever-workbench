@@ -437,7 +437,6 @@ test('真实恢复旧业务备份不回退设备提示记录，另一设备恢�
       await window.desktop.configureBackup('fictional-guidance-backup-password');
       await window.desktop.backup();
     });
-    page = await versions(app, [release(current, '本机已显示的版本变化', 'pending')]);
     const prompt = page.getByRole('dialog', { name: '版本操作指引', exact: true });
     await expect(prompt).toBeVisible({ timeout: 5000 });
     await page.keyboard.press('Escape');
