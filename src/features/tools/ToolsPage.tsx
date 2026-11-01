@@ -7,6 +7,7 @@ import { FavoriteButton } from '../home/FavoriteButton';
 import { GuidanceButton } from '../guidance/Guidance';
 import { findTool, registeredTools } from './registry';
 import './tools.css';
+import './utility.css';
 
 export function ToolsPage({ route, navigate, setContext, registerFlush }: ModuleProps) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
@@ -85,10 +86,10 @@ export function ToolsPage({ route, navigate, setContext, registerFlush }: Module
                   >
                     打开工具 <ArrowRightIcon size={16} />
                   </button>
-                  {tool.id === 'zip-text' && (
+                  {tool.guidance && (
                     <GuidanceButton
-                      placement="zip-text-archive"
-                      accessibleLabel="ZIP 文本归档使用指引"
+                      placement={tool.guidance}
+                      accessibleLabel={`${tool.title}使用指引`}
                     />
                   )}
                 </article>

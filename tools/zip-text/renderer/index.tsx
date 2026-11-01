@@ -1,4 +1,4 @@
-import { PageHeading } from '../../shared/WorkspaceUI';
+import { PageHeading } from '../../../src/shared/WorkspaceUI';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArchiveIcon,
@@ -13,9 +13,9 @@ import {
   type ZipCommand,
   type ZipSettings,
   type ZipState,
-} from '../../tool-types';
-import type { ToolPageProps } from './registry';
-import { GuidanceButton } from '../guidance/Guidance';
+} from '../contract';
+import type { ToolPageProps } from '../../../src/tool-types';
+import { GuidanceButton } from '../../../src/features/guidance/Guidance';
 
 type Mode = 'pack' | 'git' | 'restore' | 'paste';
 type Draft = ZipSettings & {
@@ -60,7 +60,7 @@ const settingsOf = (draft: Draft): ZipSettings => ({
 const validSize = (n: number) => Number.isInteger(n) && n >= 1 && n <= 200;
 const selectionKey = (values: string[]) => [...values].sort().join(',');
 
-export function ZipTextPage({ registerFlush }: ToolPageProps) {
+export default function ZipTextPage({ registerFlush }: ToolPageProps) {
   const [draft, setDraft] = useState<Draft>(() => remembered ?? initial());
   const [state, setState] = useState<ZipState | null>(null),
     stateRef = useRef<ZipState | null>(null);

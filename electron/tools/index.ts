@@ -1,10 +1,9 @@
-import path from 'node:path';
 import type { Store } from '../store';
-import { ZipTextTool } from './zip-tool';
+import { createToolEntries } from './registry.generated';
 export class Tools {
   private entries;
   constructor(store: Store, directory: string) {
-    this.entries = { 'zip-text': new ZipTextTool(store, path.join(directory, 'zip-worker.cjs')) };
+    this.entries = createToolEntries(store, directory);
   }
   get(id: unknown) {
     if (typeof id !== 'string' || !Object.hasOwn(this.entries, id)) throw new Error('工具不存在。');

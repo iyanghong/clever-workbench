@@ -9,10 +9,10 @@ import * as yazl from 'yazl';
 import { createReadStream } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { runToolWorker } from '../electron/tools/runner';
-import { encryptPath, decryptPath, decodePart } from '../electron/tools/zip-archive';
-import { storePart, collectionStatus } from '../electron/tools/clipboard-parts';
-import { gitBranches, gitCommits, gitPreview, dateBounds } from '../electron/tools/git-files';
-import { ZipTextTool } from '../electron/tools/zip-tool';
+import { encryptPath, decryptPath, decodePart } from '../tools/zip-text/main/zip-archive';
+import { storePart, collectionStatus } from '../tools/zip-text/main/clipboard-parts';
+import { gitBranches, gitCommits, gitPreview, dateBounds } from '../tools/zip-text/main/git-files';
+import { Controller as ZipTextTool } from '../tools/zip-text/main/controller';
 import { Store } from '../electron/store';
 
 const roots: string[] = [];
@@ -251,7 +251,7 @@ test('Git 字面目录范围、作者筛选、删除路径、当前磁盘内容�
   );
   const worker = path.join(root, 'zip-worker.cjs');
   await build({
-    entryPoints: ['electron/tools/zip-worker.ts'],
+    entryPoints: ['tools/zip-text/main/worker.ts'],
     outfile: worker,
     bundle: true,
     platform: 'node',
@@ -289,7 +289,7 @@ test.skipIf(!process.env.ZIP_TOOL_LARGE)(
       await file.close();
     }
     await build({
-      entryPoints: ['electron/tools/zip-worker.ts'],
+      entryPoints: ['tools/zip-text/main/worker.ts'],
       outfile: worker,
       bundle: true,
       platform: 'node',
@@ -350,7 +350,7 @@ test('后台控制器拒绝重入，成功与失败都完成生命周期，工�
     source = await fixture(root),
     worker = path.join(root, 'zip-worker.cjs');
   await build({
-    entryPoints: ['electron/tools/zip-worker.ts'],
+    entryPoints: ['tools/zip-text/main/worker.ts'],
     outfile: worker,
     bundle: true,
     platform: 'node',

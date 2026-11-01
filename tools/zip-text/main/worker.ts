@@ -4,7 +4,7 @@ import path from 'node:path';
 import { decryptPath, encryptPath, type Report, type Own } from './zip-archive';
 import { gitBranches, gitCommits, gitPreview } from './git-files';
 import { clipboardChunks, storePart } from './clipboard-parts';
-import type { GitFilter, GitPreview, TextPart, ZipSettings } from '../../src/tool-types';
+import type { GitFilter, GitPreview, TextPart, ZipSettings } from '../contract';
 export type ZipWork =
   | { type: 'pack'; settings: ZipSettings; password: string; preview?: GitPreview }
   | { type: 'restore'; settings: ZipSettings; password: string }

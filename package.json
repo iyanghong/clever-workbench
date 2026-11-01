@@ -7,14 +7,20 @@
   "main": "dist-electron/main.cjs",
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "tools:generate": "node scripts/generate-tools.mjs",
+    "prebuild": "npm run tools:generate",
     "build": "tsc --noEmit && vite build && node scripts/build-electron.mjs",
+    "pretest": "npm run tools:generate",
     "test": "vitest run",
+    "pretest:e2e": "npm run tools:generate",
     "test:e2e": "playwright test",
+    "preguidance:check": "npm run tools:generate",
     "guidance:check": "node scripts/check-operation-guidance.mjs",
     "dist:mac": "npm run build && electron-builder --mac --arm64",
     "dist:win": "npm run build && electron-builder --win --x64",
     "setup:electron": "install-electron --no",
-    "format": "prettier --write src electron tests scripts *.ts",
+    "format": "prettier --write src electron tools tests scripts *.ts",
+    "pretypecheck": "npm run tools:generate",
     "typecheck": "tsc --noEmit"
   },
   "build": {

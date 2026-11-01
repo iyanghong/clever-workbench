@@ -7,7 +7,7 @@ import { pipeline } from 'node:stream/promises';
 import * as yazl from 'yazl';
 import * as yauzl from 'yauzl';
 import { crc32 } from 'node:zlib';
-import type { ToolProgress } from '../../src/tool-types';
+import type { ToolProgress } from '../../../src/tool-types';
 
 export const MAX_TEXT_SIZE = 200_000_000;
 const HEADER_SIZE = 37;

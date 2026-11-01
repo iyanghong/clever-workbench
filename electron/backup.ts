@@ -25,7 +25,7 @@ import { encryptArchive, decryptArchive, checkEncryptedArchive } from './encrypt
 import { newProtection, type VaultConfig } from './vault-crypto';
 import { backupProtection, validateBackupConfig, type BackupConfig } from './backup-crypto';
 import { validateFavorites } from './favorites';
-import { validateZipSettings } from './tools/zip-validation';
+import { validateToolPreferences } from './tools/preferences.generated';
 import { verifyVaultIntegrity, type Vault, type RestoreProtection } from './vault';
 import { Ledger, validateLedger } from './ledger';
 import { migrateSystemLedger } from './ledger-migration';
@@ -573,7 +573,7 @@ async function validateDatabase(
     for (const row of db.prepare('SELECT key,value FROM preferences').all()) {
       const value = JSON.parse(row.value as string);
       if (row.key === 'favorites') validateFavorites(value);
-      if (row.key === 'zipTextSettings') validateZipSettings(value);
+      validateToolPreferences(row.key as string, value);
       if (
         (row.key === 'theme' && !['system', 'light', 'dark'].includes(value)) ||
         (['autoBackup', 'reduceTransparency', 'highContrast', 'reduceMotion'].includes(

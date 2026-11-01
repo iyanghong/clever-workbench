@@ -3,7 +3,7 @@ import { createReadStream } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
 import { MAX_TEXT_SIZE, decodePart, parsePart, type Report, type Own } from './zip-archive';
-import type { TextPart } from '../../src/tool-types';
+import type { TextPart } from '../contract';
 
 // Read CF_UNICODETEXT in bounded blocks in a child process; never send a full clipboard string over IPC.
 const windowsClipboard = `

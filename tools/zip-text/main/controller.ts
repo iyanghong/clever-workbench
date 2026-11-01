@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { randomUUID } from 'node:crypto';
-import type { Store } from '../store';
+import type { Store } from '../../../electron/store';
 import {
   defaultZipSettings,
   type ZipCommand,
@@ -11,13 +11,13 @@ import {
   type TextPart,
   type GitCommit,
   type GitPreview,
-} from '../../src/tool-types';
+} from '../contract';
 import { collectionStatus } from './clipboard-parts';
-import { runToolWorker } from './runner';
-import type { ZipWork } from './zip-worker';
+import { runToolWorker } from '../../../electron/tools/runner';
+import type { ZipWork } from './worker';
 import { validateZipSettings } from './zip-validation';
 
-export class ZipTextTool {
+export class Controller {
   private temporary: string | null = null;
   private files = new Map<string, string>();
   private failedParts = new Set<string>();

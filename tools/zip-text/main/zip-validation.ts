@@ -1,4 +1,4 @@
-import type { ZipSettings } from '../../src/tool-types';
+import type { ZipSettings } from '../contract';
 export function validateZipSettings(value: unknown): asserts value is ZipSettings {
   const settings = value as ZipSettings | null;
   if (

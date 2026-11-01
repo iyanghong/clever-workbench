@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "kind": "feature",
+  "id": "local-productivity-tools",
+  "revision": 1,
+  "title": "使用本地效率工具处理配置与数据",
+  "platforms": ["darwin", "win32"],
+  "placements": ["tools"],
+  "purpose": "在本机完成配置对比、JSON 处理、时间与 Cron 换算、批量文本整理及 CSV／JSON 转换。",
+  "prerequisites": {
+    "items": [
+      "准备需要处理的文本或示例数据；输入只保留在当前页面，不会自动进入台账或备份。",
+      "时间与 Cron 使用本机时区；Cron 采用分钟、小时、日期、月份、星期五段格式。"
+    ],
+    "notApplicableReason": ""
+  },
+  "entry": { "label": "工具 → 选择对应工具卡片", "target": "tools" },
+  "steps": [
+    {
+      "id": "open",
+      "title": "打开所需工具",
+      "action": "进入“工具”，在配置对比、数据格式助手、时间与 Cron、批量文本处理或表格数据转换卡片中点击“打开工具”。",
+      "expectedResult": "进入对应操作页面；工具卡片星标可将其加入工作台首页常用入口。"
+    },
+    {
+      "id": "compare",
+      "title": "对比两份配置",
+      "action": "在“配置对比”选择纯文本、JSON 或 .env，分别粘贴原始配置和对比配置，点击“开始对比”；需要时显示相同行或交换两侧。",
+      "expectedResult": "页面报告新增、删除和相同行数；JSON 忽略键顺序，.env 忽略注释与空行，解析失败会保留输入并显示原因。"
+    },
+    {
+      "id": "json",
+      "title": "处理 JSON 数据",
+      "action": "在“数据格式助手”选择格式化、压缩、排序、路径提取或转义操作，输入数据后点击“处理数据”。路径示例为 $.service.nodes[0].address。",
+      "expectedResult": "右侧显示处理结果，可复制；输入或路径无效时显示错误，不沿用上一次结果。"
+    },
+    {
+      "id": "time",
+      "title": "换算时间并预测 Cron",
+      "action": "在“时间与 Cron”输入秒、毫秒时间戳或日期时间并转换；输入五段 Cron 后点击“解释并预测”。",
+      "expectedResult": "显示本地时间、ISO 时间、Unix 秒／毫秒和相对时间；Cron 显示说明及未来五次本机时区执行时间。"
+    },
+    {
+      "id": "text",
+      "title": "批量整理文本",
+      "action": "在“批量文本处理”选择清理、去重、排序、前后缀、列提取、正则或行合并，按所选操作填写参数并处理。",
+      "expectedResult": "右侧输出转换文本及行列字符统计；正则或参数无效时提示修正。"
+    },
+    {
+      "id": "table",
+      "title": "转换表格数据",
+      "action": "在“表格数据转换”选择 CSV → JSON 或 JSON → CSV，确认分隔符和表头设置，粘贴数据后点击“转换数据”。",
+      "expectedResult": "显示转换结果与行、列统计；引号、字段内换行和转义双引号得到保留，列数不一致或 JSON 结构混用时提示错误。"
+    }
+  ],
+  "completion": "得到可复制的对比、格式、时间、文本或表格处理结果，原始输入未写入工作台资料库。",
+  "faq": {
+    "items": [
+      {
+        "question": "输入会自动保存吗？",
+        "answer": "不会。这些工具用于即时本地处理，离开或关闭页面前请复制仍需使用的结果；不要把页面当作持久化文档。"
+      },
+      {
+        "question": "支持 YAML 或 Excel 吗？",
+        "answer": "当前配置对比支持文本、JSON 和 .env，数据格式助手处理 JSON，表格转换处理 CSV 与 JSON；不支持直接解析 YAML 或 Excel 工作簿。"
+      },
+      {
+        "question": "Cron 的星期和时区如何计算？",
+        "answer": "星期 0 和 7 均表示星期日，执行预测使用本机时区。修改系统时区或夏令时规则后应重新计算。"
+      }
+    ],
+    "notApplicableReason": ""
+  }
+}

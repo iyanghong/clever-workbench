@@ -1,15 +1,15 @@
+import { toolCatalog } from '../tool-types.ts';
+
+type GuidanceTarget = {
+  module: string;
+  section?: string;
+  objectId?: string;
+  trash?: boolean;
+  ledgerCategory?: import('../app/modules').Route['ledgerCategory'];
+  label: string;
+};
 /** Stable navigation destinations: a guide may select a page, never execute a command. */
-export const guidanceTargets: Record<
-  string,
-  {
-    module: string;
-    section?: string;
-    objectId?: string;
-    trash?: boolean;
-    ledgerCategory?: import('../app/modules').Route['ledgerCategory'];
-    label: string;
-  }
-> = {
+const coreGuidanceTargets: Record<string, GuidanceTarget> = {
   home: { module: 'home', label: '工作台' },
   search: { module: 'home', label: '工作台顶部搜索' },
   'quick-create': { module: 'home', label: '工作台顶部新建' },
@@ -40,9 +40,23 @@ export const guidanceTargets: Record<
   'settings-about': { module: 'settings', section: 'about', label: '设置 → 关于' },
   'settings-guidance': { module: 'settings', section: 'guidance', label: '设置 → 使用指引' },
   tools: { module: 'tools', label: '工具' },
-  'zip-text-archive': { module: 'tools', objectId: 'zip-text', label: '工具 → ZIP 文本归档' },
 };
-export const guidancePlacements = [
+export const guidanceTargets: Record<string, GuidanceTarget> = {
+  ...coreGuidanceTargets,
+  ...Object.fromEntries(
+    toolCatalog.flatMap((tool) =>
+      tool.guidance
+        ? [
+            [
+              tool.guidance,
+              { module: 'tools', objectId: tool.id, label: `工具 → ${tool.title}` },
+            ],
+          ]
+        : [],
+    ),
+  ),
+};
+const coreGuidancePlacements = [
   'home',
   'search',
   'quick-create',
@@ -69,9 +83,14 @@ export const guidancePlacements = [
   'settings-about',
   'settings-guidance',
   'tools',
-  'zip-text-archive',
 ] as const;
-export type GuidancePlacement = (typeof guidancePlacements)[number];
+export type GuidancePlacement =
+  | (typeof coreGuidancePlacements)[number]
+  | Exclude<(typeof toolCatalog)[number]['guidance'], null>;
+export const guidancePlacements: readonly GuidancePlacement[] = [
+  ...coreGuidancePlacements,
+  ...toolCatalog.flatMap((tool) => (tool.guidance ? [tool.guidance] : [])),
+];
 export function guidanceTarget(id: string) {
   return Object.hasOwn(guidanceTargets, id) ? guidanceTargets[id] : undefined;
 }

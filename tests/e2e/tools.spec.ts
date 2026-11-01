@@ -5,13 +5,17 @@ import os from 'node:os';
 import path from 'node:path';
 import { randomBytes, createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { encryptPath } from '../../electron/tools/zip-archive';
+import { encryptPath } from '../../tools/zip-text/main/zip-archive';
 
 const state = (page: Page) => page.evaluate(() => window.desktop.tools.state('zip-text'));
 const idle = (page: Page) =>
   expect.poll(async () => (await state(page)).busy, { timeout: 60000 }).toBe(false);
 const sidebar = (page: Page, name: string) =>
   page.getByRole('navigation', { name: '工作空间' }).getByRole('button', { name, exact: true });
+const zipCard = (page: Page) =>
+  page.getByRole('article').filter({
+    has: page.getByRole('heading', { name: 'ZIP 文本归档', exact: true }),
+  });
 const checksum = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 const pasteShortcut = process.platform === 'darwin' ? 'Meta+v' : 'Control+v';
 
@@ -49,7 +53,7 @@ test('10 个分片乱序收集，重复项自动跳过并保留原片，收齐�
   };
   try {
     await sidebar(page, '工具').click();
-    await page.getByRole('button', { name: '打开工具', exact: true }).click();
+    await zipCard(page).getByRole('button', { name: '打开工具', exact: true }).click();
     await page.getByRole('tab', { name: '剪贴板还原', exact: true }).click();
     await expect(pasteTarget).toBeFocused();
     await copy(0);
@@ -168,7 +172,7 @@ test('粘贴快捷键保留路径、密码、搜索及其他页面的普通文�
     app.evaluate(({ clipboard }, value) => clipboard.writeText(value), text);
   try {
     await sidebar(page, '工具').click();
-    await page.getByRole('button', { name: '打开工具', exact: true }).click();
+    await zipCard(page).getByRole('button', { name: '打开工具', exact: true }).click();
     await page.getByRole('tab', { name: '剪贴板还原', exact: true }).click();
     for (const [label, text] of [
       ['输出位置', '/example/output'],
@@ -228,8 +232,8 @@ test('工具收藏、后台运行与退出保护、目录及剪贴板还原', as
     page.on('pageerror', (error) => errors.push(error.message));
     await sidebar(page, '工具').click();
     await expect(page.getByRole('heading', { name: '工具', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: '设为常用工具', exact: true }).click();
-    await page.getByRole('button', { name: '打开工具', exact: true }).click();
+    await zipCard(page).getByRole('button', { name: '设为常用工具', exact: true }).click();
+    await zipCard(page).getByRole('button', { name: '打开工具', exact: true }).click();
     await page.getByLabel('待归档文件或目录', { exact: true }).fill(source);
     await page.getByLabel('设置归档密码', { exact: true }).fill('归档-secret');
     await page.getByLabel('再次输入密码', { exact: true }).fill('归档-secret');
@@ -348,7 +352,7 @@ test('Git 提交筛选预览并打包当前磁盘文件', async ({}, info) => {
     page = await app.firstWindow();
   try {
     await sidebar(page, '工具').click();
-    await page.getByRole('button', { name: '打开工具', exact: true }).click();
+    await zipCard(page).getByRole('button', { name: '打开工具', exact: true }).click();
     await page.getByRole('tab', { name: 'Git 筛选归档', exact: true }).click();
     await page.getByLabel('Git 工作目录', { exact: true }).fill(source);
     await page.getByRole('button', { name: '读取分支' }).click();

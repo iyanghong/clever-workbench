@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { ordinaryPath, inspectFiles } from './zip-archive';
-import type { GitCommit, GitFilter, GitPreview } from '../../src/tool-types';
+import type { GitCommit, GitFilter, GitPreview } from '../contract';
 const execute = promisify(execFile);
 async function git(source: string, ...args: string[]) {
   const env: NodeJS.ProcessEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };

@@ -1,9 +1,14 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { electron } from './launch';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { expectedFeatureGuide, verifyUnavailableOrNoTarget } from './guidance-content';
+
+const zipCard = (page: Page) =>
+  page.getByRole('article').filter({
+    has: page.getByRole('heading', { name: 'ZIP 文本归档', exact: true }),
+  });
 
 test('工具目录可以打开 ZIP 文本归档的使用指引', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-zip-guide-'));
@@ -30,7 +35,7 @@ test('四种模式的就近帮助随选项切换，离线可阅读并安全关�
     const page = await app.firstWindow();
     await page.context().setOffline(true);
     await page.getByRole('button', { name: '工具', exact: true }).click();
-    await page.getByRole('button', { name: '打开工具', exact: true }).click();
+    await zipCard(page).getByRole('button', { name: '打开工具', exact: true }).click();
     for (const [mode, id] of [
       ['归档文件', 'zip-archive-files'],
       ['Git 筛选归档', 'zip-archive-git'],
@@ -75,7 +80,7 @@ test('首页收藏工具旁可以直接查阅 ZIP 指引', async ({}, info) => {
   try {
     const page = await app.firstWindow();
     await page.getByRole('button', { name: '工具', exact: true }).click();
-    await page.getByRole('button', { name: '设为常用工具', exact: true }).click();
+    await zipCard(page).getByRole('button', { name: '设为常用工具', exact: true }).click();
     await page.getByRole('button', { name: '工作台', exact: true }).click();
     await expect(page.getByRole('button', { name: '打开常用工具 ZIP 文本归档' })).toBeVisible();
     await page.screenshot({ path: info.outputPath('zip-favorite-help.png') });
@@ -130,7 +135,7 @@ test('取消选取来源仍保留原路径与未开始状态', async () => {
   try {
     const page = await app.firstWindow();
     await page.getByRole('button', { name: '工具', exact: true }).click();
-    await page.getByRole('button', { name: '打开工具', exact: true }).click();
+    await zipCard(page).getByRole('button', { name: '打开工具', exact: true }).click();
     await page.getByLabel('待归档文件或目录', { exact: true }).fill(source);
     await app.evaluate(({ dialog }) => {
       dialog.showOpenDialog = (async () => ({ canceled: true, filePaths: [] })) as typeof dialog.showOpenDialog;
