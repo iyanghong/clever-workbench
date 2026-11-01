@@ -56,5 +56,10 @@
   "version": "0.1.20",
   "tag": "v0.1.20",
   "sourceSha": "aa89608ca48d3648335d8332e2aa0d534e8a5250",
-  "publication": "pending"
+  "publication": "published",
+  "publicationEvidence": {
+    "releaseId": 430368307,
+    "publishedAt": "2026-11-01T04:47:34Z",
+    "releaseSha": "1e39f48561e311370b4ce03c6fb7bc6b0a5f432e"
+  }
 }

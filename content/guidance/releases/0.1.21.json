@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "kind": "release",
+  "operationChange": "changed",
+  "summary": "台账采用紧凑表格与连续摘要详情，快捷复制默认附带首选账号密码。",
+  "changes": [
+    {
+      "id": "ledger-compact-workspace",
+      "summary": "七类台账增加类型图标并统一紧凑列表，行内复制与详情改为图标按钮，宽窗口可连续切换摘要与详情。",
+      "guideIds": [
+        "ledger-browsing"
+      ]
+    },
+    {
+      "id": "ledger-default-account-copy",
+      "summary": "列表快捷复制默认附带首选已保存密码的账号，无首选密码账号时取第一个；取消解锁不覆盖剪贴板，密码仍按 30 秒清理。",
+      "guideIds": [
+        "ledger-copy"
+      ]
+    }
+  ],
+  "review": {
+    "status": "completed-with-gaps",
+    "reviewer": "Kimi Code（代理辅助核对）",
+    "checkedAt": "2026-11-01T15:52:05+08:00",
+    "source": "a79dd228b9f438aa5e9e5450e5c68fc0e477bc1f",
+    "environment": "macOS 开发构建 Electron，隔离 CLEVER_WORKBENCH_DATA_DIR；核对深色、浅色、正常窗口与窄窗口。",
+    "checks": [
+      {
+        "guideId": "ledger-browsing",
+        "stepIds": [
+          "category",
+          "detail",
+          "return"
+        ],
+        "result": "passed",
+        "evidence": "七类页签图标交互、连续摘要详情、筛选与窄窗口返回测试通过，并检查浅色和深色截图。"
+      },
+      {
+        "guideId": "ledger-copy",
+        "stepIds": [
+          "one",
+          "password",
+          "cancel"
+        ],
+        "result": "passed",
+        "evidence": "默认第一账号、访问入口常用账号、关联服务器账号、取消解锁与密码清理测试通过。"
+      }
+    ],
+    "knownGaps": [
+      "本次核对使用开发构建与隔离资料，不替代 GitHub Actions 的安装包构建和安装版桌面验收。",
+      "代理辅助核对不记为维护者人工验收。"
+    ]
+  },
+  "version": "0.1.21",
+  "tag": "v0.1.21",
+  "sourceSha": "edee5702d3e45821b40979f33f7b97b151083212",
+  "publication": "pending"
+}
