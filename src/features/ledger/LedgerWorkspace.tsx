@@ -24,6 +24,15 @@ import {
   PencilSimpleIcon,
   XIcon,
   StackIcon,
+  CaretRightIcon,
+  ArrowUpRightIcon,
+  LinkIcon,
+  UserIcon,
+  ComputerTowerIcon,
+  DatabaseIcon,
+  RocketIcon,
+  WrenchIcon,
+  NotePencilIcon,
 } from '@phosphor-icons/react';
 import type { ModuleProps, Route } from '../../app/modules';
 import type { CreationContext } from '../../app/actions';
@@ -73,6 +82,23 @@ const categories = [
   ['documents', '文档'],
 ] as const;
 type Category = (typeof categories)[number][0];
+const categoryIcons: Record<Category, typeof StackIcon> = {
+  access: LinkIcon,
+  accounts: UserIcon,
+  servers: ComputerTowerIcon,
+  resources: DatabaseIcon,
+  services: RocketIcon,
+  operations: WrenchIcon,
+  documents: NotePencilIcon,
+};
+function CategoryIcon({ kind }: { kind: Category }) {
+  const Icon = categoryIcons[kind];
+  return (
+    <span className={`record-kind-icon ${kind}`} aria-hidden="true">
+      <Icon size={16} />
+    </span>
+  );
+}
 // One nearby entry follows the category in both full-list and inspector layouts.
 const categoryGuidance: Record<Category, GuidancePlacement> = {
   access: 'ledger-access',
@@ -755,6 +781,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                   aria-pressed={view.category === id}
                   onClick={() => changeView({ category: id, query: '' })}
                 >
+                  <CategoryIcon kind={id} />
                   {label}
                 </button>
               ))}
@@ -884,7 +911,10 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                           <LedgerCopyCheckbox object={copyRef(row)!} name={row.name} />
                         )}
                         <button className="workspace-summary-open" onClick={() => openRow(row)}>
-                          <strong>{row.name}</strong>
+                          <span className="workspace-summary-title">
+                            <CategoryIcon kind={row.kind} />
+                            <strong>{row.name}</strong>
+                          </span>
                           <small>{scopeLabel(row)}</small>
                         </button>
                         <div className="workspace-summary-content">
@@ -942,8 +972,11 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                               <LedgerCopyCheckbox object={copyRef(row)!} name={row.name} />
                             )}
                             <button onClick={() => openRow(row)}>
-                              <strong>{row.name}</strong>
-                              <small>{scopeLabel(row)}</small>
+                              <CategoryIcon kind={row.kind} />
+                              <span className="record-name">
+                                <strong>{row.name}</strong>
+                                <small>{scopeLabel(row)}</small>
+                              </span>
                             </button>
                           </td>
                           <td>
@@ -967,26 +1000,34 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                           <td>{row.extra || '—'}</td>
                           <td className="workspace-row-actions">
                             {copyRef(row) && (
-                              <LedgerCopyActions objects={[copyRef(row)!]} name={row.name} />
+                              <LedgerCopyActions
+                                iconOnly
+                                objects={[copyRef(row)!]}
+                                name={row.name}
+                              />
                             )}
-                            {row.kind === 'access' && row.address ? (
+                            {row.kind === 'access' && row.address && (
                               <button
-                                className="text-button"
+                                className="icon-button"
                                 aria-label={`打开 ${row.name}`}
+                                title={`打开 ${row.name}`}
                                 onClick={() =>
                                   void window.desktop
                                     .openExternal(row.address)
                                     .catch((e) => setError(String(e)))
                                 }
                               >
-                                打开
+                                <ArrowUpRightIcon size={16} />
                               </button>
-                            ) : row.kind === 'servers' || row.kind === 'resources' ? (
-                              <button className="text-button" onClick={() => openRow(row)}>
-                                {snapshot.accounts.filter((a) => a.resourceId === row.id).length}{' '}
-                                个账号
-                              </button>
-                            ) : null}
+                            )}
+                            <button
+                              className="icon-button"
+                              aria-label={`查看详情 ${row.name}`}
+                              title={`查看详情 ${row.name}`}
+                              onClick={() => openRow(row)}
+                            >
+                              <CaretRightIcon size={16} />
+                            </button>
                           </td>
                         </tr>
                       ))}

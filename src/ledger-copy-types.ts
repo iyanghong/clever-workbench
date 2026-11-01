@@ -16,6 +16,7 @@ export type LedgerCopyCandidate = {
   ownerId: string;
   ownerName: string;
   hasPassword: boolean;
+  preferred: boolean;
 };
 export type LedgerCopyPreview = {
   titles: string[];

@@ -1,5 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { CopyIcon, CheckIcon, EyeIcon, EyeSlashIcon } from '@phosphor-icons/react';
+import {
+  CopyIcon,
+  CheckIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  CaretRightIcon,
+  UserIcon,
+} from '@phosphor-icons/react';
 import type { Snapshot } from '../../types';
 import type { AccountRecord } from '../../ledger-types';
 import type { SecretKind } from '../../vault-types';
@@ -126,7 +133,7 @@ export function AccountList({
             <th>用户名</th>
             <th>密码</th>
             <th>所属对象</th>
-            <th>复制整行</th>
+            <th>快捷操作</th>
           </tr>
         </thead>
         <tbody>
@@ -137,9 +144,14 @@ export function AccountList({
             return (
               <tr key={account.id} className={selected === account.id ? 'selected' : ''}>
                 <td>
-                  <button onClick={() => onOpen(account.id)}>
-                    <strong>{account.name}</strong>
-                    <small>{scope}</small>
+                  <button className="account-name-cell" onClick={() => onOpen(account.id)}>
+                    <span className="record-kind-icon accounts" aria-hidden="true">
+                      <UserIcon size={16} />
+                    </span>
+                    <span className="record-name">
+                      <strong>{account.name}</strong>
+                      <small>{scope}</small>
+                    </span>
                   </button>
                 </td>
                 <td>
@@ -199,15 +211,22 @@ export function AccountList({
                     .map((kind) => (
                       <button
                         key={kind}
-                        className="text-button account-other-secret"
+                        className="icon-button account-other-secret"
                         aria-label={`复制${secretLabels[kind]} ${account.name} ${account.username}`}
+                        title={
+                          copied === `${account.id}:${kind}`
+                            ? '已复制 · 30 秒后清理'
+                            : `复制${secretLabels[kind]}`
+                        }
                         disabled={copying !== null}
                         onClick={() => void copy(account, kind)}
                         onBlur={() => setCopied(null)}
                       >
-                        {copied === `${account.id}:${kind}`
-                          ? '已复制'
-                          : `复制${secretLabels[kind]}`}
+                        {copied === `${account.id}:${kind}` ? (
+                          <CheckIcon size={16} />
+                        ) : (
+                          <CopyIcon size={16} />
+                        )}
                       </button>
                     ))}
                 </td>
@@ -215,17 +234,26 @@ export function AccountList({
                   <span className="account-owner">{owner}</span>
                 </td>
                 <td>
-                  <button
-                    className="text-button account-copy-row"
-                    aria-label={`复制整行 ${owner} / ${account.name}`}
-                    title="复制名称、地址、用户名和密码 · 30 秒后清理"
-                    disabled={copying !== null}
-                    onBlur={() => setCopied(null)}
-                    onClick={() => void copy(account)}
-                  >
-                    {copied === key ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
-                    {copying === key ? '复制中…' : copied === key ? '已复制' : '复制整行'}
-                  </button>
+                  <div className="account-row-actions">
+                    <button
+                      className="icon-button account-copy-row"
+                      aria-label={`复制整行 ${owner} / ${account.name}`}
+                      title="复制名称、地址、用户名和密码 · 30 秒后清理"
+                      disabled={copying !== null}
+                      onBlur={() => setCopied(null)}
+                      onClick={() => void copy(account)}
+                    >
+                      {copied === key ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
+                    </button>
+                    <button
+                      className="icon-button"
+                      aria-label={`查看详情 ${account.name}`}
+                      title={`查看详情 ${account.name}`}
+                      onClick={() => onOpen(account.id)}
+                    >
+                      <CaretRightIcon size={16} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             );

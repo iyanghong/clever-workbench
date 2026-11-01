@@ -251,6 +251,10 @@ export function collectLedgerCopy(
         ownerId,
         ownerName,
         hasPassword: a.secretKinds.includes('password'),
+        preferred:
+          a.accessId !== null &&
+          snapshot.accessEntries.find((entry) => entry.id === a.accessId)?.preferredAccountId ===
+            a.id,
       });
     }
   }

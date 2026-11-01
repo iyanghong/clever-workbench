@@ -293,3 +293,105 @@ test('运维筛选在摘要与返回清单间保持有效，编辑后可沿步�
     await fs.rm(directory, { recursive: true, force: true });
   }
 });
+
+test('七类页签的行内复制与详情均使用无文字图标按钮', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-ledger-icons-'));
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env });
+  try {
+    const page = await app.firstWindow();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.getByRole('button', { name: '台账', exact: true }).waitFor();
+    await page.evaluate(async () => {
+      const api = window.desktop;
+      const systemId = (await api.mutate({ type: 'system.save', name: '图标布局系统' })).createdId!;
+      const environmentId = (await api.mutate({ type: 'environment.save', systemId, name: '生产' }))
+        .createdId!;
+      const accessId = (
+        await api.mutate({
+          type: 'access.save',
+          systemId,
+          environmentId,
+          name: '生产入口',
+          addresses: [{ label: '主地址', url: 'https://example.invalid' }],
+        })
+      ).createdId!;
+      await api.mutate({
+        type: 'account.save',
+        accessId,
+        environmentId,
+        name: '运维账号',
+        username: 'operator',
+      });
+      await api.mutate({
+        type: 'resource.save',
+        systemId,
+        environmentId,
+        kind: 'server',
+        name: '生产服务器',
+        address: '192.0.2.10',
+      });
+      await api.mutate({
+        type: 'resource.save',
+        systemId,
+        environmentId,
+        kind: 'redis',
+        name: '生产缓存',
+        address: '192.0.2.20',
+      });
+      await api.mutate({ type: 'service.save', systemId, name: '生产应用' });
+      await api.mutate({
+        type: 'operation.save',
+        value: {
+          systemId,
+          environmentId,
+          resourceId: null,
+          serviceId: null,
+          documentId: null,
+          kind: 'job',
+          status: 'active',
+          name: '每日巡检',
+          frequency: '每日 09:00',
+          notes: '',
+        },
+      });
+      await api.mutate({ type: 'document.create', context: { systemId, environmentId } });
+    });
+    await page.getByRole('button', { name: '台账', exact: true }).click();
+    for (const label of [
+      '访问入口',
+      '账号',
+      '服务器',
+      '数据库／中间件',
+      '应用部署',
+      '运行维护',
+      '文档',
+    ]) {
+      await page
+        .getByRole('navigation', { name: '系统资料类型' })
+        .getByRole('button', { name: label, exact: true })
+        .click();
+      if (label !== '文档') {
+        const copy = page
+          .getByRole('button', { name: label === '账号' ? /复制整行 / : /复制资料 / })
+          .first();
+        await expect(copy).toHaveClass(/icon-button/);
+        await expect(copy).toHaveText('');
+      }
+      const open = page.getByRole('button', { name: /查看详情 / }).first();
+      await expect(open).toHaveClass(/icon-button/);
+      await expect(open).toHaveText('');
+      await open.click();
+      if (label === '文档') {
+        await expect(page.locator('.document-editor')).toBeVisible();
+        continue;
+      }
+      await expect(page.getByRole('complementary', { name: '台账详情' })).toBeVisible();
+      await page.getByRole('button', { name: '返回清单', exact: true }).click();
+    }
+  } finally {
+    await app.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});

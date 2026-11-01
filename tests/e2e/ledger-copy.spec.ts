@@ -89,12 +89,26 @@ test('台账资料单条、多选、附账号与编辑保存失败不覆盖剪�
     await expect(page.getByRole('button', { name: '所选资料包含账号…', exact: true })).toHaveCount(
       0,
     );
+    await app.evaluate(({ clipboard }) => clipboard.writeText('before-default-account-copy'));
     await page.getByRole('button', { name: '复制资料 应用节点 01', exact: true }).click();
+    const defaultUnlock = page.getByRole('dialog', { name: '解锁秘密', exact: true });
+    await defaultUnlock.getByRole('button', { name: '取消', exact: true }).click();
+    expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe(
+      'before-default-account-copy',
+    );
+    await page.getByRole('button', { name: '复制资料 应用节点 01', exact: true }).click();
+    await defaultUnlock.getByLabel('主密码', { exact: true }).fill('fixture-master');
+    await defaultUnlock.getByRole('button', { name: '解锁', exact: true }).click();
     await expect
       .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
       .toContain('CPU：16 核');
-    expect(await app.evaluate(({ clipboard }) => clipboard.readText())).not.toContain('operator');
-    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toContain(
+      '用户名：operator',
+    );
+    expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toContain(
+      '密码：fixture-copy-password',
+    );
+    await page.evaluate(() => window.desktop.lockVault());
     await page.getByLabel('选择当前资料结果', { exact: true }).check();
     await page.getByRole('button', { name: '复制所选资料', exact: true }).click();
     await expect
@@ -166,6 +180,9 @@ test('台账资料单条、多选、附账号与编辑保存失败不覆盖剪�
     await page.getByRole('button', { name: '应用部署', exact: true }).click();
     await page.getByLabel('台账环境筛选').selectOption(ids.prod);
     await page.getByRole('button', { name: '复制资料 订单 API', exact: true }).click();
+    const serviceUnlock = page.getByRole('dialog', { name: '解锁秘密', exact: true });
+    await serviceUnlock.getByLabel('主密码', { exact: true }).fill('fixture-master');
+    await serviceUnlock.getByRole('button', { name: '解锁', exact: true }).click();
     await expect
       .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
       .toContain('部署节点：生产节点');
@@ -239,6 +256,70 @@ test('台账资料单条、多选、附账号与编辑保存失败不覆盖剪�
       path: info.outputPath('ledger-copy-details.png'),
       animations: 'disabled',
     });
+  } finally {
+    await app.close();
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('访问入口快捷复制优先附带常用账号的密码', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-preferred-copy-'));
+  const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: root };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const app = await electron.launch({ args: ['.'], env });
+  try {
+    const page = await app.firstWindow();
+    await page.getByRole('button', { name: '台账', exact: true }).waitFor();
+    await page.evaluate(async () => {
+      const api = window.desktop;
+      const systemId = (await api.mutate({ type: 'system.save', name: '费控系统' })).createdId!;
+      const environmentId = (await api.mutate({ type: 'environment.save', systemId, name: '生产' }))
+        .createdId!;
+      const accessId = (
+        await api.mutate({
+          type: 'access.save',
+          systemId,
+          environmentId,
+          name: '生产入口',
+          addresses: [{ label: '主地址', url: 'https://example.invalid' }],
+        })
+      ).createdId!;
+      const first = (
+        await api.mutate({
+          type: 'account.save',
+          accessId,
+          environmentId,
+          name: '第一账号',
+          username: 'first',
+        })
+      ).createdId!;
+      const preferred = (
+        await api.mutate({
+          type: 'account.save',
+          accessId,
+          environmentId,
+          name: '常用账号',
+          username: 'preferred',
+        })
+      ).createdId!;
+      await api.mutate({ type: 'access.save', id: accessId, preferredAccountId: preferred });
+      await api.initializeVault('preferred-master');
+      await api.saveSecret(first, 'password', 'first-password');
+      await api.saveSecret(preferred, 'password', 'preferred-password');
+      await api.lockVault();
+    });
+    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('button', { name: '访问入口', exact: true }).click();
+    await page.getByRole('button', { name: '复制资料 生产入口', exact: true }).click();
+    const unlock = page.getByRole('dialog', { name: '解锁秘密', exact: true });
+    await unlock.getByLabel('主密码', { exact: true }).fill('preferred-master');
+    await unlock.getByRole('button', { name: '解锁', exact: true }).click();
+    await expect
+      .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
+      .toContain('密码：preferred-password');
+    const copied = await app.evaluate(({ clipboard }) => clipboard.readText());
+    expect(copied).toContain('用户名：preferred');
+    expect(copied).not.toContain('first-password');
   } finally {
     await app.close();
     await fs.rm(root, { recursive: true, force: true });

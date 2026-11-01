@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "feature",
   "id": "ledger-copy",
-  "revision": 1,
+  "revision": 2,
   "title": "复制台账资料摘要",
   "platforms": ["darwin", "win32"],
   "placements": [
@@ -33,7 +33,7 @@
       "id": "one",
       "title": "复制一条资料",
       "action": "对访问入口、资源、服务或运维记录点击“复制资料”。",
-      "expectedResult": "得到含名称和必要背景的资料摘要，默认不附带账号或秘密；不是创建台账副本。"
+      "expectedResult": "得到含名称和必要背景的资料摘要。若存在已保存密码的账号，列表快捷复制默认附带首选账号，没有首选密码账号时取第一个已保存密码的账号，并按要求解锁；没有密码账号时不附带账号。不是创建台账副本。"
     },
     {
       "id": "selection",

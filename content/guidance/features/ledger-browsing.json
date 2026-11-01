@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "feature",
   "id": "ledger-browsing",
-  "revision": 1,
+  "revision": 2,
   "title": "查找台账与切换详情",
   "platforms": ["darwin", "win32"],
   "placements": [
@@ -45,7 +45,7 @@
     {
       "id": "detail",
       "title": "打开摘要与详情",
-      "action": "点击清单的资料名称。",
+      "action": "点击清单的资料名称或右侧详情图标。",
       "expectedResult": "完整表格切为摘要清单与详情；内容区较窄时只显示详情，不代表其他记录丢失。"
     },
     {

@@ -224,6 +224,143 @@
   overflow-wrap: anywhere;
 }
 
+.ledger-workspace .workspace-category-toolbar {
+  padding: 6px 24px;
+  background: var(--panel);
+}
+.ledger-workspace .workspace-categories {
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--hover) 65%, transparent);
+}
+.ledger-workspace .workspace-categories button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 7px;
+}
+.ledger-workspace .workspace-categories button[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--panel);
+  box-shadow: var(--shadow-control);
+}
+.ledger-workspace .workspace-query {
+  padding: 12px 24px;
+}
+.ledger-workspace .workspace-result-count {
+  padding-bottom: 8px;
+  border-bottom: 0;
+}
+.record-kind-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 8px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+}
+.record-kind-icon.servers {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 11%, var(--panel));
+}
+.record-kind-icon.accounts {
+  color: var(--tag-purple);
+  background: color-mix(in srgb, var(--tag-purple) 11%, var(--panel));
+}
+.record-kind-icon.documents {
+  color: var(--tag-orange);
+  background: color-mix(in srgb, var(--tag-orange) 12%, var(--panel));
+}
+.ledger-workspace .workspace-categories .record-kind-icon {
+  width: auto;
+  height: auto;
+  flex-basis: auto;
+  color: inherit;
+  background: transparent;
+}
+.ledger-workspace .workspace-list .ledger-object-table,
+.ledger-workspace .workspace-list .account-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border: var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.ledger-workspace .workspace-list th {
+  padding: 10px 14px;
+  background: color-mix(in srgb, var(--panel) 82%, var(--hover));
+  font-size: var(--font-caption);
+}
+.ledger-workspace .workspace-list td {
+  height: 60px;
+  padding: 10px 14px;
+  vertical-align: middle;
+}
+.ledger-workspace .workspace-list .ledger-object-table th:first-child {
+  width: 32%;
+}
+.ledger-workspace .ledger-object-table td:first-child > button,
+.ledger-workspace .account-table .account-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.record-name {
+  min-width: 0;
+}
+.ledger-workspace .ledger-object-table .workspace-row-actions {
+  width: 140px;
+  text-align: right;
+  white-space: nowrap;
+}
+.ledger-workspace .workspace-row-actions .ledger-copy-actions {
+  gap: 2px;
+  margin: 0;
+}
+.ledger-workspace .workspace-row-actions .icon-button,
+.ledger-workspace .account-row-actions .icon-button,
+.ledger-workspace .account-other-secret.icon-button {
+  width: 26px;
+  height: 26px;
+}
+.ledger-workspace .workspace-summary > li {
+  padding: 12px 14px;
+}
+.ledger-workspace .workspace-summary-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.ledger-workspace .workspace-summary-title .record-kind-icon {
+  width: 24px;
+  height: 24px;
+  flex-basis: 24px;
+  border-radius: 7px;
+}
+.ledger-workspace .workspace-summary-open small {
+  margin-left: 32px;
+}
+.ledger-workspace .account-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ledger-workspace .account-other-secret.icon-button {
+  margin-top: 2px;
+  margin-right: 2px;
+}
+.ledger-workspace .workspace-inspector {
+  padding: 20px 32px 32px;
+}
+
 @container ledger-workspace (max-width: 840px) {
   .ledger-workspace .workspace-browser.show-inspector {
     grid-template-columns: minmax(0, 1fr);

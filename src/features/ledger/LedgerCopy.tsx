@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { CopyIcon } from '@phosphor-icons/react';
+import { CopyIcon, UsersIcon } from '@phosphor-icons/react';
 import type {
   LedgerCopyRef,
   LedgerCopySelection,
@@ -23,7 +23,7 @@ type Context = {
   setSelected: (refs: LedgerCopyRef[]) => void;
   resolveValue: (read: (snapshot: Snapshot) => string) => Promise<string>;
   busy: boolean;
-  copy: (objects: LedgerCopyRef[]) => Promise<void>;
+  copy: (objects: LedgerCopyRef[], defaultAccount?: boolean) => Promise<void>;
   choose: (objects: LedgerCopyRef[]) => Promise<void>;
 };
 const CopyContext = createContext<Context | null>(null);
@@ -88,6 +88,7 @@ export function LedgerCopyProvider({
     withAccounts = false,
     accountIds: string[] = [],
     includePasswords = false,
+    defaultAccount = false,
   ) {
     if (working.current) return;
     working.current = true;
@@ -99,6 +100,25 @@ export function LedgerCopyProvider({
       await beforeCopy();
       if (request !== generation.current) return;
       const selection = { systemId, environment, objects };
+      if (defaultAccount) {
+        const preview = await window.desktop.previewLedgerCopy(selection);
+        if (request !== generation.current) return;
+        const account =
+          preview.accounts.find((item) => item.hasPassword && item.preferred) ??
+          preview.accounts.find((item) => item.hasPassword);
+        if (account) {
+          if (!(await vault.ensureUnlocked()) || request !== generation.current) return;
+          await window.desktop.copyLedger({
+            ...selection,
+            accountIds: [account.id],
+            includePasswords: true,
+          });
+          if (request !== generation.current) return;
+          setNotice('已复制资料 · 含密码的内容将在 30 秒后清理');
+          setDialog(null);
+          return;
+        }
+      }
       if (withAccounts) {
         const preview = await window.desktop.previewLedgerCopy(selection);
         if (request !== generation.current) return;
@@ -146,7 +166,8 @@ export function LedgerCopyProvider({
           return read(snapshot);
         },
         busy,
-        copy: (objects) => perform(objects),
+        copy: (objects, defaultAccount = false) =>
+          perform(objects, false, [], false, defaultAccount),
         choose: (objects) => perform(objects, true),
       }}
     >
@@ -234,31 +255,35 @@ export function LedgerCopyProvider({
 export function LedgerCopyActions({
   objects,
   name = '资料',
+  iconOnly = false,
 }: {
   objects: LedgerCopyRef[];
   name?: string;
+  iconOnly?: boolean;
 }) {
   const c = useCopy();
   return (
     <span className="ledger-copy-actions">
       <button
         type="button"
-        className="text-button"
+        className={iconOnly ? 'icon-button' : 'text-button'}
         disabled={c.busy || !objects.length}
         aria-label={`复制资料 ${name}`}
-        onClick={() => void c.copy(objects)}
+        title={`复制资料 ${name}`}
+        onClick={() => void c.copy(objects, iconOnly)}
       >
         <CopyIcon size={15} />
-        复制资料
+        {!iconOnly && '复制资料'}
       </button>
       <button
         type="button"
-        className="text-button copy-with-accounts"
+        className={iconOnly ? 'icon-button' : 'text-button copy-with-accounts'}
         disabled={c.busy || !objects.length}
         aria-label={`包含账号 ${name}`}
+        title={`包含账号 ${name}`}
         onClick={() => void c.choose(objects)}
       >
-        包含账号…
+        {iconOnly ? <UsersIcon size={16} /> : '包含账号…'}
       </button>
     </span>
   );
