@@ -48,8 +48,8 @@
       "未执行 Windows 实机验证；代理辅助核对不记为维护者人工验收。"
     ]
   },
-  "version": "0.1.22",
-  "tag": "v0.1.22",
-  "sourceSha": "73e9b962776c17692a500a91b584df8973ff6da8",
+  "version": "0.1.23",
+  "tag": "v0.1.23",
+  "sourceSha": "a6b29feeb19fca18a9286e0c93ecdd567aac6cf2",
   "publication": "pending"
 }
