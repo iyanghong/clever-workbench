@@ -157,6 +157,7 @@ test('多级大纲支持长标题、三种布局和重启后的展开状态记�
   const longHeading = '生产环境高峰期慢查询与跨节点连接泄漏联合排查记录';
   try {
     let page = await app.firstWindow();
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.getByLabel('文档', { exact: true }).click();
     await page.getByRole('button', { name: '新建文档', exact: true }).click();
     await page.getByLabel('文档标题').fill('多级长标题大纲');

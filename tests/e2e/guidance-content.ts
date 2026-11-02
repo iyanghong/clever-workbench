@@ -34,8 +34,13 @@ export async function expectedFeatureGuide(app: ElectronApplication, id: string)
     (guide) => guide.id === id && guide.platforms.includes(platform as 'darwin'),
   );
 }
-export const expectedUpdateGuide = (app: ElectronApplication) =>
-  expectedFeatureGuide(app, 'application-update');
+export async function expectedUpdateGuide(app: ElectronApplication) {
+  const page = await app.firstWindow();
+  await expect
+    .poll(async () => (await page.evaluate(() => window.desktop.updateSnapshot())).status)
+    .not.toBe('checking');
+  return expectedFeatureGuide(app, 'application-update');
+}
 
 /** A bad authored guide must exercise the unavailable UI, not silently skip a product failure. */
 export async function verifyUnavailableOrNoTarget(page: Page, guide?: FeatureGuide) {
