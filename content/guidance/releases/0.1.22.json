@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "kind": "release",
+  "operationChange": "changed",
+  "summary": "新增配置对比、数据格式、时间与 Cron、批量文本和表格转换五个本地效率工具。",
+  "changes": [
+    {
+      "id": "local-productivity-tools",
+      "summary": "工具目录新增五个纯本地效率工具，支持配置与文本处理、JSON／CSV 转换、时间戳换算和 Cron 执行预测，均可收藏到工作台首页。",
+      "guideIds": [
+        "local-productivity-tools",
+        "workspace-favorites"
+      ]
+    }
+  ],
+  "review": {
+    "status": "completed-with-gaps",
+    "reviewer": "Kimi Code（代理辅助核对）",
+    "checkedAt": "2026-11-01T23:38:44+08:00",
+    "source": "a0abbc9096835b263564552080b3cf7368c00924",
+    "environment": "macOS 开发构建 Electron，隔离 CLEVER_WORKBENCH_DATA_DIR；核对深色、浅色、正常窗口与窄窗口。",
+    "checks": [
+      {
+        "guideId": "local-productivity-tools",
+        "stepIds": [
+          "open",
+          "compare",
+          "json",
+          "time",
+          "text",
+          "table"
+        ],
+        "result": "passed",
+        "evidence": "五个工具的真实 Electron 操作、处理结果、错误边界、深浅主题和窄窗口回归通过；CSV／JSON 双向转换及 Cron 逻辑另有单元测试覆盖。"
+      },
+      {
+        "guideId": "workspace-favorites",
+        "stepIds": [
+          "pin",
+          "open"
+        ],
+        "result": "passed",
+        "evidence": "工具卡片收藏、首页常用入口及原有 ZIP 收藏和指引回归通过。"
+      }
+    ],
+    "knownGaps": [
+      "本次核对使用开发构建与隔离资料，不替代 GitHub Actions 的安装包构建和安装版桌面验收。",
+      "未执行 Windows 实机验证；代理辅助核对不记为维护者人工验收。"
+    ]
+  },
+  "version": "0.1.22",
+  "tag": "v0.1.22",
+  "sourceSha": "73e9b962776c17692a500a91b584df8973ff6da8",
+  "publication": "pending"
+}
