@@ -64,7 +64,8 @@ test('设置目录与自动策略持久化，失败重试保留已有副本，�
   try {
     let page = await app.firstWindow();
     await page.evaluate(() => window.desktop.configureBackup('fictional-automatic-ui-password'));
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '备份与恢复', exact: true }).click();
     await page.getByRole('switch', { name: '自动备份' }).uncheck();
     await app.evaluate(({ dialog }, folder) => {
       dialog.showOpenDialog = (async () => ({
@@ -108,7 +109,8 @@ test('设置目录与自动策略持久化，失败重试保留已有副本，�
     app = await electron.launch({ args: ['.'], env });
     page = await app.firstWindow();
     await expect.poll(async () => (await fs.readdir(folder)).length).toBe(3);
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '备份与恢复', exact: true }).click();
     await expect(page.locator('.path-text')).toHaveText(folder);
     await expect(page.getByRole('switch', { name: '自动备份' })).toBeChecked();
     const after = await page.evaluate(() => window.desktop.snapshot());

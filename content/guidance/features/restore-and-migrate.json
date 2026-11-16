@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "feature",
   "id": "restore-and-migrate",
-  "revision": 1,
+  "revision": 2,
   "title": "预检、恢复与迁移完整备份",
   "platforms": ["darwin", "win32"],
   "placements": ["settings-backup"],
@@ -14,12 +14,12 @@
     ],
     "notApplicableReason": ""
   },
-  "entry": { "label": "设置 → 备份与迁移 → 从备份恢复", "target": "settings-backup" },
+  "entry": { "label": "设置 → 备份与恢复 → 从备份恢复", "target": "settings-backup" },
   "steps": [
     {
       "id": "choose",
       "title": "选择完整备份文件",
-      "action": "将 .cwb 文件复制到目标电脑，打开“设置 → 备份与迁移”，点击“从备份恢复”并选择文件。",
+      "action": "将 .cwb 文件复制到目标电脑，打开“设置 → 备份与恢复”，点击“从备份恢复”并选择文件。",
       "expectedResult": "出现文件名和密码输入框；取消文件选择或关闭弹窗不会改变当前资料。"
     },
     {

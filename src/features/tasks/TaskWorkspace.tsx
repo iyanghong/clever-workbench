@@ -1,3 +1,6 @@
+import { markNewRecordChanged } from '../../shared/new-record';
+import { Button, Checkbox, Input, Select, Collapse } from 'antd';
+import { openDialogSelector } from '../../shared/modal-state';
 import { PageHeading, SegmentedControl } from '../../shared/WorkspaceUI';
 import { GuidanceButton } from '../guidance/Guidance';
 import type { CreationContext } from '../../app/actions';
@@ -254,7 +257,7 @@ export function TaskWorkspace({
   }
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
-      if (e.isComposing || document.querySelector('dialog[open], [role="alertdialog"]')) return;
+      if (e.isComposing || document.querySelector(openDialogSelector)) return;
       if (e.key === 'Escape' && !confirm) {
         if (selected) void closeDetail();
         else {
@@ -492,35 +495,46 @@ export function TaskWorkspace({
           )}
           {view === 'tasks' && (
             <div className="project-picker">
-              <select
+              <Select
                 aria-label="系统范围"
                 value={systemScope}
-                onChange={(event) => void navigate('tasks', event.target.value)}
+                onChange={(event) => {
+                  markNewRecordChanged();
+                  return void navigate('tasks', event);
+                }}
               >
-                <option value="all">全部系统</option>
-                <option value="none">未关联系统</option>
+                <Select.Option data-value={String('all')} value="all">
+                  全部系统
+                </Select.Option>
+                <Select.Option data-value={String('none')} value="none">
+                  未关联系统
+                </Select.Option>
                 {systems.map((p) => (
-                  <option key={p.id} value={p.id}>
+                  <Select.Option data-value={String(p.id)} key={p.id} value={p.id}>
                     {p.name}
-                  </option>
+                  </Select.Option>
                 ))}
-              </select>
+              </Select>
             </div>
           )}
           {view === 'trash' && (
-            <button
+            <Button
+              htmlType="submit"
+              type="text"
               className="text-button"
               aria-label="文档回收站"
               onClick={() => void onOpenDocuments(undefined, true)}
             >
               文档回收站
-            </button>
+            </Button>
           )}
           {view === 'tasks' && (
             <label className="search-field">
               <MagnifyingGlassIcon size={16} />
-              <input
-                ref={searchRef}
+              <Input
+                ref={(node) => {
+                  searchRef.current = node?.input ?? null;
+                }}
                 aria-label="搜索任务"
                 value={query}
                 placeholder="搜索记录"
@@ -531,10 +545,16 @@ export function TaskWorkspace({
               <kbd>{window.desktop.platform === 'darwin' ? '⌘' : 'Ctrl'} K</kbd>
             </label>
           )}
-          <button className="toolbar-new" aria-label="新增任务" onClick={() => void newTask()}>
+          <Button
+            htmlType="submit"
+            type="primary"
+            className="toolbar-new"
+            aria-label="新增任务"
+            onClick={() => void newTask()}
+          >
             <PlusIcon size={18} />
             <span>新增任务</span>
-          </button>
+          </Button>
         </header>
         <div className="workspace-content">
           {view === 'review' ? (
@@ -556,12 +576,15 @@ export function TaskWorkspace({
                 actions={
                   view === 'trash' &&
                   scoped.length > 0 && (
-                    <button
+                    <Button
+                      htmlType="submit"
+                      type="text"
+                      danger
                       className="text-button danger-text"
                       onClick={() => void run({ type: 'task.purge' })}
                     >
                       清空回收站
-                    </button>
+                    </Button>
                   )
                 }
               />
@@ -604,7 +627,9 @@ export function TaskWorkspace({
                       { value: 'compact', label: '紧凑' },
                     ]}
                   />
-                  <button
+                  <Button
+                    htmlType="submit"
+                    type="text"
                     className="text-button"
                     aria-pressed={batchMode}
                     onClick={() => {
@@ -613,61 +638,97 @@ export function TaskWorkspace({
                     }}
                   >
                     批量关联系统
-                  </button>
-                  <select
+                  </Button>
+                  <Select
                     aria-label="时间归类"
                     value={grouping}
-                    onChange={(event) => setGrouping(event.target.value as TaskGrouping)}
+                    onChange={(event) => {
+                      markNewRecordChanged();
+                      return setGrouping(event as TaskGrouping);
+                    }}
                   >
-                    <option value="created">按创建时间</option>
-                    <option value="due">按预计完成时间</option>
-                  </select>
-                  <button className="text-button" onClick={() => setManageTags(true)}>
+                    <Select.Option data-value={String('created')} value="created">
+                      按创建时间
+                    </Select.Option>
+                    <Select.Option data-value={String('due')} value="due">
+                      按预计完成时间
+                    </Select.Option>
+                  </Select>
+                  <Button
+                    htmlType="submit"
+                    type="text"
+                    className="text-button"
+                    onClick={() => setManageTags(true)}
+                  >
                     管理标签
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <p className="page-description">记录会保留在这里，直到你选择恢复或彻底删除。</p>
               )}
               {view === 'tasks' && (
-                <details className="compact-details task-tag-filter">
-                  <summary>标签筛选{tagIds.length ? ` · ${tagIds.length} 项` : ''}</summary>
-                  <div className="task-tag-options">
-                    {(snapshot.taskTags ?? []).map((tag) => (
-                      <label key={tag.id}>
-                        <input
-                          type="checkbox"
-                          aria-label={`筛选标签 ${tag.name}`}
-                          checked={tagIds.includes(tag.id)}
-                          onChange={(event) =>
-                            setTagIds(
-                              event.target.checked
-                                ? [...tagIds, tag.id]
-                                : tagIds.filter((id) => id !== tag.id),
-                            )
-                          }
-                        />
-                        <TaskTagChips tags={[tag]} ids={[tag.id]} />
-                      </label>
-                    ))}
-                    <select
-                      aria-label="标签匹配方式"
-                      value={tagMatch}
-                      onChange={(event) => setTagMatch(event.target.value as 'any' | 'all')}
-                    >
-                      <option value="any">匹配任一标签</option>
-                      <option value="all">匹配全部标签</option>
-                    </select>
-                    {!!tagIds.length && (
-                      <button className="text-button" onClick={() => setTagIds([])}>
-                        清除标签筛选
-                      </button>
-                    )}
-                    {!snapshot.taskTags?.length && (
-                      <span className="muted">可在“管理标签”中创建分类。</span>
-                    )}
-                  </div>
-                </details>
+                <Collapse
+                  className="compact-details task-tag-filter"
+                  ghost
+                  defaultActiveKey={false ? ['details'] : []}
+                  items={[
+                    {
+                      key: 'details',
+                      label: <>标签筛选{tagIds.length ? ` · ${tagIds.length} 项` : ''}</>,
+                      forceRender: true,
+                      children: (
+                        <>
+                          <div className="task-tag-options">
+                            {(snapshot.taskTags ?? []).map((tag) => (
+                              <Checkbox
+                                key={tag.id}
+                                aria-label={`筛选标签 ${tag.name}`}
+                                checked={tagIds.includes(tag.id)}
+                                onChange={(event) =>
+                                  setTagIds(
+                                    event.target.checked
+                                      ? [...tagIds, tag.id]
+                                      : tagIds.filter((id) => id !== tag.id),
+                                  )
+                                }
+                              >
+                                <TaskTagChips tags={[tag]} ids={[tag.id]} />
+                              </Checkbox>
+                            ))}
+                            <Select
+                              aria-label="标签匹配方式"
+                              value={tagMatch}
+                              onChange={(event) => {
+                                markNewRecordChanged();
+                                return setTagMatch(event as 'any' | 'all');
+                              }}
+                            >
+                              <Select.Option data-value={String('any')} value="any">
+                                匹配任一标签
+                              </Select.Option>
+                              <Select.Option data-value={String('all')} value="all">
+                                匹配全部标签
+                              </Select.Option>
+                            </Select>
+                            {!!tagIds.length && (
+                              <Button
+                                htmlType="submit"
+                                type="text"
+                                className="text-button"
+                                onClick={() => setTagIds([])}
+                              >
+                                清除标签筛选
+                              </Button>
+                            )}
+                            {!snapshot.taskTags?.length && (
+                              <span className="muted">可在“管理标签”中创建分类。</span>
+                            )}
+                          </div>
+                        </>
+                      ),
+                    },
+                  ]}
+                />
               )}
               {view !== 'trash' && (
                 <form
@@ -678,7 +739,7 @@ export function TaskWorkspace({
                   }}
                 >
                   <PlusIcon size={20} />
-                  <input
+                  <Input
                     aria-label="快速新增任务"
                     placeholder="记下一件要做的事…"
                     value={draft.title}
@@ -706,52 +767,56 @@ export function TaskWorkspace({
                       ? (systems.find((p) => p.id === draft.systemId)?.name ?? '未关联系统')
                       : ''}
                   </span>
-                  <button
-                    type="button"
+                  <Button
+                    type="text"
+                    htmlType="button"
                     className="quick-expand"
                     aria-label="展开详细录入"
                     onClick={() => void newTask()}
                   >
                     <ArrowUpRightIcon size={16} />
-                  </button>
+                  </Button>
                   <kbd>↵</kbd>
                 </form>
               )}
               {batchMode && view === 'tasks' && (
                 <div className="workspace-query">
-                  <label>
-                    <input
-                      type="checkbox"
-                      aria-label="选择当前结果"
-                      checked={visible.length > 0 && visible.every((t) => batchIds.includes(t.id))}
-                      disabled={batchBusy || visible.length > 1000}
-                      onChange={(e) =>
-                        setBatchIds(e.target.checked ? visible.map((t) => t.id) : [])
-                      }
-                    />
+                  <Checkbox
+                    aria-label="选择当前结果"
+                    checked={visible.length > 0 && visible.every((t) => batchIds.includes(t.id))}
+                    disabled={batchBusy || visible.length > 1000}
+                    onChange={(e) => setBatchIds(e.target.checked ? visible.map((t) => t.id) : [])}
+                  >
                     选择当前结果
-                  </label>
+                  </Checkbox>
                   <span>已选 {batchIds.length} 项</span>
-                  <select
+                  <Select
                     aria-label="批量关联系统"
                     value={batchSystem}
                     disabled={batchBusy}
-                    onChange={(e) => setBatchSystem(e.target.value)}
+                    onChange={(e) => {
+                      markNewRecordChanged();
+                      return setBatchSystem(e);
+                    }}
                   >
-                    <option value="">未关联系统</option>
+                    <Select.Option data-value={String('')} value="">
+                      未关联系统
+                    </Select.Option>
                     {systems.map((s) => (
-                      <option key={s.id} value={s.id}>
+                      <Select.Option data-value={String(s.id)} key={s.id} value={s.id}>
                         {s.name}
-                      </option>
+                      </Select.Option>
                     ))}
-                  </select>
-                  <button
+                  </Select>
+                  <Button
+                    htmlType="submit"
+                    type="primary"
                     className="primary-button"
                     disabled={!batchIds.length || batchBusy}
                     onClick={() => void assignSystem()}
                   >
                     应用到所选任务
-                  </button>
+                  </Button>
                 </div>
               )}
               <div className="list-section-label">
@@ -796,8 +861,7 @@ export function TaskWorkspace({
                           key={t.id}
                         >
                           {batchMode && view === 'tasks' && (
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               aria-label={`选择任务 ${t.title}`}
                               checked={batchIds.includes(t.id)}
                               disabled={batchBusy}
@@ -810,7 +874,9 @@ export function TaskWorkspace({
                               }
                             />
                           )}
-                          <button
+                          <Button
+                            htmlType="submit"
+                            type="text"
                             className={`completion ${t.completedAt !== null ? 'checked' : ''}`}
                             aria-label={
                               t.completedAt !== null ? `重新打开 ${t.title}` : `完成 ${t.title}`
@@ -825,8 +891,10 @@ export function TaskWorkspace({
                             }
                           >
                             {t.completedAt !== null && <CheckIcon weight="bold" size={13} />}
-                          </button>
-                          <button
+                          </Button>
+                          <Button
+                            htmlType="submit"
+                            type="text"
                             className="task-open"
                             title={t.title}
                             onClick={() => void select(t.id)}
@@ -851,23 +919,28 @@ export function TaskWorkspace({
                               <TaskTiming task={t} now={now} />
                               <TaskTagChips ids={t.tagIds} tags={snapshot.taskTags} />
                             </span>
-                          </button>
+                          </Button>
                           {view === 'trash' ? (
                             <>
-                              <button
+                              <Button
+                                htmlType="submit"
+                                type="text"
                                 className="icon-button"
                                 aria-label={`恢复 ${t.title}`}
                                 onClick={() => void run({ type: 'task.restore', id: t.id })}
                               >
                                 <ArrowCounterClockwiseIcon size={18} />
-                              </button>
-                              <button
+                              </Button>
+                              <Button
+                                htmlType="submit"
+                                type="text"
+                                danger
                                 className="icon-button danger-hover"
                                 aria-label={`彻底删除 ${t.title}`}
                                 onClick={() => void run({ type: 'task.purge', id: t.id })}
                               >
                                 <TrashIcon size={17} />
-                              </button>
+                              </Button>
                             </>
                           ) : (
                             <CaretRightIcon className="row-arrow" size={14} />
@@ -899,7 +972,9 @@ export function TaskWorkspace({
                           : '从一行文字开始，把工作慢慢变成成果。'}
                     </p>
                     {query || tagIds.length ? (
-                      <button
+                      <Button
+                        htmlType="submit"
+                        type="default"
                         className="secondary-button"
                         onClick={() => {
                           setQuery('');
@@ -909,12 +984,17 @@ export function TaskWorkspace({
                         }}
                       >
                         清除筛选
-                      </button>
+                      </Button>
                     ) : (
                       view !== 'trash' && (
-                        <button className="empty-cta" onClick={() => void newTask()}>
+                        <Button
+                          htmlType="submit"
+                          type="text"
+                          className="empty-cta"
+                          onClick={() => void newTask()}
+                        >
                           记下第一件事 <ArrowRightIcon size={16} />
-                        </button>
+                        </Button>
                       )
                     )}
                   </div>
@@ -956,9 +1036,9 @@ export function TaskWorkspace({
       {error && (
         <div className="error-banner" role="alert">
           <span>{error}</span>
-          <button aria-label="关闭提示" onClick={() => setError('')}>
+          <Button htmlType="submit" type="text" aria-label="关闭提示" onClick={() => setError('')}>
             <XIcon />
-          </button>
+          </Button>
         </div>
       )}
       {notice && (
@@ -966,9 +1046,13 @@ export function TaskWorkspace({
           <CheckCircleIcon size={19} weight="fill" />
           <span>{notice.text}</span>
           {notice.undo && (
-            <button onClick={() => void notice.undo!().catch((e) => notifyError(e.message))}>
+            <Button
+              htmlType="submit"
+              type="text"
+              onClick={() => void notice.undo!().catch((e) => notifyError(e.message))}
+            >
               撤销
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -983,20 +1067,33 @@ export function TaskWorkspace({
           <p className="multiline">{confirm.body}</p>
           <div className="modal-actions">
             {confirm.cancel !== '取消' && (
-              <button className="text-button" onClick={() => answer(null)}>
+              <Button
+                htmlType="submit"
+                type="text"
+                className="text-button"
+                onClick={() => answer(null)}
+              >
                 取消
-              </button>
+              </Button>
             )}
-            <button className="secondary-button" onClick={() => answer(false)}>
+            <Button
+              htmlType="submit"
+              type="default"
+              className="secondary-button"
+              onClick={() => answer(false)}
+            >
               {confirm.cancel ?? '取消'}
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
+              danger
               autoFocus
               className={confirm.danger ? 'danger-button' : 'primary-button'}
               onClick={() => answer(true)}
             >
               {confirm.confirm}
-            </button>
+            </Button>
           </div>
         </Dialog>
       )}

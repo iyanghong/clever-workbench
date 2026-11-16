@@ -1,3 +1,4 @@
+import { Button, Input } from 'antd';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { LockKeyIcon, LockKeyOpenIcon } from '@phosphor-icons/react';
 import type { VaultStatus } from '../../vault-types';
@@ -205,8 +206,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           </p>
           <label>
             主密码
-            <input
-              type="password"
+            <Input.Password
               aria-label="主密码"
               autoFocus
               autoComplete={status.initialized ? 'current-password' : 'new-password'}
@@ -220,8 +220,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           {!status.initialized && (
             <label>
               确认主密码
-              <input
-                type="password"
+              <Input.Password
                 aria-label="确认主密码"
                 autoComplete="new-password"
                 value={confirmation}
@@ -233,16 +232,23 @@ export function VaultProvider({ children }: { children: ReactNode }) {
             </label>
           )}
           <div className="modal-actions">
-            <button className="secondary-button" onClick={() => void cancel()}>
+            <Button
+              htmlType="submit"
+              type="default"
+              className="secondary-button"
+              onClick={() => void cancel()}
+            >
               取消
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
               className="primary-button"
               disabled={busy || !password || (!status.initialized && password.length < 6)}
               onClick={() => void unlock()}
             >
               {busy ? '处理中…' : status.initialized ? '解锁' : '设置并解锁'}
-            </button>
+            </Button>
           </div>
         </Dialog>
       )}
@@ -257,8 +263,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           </p>
           <label>
             备份密码
-            <input
-              type="password"
+            <Input.Password
               aria-label="备份密码"
               autoFocus
               autoComplete="new-password"
@@ -268,8 +273,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           </label>
           <label>
             确认备份密码
-            <input
-              type="password"
+            <Input.Password
               aria-label="确认备份密码"
               autoComplete="new-password"
               value={backupConfirmation}
@@ -281,16 +285,23 @@ export function VaultProvider({ children }: { children: ReactNode }) {
             />
           </label>
           <div className="modal-actions">
-            <button className="secondary-button" onClick={() => void cancelBackupSetup()}>
+            <Button
+              htmlType="submit"
+              type="default"
+              className="secondary-button"
+              onClick={() => void cancelBackupSetup()}
+            >
               取消
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
               className="primary-button"
               disabled={backupBusy || backupPassword.length < 6}
               onClick={() => void saveBackupPassword()}
             >
               {backupBusy ? '正在保护备份…' : '保存并继续'}
-            </button>
+            </Button>
           </div>
         </Dialog>
       )}
@@ -307,7 +318,9 @@ export function VaultControl() {
       </div>
     );
   return (
-    <button
+    <Button
+      htmlType="submit"
+      type="text"
       className="vault-control"
       aria-label={status.unlocked ? '锁定秘密' : status.initialized ? '解锁秘密' : '设置主密码'}
       onClick={() => void (status.unlocked ? lock() : ensureUnlocked()).catch(() => {})}
@@ -317,6 +330,6 @@ export function VaultControl() {
         {status.unlocked ? '秘密已解锁' : status.initialized ? '秘密已锁定' : '设置主密码'}
       </span>
       {status.unlocked && <small>锁定</small>}
-    </button>
+    </Button>
   );
 }

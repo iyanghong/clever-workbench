@@ -1,3 +1,4 @@
+import { expectSelectValue } from './antd-controls';
 import { electron } from './launch';
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs/promises';
@@ -11,7 +12,7 @@ const state = (page: Page) => page.evaluate(() => window.desktop.tools.state('zi
 const idle = (page: Page) =>
   expect.poll(async () => (await state(page)).busy, { timeout: 60000 }).toBe(false);
 const sidebar = (page: Page, name: string) =>
-  page.getByRole('navigation', { name: '工作空间' }).getByRole('button', { name, exact: true });
+  page.getByRole('navigation', { name: '工作空间' }).getByRole('menuitem', { name, exact: true });
 const zipCard = (page: Page) =>
   page.getByRole('article').filter({
     has: page.getByRole('heading', { name: 'ZIP 文本归档', exact: true }),
@@ -306,7 +307,7 @@ test('工具收藏、后台运行与退出保护、目录及剪贴板还原', as
       .poll(() =>
         page.locator('#zip-output').evaluate((input) => getComputedStyle(input).backgroundColor),
       )
-      .toBe('rgb(40, 43, 48)');
+      .toBe('rgb(28, 32, 38)');
     await page.setViewportSize({ width: 850, height: 740 });
     await page.screenshot({ path: info.outputPath('zip-dark-narrow.png') });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
@@ -357,7 +358,7 @@ test('Git 提交筛选预览并打包当前磁盘文件', async ({}, info) => {
     await page.getByLabel('Git 工作目录', { exact: true }).fill(source);
     await page.getByRole('button', { name: '读取分支' }).click();
     await idle(page);
-    await expect(page.getByLabel('分支', { exact: true })).toHaveValue('refs/heads/main');
+    await expectSelectValue(page.getByLabel('分支', { exact: true }), 'refs/heads/main');
     await page.getByLabel('作者', { exact: true }).fill('UI Author');
     await page.getByRole('button', { name: '应用筛选', exact: true }).click();
     await idle(page);

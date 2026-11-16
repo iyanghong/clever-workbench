@@ -11,27 +11,21 @@ test('主题跟随与手动覆盖，透明度／对比／动态偏好可保存�
   let app = await electron.launch({ args: ['.'], env });
   try {
     let page = await app.firstWindow();
-    await page.getByRole('button', { name: '设置', exact: true }).click();
-    await page.getByRole('button', { name: '浅色', exact: true }).click();
-    await expect(page.getByRole('button', { name: '浅色', exact: true })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('radio', { name: '浅色', exact: true }).locator('..').click();
+    await expect(page.getByRole('radio', { name: '浅色', exact: true })).toBeChecked();
     await page.emulateMedia({ colorScheme: 'dark' });
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
     await page.screenshot({
       animations: 'disabled',
       path: testInfo.outputPath('settings-light.png'),
     });
-    await page.getByRole('button', { name: '系统', exact: true }).click();
+    await page.getByRole('radio', { name: '系统', exact: true }).locator('..').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await page.emulateMedia({ colorScheme: 'light' });
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-    await page.getByRole('button', { name: '深色', exact: true }).click();
-    await expect(page.getByRole('button', { name: '深色', exact: true })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    await page.getByRole('radio', { name: '深色', exact: true }).locator('..').click();
+    await expect(page.getByRole('radio', { name: '深色', exact: true })).toBeChecked();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await page.screenshot({
       animations: 'disabled',
@@ -66,7 +60,7 @@ test('主题跟随与手动覆盖，透明度／对比／动态偏好可保存�
     expect(await newButton.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe(
       'none',
     );
-    await page.getByRole('button', { name: '工作台', exact: true }).focus();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).focus();
     await page.keyboard.press('Enter');
     await page.getByLabel('快速新增任务').focus();
     await page.keyboard.type('键盘完成工作');
@@ -77,11 +71,8 @@ test('主题跟随与手动覆盖，透明度／对比／动态偏好可保存�
     await app.close();
     app = await electron.launch({ args: ['.'], env });
     page = await app.firstWindow();
-    await page.getByRole('button', { name: '设置', exact: true }).click();
-    await expect(page.getByRole('button', { name: '深色', exact: true })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await expect(page.getByRole('radio', { name: '深色', exact: true })).toBeChecked();
     for (const name of ['减少透明度', '增强对比', '减少动态效果'])
       await expect(page.getByRole('switch', { name, exact: true })).toBeChecked();
   } finally {

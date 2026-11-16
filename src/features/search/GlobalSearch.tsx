@@ -1,5 +1,14 @@
+import { Button, Input, Tooltip, theme } from 'antd';
+import { openDialogSelector } from '../../shared/modal-state';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { MagnifyingGlassIcon, ArrowUpRightIcon, CopyIcon } from '@phosphor-icons/react';
+import {
+  MagnifyingGlassIcon,
+  ArrowUpRightIcon,
+  CopyIcon,
+  SidebarSimpleIcon,
+  MoonIcon,
+  SunIcon,
+} from '@phosphor-icons/react';
 import { Dialog } from '../../shared/Dialog';
 import { routeForHit, type ModuleProps } from '../../app/modules';
 import { searchKindLabels, type SearchHit } from '../../search-types';
@@ -10,11 +19,15 @@ export function GlobalSearch({
   navigate,
   flush,
   children,
+  onToggleSidebar,
 }: {
   navigate: ModuleProps['navigate'];
   flush: () => Promise<void>;
   children?: ReactNode;
+  onToggleSidebar?: () => void;
 }) {
+  const { token } = theme.useToken();
+  const dark = token.colorBgLayout === '#14171c';
   const [open, setOpen] = useState(false),
     [query, setQuery] = useState(''),
     [hits, setHits] = useState<SearchHit[]>([]),
@@ -28,7 +41,7 @@ export function GlobalSearch({
   flushRef.current = flush;
   openRef.current = open;
   async function show() {
-    if (document.querySelector('dialog[open]') && !openRef.current) return;
+    if (document.querySelector(openDialogSelector) && !openRef.current) return;
     try {
       await flushRef.current();
       setError('');
@@ -47,7 +60,7 @@ export function GlobalSearch({
         (event.ctrlKey || event.metaKey) &&
         event.key.toLowerCase() === 'k'
       ) {
-        if (document.querySelector('dialog[open]') && !openRef.current) return;
+        if (document.querySelector(openDialogSelector) && !openRef.current) return;
         event.preventDefault();
         if (openRef.current) input.current?.focus();
         else void show();
@@ -107,12 +120,38 @@ export function GlobalSearch({
   }
   return (
     <header className="command-bar">
-      <button className="global-search-trigger" aria-label="全局搜索" onClick={() => void show()}>
+      {onToggleSidebar && (
+        <Button
+          aria-label="收起或展开导航"
+          type="text"
+          icon={<SidebarSimpleIcon size={19} />}
+          onClick={onToggleSidebar}
+        />
+      )}
+      <Button
+        htmlType="button"
+        type="default"
+        className="global-search-trigger"
+        aria-label="全局搜索"
+        onClick={() => void show()}
+      >
         <MagnifyingGlassIcon size={17} />
         <span>搜索系统、账号、任务与文档</span>
         <kbd>{window.desktop.platform === 'darwin' ? '⌘' : 'Ctrl'} K</kbd>
-      </button>
+      </Button>
       <div className="spacer" />
+      <Tooltip title={dark ? '切换浅色' : '切换深色'}>
+        <Button
+          type="text"
+          aria-label="切换主题"
+          icon={dark ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+          onClick={() =>
+            void window.desktop
+              .mutate({ type: 'settings', theme: dark ? 'light' : 'dark' })
+              .catch((cause) => setError(String(cause)))
+          }
+        />
+      </Tooltip>
       <GuidanceButton placement="search" accessibleLabel="搜索与新建使用指引" />
       {children}
       {error && !open && (
@@ -130,8 +169,10 @@ export function GlobalSearch({
         >
           <label className="search-input">
             <MagnifyingGlassIcon size={21} />
-            <input
-              ref={input}
+            <Input
+              ref={(node) => {
+                input.current = node?.input ?? null;
+              }}
               autoFocus
               aria-label="搜索工作台内容"
               placeholder="例如：订单平台 生产 Redis"
@@ -169,7 +210,9 @@ export function GlobalSearch({
                     className={active === index ? 'active' : ''}
                     onPointerEnter={() => setActive(index)}
                   >
-                    <button
+                    <Button
+                      htmlType="submit"
+                      type="text"
                       className="search-result-open"
                       aria-label={`打开${searchKindLabels[hit.kind]} ${hit.title}`}
                       onClick={() => void select(hit)}
@@ -181,9 +224,11 @@ export function GlobalSearch({
                         {hit.summary && <span>{hit.summary}</span>}
                       </span>
                       <ArrowUpRightIcon size={15} />
-                    </button>
+                    </Button>
                     {hit.kind === 'access' && hit.url && (
-                      <button
+                      <Button
+                        htmlType="submit"
+                        type="text"
                         className="icon-button"
                         aria-label={`打开网站 ${hit.title}`}
                         title={hit.url}
@@ -194,12 +239,14 @@ export function GlobalSearch({
                         }
                       >
                         <ArrowUpRightIcon size={16} />
-                      </button>
+                      </Button>
                     )}
                     {hit.kind === 'account' && (
                       <div className="search-result-actions">
                         {hit.username && (
-                          <button
+                          <Button
+                            htmlType="submit"
+                            type="text"
                             className="icon-button"
                             aria-label={`复制用户名 ${hit.title}`}
                             title="复制用户名"
@@ -213,7 +260,7 @@ export function GlobalSearch({
                             }}
                           >
                             <CopyIcon size={16} />
-                          </button>
+                          </Button>
                         )}
                         {hit.secretKinds?.map((kind) => (
                           <SecretCopyButton

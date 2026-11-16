@@ -1,5 +1,8 @@
 @import './shared/theme.css';
-@import './shared/controls.css';
+@import 'vditor/dist/index.css' layer(legacy.editor);
+@import './shared/controls.css' layer(legacy);
+@import './shared/antd-workbench.css';
+@layer legacy {
 /* macOS 27-inspired web material; native window controls remain platform-owned. */
 .task-group-heading {
   height: 34px;
@@ -3763,7 +3766,9 @@
 }
 
 /* Shared dialog chrome keeps the exit visible while long forms scroll. */
-.shared-dialog .field-label :is(input:not([type='checkbox']):not([type='radio']), select, textarea),
+.shared-dialog
+  .field-label
+  :is(input:not([type='checkbox']):not([type='radio']), select, textarea),
 .shared-dialog .workspace-management-row > input,
 .paste-setup select,
 .paste-mapping select {
@@ -4427,4 +4432,5 @@ form[data-new-record] textarea {
 }
 .new-record-fields:disabled {
   opacity: 0.75;
+}
 }

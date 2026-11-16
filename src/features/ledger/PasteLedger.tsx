@@ -1,3 +1,5 @@
+import { markNewRecordChanged } from '../../shared/new-record';
+import { Button, Checkbox, Input, Select, ConfigProvider, Table } from 'antd';
 import { serverConfigurationFields } from '../../ledger-types';
 import {
   resourceTemplate,
@@ -433,15 +435,19 @@ export function PasteLedger({
       {leaving && (
         <div className="paste-leave-notice" role="alert">
           <p>这些资料尚未提交，离开将丢弃本次录入内容。</p>
-          <button
+          <Button
+            htmlType="submit"
+            type="default"
             ref={continueButton}
             className="secondary-button"
             disabled={busy}
             onClick={() => setLeaving(false)}
           >
             继续校对
-          </button>
-          <button
+          </Button>
+          <Button
+            htmlType="submit"
+            type="text"
             className="text-button"
             disabled={busy}
             onClick={() => {
@@ -450,7 +456,7 @@ export function PasteLedger({
             }}
           >
             放弃并离开
-          </button>
+          </Button>
         </div>
       )}
       {result ? (
@@ -458,139 +464,164 @@ export function PasteLedger({
           <p role="status">
             已创建 {result.count} 条，跳过 {result.skipped} 条。
           </p>
-          <button className="primary-button" onClick={onClose}>
+          <Button htmlType="submit" type="primary" className="primary-button" onClick={onClose}>
             完成
-          </button>
+          </Button>
         </>
       ) : (
         <>
-          <fieldset
-            disabled={busy}
-            onChange={() => {
-              token.current = crypto.randomUUID();
-            }}
-          >
-            <div className="paste-setup">
-              <label>
-                条目类型
-                <select
-                  aria-label="批量条目类型"
-                  value={kind}
-                  disabled={dirty}
-                  onChange={(e) => {
-                    setKind(e.target.value as LedgerBatch['kind']);
-                    setOwner('');
-                    setExtraFields([]);
-                    setNewField('');
-                  }}
-                >
-                  {Object.entries(kinds).map(([key, label]) => (
-                    <option key={key} value={key}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {kind !== 'account' && (
-                <label>
-                  环境
-                  <select
-                    aria-label="批量环境"
-                    value={environment}
-                    onChange={(e) => {
-                      setEnvironment(e.target.value);
-                      changeRows(rows);
-                    }}
-                  >
-                    <option value="">{kind === 'node' ? '请选择部署环境' : '系统通用'}</option>
-                    {snapshot.environments
-                      .filter((e) => e.systemId === systemId)
-                      .map((e) => (
-                        <option key={e.id} value={e.id}>
-                          {e.name}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-              )}
-              {['account', 'node'].includes(kind) && (
-                <label>
-                  所属对象
-                  <select
-                    aria-label="批量所属对象"
-                    value={owner}
-                    onChange={(e) => {
-                      setOwner(e.target.value);
-                      changeRows(rows);
-                    }}
-                  >
-                    <option value="">请选择</option>
-                    {kind === 'node' ? (
-                      snapshot.services
-                        .filter((s) => s.systemId === systemId)
-                        .map((s) => (
-                          <option key={s.id} value={`service:${s.id}`}>
-                            {s.name}
-                          </option>
-                        ))
-                    ) : (
-                      <>
-                        {snapshot.resources
-                          .filter((r) => r.systemId === systemId)
-                          .map((r) => (
-                            <option key={r.id} value={`resource:${r.id}`}>
-                              {r.name} · 资源
-                            </option>
-                          ))}
-                        {snapshot.accessEntries
-                          .filter((r) => r.systemId === systemId)
-                          .map((r) => (
-                            <option key={r.id} value={`access:${r.id}`}>
-                              {r.name} · 访问入口
-                            </option>
-                          ))}
-                        {snapshot.environments
-                          .filter((r) => r.systemId === systemId)
-                          .map((r) => (
-                            <option key={r.id} value={`environment:${r.id}`}>
-                              {r.name} · 系统账号
-                            </option>
-                          ))}
-                      </>
-                    )}
-                  </select>
-                </label>
-              )}
-            </div>
-            <p className="secondary-copy">
-              {kind === 'account'
-                ? '账号的适用范围随所属对象。'
-                : '本批资料使用同一环境，更多适用环境与标签可在详情补充。'}{' '}
-              有内容时需先清空条目和粘贴内容才能切换类型。
-            </p>
-            <div
-              className="paste-preview batch-grid"
-              tabIndex={0}
-              role="region"
-              aria-label="批量录入表格（可横向滚动）"
+          <ConfigProvider componentDisabled={busy}>
+            <fieldset
+              disabled={busy}
+              onChange={() => {
+                token.current = crypto.randomUUID();
+              }}
             >
-              <table>
-                <thead>
-                  <tr>
-                    <th>录入</th>
-                    {columns.map(([key, label]) => (
-                      <th key={key}>{label}</th>
+              <div className="paste-setup">
+                <label>
+                  条目类型
+                  <Select
+                    aria-label="批量条目类型"
+                    value={kind}
+                    disabled={dirty}
+                    onChange={(e) => {
+                      markNewRecordChanged();
+                      setKind(e as LedgerBatch['kind']);
+                      setOwner('');
+                      setExtraFields([]);
+                      setNewField('');
+                    }}
+                  >
+                    {Object.entries(kinds).map(([key, label]) => (
+                      <Select.Option data-value={String(key)} key={key} value={key}>
+                        {label}
+                      </Select.Option>
                     ))}
-                    <th>校对与操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {preview.map(
-                    ({ id, row, selected: checked, confirmed, issue, duplicate, blank }, index) => (
-                      <tr key={id}>
-                        <td>
-                          <input
-                            type="checkbox"
+                  </Select>
+                </label>
+                {kind !== 'account' && (
+                  <label>
+                    环境
+                    <Select
+                      aria-label="批量环境"
+                      value={environment}
+                      onChange={(e) => {
+                        markNewRecordChanged();
+                        setEnvironment(e);
+                        changeRows(rows);
+                      }}
+                    >
+                      <Select.Option data-value={String('')} value="">
+                        {kind === 'node' ? '请选择部署环境' : '系统通用'}
+                      </Select.Option>
+                      {snapshot.environments
+                        .filter((e) => e.systemId === systemId)
+                        .map((e) => (
+                          <Select.Option data-value={String(e.id)} key={e.id} value={e.id}>
+                            {e.name}
+                          </Select.Option>
+                        ))}
+                    </Select>
+                  </label>
+                )}
+                {['account', 'node'].includes(kind) && (
+                  <label>
+                    所属对象
+                    <Select
+                      aria-label="批量所属对象"
+                      value={owner}
+                      onChange={(e) => {
+                        markNewRecordChanged();
+                        setOwner(e);
+                        changeRows(rows);
+                      }}
+                    >
+                      <Select.Option data-value={String('')} value="">
+                        请选择
+                      </Select.Option>
+                      {kind === 'node' ? (
+                        snapshot.services
+                          .filter((s) => s.systemId === systemId)
+                          .map((s) => (
+                            <Select.Option
+                              data-value={String(`service:${s.id}`)}
+                              key={s.id}
+                              value={`service:${s.id}`}
+                            >
+                              {s.name}
+                            </Select.Option>
+                          ))
+                      ) : (
+                        <>
+                          {snapshot.resources
+                            .filter((r) => r.systemId === systemId)
+                            .map((r) => (
+                              <Select.Option
+                                data-value={String(`resource:${r.id}`)}
+                                key={r.id}
+                                value={`resource:${r.id}`}
+                              >
+                                {r.name} · 资源
+                              </Select.Option>
+                            ))}
+                          {snapshot.accessEntries
+                            .filter((r) => r.systemId === systemId)
+                            .map((r) => (
+                              <Select.Option
+                                data-value={String(`access:${r.id}`)}
+                                key={r.id}
+                                value={`access:${r.id}`}
+                              >
+                                {r.name} · 访问入口
+                              </Select.Option>
+                            ))}
+                          {snapshot.environments
+                            .filter((r) => r.systemId === systemId)
+                            .map((r) => (
+                              <Select.Option
+                                data-value={String(`environment:${r.id}`)}
+                                key={r.id}
+                                value={`environment:${r.id}`}
+                              >
+                                {r.name} · 系统账号
+                              </Select.Option>
+                            ))}
+                        </>
+                      )}
+                    </Select>
+                  </label>
+                )}
+              </div>
+              <p className="secondary-copy">
+                {kind === 'account'
+                  ? '账号的适用范围随所属对象。'
+                  : '本批资料使用同一环境，更多适用环境与标签可在详情补充。'}{' '}
+                有内容时需先清空条目和粘贴内容才能切换类型。
+              </p>
+              <div
+                className="paste-preview batch-grid"
+                tabIndex={0}
+                role="region"
+                aria-label="批量录入表格（可横向滚动）"
+              >
+                <Table
+                  rowKey="id"
+                  dataSource={preview}
+                  pagination={false}
+                  size="small"
+                  scroll={{ x: 'max-content', y: 470 }}
+                  columns={[
+                    {
+                      key: 'select',
+                      title: '录入',
+                      width: 70,
+                      render: (
+                        _value,
+                        { id, row, selected: checked, confirmed, issue, duplicate, blank },
+                        index,
+                      ) => (
+                        <>
+                          <Checkbox
                             aria-label={`录入第 ${index + 1} 行`}
                             checked={checked}
                             onChange={(e) =>
@@ -601,331 +632,374 @@ export function PasteLedger({
                               )
                             }
                           />
-                        </td>
-                        {columns.map(([key, label]) => {
-                          const value = key.startsWith('field:')
-                            ? (row.fields?.[key.slice(6)] ?? '')
-                            : (row[key as (typeof baseFields)[number][0]] ?? '');
-                          const name = `第 ${index + 1} 行${label}`;
-                          return (
-                            <td key={key}>
-                              {key === 'status' || key === 'mode' ? (
-                                <select
-                                  aria-label={name}
-                                  value={value}
-                                  onChange={(e) => edit(index, key, e.target.value)}
-                                >
-                                  <option value="">
-                                    {key === 'status' ? '待确认（默认）' : '固定（默认）'}
-                                  </option>
-                                  {(key === 'status'
-                                    ? [
-                                        ['active', '在用'],
-                                        ['inactive', '停用'],
-                                        ['unverified', '待确认'],
-                                      ]
-                                    : [
-                                        ['fixed', '固定'],
-                                        ['scheduled', '按需'],
-                                      ]
-                                  ).map(([v, l]) => (
-                                    <option key={v} value={v}>
-                                      {l}
-                                    </option>
-                                  ))}
-                                  {value &&
-                                    !(
-                                      key === 'status'
-                                        ? ['active', 'inactive', 'unverified']
-                                        : ['fixed', 'scheduled']
-                                    ).includes(value) && (
-                                      <option value={value}>{value}（请修正）</option>
-                                    )}
-                                </select>
-                              ) : ['name', 'port', 'username', 'password', 'accountName'].includes(
-                                  key,
-                                ) ? (
-                                <input
-                                  aria-label={name}
-                                  type={key === 'password' ? 'password' : 'text'}
-                                  autoComplete="off"
-                                  value={value}
-                                  onChange={(e) => edit(index, key, e.target.value)}
-                                />
-                              ) : (
-                                <textarea
-                                  aria-label={name}
-                                  rows={2}
-                                  value={value}
-                                  onChange={(e) => edit(index, key, e.target.value)}
-                                />
-                              )}
-                            </td>
-                          );
-                        })}
-                        <td className="batch-row-actions">
+                        </>
+                      ),
+                    },
+                    ...columns.map(([key, label]) => ({
+                      key,
+                      title: label,
+                      width: 220,
+                      render: (
+                        _value: unknown,
+                        { row }: (typeof preview)[number],
+                        index: number,
+                      ) => {
+                        const value = key.startsWith('field:')
+                          ? (row.fields?.[key.slice(6)] ?? '')
+                          : (row[key as (typeof baseFields)[number][0]] ?? '');
+                        const name = `第 ${index + 1} 行${label}`;
+                        return (
+                          <>
+                            {key === 'status' || key === 'mode' ? (
+                              <Select
+                                aria-label={name}
+                                value={value}
+                                onChange={(e) => {
+                                  markNewRecordChanged();
+                                  return edit(index, key, e);
+                                }}
+                              >
+                                <Select.Option data-value={String('')} value="">
+                                  {key === 'status' ? '待确认（默认）' : '固定（默认）'}
+                                </Select.Option>
+                                {(key === 'status'
+                                  ? [
+                                      ['active', '在用'],
+                                      ['inactive', '停用'],
+                                      ['unverified', '待确认'],
+                                    ]
+                                  : [
+                                      ['fixed', '固定'],
+                                      ['scheduled', '按需'],
+                                    ]
+                                ).map(([v, l]) => (
+                                  <Select.Option data-value={String(v)} key={v} value={v}>
+                                    {l}
+                                  </Select.Option>
+                                ))}
+                                {value &&
+                                  !(
+                                    key === 'status'
+                                      ? ['active', 'inactive', 'unverified']
+                                      : ['fixed', 'scheduled']
+                                  ).includes(value) && (
+                                    <Select.Option data-value={String(value)} value={value}>
+                                      {value}（请修正）
+                                    </Select.Option>
+                                  )}
+                              </Select>
+                            ) : ['name', 'port', 'username', 'password', 'accountName'].includes(
+                                key,
+                              ) ? (
+                              <Input
+                                aria-label={name}
+                                type={key === 'password' ? 'password' : 'text'}
+                                autoComplete="off"
+                                value={value}
+                                onChange={(e) => edit(index, key, e.target.value)}
+                              />
+                            ) : (
+                              <Input.TextArea
+                                aria-label={name}
+                                rows={2}
+                                value={value}
+                                onChange={(e) => edit(index, key, e.target.value)}
+                              />
+                            )}
+                          </>
+                        );
+                      },
+                    })),
+                    {
+                      key: 'actions',
+                      title: '校对与操作',
+                      width: 240,
+                      render: (
+                        _value,
+                        { id, row, selected: checked, confirmed, issue, duplicate, blank },
+                        index,
+                      ) => (
+                        <div className="batch-row-actions">
                           {issue && <span className="error-text">{issue}</span>}
                           {blank && <span className="secondary-copy">空白行不提交</span>}
                           {duplicate && (
-                            <label>
-                              <input
-                                type="checkbox"
-                                checked={confirmed}
-                                onChange={(e) =>
-                                  setRows(
-                                    rows.map((r, i) =>
-                                      i === index ? { ...r, confirmed: e.target.checked } : r,
-                                    ),
-                                  )
-                                }
-                              />
+                            <Checkbox
+                              checked={confirmed}
+                              onChange={(e) =>
+                                setRows(
+                                  rows.map((r, i) =>
+                                    i === index ? { ...r, confirmed: e.target.checked } : r,
+                                  ),
+                                )
+                              }
+                            >
                               疑似重复，仍新增独立记录
-                            </label>
+                            </Checkbox>
                           )}
-                          <button
+                          <Button
+                            htmlType="submit"
+                            type="text"
                             className="text-button"
                             aria-label={`删除第 ${index + 1} 行`}
                             onClick={() => changeRows(rows.filter((r) => r.id !== id))}
                           >
                             删除行
-                          </button>
-                        </td>
-                      </tr>
-                    ),
-                  )}
-                </tbody>
-              </table>
-            </div>
-            {!!needsReview && (
-              <p role="status" className="secondary-copy">
-                {needsReview} 条资料待校对，请向右查看“校对与操作”列并修正或取消勾选。
-              </p>
-            )}
-            <div className="batch-toolbar">
-              <button className="secondary-button" onClick={() => changeRows([...rows, entry()])}>
-                增加一行
-              </button>
-              {hasFields && (
-                <>
-                  <label>
-                    附加字段
-                    <input
-                      aria-label="新增附加字段名称"
-                      placeholder="例如：CPU、内存、库名"
-                      value={newField}
-                      onChange={(e) => setNewField(e.target.value)}
-                    />
-                  </label>
-                  <button
-                    className="secondary-button"
-                    disabled={!newField.trim()}
-                    onClick={() => {
-                      const key = newField.trim();
-                      if (/密码|口令|password|token|私钥/i.test(key)) {
-                        setError('秘密内容请使用密码字段，不能存入普通附加字段。');
-                        return;
-                      }
-                      if (key.length > 80 || extraFields.length >= 50) {
-                        setError('附加字段名称最多 80 个字符，每次最多 50 个附加字段。');
-                        return;
-                      }
-                      setExtraFields([...new Set([...extraFields, key])]);
-                      setNewField('');
-                      setError('');
-                    }}
-                  >
-                    添加字段
-                  </button>
-                </>
+                          </Button>
+                        </div>
+                      ),
+                    },
+                  ]}
+                />
+              </div>
+              {!!needsReview && (
+                <p role="status" className="secondary-copy">
+                  {needsReview} 条资料待校对，请向右查看“校对与操作”列并修正或取消勾选。
+                </p>
               )}
-            </div>
-            {!source && (
-              <label className="field-label paste-source">
-                从 Word／Excel 粘贴表格
-                <textarea
-                  aria-label="粘贴表格"
-                  rows={4}
-                  value={text}
-                  placeholder={
-                    '在这里粘贴表格…\n支持清单和“字段／值”资料卡，映射后追加到上方表格。'
-                  }
-                  onChange={(e) => setText(e.target.value)}
-                  onPaste={(e) => {
+              <div className="batch-toolbar">
+                <Button
+                  htmlType="submit"
+                  type="default"
+                  className="secondary-button"
+                  onClick={() => changeRows([...rows, entry()])}
+                >
+                  增加一行
+                </Button>
+                {hasFields && (
+                  <>
+                    <label>
+                      附加字段
+                      <Input
+                        aria-label="新增附加字段名称"
+                        placeholder="例如：CPU、内存、库名"
+                        value={newField}
+                        onChange={(e) => setNewField(e.target.value)}
+                      />
+                    </label>
+                    <Button
+                      htmlType="submit"
+                      type="default"
+                      className="secondary-button"
+                      disabled={!newField.trim()}
+                      onClick={() => {
+                        const key = newField.trim();
+                        if (/密码|口令|password|token|私钥/i.test(key)) {
+                          setError('秘密内容请使用密码字段，不能存入普通附加字段。');
+                          return;
+                        }
+                        if (key.length > 80 || extraFields.length >= 50) {
+                          setError('附加字段名称最多 80 个字符，每次最多 50 个附加字段。');
+                          return;
+                        }
+                        setExtraFields([...new Set([...extraFields, key])]);
+                        setNewField('');
+                        setError('');
+                      }}
+                    >
+                      添加字段
+                    </Button>
+                  </>
+                )}
+              </div>
+              {!source && (
+                <label className="field-label paste-source">
+                  从 Word／Excel 粘贴表格
+                  <Input.TextArea
+                    aria-label="粘贴表格"
+                    rows={4}
+                    value={text}
+                    placeholder={
+                      '在这里粘贴表格…\n支持清单和“字段／值”资料卡，映射后追加到上方表格。'
+                    }
+                    onChange={(e) => setText(e.target.value)}
+                    onPaste={(e) => {
+                      try {
+                        e.preventDefault();
+                        load(
+                          parseClipboardTable(
+                            e.clipboardData.getData('text/plain'),
+                            e.clipboardData.getData('text/html'),
+                          ),
+                        );
+                      } catch (e) {
+                        setError(String(e));
+                      }
+                    }}
+                  />
+                </label>
+              )}
+              {text && (
+                <Button
+                  htmlType="submit"
+                  type="default"
+                  className="secondary-button"
+                  onClick={() => {
                     try {
-                      e.preventDefault();
-                      load(
-                        parseClipboardTable(
-                          e.clipboardData.getData('text/plain'),
-                          e.clipboardData.getData('text/html'),
-                        ),
-                      );
+                      load(parseTsv(text));
                     } catch (e) {
                       setError(String(e));
                     }
                   }}
-                />
-              </label>
-            )}
-            {text && (
-              <button
-                className="secondary-button"
-                onClick={() => {
-                  try {
-                    load(parseTsv(text));
-                  } catch (e) {
-                    setError(String(e));
-                  }
-                }}
-              >
-                读取文本
-              </button>
-            )}
-            {source && (
-              <>
-                <div className="workspace-query">
-                  <label>
-                    预览方式
-                    <select
-                      aria-label="表格预览方式"
-                      value={mode}
-                      onChange={(e) => load(source, e.target.value as 'list' | 'card')}
-                    >
-                      <option value="list">清单 · 一行一条</option>
-                      <option value="card">资料卡 · 字段／值合成一条</option>
-                    </select>
-                  </label>
-                  {mode === 'list' && (
+                >
+                  读取文本
+                </Button>
+              )}
+              {source && (
+                <>
+                  <div className="workspace-query">
                     <label>
-                      <input
-                        type="checkbox"
+                      预览方式
+                      <Select
+                        aria-label="表格预览方式"
+                        value={mode}
+                        onChange={(e) => {
+                          markNewRecordChanged();
+                          return load(source, e as 'list' | 'card');
+                        }}
+                      >
+                        <Select.Option data-value={String('list')} value="list">
+                          清单 · 一行一条
+                        </Select.Option>
+                        <Select.Option data-value={String('card')} value="card">
+                          资料卡 · 字段／值合成一条
+                        </Select.Option>
+                      </Select>
+                    </label>
+                    {mode === 'list' && (
+                      <Checkbox
                         checked={header}
                         onChange={(e) => load(source, mode, e.target.checked)}
-                      />
-                      首行为表头
-                    </label>
-                  )}
-                </div>
-                {source.warnings.map((w) => (
-                  <p className="error-text" key={w}>
-                    {w}
-                  </p>
-                ))}
-                {!!source.warnings.length && (
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={reviewed}
-                      onChange={(e) => setReviewed(e.target.checked)}
-                    />
-                    已校对错位与合并单元格，跳过无法确认的行
-                  </label>
-                )}
-                <div className="paste-mapping">
-                  {shaped!.headers.map((h, i) => (
-                    <label className="field-label" key={i}>
-                      {h || `列 ${i + 1}`}
-                      <select
-                        aria-label={`映射第 ${i + 1} 列`}
-                        value={mapping[i] ?? 'unmapped'}
-                        onChange={(e) =>
-                          setMapping(mapping.map((v, j) => (i === j ? e.target.value : v)))
-                        }
                       >
-                        <option value="unmapped">选择字段</option>
-                        <option value="ignore">忽略此列</option>
-                        {supported.map(([key, label]) => (
-                          <option key={key} value={key}>
-                            {label}
-                          </option>
-                        ))}
-                        {hasFields &&
-                          [
-                            '操作系统',
-                            'CPU',
-                            '内存',
-                            '硬盘',
-                            '用途',
-                            '类型',
-                            '版本',
-                            '实例',
-                            '库名',
-                            '主备',
-                            '目录',
-                            '配置',
-                            '日志',
-                            h,
-                          ]
-                            .filter((v, i, a) => v && a.indexOf(v) === i)
-                            .map((key) => (
-                              <option key={key} value={`field:${key}`}>
-                                附加字段 · {key}
-                              </option>
-                            ))}
-                      </select>
-                    </label>
+                        首行为表头
+                      </Checkbox>
+                    )}
+                  </div>
+                  {source.warnings.map((w) => (
+                    <p className="error-text" key={w}>
+                      {w}
+                    </p>
                   ))}
-                </div>
-                {mappingError && (
-                  <p role="alert" className="error-text">
-                    {mappingError}
-                  </p>
-                )}
-                <div
-                  className="paste-preview"
-                  tabIndex={0}
-                  role="region"
-                  aria-label="待追加表格预览"
-                >
-                  <table>
-                    <thead>
-                      <tr>
-                        {shaped!.headers.map((h, i) => (
-                          <th key={i}>{h || `列 ${i + 1}`}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {shaped!.rows.map((cells, i) => (
-                        <tr key={i}>
-                          {cells.map((value, j) => (
-                            <td key={j} className="multiline">
-                              {value &&
-                              (mapping[j] === 'password' ||
-                                /密码|口令|password/i.test(shaped!.headers[j] ?? ''))
-                                ? '•••••• · 加密保存或忽略'
-                                : value}
-                            </td>
+                  {!!source.warnings.length && (
+                    <Checkbox checked={reviewed} onChange={(e) => setReviewed(e.target.checked)}>
+                      已校对错位与合并单元格，跳过无法确认的行
+                    </Checkbox>
+                  )}
+                  <div className="paste-mapping">
+                    {shaped!.headers.map((h, i) => (
+                      <label className="field-label" key={i}>
+                        {h || `列 ${i + 1}`}
+                        <Select
+                          aria-label={`映射第 ${i + 1} 列`}
+                          value={mapping[i] ?? 'unmapped'}
+                          onChange={(e) => {
+                            markNewRecordChanged();
+                            return setMapping(mapping.map((v, j) => (i === j ? e : v)));
+                          }}
+                        >
+                          <Select.Option data-value={String('unmapped')} value="unmapped">
+                            选择字段
+                          </Select.Option>
+                          <Select.Option data-value={String('ignore')} value="ignore">
+                            忽略此列
+                          </Select.Option>
+                          {supported.map(([key, label]) => (
+                            <Select.Option data-value={String(key)} key={key} value={key}>
+                              {label}
+                            </Select.Option>
                           ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="batch-toolbar">
-                  <button
-                    className="secondary-button"
-                    disabled={
-                      !!mappingError ||
-                      !shaped!.rows.length ||
-                      (!!source.warnings.length && !reviewed)
-                    }
-                    onClick={appendSource}
+                          {hasFields &&
+                            [
+                              '操作系统',
+                              'CPU',
+                              '内存',
+                              '硬盘',
+                              '用途',
+                              '类型',
+                              '版本',
+                              '实例',
+                              '库名',
+                              '主备',
+                              '目录',
+                              '配置',
+                              '日志',
+                              h,
+                            ]
+                              .filter((v, i, a) => v && a.indexOf(v) === i)
+                              .map((key) => (
+                                <Select.Option
+                                  data-value={String(`field:${key}`)}
+                                  key={key}
+                                  value={`field:${key}`}
+                                >
+                                  附加字段 · {key}
+                                </Select.Option>
+                              ))}
+                        </Select>
+                      </label>
+                    ))}
+                  </div>
+                  {mappingError && (
+                    <p role="alert" className="error-text">
+                      {mappingError}
+                    </p>
+                  )}
+                  <div
+                    className="paste-preview"
+                    tabIndex={0}
+                    role="region"
+                    aria-label="待追加表格预览"
                   >
-                    追加到录入表格（{shaped!.rows.length} 行）
-                  </button>
-                  <button
-                    className="text-button"
-                    onClick={() => {
-                      setSource(null);
-                      setMapping([]);
-                    }}
-                  >
-                    放弃本次粘贴
-                  </button>
-                </div>
-              </>
-            )}
-          </fieldset>
+                    <Table<string[]>
+                      dataSource={shaped!.rows}
+                      rowKey={(_row, index) => String(index)}
+                      size="small"
+                      pagination={false}
+                      scroll={{ x: 'max-content', y: 260 }}
+                      columns={shaped!.headers.map((header, index) => ({
+                        key: index,
+                        title: header || `列 ${index + 1}`,
+                        width: 220,
+                        render: (_value, cells) => (
+                          <span className="multiline">
+                            {cells[index] &&
+                            (mapping[index] === 'password' || /密码|口令|password/i.test(header))
+                              ? '•••••• · 加密保存或忽略'
+                              : cells[index]}
+                          </span>
+                        ),
+                      }))}
+                    />
+                  </div>
+                  <div className="batch-toolbar">
+                    <Button
+                      htmlType="submit"
+                      type="default"
+                      className="secondary-button"
+                      disabled={
+                        !!mappingError ||
+                        !shaped!.rows.length ||
+                        (!!source.warnings.length && !reviewed)
+                      }
+                      onClick={appendSource}
+                    >
+                      追加到录入表格（{shaped!.rows.length} 行）
+                    </Button>
+                    <Button
+                      htmlType="submit"
+                      type="text"
+                      className="text-button"
+                      onClick={() => {
+                        setSource(null);
+                        setMapping([]);
+                      }}
+                    >
+                      放弃本次粘贴
+                    </Button>
+                  </div>
+                </>
+              )}
+            </fieldset>
+          </ConfigProvider>
           {selected.length > 200 && (
             <p role="alert" className="error-text">
               每批最多新增 200 条，请取消勾选多余的行。
@@ -939,12 +1013,24 @@ export function PasteLedger({
               {selected.length} 条待新增，{preview.filter((r) => !r.blank && !r.selected).length}{' '}
               条跳过
             </span>
-            <button className="secondary-button" disabled={busy} onClick={close}>
+            <Button
+              htmlType="submit"
+              type="default"
+              className="secondary-button"
+              disabled={busy}
+              onClick={close}
+            >
               取消
-            </button>
-            <button className="primary-button" disabled={busy || !valid} onClick={submit}>
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
+              className="primary-button"
+              disabled={busy || !valid}
+              onClick={submit}
+            >
               {busy ? '正在保存…' : '确认新增'}
-            </button>
+            </Button>
           </div>
         </>
       )}

@@ -95,10 +95,16 @@ test('最小窗口中导航与全局入口完整可达，切换页面后位置�
     const search = page.getByRole('button', { name: '全局搜索', exact: true });
     const create = page.getByRole('button', { name: '快速新建', exact: true });
     await expect(create).toBeEnabled();
+    await expect(page.locator('.sidebar')).toHaveClass(/ant-layout-sider-collapsed/);
+    await page
+      .locator('.sidebar')
+      .evaluate((element) =>
+        Promise.all(element.getAnimations().map((animation) => animation.finished.catch(() => {}))),
+      );
     const searchBounds = await search.boundingBox();
     const createBounds = await create.boundingBox();
     for (const name of ['工作台', '工作任务', '文档', '设置']) {
-      const navigation = page.getByRole('button', { name, exact: true });
+      const navigation = page.getByRole('menuitem', { name, exact: true });
       await expect(navigation).toBeInViewport({ ratio: 1 });
       await navigation.click();
       await expect(navigation).toHaveAttribute('aria-current', 'page');
@@ -112,7 +118,7 @@ test('最小窗口中导航与全局入口完整可达，切换页面后位置�
       animations: 'disabled',
       path: info.outputPath('shell-minimum-light.png'),
     });
-    await page.getByRole('button', { name: '深色', exact: true }).click();
+    await page.getByRole('radio', { name: '深色', exact: true }).locator('..').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await page.screenshot({
       animations: 'disabled',

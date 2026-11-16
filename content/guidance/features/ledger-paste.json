@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "feature",
   "id": "ledger-paste",
-  "revision": 2,
+  "revision": 3,
   "title": "校对表格后批量录入台账",
   "platforms": ["darwin", "win32"],
   "placements": ["ledger-import"],
@@ -31,7 +31,7 @@
       "action": "在上方“批量录入表格”逐格填写；需要更多记录时点击“增加一行”。资源类可添加普通附加字段，含密码时只填专门的密码列。",
       "expectedResult": "一批使用同一系统与环境；空白行不提交，每行可改写、取消勾选或删除，密码遮蔽并在提交时加密保存。",
       "image": {
-        "src": "assets/ledger-paste-review.png",
+        "src": "assets/ledger-paste-review-antd6.png",
         "alt": "批量录入弹窗，上方可编辑多行表格，下方可从 Word 或 Excel 粘贴表格",
         "caption": "隔离示例资料的录入表格；先校对每行，再确认新增。"
       }

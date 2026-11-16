@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "feature",
   "id": "automatic-backup",
-  "revision": 1,
+  "revision": 2,
   "title": "启用、检查与重试自动备份",
   "platforms": ["darwin", "win32"],
   "placements": ["settings-backup"],
@@ -14,12 +14,12 @@
     ],
     "notApplicableReason": ""
   },
-  "entry": { "label": "设置 → 备份与迁移 → 自动加密备份", "target": "settings-backup" },
+  "entry": { "label": "设置 → 备份与恢复 → 自动加密备份", "target": "settings-backup" },
   "steps": [
     {
       "id": "enable",
       "title": "启用每日备份",
-      "action": "打开“设置 → 备份与迁移”的“自动备份”开关。首次启用时，输入并确认独立备份密码。",
+      "action": "打开“设置 → 备份与恢复”的“自动备份”开关。首次启用时，输入并确认独立备份密码。",
       "expectedResult": "开关启用；应用运行期间有资料变更且当天尚未成功备份时生成一份。没有变更不会重复生成，关闭应用后不会继续运行。"
     },
     {

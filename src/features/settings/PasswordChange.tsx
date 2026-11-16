@@ -1,3 +1,4 @@
+import { Button, Input } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { Dialog } from '../../shared/Dialog';
 export function PasswordChange({
@@ -74,8 +75,7 @@ export function PasswordChange({
       >
         <label>
           当前主密码
-          <input
-            type="password"
+          <Input.Password
             aria-label="当前主密码"
             autoFocus
             autoComplete="off"
@@ -90,8 +90,7 @@ export function PasswordChange({
           <>
             <label>
               新主密码
-              <input
-                type="password"
+              <Input.Password
                 aria-label="新主密码"
                 autoComplete="off"
                 required
@@ -103,8 +102,7 @@ export function PasswordChange({
             </label>
             <label>
               确认新主密码
-              <input
-                type="password"
+              <Input.Password
                 aria-label="确认新主密码"
                 autoComplete="off"
                 required
@@ -120,16 +118,23 @@ export function PasswordChange({
           </>
         )}
         <div className="modal-actions">
-          <button type="button" className="secondary-button" onClick={close} disabled={busy}>
+          <Button
+            type="default"
+            htmlType="button"
+            className="secondary-button"
+            onClick={close}
+            disabled={busy}
+          >
             取消
-          </button>
-          <button
-            type="submit"
+          </Button>
+          <Button
+            type="primary"
+            htmlType="submit"
             className="primary-button"
             disabled={busy || !current || (!disable && (!next || !confirmation))}
           >
             {busy ? '正在转换保护方式…' : disable ? '验证并关闭主密码' : '保存新主密码'}
-          </button>
+          </Button>
         </div>
       </form>
     </Dialog>

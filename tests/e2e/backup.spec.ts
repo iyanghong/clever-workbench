@@ -12,7 +12,8 @@ test('设置中首次导出要求独立备份密码，锁定导出可用，备�
     const page = await app.firstWindow();
     await page.getByLabel('快速新增任务').fill('备份中的工作');
     await page.getByLabel('快速新增任务').press('Enter');
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '备份与恢复', exact: true }).click();
     const filename = path.join(directory, 'portable.cwb');
     await app.evaluate(({ dialog }, filePath) => {
       dialog.showSaveDialog = (async () => ({
@@ -104,7 +105,8 @@ test('恢复成功重建当前页面并锁定秘密，恢复前未返回的图�
         filePath,
       })) as typeof dialog.showSaveDialog;
     }, filename);
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '备份与恢复', exact: true }).click();
     await page.getByRole('button', { name: '导出完整备份', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: '备份已保存' })).toBeVisible();
     await page.evaluate(() =>

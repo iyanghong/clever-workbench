@@ -40,9 +40,11 @@ test('外观旁的离线指引遵守主题和辅助偏好，关闭返回焦点�
   const { app, page } = fixture;
   try {
     await page.context().setOffline(true);
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '使用指引', exact: true }).click();
+    await page.getByRole('tab', { name: '外观', exact: true }).click();
     for (const theme of ['浅色', '深色']) {
-      await page.getByRole('button', { name: theme, exact: true }).click();
+      await page.getByRole('radio', { name: theme, exact: true }).locator('..').click();
       await expect(page.locator('html')).toHaveAttribute(
         'data-theme',
         theme === '浅色' ? 'light' : 'dark',
@@ -71,6 +73,7 @@ test('外观旁的离线指引遵守主题和辅助偏好，关闭返回焦点�
       ).toBeInViewport();
       await page.screenshot({ path: info.outputPath('appearance-guide-dark-narrow.png') });
       await page.keyboard.press('Escape');
+      await page.getByRole('tab', { name: '使用指引', exact: true }).click();
       await page.getByRole('button', { name: '查看全部使用指引', exact: true }).click();
       await page
         .getByRole('dialog', { name: '使用指引', exact: true })
@@ -82,7 +85,9 @@ test('外观旁的离线指引遵守主题和辅助偏好，关闭返回焦点�
         .click();
       await expectGuidanceDestination(page, opened.feature);
       if (opened.feature.entry.target === 'settings-appearance')
-        await expect(page.getByRole('button', { name: '深色', exact: true })).toBeInViewport();
+        await expect(
+          page.getByRole('radio', { name: '深色', exact: true }).locator('..'),
+        ).toBeInViewport();
     }
   } finally {
     await fixture.close();
@@ -91,6 +96,7 @@ test('外观旁的离线指引遵守主题和辅助偏好，关闭返回焦点�
 
 async function openProtection(app: ElectronApplication, page: Page, id: string) {
   const feature = await expectedFeatureGuide(app, id);
+  await page.getByRole('tab', { name: '凭据保护', exact: true }).click();
   await page
     .getByRole('button', { name: '秘密保护使用指引', exact: true })
     .click({ timeout: 5000 });
@@ -99,12 +105,10 @@ async function openProtection(app: ElectronApplication, page: Page, id: string) 
   if (!feature || !feature.placements.includes('settings-vault')) {
     if (!(await library.locator('.guidance-list button').count()))
       await expect(library.getByRole('status')).toContainText('当前暂无可用指引');
-    test
-      .info()
-      .annotations.push({
-        type: 'guidance-content-warning',
-        description: `${id} 缺失或未配置该位置，已检查降级，正文路径未覆盖。`,
-      });
+    test.info().annotations.push({
+      type: 'guidance-content-warning',
+      description: `${id} 缺失或未配置该位置，已检查降级，正文路径未覆盖。`,
+    });
     await page.keyboard.press('Escape');
     return;
   }
@@ -119,7 +123,8 @@ test('秘密保护指引只导航，启用解锁与更改关闭可取消且保�
   const fixture = await start();
   const { app, page } = fixture;
   try {
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '使用指引', exact: true }).click();
     await openProtection(app, page, 'secret-protection');
     expect(await page.evaluate(() => window.desktop.vaultStatus())).toMatchObject({
       initialized: false,
@@ -187,24 +192,24 @@ test('任务回收站指引只导航，恢复、单条删除和清空均保留�
   const fixture = await start();
   const { app, page } = fixture;
   try {
-    await page.getByRole('button', { name: '回收站', exact: true }).click();
+    await page.getByRole('menuitem', { name: '回收站', exact: true }).click();
     const opened = await openDirect(app, page, '任务回收站使用指引', 'recycle-tasks');
     if (opened) {
       await opened.dialog.getByRole('button', { name: '前往功能', exact: true }).click();
       await expectGuidanceDestination(page, opened.feature);
     }
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     for (const title of ['恢复示例', '永久删除示例', '清空示例']) {
       await page.getByLabel('快速新增任务').fill(title);
       await page.getByLabel('快速新增任务').press('Enter');
       await expect(page.getByRole('button', { name: `完成 ${title}`, exact: true })).toBeVisible();
     }
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
     for (const title of ['恢复示例', '永久删除示例', '清空示例']) {
       await page.locator('.task-open').filter({ hasText: title }).click();
       await page.getByRole('button', { name: '删除任务', exact: true }).click();
     }
-    await page.getByRole('button', { name: '回收站', exact: true }).click();
+    await page.getByRole('menuitem', { name: '回收站', exact: true }).click();
     await page.locator('.task-open').filter({ hasText: '恢复示例' }).click();
     await expect(page.getByLabel('任务标题', { exact: true })).toBeDisabled();
     await page.getByRole('button', { name: '恢复任务', exact: true }).click();
@@ -223,7 +228,7 @@ test('任务回收站指引只导航，恢复、单条删除和清空均保留�
     await page.getByRole('button', { name: '清空回收站', exact: true }).click();
     await confirmation.getByRole('button', { name: '彻底删除', exact: true }).click();
     await expect(page.locator('.task-open')).toHaveCount(0);
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
     await expect(page.locator('.task-open').filter({ hasText: '恢复示例' })).toBeVisible();
     await expect(page.locator('.task-open')).toHaveCount(1);
   } finally {
@@ -235,12 +240,14 @@ test('文档回收站指引可集中到达，逐篇恢复和删除确认不提�
   const fixture = await start();
   const { app, page } = fixture;
   try {
-    await page.getByRole('button', { name: '文档', exact: true }).click();
+    await page.getByRole('menuitem', { name: '文档', exact: true }).click();
     await page.getByRole('button', { name: '文档回收站', exact: true }).click();
     const opened = await openDirect(app, page, '文档回收站使用指引', 'recycle-documents');
     if (opened) {
       await page.keyboard.press('Escape');
-      await page.getByRole('button', { name: '设置', exact: true }).click();
+      await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+      await page.getByRole('tab', { name: '使用指引', exact: true }).click();
+      await page.getByRole('tab', { name: '使用指引', exact: true }).click();
       await page.getByRole('button', { name: '查看全部使用指引', exact: true }).click();
       await page
         .getByRole('dialog', { name: '使用指引', exact: true })
@@ -257,7 +264,7 @@ test('文档回收站指引可集中到达，逐篇恢复和删除确认不提�
           'true',
         );
     }
-    await page.getByRole('button', { name: '文档', exact: true }).click();
+    await page.getByRole('menuitem', { name: '文档', exact: true }).click();
     await page.getByRole('button', { name: '全部文档', exact: true }).click();
     for (const title of ['恢复文档示例', '彻底删除文档示例']) {
       await page.getByRole('button', { name: '新建文档', exact: true }).click();

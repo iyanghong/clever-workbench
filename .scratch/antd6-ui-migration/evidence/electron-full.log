@@ -1,0 +1,422 @@
+
+> clever-workbench@0.1.23 pretest:e2e
+> npm run tools:generate
+
+
+> clever-workbench@0.1.23 tools:generate
+> node scripts/generate-tools.mjs
+
+
+> clever-workbench@0.1.23 test:e2e
+> playwright test --max-failures=10
+
+
+Running 148 tests using 1 worker
+
+(node:19043) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓    1 tests/e2e/account-list.spec.ts:8:1 › 密码列显隐、当前范围批量展示与整行复制沿用解锁和清理 (6.4s)
+  ✓    2 tests/e2e/antd-workbench.spec.ts:7:1 › Ant 控件接入后仍保留创建保护、模态焦点和真实本地保存 (4.8s)
+  ✓    3 tests/e2e/appearance.spec.ts:7:1 › 主题跟随与手动覆盖，透明度／对比／动态偏好可保存，键盘操作与弹层焦点有效 (3.6s)
+  ✓    4 tests/e2e/appearance.spec.ts:84:1 › 系统减少动态效果生效，原生可访问性变化更新全局材质 (756ms)
+  ✓    5 tests/e2e/archive.spec.ts:8:1 › 归档项目能查看文档和完成任务，长期账号可编辑，重开不改变项目归档状态 (4.9s)
+  ✓    6 tests/e2e/automatic-backup.spec.ts:9:1 › 备份正在写入时关闭会等候完成，不弹出阻止退出的确认框 (1.2s)
+  ✓    7 tests/e2e/automatic-backup.spec.ts:57:1 › 设置目录与自动策略持久化，失败重试保留已有副本，重启检查有变更的跨日备份 (3.8s)
+  ✘    8 tests/e2e/backup-guidance.spec.ts:64:1 › 备份密码指引从设置就近打开；取消与保存各自保持独立备份配置 (6.7s)
+(node:19268) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘    9 tests/e2e/backup-guidance.spec.ts:87:1 › 更新历史指引只导航；历史显示恢复材料、阶段和缺失文件的处理反馈 (6.6s)
+(node:19303) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   10 tests/e2e/backup-guidance.spec.ts:134:1 › 手动与自动备份指引只导航；导出、立即备份及目录失败反馈可见 (6.7s)
+(node:19343) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   11 tests/e2e/backup-guidance.spec.ts:191:1 › 恢复指引只前往入口；错误密码、取消及目标解锁后整份恢复各有反馈 (7.6s)
+(node:19393) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   12 tests/e2e/backup.spec.ts:6:1 › 设置中首次导出要求独立备份密码，锁定导出可用，备份密码预检不修改当前资料 (3.8s)
+  ✓   13 tests/e2e/backup.spec.ts:73:1 › 恢复成功重建当前页面并锁定秘密，恢复前未返回的图片选择不能写入新资料 (3.8s)
+  ✘   14 tests/e2e/daily-guidance.spec.ts:68:1 › 首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具 (5.9s)
+(node:19501) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   15 tests/e2e/daily-guidance.spec.ts:122:1 › 搜索新建旁指引只导航，九项选择可取消且键盘搜索可打开任务 (5.8s)
+(node:19542) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   16 tests/e2e/daily-guidance.spec.ts:171:1 › 任务指引关闭保留详情，计划、标签与批量归属可按说明操作 (6.2s)
+(node:19576) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   17 tests/e2e/daily-guidance.spec.ts:224:1 › 阅读任务指引期间创建快捷键不会提交底层草稿 (1.8s)
+  ✘   18 tests/e2e/daily-guidance.spec.ts:250:1 › 文档附近和设置可查看共用编辑指引，源码与本地图片保存后仍可阅读 (6.7s)
+(node:19627) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   19 tests/e2e/daily-guidance.spec.ts:332:1 › 工作回顾指引与月份、系统全貌入口一致，打开任务后可返回 (6.7s)
+(node:19666) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Electron runtime { node: '24.22.0', electron: '44.9.0' }
+  ✘   20 tests/e2e/desktop.spec.ts:7:1 › native desktop capture, editor, completion, archive, recovery and theme (33.1s)
+Testing stopped early after 10 maximum allowed failures.
+
+
+  1) tests/e2e/backup-guidance.spec.ts:64:1 › 备份密码指引从设置就近打开；取消与保存各自保持独立备份配置 ────────────────────────
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator: getByRole('navigation').getByRole('button', { name: '设置', exact: true })
+    Expected: "page"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveAttribute" getByRole('navigation').getByRole('button', { name: '设置', exact: true }) with timeout 5000ms
+      - waiting for getByRole('navigation').getByRole('button', { name: '设置', exact: true })
+
+
+       at guidance-content.ts:81
+
+      79 |       .getByRole('navigation')
+      80 |       .getByRole('button', { name: names[destination.module], exact: true }),
+    > 81 |   ).toHaveAttribute('aria-current', 'page');
+         |     ^
+      82 |   if (destination.module === 'settings' && destination.section === 'about')
+      83 |     await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeVisible();
+      84 | }
+        at expectGuidanceDestination (/Users/axelton/code/clever-workbench/tests/e2e/guidance-content.ts:81:5)
+        at openNearby (/Users/axelton/code/clever-workbench/tests/e2e/backup-guidance.spec.ts:61:9)
+        at /Users/axelton/code/clever-workbench/tests/e2e/backup-guidance.spec.ts:70:5
+
+    Error Context: test-results/backup-guidance-备份密码指引从设置就近打开；取消与保存各自保持独立备份配置/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/backup-guidance-备份密码指引从设置就近打开；取消与保存各自保持独立备份配置/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/backup-guidance-备份密码指引从设置就近打开；取消与保存各自保持独立备份配置/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) tests/e2e/backup-guidance.spec.ts:87:1 › 更新历史指引只导航；历史显示恢复材料、阶段和缺失文件的处理反馈 ──────────────────────
+
+    TimeoutError: locator.click: Timeout 5000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '更新历史使用指引', exact: true })
+
+
+      52 | async function openNearby(app: ElectronApplication, page: Page, label: string, guideId: string) {
+      53 |   const feature = await expectedFeatureGuide(app, guideId);
+    > 54 |   await page.getByRole('button', { name: label, exact: true }).click({ timeout: 5000 });
+         |                                                                ^
+      55 |   if (await verifyUnavailableOrNoTarget(page, feature)) return;
+      56 |   const dialog = page.getByRole('dialog', { name: feature!.title, exact: true });
+      57 |   await expect(
+        at openNearby (/Users/axelton/code/clever-workbench/tests/e2e/backup-guidance.spec.ts:54:64)
+        at /Users/axelton/code/clever-workbench/tests/e2e/backup-guidance.spec.ts:94:5
+
+    Error Context: test-results/backup-guidance-更新历史指引只导航；历史显示恢复材料、阶段和缺失文件的处理反馈/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/backup-guidance-更新历史指引只导航；历史显示恢复材料、阶段和缺失文件的处理反馈/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/backup-guidance-更新历史指引只导航；历史显示恢复材料、阶段和缺失文件的处理反馈/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) tests/e2e/backup-guidance.spec.ts:134:1 › 手动与自动备份指引只导航；导出、立即备份及目录失败反馈可见 ───────────────────────
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator: getByRole('navigation').getByRole('button', { name: '设置', exact: true })
+    Expected: "page"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveAttribute" getByRole('navigation').getByRole('button', { name: '设置', exact: true }) with timeout 5000ms
+      - waiting for getByRole('navigation').getByRole('button', { name: '设置', exact: true })
+
+
+       at guidance-content.ts:81
+
+      79 |       .getByRole('navigation')
+      80 |       .getByRole('button', { name: names[destination.module], exact: true }),
+    > 81 |   ).toHaveAttribute('aria-current', 'page');
+         |     ^
+      82 |   if (destination.module === 'settings' && destination.section === 'about')
+      83 |     await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeVisible();
+      84 | }
+        at expectGuidanceDestination (/Users/axelton/code/clever-workbench/tests/e2e/guidance-content.ts:81:5)
+        at openNearby (/Users/axelton/code/clever-workbench/tests/e2e/backup-guidance.spec.ts:61:9)
+        at /Users/axelton/code/clever-workbench/tests/e2e/backup-guidance.spec.ts:143:5
+
+    Error Context: test-results/backup-guidance-手动与自动备份指引只导航；导出、立即备份及目录失败反馈可见/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/backup-guidance-手动与自动备份指引只导航；导出、立即备份及目录失败反馈可见/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/backup-guidance-手动与自动备份指引只导航；导出、立即备份及目录失败反馈可见/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) tests/e2e/backup-guidance.spec.ts:191:1 › 恢复指引只前往入口；错误密码、取消及目标解锁后整份恢复各有反馈 ─────────────────────
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator: getByRole('navigation').getByRole('button', { name: '设置', exact: true })
+    Expected: "page"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveAttribute" getByRole('navigation').getByRole('button', { name: '设置', exact: true }) with timeout 5000ms
+      - waiting for getByRole('navigation').getByRole('button', { name: '设置', exact: true })
+
+
+       at guidance-content.ts:81
+
+      79 |       .getByRole('navigation')
+      80 |       .getByRole('button', { name: names[destination.module], exact: true }),
+    > 81 |   ).toHaveAttribute('aria-current', 'page');
+         |     ^
+      82 |   if (destination.module === 'settings' && destination.section === 'about')
+      83 |     await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeVisible();
+      84 | }
+        at expectGuidanceDestination (/Users/axelton/code/clever-workbench/tests/e2e/guidance-content.ts:81:5)
+        at openNearby (/Users/axelton/code/clever-workbench/tests/e2e/backup-guidance.spec.ts:61:9)
+        at /Users/axelton/code/clever-workbench/tests/e2e/backup-guidance.spec.ts:230:5
+
+    Error Context: test-results/backup-guidance-恢复指引只前往入口；错误密码、取消及目标解锁后整份恢复各有反馈/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/backup-guidance-恢复指引只前往入口；错误密码、取消及目标解锁后整份恢复各有反馈/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/backup-guidance-恢复指引只前往入口；错误密码、取消及目标解锁后整份恢复各有反馈/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) tests/e2e/daily-guidance.spec.ts:68:1 › 首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具 ────────────────────────
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator: getByRole('navigation').getByRole('button', { name: '工作台', exact: true })
+    Expected: "page"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveAttribute" getByRole('navigation').getByRole('button', { name: '工作台', exact: true }) with timeout 5000ms
+      - waiting for getByRole('navigation').getByRole('button', { name: '工作台', exact: true })
+
+
+       at guidance-content.ts:81
+
+      79 |       .getByRole('navigation')
+      80 |       .getByRole('button', { name: names[destination.module], exact: true }),
+    > 81 |   ).toHaveAttribute('aria-current', 'page');
+         |     ^
+      82 |   if (destination.module === 'settings' && destination.section === 'about')
+      83 |     await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeVisible();
+      84 | }
+        at expectGuidanceDestination (/Users/axelton/code/clever-workbench/tests/e2e/guidance-content.ts:81:5)
+        at navigateOrClose (/Users/axelton/code/clever-workbench/tests/e2e/daily-guidance.spec.ts:65:9)
+        at /Users/axelton/code/clever-workbench/tests/e2e/daily-guidance.spec.ts:81:5
+
+    Error Context: test-results/daily-guidance-首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/daily-guidance-首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/daily-guidance-首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) tests/e2e/daily-guidance.spec.ts:122:1 › 搜索新建旁指引只导航，九项选择可取消且键盘搜索可打开任务 ─────────────────────────
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator: getByRole('navigation').getByRole('button', { name: '工作台', exact: true })
+    Expected: "page"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveAttribute" getByRole('navigation').getByRole('button', { name: '工作台', exact: true }) with timeout 5000ms
+      - waiting for getByRole('navigation').getByRole('button', { name: '工作台', exact: true })
+
+
+       at guidance-content.ts:81
+
+      79 |       .getByRole('navigation')
+      80 |       .getByRole('button', { name: names[destination.module], exact: true }),
+    > 81 |   ).toHaveAttribute('aria-current', 'page');
+         |     ^
+      82 |   if (destination.module === 'settings' && destination.section === 'about')
+      83 |     await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeVisible();
+      84 | }
+        at expectGuidanceDestination (/Users/axelton/code/clever-workbench/tests/e2e/guidance-content.ts:81:5)
+        at navigateOrClose (/Users/axelton/code/clever-workbench/tests/e2e/daily-guidance.spec.ts:65:9)
+        at /Users/axelton/code/clever-workbench/tests/e2e/daily-guidance.spec.ts:130:5
+
+    Error Context: test-results/daily-guidance-搜索新建旁指引只导航，九项选择可取消且键盘搜索可打开任务/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/daily-guidance-搜索新建旁指引只导航，九项选择可取消且键盘搜索可打开任务/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/daily-guidance-搜索新建旁指引只导航，九项选择可取消且键盘搜索可打开任务/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) tests/e2e/daily-guidance.spec.ts:171:1 › 任务指引关闭保留详情，计划、标签与批量归属可按说明操作 ──────────────────────────
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator: getByRole('navigation').getByRole('button', { name: '工作任务', exact: true })
+    Expected: "page"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveAttribute" getByRole('navigation').getByRole('button', { name: '工作任务', exact: true }) with timeout 5000ms
+      - waiting for getByRole('navigation').getByRole('button', { name: '工作任务', exact: true })
+
+
+       at guidance-content.ts:81
+
+      79 |       .getByRole('navigation')
+      80 |       .getByRole('button', { name: names[destination.module], exact: true }),
+    > 81 |   ).toHaveAttribute('aria-current', 'page');
+         |     ^
+      82 |   if (destination.module === 'settings' && destination.section === 'about')
+      83 |     await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeVisible();
+      84 | }
+        at expectGuidanceDestination (/Users/axelton/code/clever-workbench/tests/e2e/guidance-content.ts:81:5)
+        at navigateOrClose (/Users/axelton/code/clever-workbench/tests/e2e/daily-guidance.spec.ts:65:9)
+        at /Users/axelton/code/clever-workbench/tests/e2e/daily-guidance.spec.ts:180:5
+
+    Error Context: test-results/daily-guidance-任务指引关闭保留详情，计划、标签与批量归属可按说明操作/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/daily-guidance-任务指引关闭保留详情，计划、标签与批量归属可按说明操作/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/daily-guidance-任务指引关闭保留详情，计划、标签与批量归属可按说明操作/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) tests/e2e/daily-guidance.spec.ts:250:1 › 文档附近和设置可查看共用编辑指引，源码与本地图片保存后仍可阅读 ──────────────────────
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator: getByRole('navigation').getByRole('button', { name: '文档', exact: true })
+    Expected: "page"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveAttribute" getByRole('navigation').getByRole('button', { name: '文档', exact: true }) with timeout 5000ms
+      - waiting for getByRole('navigation').getByRole('button', { name: '文档', exact: true })
+
+
+       at guidance-content.ts:81
+
+      79 |       .getByRole('navigation')
+      80 |       .getByRole('button', { name: names[destination.module], exact: true }),
+    > 81 |   ).toHaveAttribute('aria-current', 'page');
+         |     ^
+      82 |   if (destination.module === 'settings' && destination.section === 'about')
+      83 |     await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeVisible();
+      84 | }
+        at expectGuidanceDestination (/Users/axelton/code/clever-workbench/tests/e2e/guidance-content.ts:81:5)
+        at navigateOrClose (/Users/axelton/code/clever-workbench/tests/e2e/daily-guidance.spec.ts:65:9)
+        at /Users/axelton/code/clever-workbench/tests/e2e/daily-guidance.spec.ts:259:5
+
+    Error Context: test-results/daily-guidance-文档附近和设置可查看共用编辑指引，源码与本地图片保存后仍可阅读/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/daily-guidance-文档附近和设置可查看共用编辑指引，源码与本地图片保存后仍可阅读/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/daily-guidance-文档附近和设置可查看共用编辑指引，源码与本地图片保存后仍可阅读/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) tests/e2e/daily-guidance.spec.ts:332:1 › 工作回顾指引与月份、系统全貌入口一致，打开任务后可返回 ──────────────────────────
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator: getByRole('navigation').getByRole('button', { name: '工作回顾', exact: true })
+    Expected: "page"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveAttribute" getByRole('navigation').getByRole('button', { name: '工作回顾', exact: true }) with timeout 5000ms
+      - waiting for getByRole('navigation').getByRole('button', { name: '工作回顾', exact: true })
+
+
+       at guidance-content.ts:81
+
+      79 |       .getByRole('navigation')
+      80 |       .getByRole('button', { name: names[destination.module], exact: true }),
+    > 81 |   ).toHaveAttribute('aria-current', 'page');
+         |     ^
+      82 |   if (destination.module === 'settings' && destination.section === 'about')
+      83 |     await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeVisible();
+      84 | }
+        at expectGuidanceDestination (/Users/axelton/code/clever-workbench/tests/e2e/guidance-content.ts:81:5)
+        at navigateOrClose (/Users/axelton/code/clever-workbench/tests/e2e/daily-guidance.spec.ts:65:9)
+        at /Users/axelton/code/clever-workbench/tests/e2e/daily-guidance.spec.ts:343:5
+
+    Error Context: test-results/daily-guidance-工作回顾指引与月份、系统全貌入口一致，打开任务后可返回/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/daily-guidance-工作回顾指引与月份、系统全貌入口一致，打开任务后可返回/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/daily-guidance-工作回顾指引与月份、系统全貌入口一致，打开任务后可返回/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) tests/e2e/desktop.spec.ts:7:1 › native desktop capture, editor, completion, archive, recovery and theme
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '全部' }).first()
+
+
+      46 |     await page.getByRole("menuitem", { name: '工作台', exact: true }).click();
+      47 |     await page.getByRole("menuitem", { name: '工作任务', exact: false }).first().click();
+    > 48 |     await page.getByRole('button', { name: '全部', exact: false }).first().click();
+         |                                                                          ^
+      49 |     await page.getByRole('button', { name: /修复登录超时.*产品平台/ }).click();
+      50 |     await page.getByLabel('删除任务', { exact: true }).click();
+      51 |     await page.getByRole("menuitem", { name: '回收站', exact: true }).click();
+        at /Users/axelton/code/clever-workbench/tests/e2e/desktop.spec.ts:48:74
+
+    Error Context: test-results/desktop-native-desktop-cap-3bf5a--archive-recovery-and-theme/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/desktop-native-desktop-cap-3bf5a--archive-recovery-and-theme/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/desktop-native-desktop-cap-3bf5a--archive-recovery-and-theme/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10 failed
+    tests/e2e/backup-guidance.spec.ts:64:1 › 备份密码指引从设置就近打开；取消与保存各自保持独立备份配置 ─────────────────────────
+    tests/e2e/backup-guidance.spec.ts:87:1 › 更新历史指引只导航；历史显示恢复材料、阶段和缺失文件的处理反馈 ───────────────────────
+    tests/e2e/backup-guidance.spec.ts:134:1 › 手动与自动备份指引只导航；导出、立即备份及目录失败反馈可见 ────────────────────────
+    tests/e2e/backup-guidance.spec.ts:191:1 › 恢复指引只前往入口；错误密码、取消及目标解锁后整份恢复各有反馈 ──────────────────────
+    tests/e2e/daily-guidance.spec.ts:68:1 › 首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具 ─────────────────────────
+    tests/e2e/daily-guidance.spec.ts:122:1 › 搜索新建旁指引只导航，九项选择可取消且键盘搜索可打开任务 ──────────────────────────
+    tests/e2e/daily-guidance.spec.ts:171:1 › 任务指引关闭保留详情，计划、标签与批量归属可按说明操作 ───────────────────────────
+    tests/e2e/daily-guidance.spec.ts:250:1 › 文档附近和设置可查看共用编辑指引，源码与本地图片保存后仍可阅读 ───────────────────────
+    tests/e2e/daily-guidance.spec.ts:332:1 › 工作回顾指引与月份、系统全貌入口一致，打开任务后可返回 ───────────────────────────
+    tests/e2e/desktop.spec.ts:7:1 › native desktop capture, editor, completion, archive, recovery and theme
+  128 did not run
+  10 passed (2.2m)
+  1 error was not a part of any test, see above for details

@@ -1,0 +1,98 @@
+{
+  "elements": [
+    {
+      "tag": "INPUT",
+      "cls": "ant-input css-i19pbt ant-input-outlined document-title css-var-_r_1_ ant-input-css-var",
+      "inline": null,
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgba(255, 255, 255, 0.85)",
+      "panel": "#1c2026",
+      "vPanel": "",
+      "vText": ""
+    },
+    {
+      "tag": "DIV",
+      "cls": "editor-wrap ",
+      "inline": null,
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgba(255, 255, 255, 0.85)",
+      "panel": "#1c2026",
+      "vPanel": "",
+      "vText": ""
+    },
+    {
+      "tag": "DIV",
+      "cls": "workbench-vditor vditor",
+      "inline": "height: auto; min-height: 280px; width: auto;",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgba(255, 255, 255, 0.85)",
+      "panel": "#1c2026",
+      "vPanel": "#1c2026",
+      "vText": "rgba(255,255,255,0.85)"
+    },
+    {
+      "tag": "PRE",
+      "cls": "vditor-reset",
+      "inline": null,
+      "bg": "rgb(28, 32, 38)",
+      "color": "rgb(36, 41, 46)",
+      "panel": "#1c2026",
+      "vPanel": "#1c2026",
+      "vText": "rgba(255,255,255,0.85)"
+    },
+    {
+      "tag": "TEXTAREA",
+      "cls": "vditor-sv vditor-reset",
+      "inline": "display: none;",
+      "bg": "rgb(28, 32, 38)",
+      "color": "rgba(255, 255, 255, 0.85)",
+      "panel": "#1c2026",
+      "vPanel": "#1c2026",
+      "vText": "rgba(255,255,255,0.85)"
+    },
+    {
+      "tag": "DIV",
+      "cls": "vditor-ir",
+      "inline": "display: block;",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgba(255, 255, 255, 0.85)",
+      "panel": "#1c2026",
+      "vPanel": "#1c2026",
+      "vText": "rgba(255,255,255,0.85)"
+    },
+    {
+      "tag": "PRE",
+      "cls": "vditor-reset",
+      "inline": "padding: 10px 35px;",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgba(255, 255, 255, 0.85)",
+      "panel": "#1c2026",
+      "vPanel": "#1c2026",
+      "vText": "rgba(255,255,255,0.85)"
+    },
+    {
+      "tag": "H1",
+      "cls": "vditor-ir__node",
+      "inline": null,
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgba(255, 255, 255, 0.85)",
+      "panel": "#1c2026",
+      "vPanel": "#1c2026",
+      "vText": "rgba(255,255,255,0.85)"
+    },
+    {
+      "tag": "DIV",
+      "cls": "vditor-reset",
+      "inline": "max-width: 800px;",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(36, 41, 46)",
+      "panel": "#1c2026",
+      "vPanel": "#1c2026",
+      "vText": "rgba(255,255,255,0.85)"
+    }
+  ],
+  "links": [
+    "file:///Users/axelton/code/clever-workbench/dist/assets/Guidance-Bc0m42B1.css",
+    "file:///Users/axelton/code/clever-workbench/dist/assets/index-dp2CraJJ.css"
+  ]
+}

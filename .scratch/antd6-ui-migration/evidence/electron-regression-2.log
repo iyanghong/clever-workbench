@@ -1,0 +1,232 @@
+
+> clever-workbench@0.1.23 pretest:e2e
+> npm run tools:generate
+
+
+> clever-workbench@0.1.23 tools:generate
+> node scripts/generate-tools.mjs
+
+
+> clever-workbench@0.1.23 test:e2e
+> playwright test tests/e2e/appearance.spec.ts tests/e2e/ledger-layout.spec.ts tests/e2e/ledger-copy.spec.ts tests/e2e/task-planning.spec.ts tests/e2e/productivity-tools.spec.ts tests/e2e/tools.spec.ts tests/e2e/unified-appearance.spec.ts --max-failures=5
+
+
+Running 24 tests using 1 worker
+
+(node:17006) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/e2e/appearance.spec.ts:7:1 › 主题跟随与手动覆盖，透明度／对比／动态偏好可保存，键盘操作与弹层焦点有效 (3.6s)
+  ✓   2 tests/e2e/appearance.spec.ts:84:1 › 系统减少动态效果生效，原生可访问性变化更新全局材质 (743ms)
+  ✓   3 tests/e2e/ledger-copy.spec.ts:9:1 › 台账资料单条、多选、附账号与编辑保存失败不覆盖剪贴板 (7.9s)
+  ✓   4 tests/e2e/ledger-copy.spec.ts:266:1 › 访问入口快捷复制优先附带常用账号的密码 (2.6s)
+  ✓   5 tests/e2e/ledger-layout.spec.ts:8:1 › 打开台账后用摘要连续浏览，详情获得主要阅读宽度 (1.7s)
+  ✓   6 tests/e2e/ledger-layout.spec.ts:66:1 › 摘要搜索保留详情、范围筛选关闭详情，窄窗口返回恢复清单条件和位置 (4.0s)
+  ✘   7 tests/e2e/ledger-layout.spec.ts:163:1 › 运维筛选在摘要与返回清单间保持有效，编辑后可沿步骤和分类进入文档 (34.7s)
+(node:17356) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   8 tests/e2e/ledger-layout.spec.ts:298:1 › 七类页签的行内复制与详情均使用无文字图标按钮 (3.3s)
+  ✓   9 tests/e2e/productivity-tools.spec.ts:35:1 › 配置对比自动出现在目录并报告 JSON 修改 (2.3s)
+  ✓  10 tests/e2e/productivity-tools.spec.ts:44:1 › 数据格式助手按路径提取本地 JSON (2.4s)
+  ✓  11 tests/e2e/productivity-tools.spec.ts:53:1 › 时间与 Cron 转换时间并预测五次执行 (2.0s)
+  ✓  12 tests/e2e/productivity-tools.spec.ts:66:1 › 批量文本处理按行去重并统计结果 (2.3s)
+  ✓  13 tests/e2e/productivity-tools.spec.ts:75:1 › 表格数据在 CSV 与 JSON 之间双向转换 (2.1s)
+  ✓  14 tests/e2e/productivity-tools.spec.ts:89:1 › 新增工具布局支持深浅主题与窄窗口 (1.9s)
+  ✘  15 tests/e2e/task-planning.spec.ts:8:1 › 任务可选保存预计完成日期，按创建月份归类，编辑正文不丢失日期 (6.8s)
+(node:17519) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  16 tests/e2e/task-planning.spec.ts:49:1 › 逾期和临期跨组置顶，切换到期口径及完成重开不产生重复任务 (2.5s)
+  ✓  17 tests/e2e/task-planning.spec.ts:108:1 › 自定义临期在指定时刻生效，清除后恢复默认规则 (1.9s)
+  ✘  18 tests/e2e/task-planning.spec.ts:145:1 › 管理共用标签并组合筛选，优先区不能绕过标签条件 (2.6s)
+(node:17572) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  19 tests/e2e/task-planning.spec.ts:231:1 › 首页和实际台账入口共用紧迫排序及标签，完成后入口同步更新 (2.3s)
+  ✓  20 tests/e2e/tools.spec.ts:22:1 › 10 个分片乱序收集，重复项自动跳过并保留原片，收齐后可直接还原 (10.1s)
+  ✓  21 tests/e2e/tools.spec.ts:165:1 › 粘贴快捷键保留路径、密码、搜索及其他页面的普通文本粘贴 (2.6s)
+  ✘  22 tests/e2e/tools.spec.ts:209:1 › 工具收藏、后台运行与退出保护、目录及剪贴板还原 (13.5s)
+(node:17768) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ✘  23 tests/e2e/tools.spec.ts:333:1 › Git 提交筛选预览并打包当前磁盘文件 (7.6s)
+Testing stopped early after 5 maximum allowed failures.
+
+
+  1) tests/e2e/ledger-layout.spec.ts:163:1 › 运维筛选在摘要与返回清单间保持有效，编辑后可沿步骤和分类进入文档 ──────────────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for locator('.ant-select-dropdown').visible().last().locator('.ant-select-item-option[data-value="all"]')
+        - locator resolved to <div title="全部状态" data-value="all" aria-disabled="false" class="ant-select-item ant-select-item-option">…</div>
+      - attempting click action
+        - waiting for element to be visible, enabled and stable
+        - element is visible, enabled and stable
+        - scrolling into view if needed
+        - done scrolling
+        - <div class="workspace-result-count">…</div> from <div id="root">…</div> subtree intercepts pointer events
+      - retrying click action
+        - waiting for element to be visible, enabled and stable
+        - element is not stable
+      - retrying click action
+        - waiting 20ms
+        2 × waiting for element to be visible, enabled and stable
+          - element is not stable
+        - retrying click action
+          - waiting 100ms
+        58 × waiting for element to be visible, enabled and stable
+           - element is not visible
+         - retrying click action
+           - waiting 500ms
+
+
+       at antd-controls.ts:14
+
+      12 |     ? popup.locator(`.ant-select-item-option[data-value=${JSON.stringify(value)}]`)
+      13 |     : popup.locator('.ant-select-item-option').filter({ hasText: value.label });
+    > 14 |   await option.click(clickOptions);
+         |                ^
+      15 | }
+      16 |
+      17 | export async function expectSelectValue(control: Locator, value: string) {
+        at selectChoice (/Users/axelton/code/clever-workbench/tests/e2e/antd-controls.ts:14:16)
+        at /Users/axelton/code/clever-workbench/tests/e2e/ledger-layout.spec.ts:257:5
+
+    Error Context: test-results/ledger-layout-运维筛选在摘要与返回清单间保持有效，编辑后可沿步骤和分类进入文档/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/ledger-layout-运维筛选在摘要与返回清单间保持有效，编辑后可沿步骤和分类进入文档/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/ledger-layout-运维筛选在摘要与返回清单间保持有效，编辑后可沿步骤和分类进入文档/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) tests/e2e/task-planning.spec.ts:8:1 › 任务可选保存预计完成日期，按创建月份归类，编辑正文不丢失日期 ──────────────────────────
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    Expected: {"kind": "date", "value": "2026-10-23"}
+    Received: null
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      35 |     await expect
+      36 |       .poll(() => page.evaluate(async (id) => (await window.desktop.task(id)).dueAt, id))
+    > 37 |       .toEqual({ kind: 'date', value: '2026-10-23' });
+         |        ^
+      38 |     await page.getByLabel('任务标题', { exact: true }).fill('计划上线并验证');
+      39 |     await page.getByLabel('关闭详情').click();
+      40 |     await expect
+        at /Users/axelton/code/clever-workbench/tests/e2e/task-planning.spec.ts:37:8
+
+    Error Context: test-results/task-planning-任务可选保存预计完成日期，按创建月份归类，编辑正文不丢失日期/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/task-planning-任务可选保存预计完成日期，按创建月份归类，编辑正文不丢失日期/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/task-planning-任务可选保存预计完成日期，按创建月份归类，编辑正文不丢失日期/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) tests/e2e/task-planning.spec.ts:145:1 › 管理共用标签并组合筛选，优先区不能绕过标签条件 ───────────────────────────────
+
+    Error: locator.click: Error: strict mode violation: getByRole('dialog', { name: '任务标签', exact: true }).getByLabel('关闭任务标签') resolved to 2 elements:
+        1) <button type="button" aria-label="关闭任务标签" class="ant-modal-close">…</button> aka getByRole('button', { name: '关闭任务标签' })
+        2) <span aria-label="关闭任务标签" class="ant-modal-close-x">…</span> aka getByRole('button', { name: '关闭任务标签' })
+
+    Call log:
+      - waiting for getByRole('dialog', { name: '任务标签', exact: true }).getByLabel('关闭任务标签')
+
+
+      167 |       ).toBeVisible();
+      168 |     }
+    > 169 |     await manager.getByLabel('关闭任务标签').click();
+          |                                        ^
+      170 |     await page.getByRole("menuitem", { name: '工作台', exact: true }).click();
+      171 |     const combined = await page.evaluate(async () => {
+      172 |       const tags = (await window.desktop.snapshot()).taskTags!;
+        at /Users/axelton/code/clever-workbench/tests/e2e/task-planning.spec.ts:169:40
+
+    Error Context: test-results/task-planning-管理共用标签并组合筛选，优先区不能绕过标签条件/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/task-planning-管理共用标签并组合筛选，优先区不能绕过标签条件/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/task-planning-管理共用标签并组合筛选，优先区不能绕过标签条件/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) tests/e2e/tools.spec.ts:209:1 › 工具收藏、后台运行与退出保护、目录及剪贴板还原 ───────────────────────────────────────
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: "rgb(40, 43, 48)"
+    Received: "rgb(28, 32, 38)"
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      307 |         page.locator('#zip-output').evaluate((input) => getComputedStyle(input).backgroundColor),
+      308 |       )
+    > 309 |       .toBe('rgb(40, 43, 48)');
+          |        ^
+      310 |     await page.setViewportSize({ width: 850, height: 740 });
+      311 |     await page.screenshot({ path: info.outputPath('zip-dark-narrow.png') });
+      312 |     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        at /Users/axelton/code/clever-workbench/tests/e2e/tools.spec.ts:309:8
+
+    Error Context: test-results/tools-工具收藏、后台运行与退出保护、目录及剪贴板还原/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tools-工具收藏、后台运行与退出保护、目录及剪贴板还原/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/tools-工具收藏、后台运行与退出保护、目录及剪贴板还原/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) tests/e2e/tools.spec.ts:333:1 › Git 提交筛选预览并打包当前磁盘文件 ───────────────────────────────────────────
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByLabel('分支', { exact: true })
+    Expected: "refs/heads/main"
+    Received: ""
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByLabel('分支', { exact: true }) with timeout 5000ms
+      - waiting for getByLabel('分支', { exact: true })
+        11 × locator resolved to <input readonly value="" type="text" role="combobox" id="zip-git-branch" aria-expanded="false" aria-haspopup="listbox" class="ant-select-input" aria-autocomplete="list" autocomplete="new-password"/>
+           - unexpected value ""
+
+
+      358 |     await page.getByRole('button', { name: '读取分支' }).click();
+      359 |     await idle(page);
+    > 360 |     await expect(page.getByLabel('分支', { exact: true })).toHaveValue('refs/heads/main');
+          |                                                          ^
+      361 |     await page.getByLabel('作者', { exact: true }).fill('UI Author');
+      362 |     await page.getByRole('button', { name: '应用筛选', exact: true }).click();
+      363 |     await idle(page);
+        at /Users/axelton/code/clever-workbench/tests/e2e/tools.spec.ts:360:58
+
+    Error Context: test-results/tools-Git-提交筛选预览并打包当前磁盘文件/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tools-Git-提交筛选预览并打包当前磁盘文件/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/tools-Git-提交筛选预览并打包当前磁盘文件/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5 failed
+    tests/e2e/ledger-layout.spec.ts:163:1 › 运维筛选在摘要与返回清单间保持有效，编辑后可沿步骤和分类进入文档 ───────────────────────
+    tests/e2e/task-planning.spec.ts:8:1 › 任务可选保存预计完成日期，按创建月份归类，编辑正文不丢失日期 ───────────────────────────
+    tests/e2e/task-planning.spec.ts:145:1 › 管理共用标签并组合筛选，优先区不能绕过标签条件 ────────────────────────────────
+    tests/e2e/tools.spec.ts:209:1 › 工具收藏、后台运行与退出保护、目录及剪贴板还原 ────────────────────────────────────────
+    tests/e2e/tools.spec.ts:333:1 › Git 提交筛选预览并打包当前磁盘文件 ────────────────────────────────────────────
+  1 did not run
+  18 passed (2.1m)
+  1 error was not a part of any test, see above for details

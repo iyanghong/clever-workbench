@@ -77,7 +77,7 @@ export async function expectGuidanceDestination(page: Page, guide: FeatureGuide)
   await expect(
     page
       .getByRole('navigation')
-      .getByRole('button', { name: names[destination.module], exact: true }),
+      .getByRole('menuitem', { name: names[destination.module], exact: true }),
   ).toHaveAttribute('aria-current', 'page');
   if (destination.module === 'settings' && destination.section === 'about')
     await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeVisible();

@@ -1,3 +1,5 @@
+import { markNewRecordChanged } from '../../../src/shared/new-record';
+import { Button, Checkbox, Input, Select, Card, Table } from 'antd';
 import { useState } from 'react';
 import { PageHeading } from '../../../src/shared/WorkspaceUI';
 import { compareConfigurations, type DiffMode, type DiffResult } from '../logic';
@@ -34,31 +36,40 @@ export default function ConfigDiffPage() {
       <div className="utility-toolbar">
         <label>
           对比格式
-          <select
+          <Select
             aria-label="对比格式"
             value={mode}
-            onChange={(event) => change(() => setMode(event.target.value as DiffMode))}
+            onChange={(event) => {
+              markNewRecordChanged();
+              return change(() => setMode(event as DiffMode));
+            }}
           >
-            <option value="text">纯文本</option>
-            <option value="json">JSON（键排序）</option>
-            <option value="env">.env（按键排序）</option>
-          </select>
+            <Select.Option data-value={String('text')} value="text">
+              纯文本
+            </Select.Option>
+            <Select.Option data-value={String('json')} value="json">
+              JSON（键排序）
+            </Select.Option>
+            <Select.Option data-value={String('env')} value="env">
+              .env（按键排序）
+            </Select.Option>
+          </Select>
         </label>
         {mode === 'text' && (
-          <label className="utility-check">
-            <input
-              type="checkbox"
-              checked={ignoreWhitespace}
-              onChange={(event) => change(() => setIgnoreWhitespace(event.target.checked))}
-            />
+          <Checkbox
+            className="utility-check"
+            checked={ignoreWhitespace}
+            onChange={(event) => change(() => setIgnoreWhitespace(event.target.checked))}
+          >
             忽略首尾及连续空白
-          </label>
+          </Checkbox>
         )}
-        <button type="button" onClick={compare}>
+        <Button type="text" htmlType="button" onClick={compare}>
           开始对比
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          type="default"
+          htmlType="button"
           className="secondary-button"
           onClick={() =>
             change(() => {
@@ -68,29 +79,29 @@ export default function ConfigDiffPage() {
           }
         >
           交换两侧
-        </button>
+        </Button>
       </div>
       <div className="utility-grid">
-        <label className="utility-panel">
+        <Card className="utility-panel">
           <span>原始配置</span>
-          <textarea
+          <Input.TextArea
             aria-label="原始配置"
             value={left}
             onChange={(event) => change(() => setLeft(event.target.value))}
             spellCheck={false}
             placeholder="粘贴变更前的配置"
           />
-        </label>
-        <label className="utility-panel">
+        </Card>
+        <Card className="utility-panel">
           <span>对比配置</span>
-          <textarea
+          <Input.TextArea
             aria-label="对比配置"
             value={right}
             onChange={(event) => change(() => setRight(event.target.value))}
             spellCheck={false}
             placeholder="粘贴变更后的配置"
           />
-        </label>
+        </Card>
       </div>
       {error && (
         <p className="tool-error" role="alert">
@@ -105,38 +116,29 @@ export default function ConfigDiffPage() {
                 ? `新增 ${result.added} 行，删除 ${result.removed} 行，相同 ${result.same} 行`
                 : '两侧配置一致'}
             </strong>
-            <label className="utility-check">
-              <input
-                type="checkbox"
-                checked={showSame}
-                onChange={(event) => setShowSame(event.target.checked)}
-              />
+            <Checkbox
+              className="utility-check"
+              checked={showSame}
+              onChange={(event) => setShowSame(event.target.checked)}
+            >
               显示相同行
-            </label>
+            </Checkbox>
           </div>
           <div className="utility-table-wrap">
-            <table className="utility-table diff-table">
-              <thead>
-                <tr>
-                  <th>原行</th>
-                  <th>新行</th>
-                  <th>内容</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.rows
-                  .filter((row) => showSame || row.type !== 'same')
-                  .map((row, index) => (
-                    <tr key={index} className={`diff-${row.type}`}>
-                      <td>{row.left}</td>
-                      <td>{row.right}</td>
-                      <td>
-                        <code>{row.text || ' '}</code>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
+            <Table
+              className="diff-table"
+              dataSource={result.rows.filter((row) => showSame || row.type !== 'same')}
+              rowKey={(_row, index) => String(index)}
+              rowClassName={(row) => `diff-${row.type}`}
+              pagination={false}
+              size="small"
+              scroll={{ y: 470 }}
+              columns={[
+                { title: '原行', dataIndex: 'left', width: 65 },
+                { title: '新行', dataIndex: 'right', width: 65 },
+                { title: '内容', dataIndex: 'text', render: (text) => <code>{text || ' '}</code> },
+              ]}
+            />
           </div>
         </section>
       )}

@@ -1,0 +1,501 @@
+
+> clever-workbench@0.1.23 pretest:e2e
+> npm run tools:generate
+
+
+> clever-workbench@0.1.23 tools:generate
+> node scripts/generate-tools.mjs
+
+
+> clever-workbench@0.1.23 test:e2e
+> playwright test --max-failures=10
+
+
+Running 148 tests using 1 worker
+
+(node:30224) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓    1 tests/e2e/account-list.spec.ts:8:1 › 密码列显隐、当前范围批量展示与整行复制沿用解锁和清理 (6.8s)
+  ✓    2 tests/e2e/antd-workbench.spec.ts:7:1 › Ant 控件接入后仍保留创建保护、模态焦点和真实本地保存 (5.1s)
+  ✓    3 tests/e2e/appearance.spec.ts:7:1 › 主题跟随与手动覆盖，透明度／对比／动态偏好可保存，键盘操作与弹层焦点有效 (4.1s)
+  ✓    4 tests/e2e/appearance.spec.ts:84:1 › 系统减少动态效果生效，原生可访问性变化更新全局材质 (960ms)
+  ✓    5 tests/e2e/archive.spec.ts:8:1 › 归档项目能查看文档和完成任务，长期账号可编辑，重开不改变项目归档状态 (5.1s)
+  ✓    6 tests/e2e/automatic-backup.spec.ts:9:1 › 备份正在写入时关闭会等候完成，不弹出阻止退出的确认框 (1.4s)
+  ✓    7 tests/e2e/automatic-backup.spec.ts:57:1 › 设置目录与自动策略持久化，失败重试保留已有副本，重启检查有变更的跨日备份 (4.5s)
+  ✓    8 tests/e2e/backup-guidance.spec.ts:70:1 › 备份密码指引从设置就近打开；取消与保存各自保持独立备份配置 (2.6s)
+  ✓    9 tests/e2e/backup-guidance.spec.ts:93:1 › 更新历史指引只导航；历史显示恢复材料、阶段和缺失文件的处理反馈 (2.2s)
+  ✓   10 tests/e2e/backup-guidance.spec.ts:140:1 › 手动与自动备份指引只导航；导出、立即备份及目录失败反馈可见 (3.4s)
+  ✓   11 tests/e2e/backup-guidance.spec.ts:197:1 › 恢复指引只前往入口；错误密码、取消及目标解锁后整份恢复各有反馈 (6.3s)
+  ✓   12 tests/e2e/backup.spec.ts:6:1 › 设置中首次导出要求独立备份密码，锁定导出可用，备份密码预检不修改当前资料 (3.9s)
+  ✓   13 tests/e2e/backup.spec.ts:73:1 › 恢复成功重建当前页面并锁定秘密，恢复前未返回的图片选择不能写入新资料 (3.9s)
+  ✓   14 tests/e2e/daily-guidance.spec.ts:66:1 › 首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具 (1.8s)
+  ✓   15 tests/e2e/daily-guidance.spec.ts:120:1 › 搜索新建旁指引只导航，九项选择可取消且键盘搜索可打开任务 (2.3s)
+  ✓   16 tests/e2e/daily-guidance.spec.ts:169:1 › 任务指引关闭保留详情，计划、标签与批量归属可按说明操作 (4.8s)
+  ✓   17 tests/e2e/daily-guidance.spec.ts:222:1 › 阅读任务指引期间创建快捷键不会提交底层草稿 (1.8s)
+  ✓   18 tests/e2e/daily-guidance.spec.ts:248:1 › 文档附近和设置可查看共用编辑指引，源码与本地图片保存后仍可阅读 (3.6s)
+  ✓   19 tests/e2e/daily-guidance.spec.ts:328:1 › 工作回顾指引与月份、系统全貌入口一致，打开任务后可返回 (3.3s)
+Electron runtime { node: '24.22.0', electron: '44.9.0' }
+  ✓   20 tests/e2e/desktop.spec.ts:7:1 › native desktop capture, editor, completion, archive, recovery and theme (5.2s)
+  ✓   21 tests/e2e/desktop.spec.ts:75:1 › pasted images survive immediate close, portable backup and restart (7.3s)
+  ✓   22 tests/e2e/dialog-polish.spec.ts:8:1 › 台账弹窗有固定关闭入口，表单统一且退出保留保存与粘贴保护 (4.1s)
+  ✓   23 tests/e2e/document-scopes.spec.ts:9:1 › 任务快录与详情直接选择系统，只可选关联系统且不显示项目绑定 (2.4s)
+  ✓   24 tests/e2e/document-scopes.spec.ts:51:1 › 通用与系统文档分别查看，按范围新建，修改归属和切换筛选不丢正文 (5.8s)
+  ✓   25 tests/e2e/documents.spec.ts:9:1 › 从资源写方案并回到台账，系统换项目后保留旧背景和文档恢复能力 (4.2s)
+  ✓   26 tests/e2e/documents.spec.ts:74:1 › 未命名文档粘贴图片后立即切换，重启后保留正文与图片 (3.7s)
+  ✓   27 tests/e2e/documents.spec.ts:114:1 › 居中稿纸可切换专注编辑，退出后保留标题、正文与文档列表 (2.9s)
+  ✓   28 tests/e2e/documents.spec.ts:153:1 › 多级大纲支持长标题、三种布局和重启后的展开状态记忆 (5.7s)
+  ✓   29 tests/e2e/editor-history.spec.ts:18:1 › IR 快速撤销保留连续输入分组，中文组合、重做、语法显隐与关闭保存一致 (5.3s)
+  ✓   30 tests/e2e/editor-history.spec.ts:120:1 › 本地图片可立即撤销重做，导入中导航等待原记录保存 (3.6s)
+  ✓   31 tests/e2e/editor-history.spec.ts:180:1 › 只打开或移动光标不改写原文，回收站正文和勾选项保持只读 (2.8s)
+  ✓   32 tests/e2e/editor.spec.ts:7:1 › 以 Markdown 为准加载，粘贴截图后立即退出仍保留正文和本地图片 (3.7s)
+  ✓   33 tests/e2e/editor.spec.ts:110:1 › 表格与源码切换保全内容，不支持的结构重启后仍可编辑 (3.8s)
+  ✓   34 tests/e2e/editor.spec.ts:150:1 › 保存失败时留在编辑页并保留最新内容，重试成功后再关闭 (1.9s)
+  ✓   35 tests/e2e/editor.spec.ts:189:1 › 任务快录的定时保存失败后，不改文字即可重试导航并恢复同一草稿 (2.7s)
+  ✓   36 tests/e2e/editor.spec.ts:230:1 › 表格内不可逆格式不可执行，拒绝换行后仍能保存并重新打开原有内容 (2.3s)
+  ✓   37 tests/e2e/guidance-versions.spec.ts:49:1 › 首次只显示当前绑定版本，成功展示后关闭和重启不重复，设置可手动重看 (6.1s)
+  ✓   38 tests/e2e/guidance-versions.spec.ts:87:1 › 跨版本按功能合并不同变化，目标无新增操作仍提示，失败标签不进入历史 (5.4s)
+  ✓   39 tests/e2e/guidance-versions.spec.ts:150:1 › 持续输入与中文组合期间不抢焦点，结束并保存后再提示 (4.3s)
+  ✓   40 tests/e2e/guidance-versions.spec.ts:179:1 › 等待版本说明期间新建资料时不主动弹出放弃确认 (4.4s)
+  ✓   41 tests/e2e/guidance-versions.spec.ts:248:1 › 主界面资料尚未就绪时不显示，等载入完成才开始提示 (2.7s)
+  ✓   42 tests/e2e/guidance-versions.spec.ts:285:1 › 后台操作繁忙时不反复检查可用性，操作结束后仍显示一次 (3.2s)
+  ✓   43 tests/e2e/guidance-versions.spec.ts:321:1 › 更新重启提示等待当前指引关闭，版本提示也避让更新重启窗口 (6.7s)
+  ✓   44 tests/e2e/guidance-versions.spec.ts:421:1 › 真实恢复旧业务备份不回退设备提示记录，另一设备恢复后按首次提示 (10.4s)
+  ✓   45 tests/e2e/guidance-versions.spec.ts:491:3 › 设备记录损坏只考虑当前版本 (6.3s)
+  ✓   46 tests/e2e/guidance-versions.spec.ts:491:3 › 设备记录写入失败如实提示并在当前进程去重 (6.2s)
+  ✓   47 tests/e2e/guidance-versions.spec.ts:538:1 › 未实际显示的提示不被消费，等待期间退出后下一次仍可提示 (4.6s)
+  ✓   48 tests/e2e/guidance-versions.spec.ts:570:1 › 自动提示等待保存失败修复，保留输入且不反复抢焦点 (5.5s)
+  ✓   49 tests/e2e/guidance-versions.spec.ts:611:1 › 正常关闭等待已显示提示记录落盘，避免快速退出后重复提示 (3.1s)
+  ✓   50 tests/e2e/guidance-versions.spec.ts:659:1 › 原生文件选择期间自动与手动版本窗口均避让，取消后可以继续查看 (3.3s)
+  ✓   51 tests/e2e/guidance-versions.spec.ts:709:1 › 明确无变化时安静启动，缺失当前说明和移除功能在手动历史中如实说明 (6.0s)
+  ✓   52 tests/e2e/guidance.spec.ts:13:1 › 离线从设置和更新旁阅读同一指引，步骤、关闭与安全前往功能可用 (3.1s)
+  ✓   53 tests/e2e/guidance.spec.ts:97:1 › 从更新弹窗切换到指引后可关闭，导航不会遗留更新弹窗 (1.9s)
+  ✓   54 tests/e2e/guidance.spec.ts:143:1 › 指引导航保存失败保留输入，恢复保存后可以重试 (3.6s)
+  ✓   55 tests/e2e/guidance.spec.ts:204:1 › 原生文件选择期间不打开指引，结束后允许重新查看 (1.9s)
+  ✓   56 tests/e2e/guidance.spec.ts:257:1 › 前往功能等待期间关闭指引，不执行迟到导航 (1.0s)
+  ✓   57 tests/e2e/home.spec.ts:7:1 › 默认工作台可固定账号、快速完成任务与写方案，入口顺序重启保留 (4.9s)
+  ✓   58 tests/e2e/home.spec.ts:75:1 › 统一新建沿用当前系统环境资源，另建任务保留之前的正文草稿 (4.6s)
+  ✘   59 tests/e2e/ledger-bulk-entry.spec.ts:72:1 › 手填与追加粘贴共用编辑表格，校验、秘密、键盘和窄窗口均保留 (33.4s)
+(node:57242) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   60 tests/e2e/ledger-bulk-entry.spec.ts:144:1 › 全部十类可直接录入，账号按所属对象查重，服务与节点保存环境 (14.9s)
+  ✓   61 tests/e2e/ledger-bulk-entry.spec.ts:214:1 › 失败整批回滚，原生关闭保护草稿，全局保存等待解锁与提交 (3.8s)
+  ✓   62 tests/e2e/ledger-bulk-entry.spec.ts:284:1 › 密码映射不能写入普通字段，追加超过上限后可选择二百条统一保存 (4.7s)
+  ✓   63 tests/e2e/ledger-copy.spec.ts:9:1 › 台账资料单条、多选、附账号与编辑保存失败不覆盖剪贴板 (8.2s)
+  ✓   64 tests/e2e/ledger-copy.spec.ts:266:1 › 访问入口快捷复制优先附带常用账号的密码 (2.8s)
+  ✓   65 tests/e2e/ledger-details.spec.ts:8:1 › 新建提交期间禁用编辑，延迟失败后保留原输入并允许继续填写 (2.2s)
+  ✓   66 tests/e2e/ledger-details.spec.ts:55:1 › 数据库新增可录多连接与账号，常用地址、配置、解除服务器引用可持续编辑 (4.7s)
+  ✓   67 tests/e2e/ledger-details.spec.ts:168:1 › 应用首节点与共用文档同屏保存，窄窗口可滚动，退出拦截未提交的运维资料 (3.0s)
+  ✓   68 tests/e2e/ledger-guidance.spec.ts:85:1 › 空台账可读指引，七类清单共享就近入口，阅读与取消保留当前对象 (7.9s)
+  ✓   69 tests/e2e/ledger-guidance.spec.ts:127:1 › 从旧台账分类阅读指引后前往对应分类，不选中过期对象 (4.8s)
+  ✓   70 tests/e2e/ledger-guidance.spec.ts:184:1 › 系统菜单指引返回焦点，系统环境编辑与项目沿革按说明保留归属 (5.4s)
+  ✘   71 tests/e2e/ledger-guidance.spec.ts:227:1 › 项目档案附近指引保留未提交名称，归档恢复不会自动恢复当前项目 (7.5s)
+(node:57660) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   72 tests/e2e/ledger-guidance.spec.ts:286:1 › 访问入口指引支持地址编辑、范围筛选和资料复制，保存失败时导航保持输入 (7.9s)
+  ✓   73 tests/e2e/ledger-guidance.spec.ts:368:1 › 入口副本指引区分秘密选项，取消复制与删除保留原入口 (4.2s)
+  ✓   74 tests/e2e/ledger-guidance.spec.ts:437:1 › 账号指引不触发解锁或新建，按步骤保存秘密、收藏和调整同系统归属 (8.0s)
+  ✓   75 tests/e2e/ledger-layout.spec.ts:8:1 › 打开台账后用摘要连续浏览，详情获得主要阅读宽度 (1.7s)
+  ✓   76 tests/e2e/ledger-layout.spec.ts:66:1 › 摘要搜索保留详情、范围筛选关闭详情，窄窗口返回恢复清单条件和位置 (4.3s)
+  ✓   77 tests/e2e/ledger-layout.spec.ts:163:1 › 运维筛选在摘要与返回清单间保持有效，编辑后可沿步骤和分类进入文档 (9.6s)
+  ✓   78 tests/e2e/ledger-layout.spec.ts:298:1 › 七类页签的行内复制与详情均使用无文字图标按钮 (3.6s)
+  ✓   79 tests/e2e/ledger-system-actions.spec.ts:7:1 › 系统动作收纳后支持键盘、保存及弹窗关闭焦点链 (2.9s)
+  ✘   80 tests/e2e/ledger.spec.ts:20:1 › 系统跨项目保留沿革，任务只保留系统归属 (8.7s)
+(node:57975) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   81 tests/e2e/ledger.spec.ts:61:1 › 服务仓库只维护一份，多个环境的独立部署节点可编辑 (4.2s)
+  ✓   82 tests/e2e/ledger.spec.ts:109:1 › 资源普通字段编辑与跨环境复制互不影响 (2.5s)
+  ✓   83 tests/e2e/ledger.spec.ts:148:1 › 账号汇总保留环境和资源归属，普通资料与空用户名可编辑 (2.1s)
+  ✘   84 tests/e2e/maintenance-guidance.spec.ts:38:1 › 外观旁的离线指引遵守主题和辅助偏好，关闭返回焦点并从集中入口导航 (7.2s)
+(node:58083) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   85 tests/e2e/maintenance-guidance.spec.ts:122:1 › 秘密保护指引只导航，启用解锁与更改关闭可取消且保留备份配置 (6.7s)
+  ✓   86 tests/e2e/maintenance-guidance.spec.ts:191:1 › 任务回收站指引只导航，恢复、单条删除和清空均保留各自边界 (3.2s)
+  ✓   87 tests/e2e/maintenance-guidance.spec.ts:239:1 › 文档回收站指引可集中到达，逐篇恢复和删除确认不提供批量清空 (3.8s)
+  ✓   88 tests/e2e/operations-guidance.spec.ts:100:1 › 系统导出菜单附近有操作指引，关闭后保留当前系统及焦点 (2.7s)
+  ✓   89 tests/e2e/operations-guidance.spec.ts:123:1 › 批量录入入口旁可查阅指引，不会打开批量录入或新增记录 (2.5s)
+  ✓   90 tests/e2e/operations-guidance.spec.ts:142:1 › 资源指引对应服务器配置、其他类型、独立复制与引用删除保护 (7.7s)
+  ✓   91 tests/e2e/operations-guidance.spec.ts:267:1 › 部署和运维指引对应节点地址回退、状态筛选、引用限制及相关任务 (9.6s)
+  ✘   92 tests/e2e/operations-guidance.spec.ts:358:1 › 批量录入指引对应手填、粘贴追加、逐行取消和未提交放弃 (7.6s)
+(node:58350) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   93 tests/e2e/operations-guidance.spec.ts:422:1 › 导出指引对应编辑保存、取消解锁和明文文件结果 (5.6s)
+  ✓   94 tests/e2e/productivity-tools.spec.ts:35:1 › 配置对比自动出现在目录并报告 JSON 修改 (2.1s)
+  ✓   95 tests/e2e/productivity-tools.spec.ts:44:1 › 数据格式助手按路径提取本地 JSON (2.4s)
+  ✓   96 tests/e2e/productivity-tools.spec.ts:53:1 › 时间与 Cron 转换时间并预测五次执行 (2.2s)
+  ✓   97 tests/e2e/productivity-tools.spec.ts:66:1 › 批量文本处理按行去重并统计结果 (2.5s)
+  ✓   98 tests/e2e/productivity-tools.spec.ts:75:1 › 表格数据在 CSV 与 JSON 之间双向转换 (2.4s)
+  ✓   99 tests/e2e/productivity-tools.spec.ts:89:1 › 新增工具布局支持深浅主题与窄窗口 (2.1s)
+  ✘  100 tests/e2e/project-filter.spec.ts:8:1 › 任务页系统范围可在具体系统、未关联系统和全部之间切换 (32.3s)
+(node:58775) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  101 tests/e2e/retrospective.spec.ts:8:1 › 月度回顾和系统全貌可定位跨月与同日任务，重开后完成计数更新 (2.4s)
+  ✓  102 tests/e2e/search.spec.ts:6:1 › 全局搜索区分环境，可从结果按需解锁复制秘密并用键盘定位文档 (4.2s)
+  ✓  103 tests/e2e/shell-create.spec.ts:7:1 › 快速新建直接展示两组九项，窄窗口可滚动并用键盘返回和关闭 (1.3s)
+  ✘  104 tests/e2e/shell-create.spec.ts:84:1 › 最小窗口中导航与全局入口完整可达，切换页面后位置稳定 (1.3s)
+(node:58844) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  105 tests/e2e/system-export.spec.ts:10:1 › 勾选内容、开始日期筛选和单文件输出在主题、窄窗口及键盘操作下可用 (34.8s)
+(node:59041) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  106 tests/e2e/system-export.spec.ts:210:1 › 系统资料分别导出 Markdown、Word、PDF，取消解锁无输出，图片和密码按选择保留 (4.3s)
+  ✓  107 tests/e2e/system-ledger.spec.ts:11:5 › access 在 all 范围修改后编辑账号不丢输入 (3.7s)
+  ✘  108 tests/e2e/system-ledger.spec.ts:11:5 › access 在 common 范围修改后编辑账号不丢输入 (2.3s)
+(node:59101) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  109 tests/e2e/system-ledger.spec.ts:11:5 › server 在 all 范围修改后编辑账号不丢输入 (3.5s)
+  ✘  110 tests/e2e/system-ledger.spec.ts:11:5 › server 在 common 范围修改后编辑账号不丢输入 (2.4s)
+Testing stopped early after 10 maximum allowed failures.
+
+
+  1) tests/e2e/ledger-bulk-entry.spec.ts:72:1 › 手填与追加粘贴共用编辑表格，校验、秘密、键盘和窄窗口均保留 ──────────────────────
+
+    TimeoutError: locator.evaluate: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('dialog', { name: '批量录入 · 校对后新增', exact: true })
+
+
+      112 |   await expect(page.locator('html')).toHaveAttribute('data-reduce-transparency', 'true');
+      113 |   await expect(page.locator('html')).toHaveAttribute('data-reduce-motion', 'true');
+    > 114 |   expect(await form.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+          |                     ^
+      115 |   const grid = form.getByRole('region', { name: '批量录入表格（可横向滚动）' });
+      116 |   expect(await grid.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+      117 |   await page.screenshot({ path: info.outputPath('bulk-dark-narrow.png') });
+        at /Users/axelton/code/clever-workbench/tests/e2e/ledger-bulk-entry.spec.ts:114:21
+
+    Error Context: test-results/ledger-bulk-entry-手填与追加粘贴共用编辑表格，校验、秘密、键盘和窄窗口均保留/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/ledger-bulk-entry-手填与追加粘贴共用编辑表格，校验、秘密、键盘和窄窗口均保留/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/ledger-bulk-entry-手填与追加粘贴共用编辑表格，校验、秘密、键盘和窄窗口均保留/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) tests/e2e/ledger-guidance.spec.ts:227:1 › 项目档案附近指引保留未提交名称，归档恢复不会自动恢复当前项目 ──────────────────────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('尚未提交的阶段 · 已归档', { exact: true })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('尚未提交的阶段 · 已归档', { exact: true }) with timeout 5000ms
+      - waiting for getByText('尚未提交的阶段 · 已归档', { exact: true })
+
+
+      245 |     });
+      246 |     await page.getByRole('button', { name: '归档', exact: true }).click();
+    > 247 |     await expect(page.getByText('尚未提交的阶段 · 已归档', { exact: true })).toBeVisible();
+          |                                                                    ^
+      248 |     await page.getByRole('button', { name: '恢复', exact: true }).click();
+      249 |     const snapshot = await page.evaluate(() => window.desktop.snapshot());
+      250 |     expect(snapshot.systems.find((s) => s.id === ids.system)?.currentProjectId).toBeNull();
+        at /Users/axelton/code/clever-workbench/tests/e2e/ledger-guidance.spec.ts:247:68
+
+    Error Context: test-results/ledger-guidance-项目档案附近指引保留未提交名称，归档恢复不会自动恢复当前项目/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/ledger-guidance-项目档案附近指引保留未提交名称，归档恢复不会自动恢复当前项目/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/ledger-guidance-项目档案附近指引保留未提交名称，归档恢复不会自动恢复当前项目/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) tests/e2e/ledger.spec.ts:20:1 › 系统跨项目保留沿革，任务只保留系统归属 ───────────────────────────────────────────
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByLabel('关联系统', { exact: true })
+    Expected substring: "园区平台"
+    Received string:    ""
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toContainText" getByLabel('关联系统', { exact: true }) with timeout 5000ms
+      - waiting for getByLabel('关联系统', { exact: true })
+        10 × locator resolved to <input readonly value="" id="_r_23_" type="text" role="combobox" aria-label="关联系统" aria-expanded="false" aria-haspopup="listbox" class="ant-select-input" aria-autocomplete="list" autocomplete="new-password"/>
+           - unexpected value ""
+
+
+      43 |     await page.getByRole('button', { name: '创建任务', exact: true }).click();
+      44 |     await expect(page.getByLabel('所属项目', { exact: true })).toHaveCount(0);
+    > 45 |     await expect(page.getByLabel('关联系统', { exact: true })).toContainText('园区平台');
+         |                                                            ^
+      46 |     await page.getByRole('menuitem', { name: '台账', exact: true }).click();
+      47 |     await openSystemAction(page, '系统信息');
+      48 |     await selectChoice(page.getByLabel('当前项目', { exact: true }), ids.b);
+        at /Users/axelton/code/clever-workbench/tests/e2e/ledger.spec.ts:45:60
+        at session (/Users/axelton/code/clever-workbench/tests/e2e/ledger.spec.ts:14:5)
+
+    Error Context: test-results/ledger-系统跨项目保留沿革，任务只保留系统归属/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/ledger-系统跨项目保留沿革，任务只保留系统归属/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/ledger-系统跨项目保留沿革，任务只保留系统归属/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) tests/e2e/maintenance-guidance.spec.ts:38:1 › 外观旁的离线指引遵守主题和辅助偏好，关闭返回焦点并从集中入口导航 ────────────────
+
+    TimeoutError: locator.click: Timeout 5000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '外观使用指引', exact: true })
+
+
+      27 | async function openDirect(app: ElectronApplication, page: Page, nearby: string, id: string) {
+      28 |   const feature = await expectedFeatureGuide(app, id);
+    > 29 |   await page.getByRole('button', { name: nearby, exact: true }).click({ timeout: 5000 });
+         |                                                                 ^
+      30 |   if (await verifyUnavailableOrNoTarget(page, feature)) return null;
+      31 |   const dialog = page.getByRole('dialog', { name: feature!.title, exact: true });
+      32 |   await expect(
+        at openDirect (/Users/axelton/code/clever-workbench/tests/e2e/maintenance-guidance.spec.ts:29:65)
+        at /Users/axelton/code/clever-workbench/tests/e2e/maintenance-guidance.spec.ts:67:20
+
+    Error Context: test-results/maintenance-guidance-外观旁的离线指引遵守主题和辅助偏好，关闭返回焦点并从集中入口导航/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/maintenance-guidance-外观旁的离线指引遵守主题和辅助偏好，关闭返回焦点并从集中入口导航/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/maintenance-guidance-外观旁的离线指引遵守主题和辅助偏好，关闭返回焦点并从集中入口导航/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) tests/e2e/operations-guidance.spec.ts:358:1 › 批量录入指引对应手填、粘贴追加、逐行取消和未提交放弃 ──────────────────────
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: getByRole('dialog', { name: '批量录入 · 校对后新增', exact: true }).getByLabel('批量条目类型').locator('option')
+    Timeout: 5000ms
+    - Expected  - 12
+    + Received  +  1
+
+    - Array [
+    -   "访问入口",
+    -   "服务器",
+    -   "数据库",
+    -   "Redis",
+    -   "其他资源",
+    -   "应用／服务",
+    -   "运行作业",
+    -   "备份策略",
+    -   "账号",
+    -   "部署节点",
+    - ]
+    + Array []
+
+    Call log:
+      - Expect "toHaveText" getByRole('dialog', { name: '批量录入 · 校对后新增', exact: true }).getByLabel('批量条目类型').locator('option') with timeout 5000ms
+      - waiting for getByRole('dialog', { name: '批量录入 · 校对后新增', exact: true }).getByLabel('批量条目类型').locator('option')
+        14 × locator resolved to 0 elements
+
+
+      367 |     await page.getByRole('button', { name: '批量录入', exact: true }).click();
+      368 |     const paste = page.getByRole('dialog', { name: '批量录入 · 校对后新增', exact: true });
+    > 369 |     await expect(paste.getByLabel('批量条目类型').locator('option')).toHaveText([
+          |                                                                ^
+      370 |       '访问入口',
+      371 |       '服务器',
+      372 |       '数据库',
+        at /Users/axelton/code/clever-workbench/tests/e2e/operations-guidance.spec.ts:369:64
+
+    Error Context: test-results/operations-guidance-批量录入指引对应手填、粘贴追加、逐行取消和未提交放弃/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/operations-guidance-批量录入指引对应手填、粘贴追加、逐行取消和未提交放弃/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/operations-guidance-批量录入指引对应手填、粘贴追加、逐行取消和未提交放弃/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) tests/e2e/project-filter.spec.ts:8:1 › 任务页系统范围可在具体系统、未关联系统和全部之间切换 ─────────────────────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for locator('.ant-select-dropdown').filter({ has: locator('[id="_r_1c__list"]') }).locator('.ant-select-item-option[data-value="none"]')
+        - locator resolved to <div title="未关联系统" data-value="none" aria-disabled="false" class="ant-select-item ant-select-item-option">…</div>
+      - attempting click action
+        - waiting for element to be visible, enabled and stable
+        - element is not stable
+      - retrying click action
+        - waiting for element to be visible, enabled and stable
+        - element is visible, enabled and stable
+        - scrolling into view if needed
+        - done scrolling
+        - <header class="page-heading">…</header> from <div id="root">…</div> subtree intercepts pointer events
+      - retrying click action
+        - waiting 20ms
+        2 × waiting for element to be visible, enabled and stable
+          - element is not stable
+        - retrying click action
+          - waiting 100ms
+        58 × waiting for element to be visible, enabled and stable
+           - element is not visible
+         - retrying click action
+           - waiting 500ms
+
+
+       at antd-controls.ts:24
+
+      22 |       ? popup.locator(`.ant-select-item-option[data-value=${JSON.stringify(value)}]`)
+      23 |       : popup.locator('.ant-select-item-option').filter({ hasText: value.label });
+    > 24 |   await option.click(clickOptions);
+         |                ^
+      25 | }
+      26 |
+      27 | export async function expectSelectValue(control: Locator, value: string) {
+        at selectChoice (/Users/axelton/code/clever-workbench/tests/e2e/antd-controls.ts:24:16)
+        at /Users/axelton/code/clever-workbench/tests/e2e/project-filter.spec.ts:59:5
+
+    Error Context: test-results/project-filter-任务页系统范围可在具体系统、未关联系统和全部之间切换/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/project-filter-任务页系统范围可在具体系统、未关联系统和全部之间切换/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/project-filter-任务页系统范围可在具体系统、未关联系统和全部之间切换/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) tests/e2e/shell-create.spec.ts:84:1 › 最小窗口中导航与全局入口完整可达，切换页面后位置稳定 ──────────────────────────────
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 2
+    + Received  + 2
+
+      Object {
+        "height": 32,
+    -   "width": 307.3125,
+    -   "x": 207.7578125,
+    +   "width": 349.4375,
+    +   "x": 120,
+        "y": 13.5,
+      }
+
+      106 |       await expect(search).toBeInViewport({ ratio: 1 });
+      107 |       await expect(create).toBeInViewport({ ratio: 1 });
+    > 108 |       expect(await search.boundingBox()).toEqual(searchBounds);
+          |                                          ^
+      109 |       expect(await create.boundingBox()).toEqual(createBounds);
+      110 |     }
+      111 |     await page.screenshot({
+        at /Users/axelton/code/clever-workbench/tests/e2e/shell-create.spec.ts:108:42
+
+    Error Context: test-results/shell-create-最小窗口中导航与全局入口完整可达，切换页面后位置稳定/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/shell-create-最小窗口中导航与全局入口完整可达，切换页面后位置稳定/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/shell-create-最小窗口中导航与全局入口完整可达，切换页面后位置稳定/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) tests/e2e/system-export.spec.ts:10:1 › 勾选内容、开始日期筛选和单文件输出在主题、窄窗口及键盘操作下可用 ───────────────────────
+
+    TimeoutError: locator.scrollIntoViewIfNeeded: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('dialog', { name: '导出系统资料', exact: true }).getByLabel('开始日期', { exact: true })
+
+
+      164 |       await expect(page.locator('html')).toHaveAttribute(`data-${name}`, 'true');
+      165 |     }
+    > 166 |     await dialog.getByLabel('开始日期', { exact: true }).scrollIntoViewIfNeeded();
+          |                                                      ^
+      167 |     await expect(dialog.getByLabel('开始日期', { exact: true })).toBeInViewport();
+      168 |     expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+      169 |       true,
+        at /Users/axelton/code/clever-workbench/tests/e2e/system-export.spec.ts:166:54
+
+    Error Context: test-results/system-export-勾选内容、开始日期筛选和单文件输出在主题、窄窗口及键盘操作下可用/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/system-export-勾选内容、开始日期筛选和单文件输出在主题、窄窗口及键盘操作下可用/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/system-export-勾选内容、开始日期筛选和单文件输出在主题、窄窗口及键盘操作下可用/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) tests/e2e/system-ledger.spec.ts:11:5 › access 在 common 范围修改后编辑账号不丢输入 ──────────────────────────
+
+    Error: locator.check: Error: strict mode violation: getByLabel('生产', { exact: true }) resolved to 2 elements:
+        1) <input type="checkbox" class="ant-checkbox-input"/> aka getByRole('checkbox', { name: '生产' })
+        2) <div role="option" aria-label="生产" aria-setsize="3" aria-posinset="3" id="_r_q__list_2" aria-selected="false">1e83d821-f2e3-4b14-9d90-3b5853cac0e3</div> aka getByRole('option', { name: '生产' })
+
+    Call log:
+      - waiting for getByLabel('生产', { exact: true })
+
+
+      43 |         await selectChoice(page.getByLabel('台账环境筛选'), scope);
+      44 |         await openLedgerRecord(page, label, '待调整记录', true);
+    > 45 |         await page.getByLabel('生产', { exact: true }).check();
+         |                                                      ^
+      46 |         await page.getByRole('button', { name: '完成编辑', exact: true }).click();
+      47 |         await page.getByRole('button', { name: '编辑账号', exact: true }).click();
+      48 |         await page.getByLabel('账号用户名', { exact: true }).fill('after-unsaved');
+        at /Users/axelton/code/clever-workbench/tests/e2e/system-ledger.spec.ts:45:54
+
+    Error Context: test-results/system-ledger-access-在-common-范围修改后编辑账号不丢输入/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/system-ledger-access-在-common-范围修改后编辑账号不丢输入/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/system-ledger-access-在-common-范围修改后编辑账号不丢输入/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) tests/e2e/system-ledger.spec.ts:11:5 › server 在 common 范围修改后编辑账号不丢输入 ─────────────────────────
+
+    Error: locator.check: Error: strict mode violation: getByLabel('生产', { exact: true }) resolved to 2 elements:
+        1) <input type="checkbox" class="ant-checkbox-input"/> aka getByRole('checkbox', { name: '生产' })
+        2) <div role="option" aria-label="生产" aria-setsize="3" aria-posinset="3" id="_r_q__list_2" aria-selected="false">94bb62ea-709e-4287-91cd-680a8a569bd0</div> aka getByRole('option', { name: '生产' })
+
+    Call log:
+      - waiting for getByLabel('生产', { exact: true })
+
+
+      43 |         await selectChoice(page.getByLabel('台账环境筛选'), scope);
+      44 |         await openLedgerRecord(page, label, '待调整记录', true);
+    > 45 |         await page.getByLabel('生产', { exact: true }).check();
+         |                                                      ^
+      46 |         await page.getByRole('button', { name: '完成编辑', exact: true }).click();
+      47 |         await page.getByRole('button', { name: '编辑账号', exact: true }).click();
+      48 |         await page.getByLabel('账号用户名', { exact: true }).fill('after-unsaved');
+        at /Users/axelton/code/clever-workbench/tests/e2e/system-ledger.spec.ts:45:54
+
+    Error Context: test-results/system-ledger-server-在-common-范围修改后编辑账号不丢输入/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/system-ledger-server-在-common-范围修改后编辑账号不丢输入/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/system-ledger-server-在-common-范围修改后编辑账号不丢输入/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10 failed
+    tests/e2e/ledger-bulk-entry.spec.ts:72:1 › 手填与追加粘贴共用编辑表格，校验、秘密、键盘和窄窗口均保留 ───────────────────────
+    tests/e2e/ledger-guidance.spec.ts:227:1 › 项目档案附近指引保留未提交名称，归档恢复不会自动恢复当前项目 ───────────────────────
+    tests/e2e/ledger.spec.ts:20:1 › 系统跨项目保留沿革，任务只保留系统归属 ────────────────────────────────────────────
+    tests/e2e/maintenance-guidance.spec.ts:38:1 › 外观旁的离线指引遵守主题和辅助偏好，关闭返回焦点并从集中入口导航 ─────────────────
+    tests/e2e/operations-guidance.spec.ts:358:1 › 批量录入指引对应手填、粘贴追加、逐行取消和未提交放弃 ───────────────────────
+    tests/e2e/project-filter.spec.ts:8:1 › 任务页系统范围可在具体系统、未关联系统和全部之间切换 ──────────────────────────────
+    tests/e2e/shell-create.spec.ts:84:1 › 最小窗口中导航与全局入口完整可达，切换页面后位置稳定 ───────────────────────────────
+    tests/e2e/system-export.spec.ts:10:1 › 勾选内容、开始日期筛选和单文件输出在主题、窄窗口及键盘操作下可用 ────────────────────────
+    tests/e2e/system-ledger.spec.ts:11:5 › access 在 common 范围修改后编辑账号不丢输入 ───────────────────────────
+    tests/e2e/system-ledger.spec.ts:11:5 › server 在 common 范围修改后编辑账号不丢输入 ───────────────────────────
+  38 did not run
+  100 passed (9.4m)
+  1 error was not a part of any test, see above for details

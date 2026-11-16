@@ -1,3 +1,5 @@
+import { Button } from 'antd';
+import { openDialogSelector } from '../../shared/modal-state';
 import { useEffect, useRef, useState } from 'react';
 import { Dialog } from '../../shared/Dialog';
 import {
@@ -89,7 +91,7 @@ export function VersionGuidance({
       Date.now() - activity.current.time >= 1000 &&
       !!document.querySelector('.workspace-shell main') &&
       !document.querySelector(
-        'dialog[open], [role="alertdialog"], .module-loading, .loading, [aria-busy="true"]',
+        `${openDialogSelector}, .module-loading, .loading, [aria-busy="true"]`,
       );
     displayGuard.current = ready;
     const attempt = () => {
@@ -157,7 +159,9 @@ export function VersionGuidance({
     return notice ? (
       <div className="toast guidance-notice" role="status">
         <span>{notice}</span>
-        <button onClick={() => setNotice('')}>关闭</button>
+        <Button htmlType="submit" type="text" onClick={() => setNotice('')}>
+          关闭
+        </Button>
       </div>
     ) : null;
   const records = view.records;
@@ -224,7 +228,9 @@ export function VersionGuidance({
                     ))}
                   </ul>
                   {guide ? (
-                    <button
+                    <Button
+                      htmlType="submit"
+                      type="text"
                       className="guidance-button"
                       onClick={() => {
                         setView(null);
@@ -232,7 +238,7 @@ export function VersionGuidance({
                       }}
                     >
                       查看当前用法：{guide.title}
-                    </button>
+                    </Button>
                   ) : (
                     <p>此功能指引已移除或暂不可用，历史摘要仍可阅读。</p>
                   )}
@@ -244,7 +250,9 @@ export function VersionGuidance({
           <ul className="guidance-list">
             {visibleGuidanceVersions(runtime).map((record) => (
               <li key={record.version}>
-                <button
+                <Button
+                  htmlType="submit"
+                  type="text"
                   aria-label={`查看 v${record.version} 操作说明`}
                   onClick={() => setView({ records: [record] })}
                 >
@@ -255,7 +263,7 @@ export function VersionGuidance({
                     </strong>
                     <small>{record.summary}</small>
                   </span>
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -264,9 +272,14 @@ export function VersionGuidance({
         )}
       </div>
       <footer className="guidance-actions">
-        <button className="primary-button" onClick={() => setView(null)}>
+        <Button
+          htmlType="submit"
+          type="primary"
+          className="primary-button"
+          onClick={() => setView(null)}
+        >
           知道了
-        </button>
+        </Button>
       </footer>
     </Dialog>
   );

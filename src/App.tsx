@@ -1,3 +1,5 @@
+import { Avatar, Button, Layout, Menu } from 'antd';
+import { openDialogSelector } from './shared/modal-state';
 import { GuidanceProvider } from './features/guidance/Guidance';
 import { guidanceTarget } from './guidance/registry';
 import { requireSavedRecord } from './shared/new-record';
@@ -5,14 +7,12 @@ import type { CreationContext } from './app/actions';
 import { QuickCreate } from './app/QuickCreate';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { SquaresFourIcon, XIcon } from '@phosphor-icons/react';
-import { useAppearance } from './shared/useAppearance';
 import { GlobalSearch } from './features/search/GlobalSearch';
 import { VaultControl } from './features/vault/VaultProvider';
 import { modules, type Route } from './app/modules';
 import { UpdateBadge, useAppUpdate } from './features/settings/AppUpdate';
 
 export function App() {
-  useAppearance();
   useEffect(() => {
     void window.desktop
       .updateHealthReady()
@@ -24,6 +24,7 @@ export function App() {
   const installingRef = useRef(installing);
   installingRef.current = installing;
   const [route, setRoute] = useState<Route>({ module: 'home' });
+  const [collapsed, setCollapsed] = useState(false);
   const [error, setError] = useState('');
   const [dataVersion, setDataVersion] = useState(0);
   const [pageVersion, setPageVersion] = useState(0);
@@ -84,7 +85,9 @@ export function App() {
           return { ok: false, message: '指引已关闭，导航已取消。' };
         if (
           guidance &&
-          document.querySelector('dialog[open]:not(.guidance-dialog), [role="alertdialog"]')
+          document.querySelector(
+            'dialog[open]:not(.guidance-dialog), .shared-dialog:not(.guidance-dialog) [data-workbench-dialog], [role="alertdialog"]',
+          )
         )
           throw Error('请先完成当前弹窗中的操作，再前往功能。');
         if (installingRef.current) throw Error('正在安装更新，请等待完成。');
@@ -124,13 +127,12 @@ export function App() {
     const expected = generation.current;
     try {
       // Automatic guidance must never trigger the discard confirmation of a newly opened form.
-      if (installingRef.current || document.querySelector('dialog[open], [role="alertdialog"]'))
-        return false;
+      if (installingRef.current || document.querySelector(openDialogSelector)) return false;
       await save.current();
       return (
         expected === generation.current &&
         !installingRef.current &&
-        !document.querySelector('dialog[open], [role="alertdialog"]')
+        !document.querySelector(openDialogSelector)
       );
     } catch {
       return false;
@@ -139,20 +141,29 @@ export function App() {
   const Page = selected.Page;
   const navigation = (section: 'workspace' | 'utility') => (
     <nav aria-label={section === 'workspace' ? '工作空间' : '辅助功能'}>
-      {modules
-        .filter((item) => item.section === section)
-        .map((item) => (
-          <button
-            key={item.id}
-            aria-label={item.accessibleName ?? item.title}
-            aria-current={selected.id === item.id ? 'page' : undefined}
-            className={selected.id === item.id ? 'selected' : ''}
-            onClick={() => void navigate({ module: item.id })}
-          >
-            <item.icon size={19} weight={selected.id === item.id ? 'fill' : 'regular'} />
-            {item.title}
-          </button>
-        ))}
+      <Menu
+        mode="inline"
+        selectedKeys={[selected.id]}
+        inlineCollapsed={collapsed}
+        onClick={({ key }) => void navigate({ module: key })}
+        items={modules
+          .filter((item) => item.section === section)
+          .map((item) => ({
+            key: item.id,
+            label:
+              (
+                {
+                  ledger: '技术台账',
+                  tasks: '工作任务',
+                  documents: '技术文档',
+                  tools: '内置工具',
+                } as Record<string, string>
+              )[item.id] ?? item.title,
+            'aria-label': item.accessibleName ?? item.title,
+            'aria-current': selected.id === item.id ? ('page' as const) : undefined,
+            icon: <item.icon size={19} weight={selected.id === item.id ? 'fill' : 'regular'} />,
+          }))}
+      />
     </nav>
   );
   return (
@@ -162,13 +173,24 @@ export function App() {
       generation={dataVersion}
       preparePrompt={prepareGuidancePrompt}
     >
-      <div className={`app-shell ${window.desktop.platform}`} inert={installing}>
-        <aside className="sidebar">
+      <Layout className={`app-shell ${window.desktop.platform}`} inert={installing}>
+        <Layout.Sider
+          className="sidebar"
+          width={214}
+          collapsedWidth={68}
+          collapsed={collapsed}
+          breakpoint="lg"
+          onBreakpoint={setCollapsed}
+        >
           <div className="sidebar-drag" />
           <div className="brand">
-            <div className="app-mark">
-              <SquaresFourIcon weight="fill" size={25} />
-            </div>
+            <Avatar
+              shape="square"
+              size={34}
+              className="app-mark"
+              style={{ background: 'var(--accent-fill)' }}
+              icon={<SquaresFourIcon weight="fill" size={25} />}
+            />
             <div className="brand-copy">
               <strong>Clever Workbench</strong>
               <div className="brand-caption">
@@ -188,9 +210,14 @@ export function App() {
             </div>
             {navigation('utility')}
           </div>
-        </aside>
-        <div className="workspace-shell">
-          <GlobalSearch key={dataVersion} navigate={navigate} flush={() => save.current()}>
+        </Layout.Sider>
+        <Layout className="workspace-shell">
+          <GlobalSearch
+            key={dataVersion}
+            navigate={navigate}
+            flush={() => save.current()}
+            onToggleSidebar={() => setCollapsed((value) => !value)}
+          >
             <QuickCreate
               ready={contextReady}
               context={context}
@@ -213,24 +240,35 @@ export function App() {
               setContext={setContext}
             />
           </Suspense>
-        </div>
+        </Layout>
         {notice && (
           <div className="toast" role="status">
             <span>{notice}</span>
-            <button className="icon-button" aria-label="关闭恢复提示" onClick={() => setNotice('')}>
+            <Button
+              htmlType="submit"
+              type="text"
+              className="icon-button"
+              aria-label="关闭恢复提示"
+              onClick={() => setNotice('')}
+            >
               <XIcon size={16} />
-            </button>
+            </Button>
           </div>
         )}
         {error && (
           <div className="error-banner" role="alert">
             <span>{error}</span>
-            <button aria-label="关闭提示" onClick={() => setError('')}>
+            <Button
+              htmlType="submit"
+              type="text"
+              aria-label="关闭提示"
+              onClick={() => setError('')}
+            >
               <XIcon />
-            </button>
+            </Button>
           </div>
         )}
-      </div>
+      </Layout>
       {installing && (
         <div
           className="update-install-overlay"

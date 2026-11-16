@@ -1,3 +1,5 @@
+import { markNewRecordChanged } from '../../../src/shared/new-record';
+import { Button, Input, Select, Card } from 'antd';
 import { useState } from 'react';
 import { CopyValue } from '../../../src/shared/CopyValue';
 import { PageHeading } from '../../../src/shared/WorkspaceUI';
@@ -49,31 +51,32 @@ export default function TextTransformPage() {
       <div className="utility-toolbar">
         <label className="utility-grow">
           处理方式
-          <select
+          <Select
             aria-label="文本处理方式"
             value={operation}
             onChange={(event) => {
-              setOperation(event.target.value as TextOperation);
+              markNewRecordChanged();
+              setOperation(event as TextOperation);
               setOutput('');
               setError('');
             }}
           >
             {Object.entries(labels).map(([value, label]) => (
-              <option key={value} value={value}>
+              <Select.Option data-value={String(value)} key={value} value={value}>
                 {label}
-              </option>
+              </Select.Option>
             ))}
-          </select>
+          </Select>
         </label>
-        <button type="button" onClick={process}>
+        <Button type="text" htmlType="button" onClick={process}>
           处理文本
-        </button>
+        </Button>
       </div>
       {operation === 'prefix-suffix' && (
         <div className="utility-parameters">
           <label>
             前缀
-            <input
+            <Input
               aria-label="每行前缀"
               value={options.prefix}
               onChange={(event) => update('prefix', event.target.value)}
@@ -81,7 +84,7 @@ export default function TextTransformPage() {
           </label>
           <label>
             后缀
-            <input
+            <Input
               aria-label="每行后缀"
               value={options.suffix}
               onChange={(event) => update('suffix', event.target.value)}
@@ -93,7 +96,7 @@ export default function TextTransformPage() {
         <div className="utility-parameters">
           <label>
             分隔符
-            <input
+            <Input
               aria-label="列分隔符"
               value={options.delimiter}
               onChange={(event) => update('delimiter', event.target.value)}
@@ -101,7 +104,7 @@ export default function TextTransformPage() {
           </label>
           <label>
             列号（逗号分隔）
-            <input
+            <Input
               aria-label="提取列号"
               value={options.columns}
               onChange={(event) => update('columns', event.target.value)}
@@ -114,7 +117,7 @@ export default function TextTransformPage() {
         <div className="utility-parameters">
           <label>
             正则表达式
-            <input
+            <Input
               aria-label="文本正则表达式"
               value={options.pattern}
               onChange={(event) => update('pattern', event.target.value)}
@@ -123,7 +126,7 @@ export default function TextTransformPage() {
           </label>
           <label>
             标志
-            <input
+            <Input
               aria-label="正则标志"
               value={options.flags}
               onChange={(event) => update('flags', event.target.value)}
@@ -134,7 +137,7 @@ export default function TextTransformPage() {
           {operation === 'regex-replace' && (
             <label>
               替换为
-              <input
+              <Input
                 aria-label="正则替换内容"
                 value={options.replacement}
                 onChange={(event) => update('replacement', event.target.value)}
@@ -147,7 +150,7 @@ export default function TextTransformPage() {
         <div className="utility-parameters">
           <label>
             连接符
-            <input
+            <Input
               aria-label="文本连接符"
               value={options.separator}
               onChange={(event) => update('separator', event.target.value)}
@@ -156,9 +159,9 @@ export default function TextTransformPage() {
         </div>
       )}
       <div className="utility-grid">
-        <label className="utility-panel">
+        <Card className="utility-panel">
           <span>输入文本</span>
-          <textarea
+          <Input.TextArea
             aria-label="批量文本输入"
             value={input}
             onChange={(event) => {
@@ -168,14 +171,14 @@ export default function TextTransformPage() {
             }}
             spellCheck={false}
           />
-        </label>
-        <section className="utility-panel">
+        </Card>
+        <Card className="utility-panel">
           <div className="utility-panel-heading">
             <span>处理结果</span>
             <CopyValue value={output} label="文本处理结果" onError={setError} />
           </div>
-          <textarea aria-label="批量文本输出" value={output} readOnly spellCheck={false} />
-        </section>
+          <Input.TextArea aria-label="批量文本输出" value={output} readOnly spellCheck={false} />
+        </Card>
       </div>
       {stats && (
         <p className="utility-note" role="status">

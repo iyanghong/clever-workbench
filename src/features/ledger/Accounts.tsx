@@ -1,3 +1,5 @@
+import { markNewRecordChanged } from '../../shared/new-record';
+import { Button, Checkbox, Input, Select, Collapse } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { CopyIcon, UserCircleIcon, ArrowsLeftRightIcon, TrashIcon } from '@phosphor-icons/react';
 import type { Snapshot } from '../../types';
@@ -98,7 +100,7 @@ export function Accounts({
           }}
         >
           <UserCircleIcon size={17} />
-          <input
+          <Input
             aria-label="新增账号用途"
             placeholder="用途或角色，回车添加…"
             value={name}
@@ -112,7 +114,9 @@ export function Accounts({
       </div>
       <div className="account-list" role="group" aria-label="账号列表">
         {accounts.map((item) => (
-          <button
+          <Button
+            htmlType="submit"
+            type="text"
             key={item.id}
             className={`account-row ${item.id === account?.id ? 'selected' : ''}`}
             aria-label={`账号 ${item.name}`}
@@ -130,7 +134,7 @@ export function Accounts({
               <strong>{item.name}</strong>
               <small>{item.username || '未设置用户名'}</small>
             </span>
-          </button>
+          </Button>
         ))}
       </div>
       {account ? (
@@ -274,17 +278,19 @@ export function AccountEditor({
           onSnapshot={host.onSnapshot}
           onError={host.onError}
         />
-        <button
+        <Button
+          htmlType="submit"
+          type="text"
           className="save-indicator"
           onClick={() => void form.flush().catch((cause) => host.onError(String(cause)))}
         >
           {form.status}
-        </button>
+        </Button>
       </div>
       <div className="record-fields">
         <label>
           用途或角色
-          <input
+          <Input
             aria-label="账号用途"
             value={form.value.name}
             onChange={(event) => form.change({ ...form.value, name: event.target.value })}
@@ -293,7 +299,7 @@ export function AccountEditor({
         <label>
           用户名
           <div className="inline-field">
-            <input
+            <Input
               aria-label="账号用户名"
               placeholder="可留空"
               value={form.value.username}
@@ -304,29 +310,48 @@ export function AccountEditor({
         </label>
       </div>
       <Secrets account={account} onSnapshot={host.onSnapshot} onError={host.onError} />
-      <details className="compact-details">
-        <summary>账号说明</summary>
-        <p className="field-hint">普通说明。密码、Token 和私钥使用专门的秘密字段。</p>
-        <textarea
-          aria-label="账号说明"
-          placeholder="用途、登录方式或其他普通说明…"
-          value={form.value.notes}
-          onChange={(event) => form.change({ ...form.value, notes: event.target.value })}
-        />
-      </details>
+      <Collapse
+        className="compact-details"
+        ghost
+        defaultActiveKey={false ? ['details'] : []}
+        items={[
+          {
+            key: 'details',
+            label: <>账号说明</>,
+            forceRender: true,
+            children: (
+              <>
+                <p className="field-hint">普通说明。密码、Token 和私钥使用专门的秘密字段。</p>
+                <Input.TextArea
+                  aria-label="账号说明"
+                  placeholder="用途、登录方式或其他普通说明…"
+                  value={form.value.notes}
+                  onChange={(event) => form.change({ ...form.value, notes: event.target.value })}
+                />
+              </>
+            ),
+          },
+        ]}
+      />
       <div className="record-actions">
-        <button onClick={() => open('copy')}>
+        <Button htmlType="submit" type="text" onClick={() => open('copy')}>
           <CopyIcon size={15} />
           复制账号
-        </button>
-        <button onClick={() => open('move')}>
+        </Button>
+        <Button htmlType="submit" type="text" onClick={() => open('move')}>
           <ArrowsLeftRightIcon size={15} />
           调整归属
-        </button>
-        <button className="subtle-danger" onClick={() => open('delete')}>
+        </Button>
+        <Button
+          htmlType="submit"
+          type="text"
+          danger
+          className="subtle-danger"
+          onClick={() => open('delete')}
+        >
           <TrashIcon size={15} />
           删除账号
-        </button>
+        </Button>
       </div>
       {modal && (
         <Dialog
@@ -344,7 +369,7 @@ export function AccountEditor({
           {modal === 'copy' && (
             <label>
               副本名称
-              <input
+              <Input
                 aria-label="账号副本名称"
                 value={targetName}
                 onChange={(event) => setTargetName(event.target.value)}
@@ -355,34 +380,40 @@ export function AccountEditor({
             <>
               <label>
                 环境
-                <select
+                <Select
                   aria-label="账号目标环境"
                   value={targetEnvironment}
                   onChange={(event) => {
-                    setTargetEnvironment(event.target.value);
+                    markNewRecordChanged();
+                    setTargetEnvironment(event);
                     setTargetResource('');
                   }}
                 >
-                  <option value="">系统通用</option>
+                  <Select.Option data-value={String('')} value="">
+                    系统通用
+                  </Select.Option>
                   {snapshot.environments
                     .filter((item) => item.systemId === system.id)
                     .map((item) => (
-                      <option key={item.id} value={item.id}>
+                      <Select.Option data-value={String(item.id)} key={item.id} value={item.id}>
                         {item.name}
-                      </option>
+                      </Select.Option>
                     ))}
-                </select>
+                </Select>
               </label>
               <label>
                 归属
-                <select
+                <Select
                   aria-label="账号目标归属"
                   value={targetResource}
-                  onChange={(event) => setTargetResource(event.target.value)}
+                  onChange={(event) => {
+                    markNewRecordChanged();
+                    return setTargetResource(event);
+                  }}
                 >
-                  <option value="">
+                  <Select.Option data-value={String('')} value="">
                     {targetEnvironment ? '系统环境' : '选择服务器或访问入口'}
-                  </option>
+                  </Select.Option>
                   {snapshot.resources
                     .filter(
                       (item) =>
@@ -390,9 +421,9 @@ export function AccountEditor({
                         item.environmentId === (targetEnvironment || null),
                     )
                     .map((item) => (
-                      <option key={item.id} value={item.id}>
+                      <Select.Option data-value={String(item.id)} key={item.id} value={item.id}>
                         {item.name}
-                      </option>
+                      </Select.Option>
                     ))}
                   {snapshot.accessEntries
                     .filter(
@@ -401,30 +432,42 @@ export function AccountEditor({
                         item.environmentId === (targetEnvironment || null),
                     )
                     .map((item) => (
-                      <option key={item.id} value={`access:${item.id}`}>
+                      <Select.Option
+                        data-value={String(`access:${item.id}`)}
+                        key={item.id}
+                        value={`access:${item.id}`}
+                      >
                         访问入口 · {item.name}
-                      </option>
+                      </Select.Option>
                     ))}
-                </select>
+                </Select>
               </label>
             </>
           )}
           {modal === 'copy' && account.secretKinds.length > 0 && (
-            <label className="secret-show">
-              <input
-                type="checkbox"
-                aria-label="同时复制账号秘密"
-                checked={includeSecrets}
-                onChange={(event) => setIncludeSecrets(event.target.checked)}
-              />
+            <Checkbox
+              className="secret-show"
+              aria-label="同时复制账号秘密"
+              checked={includeSecrets}
+              onChange={(event) => setIncludeSecrets(event.target.checked)}
+            >
               同时复制 {account.secretKinds.length} 项秘密（需要解锁）
-            </label>
+            </Checkbox>
           )}
           <div className="modal-actions">
-            <button className="secondary-button" disabled={busy} onClick={() => setModal(null)}>
+            <Button
+              htmlType="submit"
+              type="default"
+              className="secondary-button"
+              disabled={busy}
+              onClick={() => setModal(null)}
+            >
               取消
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
+              danger
               className={modal === 'delete' ? 'danger-button' : 'primary-button'}
               disabled={
                 busy ||
@@ -440,7 +483,7 @@ export function AccountEditor({
                   : modal === 'move'
                     ? '保存归属'
                     : '确认删除'}
-            </button>
+            </Button>
           </div>
         </Dialog>
       )}

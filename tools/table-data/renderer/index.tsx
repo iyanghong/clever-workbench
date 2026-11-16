@@ -1,3 +1,5 @@
+import { markNewRecordChanged } from '../../../src/shared/new-record';
+import { Button, Checkbox, Input, Select, Card } from 'antd';
 import { useState } from 'react';
 import { CopyValue } from '../../../src/shared/CopyValue';
 import { PageHeading } from '../../../src/shared/WorkspaceUI';
@@ -33,50 +35,65 @@ export default function TableDataPage() {
       <div className="utility-toolbar">
         <label>
           转换方向
-          <select
+          <Select
             aria-label="表格转换方向"
             value={direction}
             onChange={(event) => {
-              setDirection(event.target.value as TableDirection);
+              markNewRecordChanged();
+              setDirection(event as TableDirection);
               setOutput('');
               setStats('');
             }}
           >
-            <option value="csv-json">CSV → JSON</option>
-            <option value="json-csv">JSON → CSV</option>
-          </select>
+            <Select.Option data-value={String('csv-json')} value="csv-json">
+              CSV → JSON
+            </Select.Option>
+            <Select.Option data-value={String('json-csv')} value="json-csv">
+              JSON → CSV
+            </Select.Option>
+          </Select>
         </label>
         <label>
           分隔符
-          <select
+          <Select
             aria-label="表格分隔符"
             value={delimiter}
-            onChange={(event) => setDelimiter(event.target.value as Delimiter | 'auto')}
+            onChange={(event) => {
+              markNewRecordChanged();
+              return setDelimiter(event as Delimiter | 'auto');
+            }}
           >
-            <option value="auto">自动识别</option>
-            <option value=",">逗号</option>
-            <option value={'\t'}>制表符</option>
-            <option value=";">分号</option>
-          </select>
+            <Select.Option data-value={String('auto')} value="auto">
+              自动识别
+            </Select.Option>
+            <Select.Option data-value={String(',')} value=",">
+              逗号
+            </Select.Option>
+            <Select.Option data-value={String('\t')} value={'\t'}>
+              制表符
+            </Select.Option>
+            <Select.Option data-value={String(';')} value=";">
+              分号
+            </Select.Option>
+          </Select>
         </label>
         {direction === 'csv-json' && (
-          <label className="utility-check">
-            <input
-              type="checkbox"
-              checked={hasHeader}
-              onChange={(event) => setHasHeader(event.target.checked)}
-            />
+          <Checkbox
+            className="utility-check"
+            checked={hasHeader}
+            onChange={(event) => setHasHeader(event.target.checked)}
+          >
             第一行是表头
-          </label>
+          </Checkbox>
         )}
-        <button type="button" onClick={convert}>
+        <Button type="text" htmlType="button" onClick={convert}>
           转换数据
-        </button>
+        </Button>
       </div>
       <div className="utility-grid">
-        <label className="utility-panel">
+        <Card className="utility-panel">
           <span>输入数据</span>
-          <textarea
+          <Input.TextArea
             aria-label="表格数据输入"
             value={input}
             onChange={(event) => {
@@ -91,14 +108,14 @@ export default function TableDataPage() {
                 : '[{"name":"订单","address":"127.0.0.1"}]'
             }
           />
-        </label>
-        <section className="utility-panel">
+        </Card>
+        <Card className="utility-panel">
           <div className="utility-panel-heading">
             <span>转换结果</span>
             <CopyValue value={output} label="表格转换结果" onError={setError} />
           </div>
-          <textarea aria-label="表格数据输出" value={output} readOnly spellCheck={false} />
-        </section>
+          <Input.TextArea aria-label="表格数据输出" value={output} readOnly spellCheck={false} />
+        </Card>
       </div>
       {stats && (
         <p className="utility-note" role="status">

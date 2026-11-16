@@ -1,3 +1,4 @@
+@layer legacy {
 .modal.shared-dialog.update-dialog {
   width: 560px;
 }
@@ -420,4 +421,5 @@
   .update-actions {
     gap: var(--space-3);
   }
+}
 }

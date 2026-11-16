@@ -1,3 +1,5 @@
+import { markNewRecordChanged } from '../../shared/new-record';
+import { Button, Checkbox, Input, Select, ConfigProvider, Collapse } from 'antd';
 import { QuickResourceCapture } from './LedgerCaptureForm';
 import { DeploymentFields, OperationFields } from './WorkspaceEditors';
 import { DocumentReferences } from './RecordFields';
@@ -112,206 +114,255 @@ function QuickRecord({
         });
       }}
     >
-      <fieldset disabled={busy} className="new-record-fields">
-        <label className="field-label">
-          {kind === 'account' ? '用途或角色' : '名称'}
-          <input
-            autoFocus
-            aria-label={`快速新建${labels[kind]}名称`}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && event.nativeEvent.isComposing) event.preventDefault();
-            }}
-          />
-        </label>
-        {(needsSystem || needsEnvironment) && (
+      <ConfigProvider componentDisabled={busy}>
+        <fieldset disabled={busy} className="new-record-fields">
           <label className="field-label">
-            系统
-            <select
-              aria-label="新记录所属系统"
-              value={systemId}
-              onChange={(event) => {
-                setSystemId(event.target.value);
-                setEnvironmentId('');
-                setResourceId('');
-                setAccessId('');
-                setDocumentIds([]);
-                setFirstNode({ ...firstNode, environmentId: '', serverId: null, documentIds: [] });
+            {kind === 'account' ? '用途或角色' : '名称'}
+            <Input
+              autoFocus
+              aria-label={`快速新建${labels[kind]}名称`}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && event.nativeEvent.isComposing) event.preventDefault();
               }}
-            >
-              <option value="">{needsEnvironment ? '选择系统或直接选环境' : '选择系统'}</option>
-              {snapshot.systems.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {needsEnvironment && (
-          <label className="field-label">
-            环境
-            <select
-              aria-label="新记录所属环境"
-              value={environmentId}
-              onChange={(event) => {
-                const environment = snapshot.environments.find(
-                  (item) => item.id === event.target.value,
-                );
-                setEnvironmentId(event.target.value);
-                setSystemId(environment?.systemId ?? systemId);
-                setResourceId('');
-                setAccessId('');
-              }}
-            >
-              <option value="">{'系统通用'}</option>
-              {environments.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {snapshot.systems.find((system) => system.id === item.systemId)?.name} /{' '}
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {kind === 'account' && (environmentId || systemId) && (
-          <label className="field-label">
-            归属
-            <select
-              aria-label="新账号所属资源"
-              value={accessId ? `access:${accessId}` : resourceId}
-              onChange={(event) => {
-                const value = event.target.value;
-                setAccessId(value.startsWith('access:') ? value.slice(7) : '');
-                setResourceId(value.startsWith('access:') ? '' : value);
-              }}
-            >
-              <option value="">{environmentId ? '系统环境' : '选择服务器或访问入口'}</option>
-              {snapshot.resources
-                .filter(
-                  (item) =>
-                    item.systemId === systemId && item.environmentId === (environmentId || null),
-                )
-                .map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              {snapshot.accessEntries
-                .filter(
-                  (item) =>
-                    item.systemId === systemId && item.environmentId === (environmentId || null),
-                )
-                .map((item) => (
-                  <option key={item.id} value={`access:${item.id}`}>
-                    访问入口 · {item.name}
-                  </option>
-                ))}
-            </select>
-          </label>
-        )}
-        {kind === 'system' && (
-          <label className="field-label">
-            登录地址
-            <input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://…（可选）"
             />
           </label>
-        )}
-        {kind === 'account' && (
-          <>
+          {(needsSystem || needsEnvironment) && (
             <label className="field-label">
-              用户名
-              <input
-                aria-label="新账号用户名"
-                autoComplete="off"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+              系统
+              <Select
+                aria-label="新记录所属系统"
+                value={systemId}
+                onChange={(event) => {
+                  markNewRecordChanged();
+                  setSystemId(event);
+                  setEnvironmentId('');
+                  setResourceId('');
+                  setAccessId('');
+                  setDocumentIds([]);
+                  setFirstNode({
+                    ...firstNode,
+                    environmentId: '',
+                    serverId: null,
+                    documentIds: [],
+                  });
+                }}
+              >
+                <Select.Option data-value={String('')} value="">
+                  {needsEnvironment ? '选择系统或直接选环境' : '选择系统'}
+                </Select.Option>
+                {snapshot.systems.map((item) => (
+                  <Select.Option data-value={String(item.id)} key={item.id} value={item.id}>
+                    {item.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </label>
+          )}
+          {needsEnvironment && (
+            <label className="field-label">
+              环境
+              <Select
+                aria-label="新记录所属环境"
+                value={environmentId}
+                onChange={(event) => {
+                  markNewRecordChanged();
+                  const environment = snapshot.environments.find((item) => item.id === event);
+                  setEnvironmentId(event);
+                  setSystemId(environment?.systemId ?? systemId);
+                  setResourceId('');
+                  setAccessId('');
+                }}
+              >
+                <Select.Option data-value={String('')} value="">
+                  {'系统通用'}
+                </Select.Option>
+                {environments.map((item) => (
+                  <Select.Option data-value={String(item.id)} key={item.id} value={item.id}>
+                    {snapshot.systems.find((system) => system.id === item.systemId)?.name} /{' '}
+                    {item.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </label>
+          )}
+          {kind === 'account' && (environmentId || systemId) && (
+            <label className="field-label">
+              归属
+              <Select
+                aria-label="新账号所属资源"
+                value={accessId ? `access:${accessId}` : resourceId}
+                onChange={(event) => {
+                  markNewRecordChanged();
+                  const value = event;
+                  setAccessId(value.startsWith('access:') ? value.slice(7) : '');
+                  setResourceId(value.startsWith('access:') ? '' : value);
+                }}
+              >
+                <Select.Option data-value={String('')} value="">
+                  {environmentId ? '系统环境' : '选择服务器或访问入口'}
+                </Select.Option>
+                {snapshot.resources
+                  .filter(
+                    (item) =>
+                      item.systemId === systemId && item.environmentId === (environmentId || null),
+                  )
+                  .map((item) => (
+                    <Select.Option data-value={String(item.id)} key={item.id} value={item.id}>
+                      {item.name}
+                    </Select.Option>
+                  ))}
+                {snapshot.accessEntries
+                  .filter(
+                    (item) =>
+                      item.systemId === systemId && item.environmentId === (environmentId || null),
+                  )
+                  .map((item) => (
+                    <Select.Option
+                      data-value={String(`access:${item.id}`)}
+                      key={item.id}
+                      value={`access:${item.id}`}
+                    >
+                      访问入口 · {item.name}
+                    </Select.Option>
+                  ))}
+              </Select>
+            </label>
+          )}
+          {kind === 'system' && (
+            <label className="field-label">
+              登录地址
+              <Input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://…（可选）"
               />
             </label>
-            <label className="field-label">
-              密码
-              <input
-                aria-label="新账号密码"
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </label>
-            <details className="compact-details">
-              <summary>其他凭据（可选）</summary>
-              <label>
-                Token
-                <input
-                  type="password"
-                  autoComplete="new-password"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                />
-              </label>
-              <label>
-                私钥
-                <textarea
-                  className="secret-input"
+          )}
+          {kind === 'account' && (
+            <>
+              <label className="field-label">
+                用户名
+                <Input
+                  aria-label="新账号用户名"
                   autoComplete="off"
-                  value={privateKey}
-                  onChange={(e) => setPrivateKey(e.target.value)}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                 />
               </label>
-            </details>
-          </>
-        )}
-        {kind === 'service' && (
-          <label className="field-label">
-            代码仓库
-            <input value={repository} onChange={(e) => setRepository(e.target.value)} />
-          </label>
-        )}
-        <label className="field-label">
-          {kind === 'service' ? '用途／说明' : '说明'}
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
-        </label>
-        {kind === 'service' && (
-          <>
-            <label>
-              <input
-                type="checkbox"
-                checked={withNode}
-                onChange={(e) => setWithNode(e.target.checked)}
+              <label className="field-label">
+                密码
+                <Input.Password
+                  aria-label="新账号密码"
+
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </label>
+              <Collapse
+                className="compact-details"
+                ghost
+                defaultActiveKey={false ? ['details'] : []}
+                items={[
+                  {
+                    key: 'details',
+                    label: <>其他凭据（可选）</>,
+                    forceRender: true,
+                    children: (
+                      <>
+                        <label>
+                          Token
+                          <Input.Password
+                            autoComplete="new-password"
+                            value={token}
+                            onChange={(e) => setToken(e.target.value)}
+                          />
+                        </label>
+                        <label>
+                          私钥
+                          <Input.TextArea
+                            className="secret-input"
+                            autoComplete="off"
+                            value={privateKey}
+                            onChange={(e) => setPrivateKey(e.target.value)}
+                          />
+                        </label>
+                      </>
+                    ),
+                  },
+                ]}
               />
-              同时记录部署
+            </>
+          )}
+          {kind === 'service' && (
+            <label className="field-label">
+              代码仓库
+              <Input value={repository} onChange={(e) => setRepository(e.target.value)} />
             </label>
-            {withNode && (
-              <DeploymentFields
-                value={firstNode}
-                onChange={setFirstNode}
-                systemId={systemId}
-                snapshot={snapshot}
+          )}
+          <label className="field-label">
+            {kind === 'service' ? '用途／说明' : '说明'}
+            <Input.TextArea value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </label>
+          {kind === 'service' && (
+            <>
+              <Checkbox checked={withNode} onChange={(e) => setWithNode(e.target.checked)}>
+                同时记录部署
+              </Checkbox>
+              {withNode && (
+                <DeploymentFields
+                  value={firstNode}
+                  onChange={setFirstNode}
+                  systemId={systemId}
+                  snapshot={snapshot}
+                />
+              )}
+              <Collapse
+                className="compact-details"
+                ghost
+                defaultActiveKey={false ? ['details'] : []}
+                items={[
+                  {
+                    key: 'details',
+                    label: <>操作文档（可选）</>,
+                    forceRender: true,
+                    children: (
+                      <>
+                        <DocumentReferences
+                          value={documentIds}
+                          systemId={systemId}
+                          snapshot={snapshot}
+                          onChange={setDocumentIds}
+                        />
+                      </>
+                    ),
+                  },
+                ]}
               />
-            )}
-            <details className="compact-details">
-              <summary>操作文档（可选）</summary>
-              <DocumentReferences
-                value={documentIds}
-                systemId={systemId}
-                snapshot={snapshot}
-                onChange={setDocumentIds}
-              />
-            </details>
-          </>
-        )}
-      </fieldset>
+            </>
+          )}
+        </fieldset>
+      </ConfigProvider>
       <div className="modal-actions">
-        <button type="button" className="secondary-button" disabled={busy} onClick={cancel}>
+        <Button
+          type="default"
+          htmlType="button"
+          className="secondary-button"
+          disabled={busy}
+          onClick={cancel}
+        >
           取消
-        </button>
-        <button className="primary-button" disabled={busy || !valid}>
+        </Button>
+        <Button
+          htmlType="submit"
+          type="primary"
+          className="primary-button"
+          disabled={busy || !valid}
+        >
           创建{labels[kind]}
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -354,21 +405,29 @@ export function QuickOperation(props: CreationProps) {
         });
       }}
     >
-      <fieldset disabled={props.busy} className="new-record-fields">
-        <OperationFields value={value} onChange={setValue} snapshot={props.snapshot} />
-      </fieldset>
+      <ConfigProvider componentDisabled={props.busy}>
+        <fieldset disabled={props.busy} className="new-record-fields">
+          <OperationFields value={value} onChange={setValue} snapshot={props.snapshot} />
+        </fieldset>
+      </ConfigProvider>
       <div className="modal-actions">
-        <button
-          type="button"
+        <Button
+          type="default"
+          htmlType="button"
           className="secondary-button"
           disabled={props.busy}
           onClick={props.cancel}
         >
           取消
-        </button>
-        <button className="primary-button" disabled={props.busy || !value.name.trim()}>
+        </Button>
+        <Button
+          htmlType="submit"
+          type="primary"
+          className="primary-button"
+          disabled={props.busy || !value.name.trim()}
+        >
           创建运维记录
-        </button>
+        </Button>
       </div>
     </form>
   );

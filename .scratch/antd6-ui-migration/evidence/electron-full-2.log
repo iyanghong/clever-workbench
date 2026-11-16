@@ -1,0 +1,431 @@
+
+> clever-workbench@0.1.23 pretest:e2e
+> npm run tools:generate
+
+
+> clever-workbench@0.1.23 tools:generate
+> node scripts/generate-tools.mjs
+
+
+> clever-workbench@0.1.23 test:e2e
+> playwright test --max-failures=10
+
+
+Running 148 tests using 1 worker
+
+(node:21131) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓    1 tests/e2e/account-list.spec.ts:8:1 › 密码列显隐、当前范围批量展示与整行复制沿用解锁和清理 (7.0s)
+  ✓    2 tests/e2e/antd-workbench.spec.ts:7:1 › Ant 控件接入后仍保留创建保护、模态焦点和真实本地保存 (4.9s)
+  ✓    3 tests/e2e/appearance.spec.ts:7:1 › 主题跟随与手动覆盖，透明度／对比／动态偏好可保存，键盘操作与弹层焦点有效 (3.6s)
+  ✓    4 tests/e2e/appearance.spec.ts:84:1 › 系统减少动态效果生效，原生可访问性变化更新全局材质 (742ms)
+  ✓    5 tests/e2e/archive.spec.ts:8:1 › 归档项目能查看文档和完成任务，长期账号可编辑，重开不改变项目归档状态 (4.9s)
+  ✓    6 tests/e2e/automatic-backup.spec.ts:9:1 › 备份正在写入时关闭会等候完成，不弹出阻止退出的确认框 (1.3s)
+  ✓    7 tests/e2e/automatic-backup.spec.ts:57:1 › 设置目录与自动策略持久化，失败重试保留已有副本，重启检查有变更的跨日备份 (3.8s)
+  ✓    8 tests/e2e/backup-guidance.spec.ts:70:1 › 备份密码指引从设置就近打开；取消与保存各自保持独立备份配置 (3.0s)
+  ✓    9 tests/e2e/backup-guidance.spec.ts:93:1 › 更新历史指引只导航；历史显示恢复材料、阶段和缺失文件的处理反馈 (2.1s)
+  ✓   10 tests/e2e/backup-guidance.spec.ts:140:1 › 手动与自动备份指引只导航；导出、立即备份及目录失败反馈可见 (3.2s)
+  ✓   11 tests/e2e/backup-guidance.spec.ts:197:1 › 恢复指引只前往入口；错误密码、取消及目标解锁后整份恢复各有反馈 (6.2s)
+  ✓   12 tests/e2e/backup.spec.ts:6:1 › 设置中首次导出要求独立备份密码，锁定导出可用，备份密码预检不修改当前资料 (4.4s)
+  ✓   13 tests/e2e/backup.spec.ts:73:1 › 恢复成功重建当前页面并锁定秘密，恢复前未返回的图片选择不能写入新资料 (3.7s)
+  ✘   14 tests/e2e/daily-guidance.spec.ts:66:1 › 首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具 (6.1s)
+(node:21501) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   15 tests/e2e/daily-guidance.spec.ts:120:1 › 搜索新建旁指引只导航，九项选择可取消且键盘搜索可打开任务 (2.1s)
+  ✓   16 tests/e2e/daily-guidance.spec.ts:169:1 › 任务指引关闭保留详情，计划、标签与批量归属可按说明操作 (4.8s)
+  ✓   17 tests/e2e/daily-guidance.spec.ts:222:1 › 阅读任务指引期间创建快捷键不会提交底层草稿 (1.8s)
+  ✓   18 tests/e2e/daily-guidance.spec.ts:248:1 › 文档附近和设置可查看共用编辑指引，源码与本地图片保存后仍可阅读 (3.5s)
+  ✓   19 tests/e2e/daily-guidance.spec.ts:328:1 › 工作回顾指引与月份、系统全貌入口一致，打开任务后可返回 (3.0s)
+Electron runtime { node: '24.22.0', electron: '44.9.0' }
+  ✓   20 tests/e2e/desktop.spec.ts:7:1 › native desktop capture, editor, completion, archive, recovery and theme (5.0s)
+  ✘   21 tests/e2e/desktop.spec.ts:75:1 › pasted images survive immediate close, portable backup and restart (34.3s)
+(node:21797) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   22 tests/e2e/dialog-polish.spec.ts:8:1 › 台账弹窗有固定关闭入口，表单统一且退出保留保存与粘贴保护 (6.9s)
+(node:21891) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   23 tests/e2e/document-scopes.spec.ts:9:1 › 任务快录与详情直接选择系统，只可选关联系统且不显示项目绑定 (2.2s)
+  ✓   24 tests/e2e/document-scopes.spec.ts:51:1 › 通用与系统文档分别查看，按范围新建，修改归属和切换筛选不丢正文 (5.4s)
+  ✓   25 tests/e2e/documents.spec.ts:9:1 › 从资源写方案并回到台账，系统换项目后保留旧背景和文档恢复能力 (3.9s)
+  ✓   26 tests/e2e/documents.spec.ts:74:1 › 未命名文档粘贴图片后立即切换，重启后保留正文与图片 (3.3s)
+  ✓   27 tests/e2e/documents.spec.ts:114:1 › 居中稿纸可切换专注编辑，退出后保留标题、正文与文档列表 (2.6s)
+  ✓   28 tests/e2e/documents.spec.ts:153:1 › 多级大纲支持长标题、三种布局和重启后的展开状态记忆 (5.2s)
+  ✓   29 tests/e2e/editor-history.spec.ts:18:1 › IR 快速撤销保留连续输入分组，中文组合、重做、语法显隐与关闭保存一致 (4.9s)
+  ✓   30 tests/e2e/editor-history.spec.ts:120:1 › 本地图片可立即撤销重做，导入中导航等待原记录保存 (3.3s)
+  ✓   31 tests/e2e/editor-history.spec.ts:180:1 › 只打开或移动光标不改写原文，回收站正文和勾选项保持只读 (2.6s)
+  ✓   32 tests/e2e/editor.spec.ts:7:1 › 以 Markdown 为准加载，粘贴截图后立即退出仍保留正文和本地图片 (3.5s)
+  ✓   33 tests/e2e/editor.spec.ts:110:1 › 表格与源码切换保全内容，不支持的结构重启后仍可编辑 (3.3s)
+  ✓   34 tests/e2e/editor.spec.ts:150:1 › 保存失败时留在编辑页并保留最新内容，重试成功后再关闭 (1.8s)
+  ✓   35 tests/e2e/editor.spec.ts:189:1 › 任务快录的定时保存失败后，不改文字即可重试导航并恢复同一草稿 (2.5s)
+  ✓   36 tests/e2e/editor.spec.ts:230:1 › 表格内不可逆格式不可执行，拒绝换行后仍能保存并重新打开原有内容 (2.1s)
+  ✘   37 tests/e2e/guidance-versions.spec.ts:49:1 › 首次只显示当前绑定版本，成功展示后关闭和重启不重复，设置可手动重看 (10.7s)
+(node:22286) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   38 tests/e2e/guidance-versions.spec.ts:87:1 › 跨版本按功能合并不同变化，目标无新增操作仍提示，失败标签不进入历史 (5.2s)
+  ✓   39 tests/e2e/guidance-versions.spec.ts:150:1 › 持续输入与中文组合期间不抢焦点，结束并保存后再提示 (4.1s)
+  ✓   40 tests/e2e/guidance-versions.spec.ts:179:1 › 等待版本说明期间新建资料时不主动弹出放弃确认 (4.2s)
+  ✓   41 tests/e2e/guidance-versions.spec.ts:248:1 › 主界面资料尚未就绪时不显示，等载入完成才开始提示 (2.5s)
+  ✘   42 tests/e2e/guidance-versions.spec.ts:285:1 › 后台操作繁忙时不反复检查可用性，操作结束后仍显示一次 (30.5s)
+(node:22535) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   43 tests/e2e/guidance-versions.spec.ts:321:1 › 更新重启提示等待当前指引关闭，版本提示也避让更新重启窗口 (32.9s)
+(node:22749) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   44 tests/e2e/guidance-versions.spec.ts:421:1 › 真实恢复旧业务备份不回退设备提示记录，另一设备恢复后按首次提示 (33.9s)
+(node:22917) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   45 tests/e2e/guidance-versions.spec.ts:491:3 › 设备记录损坏只考虑当前版本 (8.7s)
+(node:22975) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   46 tests/e2e/guidance-versions.spec.ts:491:3 › 设备记录写入失败如实提示并在当前进程去重 (6.9s)
+  ✓   47 tests/e2e/guidance-versions.spec.ts:538:1 › 未实际显示的提示不被消费，等待期间退出后下一次仍可提示 (9.3s)
+  ✓   48 tests/e2e/guidance-versions.spec.ts:570:1 › 自动提示等待保存失败修复，保留输入且不反复抢焦点 (5.7s)
+  ✓   49 tests/e2e/guidance-versions.spec.ts:611:1 › 正常关闭等待已显示提示记录落盘，避免快速退出后重复提示 (3.0s)
+  ✓   50 tests/e2e/guidance-versions.spec.ts:659:1 › 原生文件选择期间自动与手动版本窗口均避让，取消后可以继续查看 (3.3s)
+  ✓   51 tests/e2e/guidance-versions.spec.ts:709:1 › 明确无变化时安静启动，缺失当前说明和移除功能在手动历史中如实说明 (6.0s)
+  ✘   52 tests/e2e/guidance.spec.ts:13:1 › 离线从设置和更新旁阅读同一指引，步骤、关闭与安全前往功能可用 (7.3s)
+(node:23301) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   53 tests/e2e/guidance.spec.ts:95:1 › 从更新弹窗切换到指引后可关闭，导航不会遗留更新弹窗 (1.9s)
+  ✓   54 tests/e2e/guidance.spec.ts:141:1 › 指引导航保存失败保留输入，恢复保存后可以重试 (4.2s)
+  ✘   55 tests/e2e/guidance.spec.ts:202:1 › 原生文件选择期间不打开指引，结束后允许重新查看 (31.7s)
+Testing stopped early after 10 maximum allowed failures.
+
+
+  1) tests/e2e/daily-guidance.spec.ts:66:1 › 首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具 ────────────────────────
+
+    Error: expect(locator).toBeFocused() failed
+
+    Locator:  getByRole('button', { name: '工作台使用指引', exact: true })
+    Expected: focused
+    Received: inactive
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeFocused" getByRole('button', { name: '工作台使用指引', exact: true }) with timeout 5000ms
+      - waiting for getByRole('button', { name: '工作台使用指引', exact: true })
+        14 × locator resolved to <button type="button" aria-label="工作台使用指引" class="ant-btn css-i19pbt css-var-_r_0_ ant-btn-text ant-btn-color-default ant-btn-variant-text guidance-button">…</button>
+           - unexpected value "inactive"
+
+
+      92 |     await openGuide(app, page, '工作台使用指引', '整理首页常用对象');
+      93 |     await page.keyboard.press('Escape');
+    > 94 |     await expect(page.getByRole('button', { name: '工作台使用指引', exact: true })).toBeFocused();
+         |                                                                              ^
+      95 |     await page.getByRole('button', { name: '选择常用对象', exact: true }).click();
+      96 |     await page.getByRole('checkbox', { name: '常用 本地工具 ZIP 文本归档', exact: true }).check();
+      97 |     await page.getByRole('button', { name: '完成选择', exact: true }).click();
+        at /Users/axelton/code/clever-workbench/tests/e2e/daily-guidance.spec.ts:94:78
+
+    Error Context: test-results/daily-guidance-首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/daily-guidance-首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/daily-guidance-首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) tests/e2e/desktop.spec.ts:75:1 › pasted images survive immediate close, portable backup and restart
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '从备份恢复', exact: true })
+
+
+      130 |       (dialog as any).showOpenDialog = async () => ({ canceled: false, filePaths: [filename] });
+      131 |     }, archive);
+    > 132 |     await page.getByRole('button', { name: '从备份恢复', exact: true }).click();
+          |                                                                    ^
+      133 |     await page.getByLabel('备份密码', { exact: true }).fill('fictional-image-backup-password');
+      134 |     await page.getByRole('button', { name: '校验备份', exact: true }).click();
+      135 |     await expect(page.getByRole('dialog')).toContainText('1 张图片');
+        at /Users/axelton/code/clever-workbench/tests/e2e/desktop.spec.ts:132:68
+
+    Error Context: test-results/desktop-pasted-images-surv-8702c-portable-backup-and-restart/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/desktop-pasted-images-surv-8702c-portable-backup-and-restart/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/desktop-pasted-images-surv-8702c-portable-backup-and-restart/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) tests/e2e/dialog-polish.spec.ts:8:1 › 台账弹窗有固定关闭入口，表单统一且退出保留保存与粘贴保护 ────────────────────────────
+
+    Error: expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 32
+    Received:    21
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      38 |           .evaluate((el) => el.getBoundingClientRect().height),
+      39 |       )
+    > 40 |       .toBeGreaterThanOrEqual(32);
+         |        ^
+      41 |     await system.getByLabel('系统说明', { exact: true }).fill('保持简单、快速查询。');
+      42 |     await page.screenshot({ animations: 'disabled', path: info.outputPath('system-info.png') });
+      43 |     await system.getByLabel('系统名称', { exact: true }).fill('');
+        at /Users/axelton/code/clever-workbench/tests/e2e/dialog-polish.spec.ts:40:8
+
+    Error Context: test-results/dialog-polish-台账弹窗有固定关闭入口，表单统一且退出保留保存与粘贴保护/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/dialog-polish-台账弹窗有固定关闭入口，表单统一且退出保留保存与粘贴保护/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/dialog-polish-台账弹窗有固定关闭入口，表单统一且退出保留保存与粘贴保护/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) tests/e2e/guidance-versions.spec.ts:49:1 › 首次只显示当前绑定版本，成功展示后关闭和重启不重复，设置可手动重看 ──────────────────
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('[data-workbench-dialog]')
+    Expected: 0
+    Received: 1
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('[data-workbench-dialog]') with timeout 5000ms
+      - waiting for locator('[data-workbench-dialog]')
+        14 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      78 |     await page.keyboard.press('Escape');
+      79 |     await page.waitForTimeout(2000);
+    > 80 |     await expect(page.locator('[data-workbench-dialog]')).toHaveCount(0);
+         |                                                           ^
+      81 |   } finally {
+      82 |     await app.close();
+      83 |     await fs.rm(directory, { recursive: true, force: true });
+        at /Users/axelton/code/clever-workbench/tests/e2e/guidance-versions.spec.ts:80:59
+
+    Error Context: test-results/guidance-versions-首次只显示当前绑定版本，成功展示后关闭和重启不重复，设置可手动重看/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/guidance-versions-首次只显示当前绑定版本，成功展示后关闭和重启不重复，设置可手动重看/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/guidance-versions-首次只显示当前绑定版本，成功展示后关闭和重启不重复，设置可手动重看/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) tests/e2e/guidance-versions.spec.ts:285:1 › 后台操作繁忙时不反复检查可用性，操作结束后仍显示一次 ────────────────────────
+
+    TimeoutError: locator.waitFor: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '工作台', exact: true }) to be visible
+
+
+      291 |     const current = await app.evaluate(({ app }) => app.getVersion());
+      292 |     const initial = await app.firstWindow();
+    > 293 |     await initial.getByRole('button', { name: '工作台', exact: true }).waitFor();
+          |                                                                     ^
+      294 |     await app.evaluate(({ ipcMain }) => {
+      295 |       (globalThis as any).guidanceBusyChecks = 0;
+      296 |       (globalThis as any).guidanceBusy = true;
+        at /Users/axelton/code/clever-workbench/tests/e2e/guidance-versions.spec.ts:293:69
+
+    Error Context: test-results/guidance-versions-后台操作繁忙时不反复检查可用性，操作结束后仍显示一次/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/guidance-versions-后台操作繁忙时不反复检查可用性，操作结束后仍显示一次/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/guidance-versions-后台操作繁忙时不反复检查可用性，操作结束后仍显示一次/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) tests/e2e/guidance-versions.spec.ts:321:1 › 更新重启提示等待当前指引关闭，版本提示也避让更新重启窗口 ──────────────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '应用更新使用指引', exact: true })
+
+
+      352 |     await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+      353 |     await page.getByRole('tab', { name: '使用指引', exact: true }).click();
+    > 354 |     await page.getByRole('button', { name: '应用更新使用指引', exact: true }).click();
+          |                                                                       ^
+      355 |     const guide = page.getByRole('dialog', { name: expected?.title ?? '使用指引', exact: true });
+      356 |     await expect(guide).toBeVisible();
+      357 |     if (!expected) await expect(guide).toContainText('此指引暂不可用');
+        at /Users/axelton/code/clever-workbench/tests/e2e/guidance-versions.spec.ts:354:71
+
+    Error Context: test-results/guidance-versions-更新重启提示等待当前指引关闭，版本提示也避让更新重启窗口/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/guidance-versions-更新重启提示等待当前指引关闭，版本提示也避让更新重启窗口/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/guidance-versions-更新重启提示等待当前指引关闭，版本提示也避让更新重启窗口/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) tests/e2e/guidance-versions.spec.ts:421:1 › 真实恢复旧业务备份不回退设备提示记录，另一设备恢复后按首次提示 ───────────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('menuitem', { name: '设置', exact: true })
+        - locator resolved to <li tabindex="-1" role="menuitem" aria-label="设置" class="ant-menu-item" data-menu-id="rc-menu-uuid-_r_f_-settings">…</li>
+      - attempting click action
+        2 × waiting for element to be visible, enabled and stable
+          - element is visible, enabled and stable
+          - scrolling into view if needed
+          - done scrolling
+          - <div class="ant-modal-wrap">…</div> from <div>…</div> subtree intercepts pointer events
+        - retrying click action
+        - waiting 20ms
+        2 × waiting for element to be visible, enabled and stable
+          - element is visible, enabled and stable
+          - scrolling into view if needed
+          - done scrolling
+          - <div class="ant-modal-wrap">…</div> from <div>…</div> subtree intercepts pointer events
+        - retrying click action
+          - waiting 100ms
+        56 × waiting for element to be visible, enabled and stable
+           - element is visible, enabled and stable
+           - scrolling into view if needed
+           - done scrolling
+           - <div class="ant-modal-wrap">…</div> from <div>…</div> subtree intercepts pointer events
+         - retrying click action
+           - waiting 500ms
+
+
+      453 |         })) as typeof dialog.showOpenDialog;
+      454 |       }, filename);
+    > 455 |       await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+          |                                                                     ^
+      456 |       await page.getByRole('tab', { name: '使用指引', exact: true }).click();
+      457 |       await page.getByRole('button', { name: '从备份恢复', exact: true }).click();
+      458 |       await page.getByLabel('备份密码', { exact: true }).fill('fictional-guidance-backup-password');
+        at restore (/Users/axelton/code/clever-workbench/tests/e2e/guidance-versions.spec.ts:455:69)
+        at /Users/axelton/code/clever-workbench/tests/e2e/guidance-versions.spec.ts:463:5
+
+    Error Context: test-results/guidance-versions-真实恢复旧业务备份不回退设备提示记录，另一设备恢复后按首次提示/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/guidance-versions-真实恢复旧业务备份不回退设备提示记录，另一设备恢复后按首次提示/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/guidance-versions-真实恢复旧业务备份不回退设备提示记录，另一设备恢复后按首次提示/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) tests/e2e/guidance-versions.spec.ts:491:3 › 设备记录损坏只考虑当前版本 ─────────────────────────────────────
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('[data-workbench-dialog]')
+    Expected: 0
+    Received: 1
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('[data-workbench-dialog]') with timeout 5000ms
+      - waiting for locator('[data-workbench-dialog]')
+        14 × locator resolved to 1 element
+           - unexpected value "1"
+
+
+      517 |       await page.reload();
+      518 |       await page.waitForTimeout(1600);
+    > 519 |       await expect(page.locator('[data-workbench-dialog]')).toHaveCount(0);
+          |                                                             ^
+      520 |       await app.close();
+      521 |       app = await electron.launch({ args: ['.'], env });
+      522 |       page = await versions(app, records);
+        at /Users/axelton/code/clever-workbench/tests/e2e/guidance-versions.spec.ts:519:61
+
+    Error Context: test-results/guidance-versions-设备记录损坏只考虑当前版本/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/guidance-versions-设备记录损坏只考虑当前版本/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/guidance-versions-设备记录损坏只考虑当前版本/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) tests/e2e/guidance.spec.ts:13:1 › 离线从设置和更新旁阅读同一指引，步骤、关闭与安全前往功能可用 ──────────────────────────────
+
+    Error: expect(locator).toBeFocused() failed
+
+    Locator:  getByRole('button', { name: '查看全部使用指引', exact: true })
+    Expected: focused
+    Received: inactive
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeFocused" getByRole('button', { name: '查看全部使用指引', exact: true }) with timeout 5000ms
+      - waiting for getByRole('button', { name: '查看全部使用指引', exact: true })
+        14 × locator resolved to <button type="button" aria-label="查看全部使用指引" class="ant-btn css-i19pbt css-var-_r_0_ ant-btn-text ant-btn-color-default ant-btn-variant-text guidance-button">…</button>
+           - unexpected value "inactive"
+
+
+      64 |     await page.keyboard.press('Escape');
+      65 |     await expect(guide).toHaveCount(0);
+    > 66 |     await expect(open).toBeFocused();
+         |                        ^
+      67 |     const nearby = page.getByRole('button', { name: '应用更新使用指引', exact: true });
+      68 |     await nearby.click();
+      69 |     await expect(guide).toBeVisible();
+        at /Users/axelton/code/clever-workbench/tests/e2e/guidance.spec.ts:66:24
+
+    Error Context: test-results/guidance-离线从设置和更新旁阅读同一指引，步骤、关闭与安全前往功能可用/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/guidance-离线从设置和更新旁阅读同一指引，步骤、关闭与安全前往功能可用/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/guidance-离线从设置和更新旁阅读同一指引，步骤、关闭与安全前往功能可用/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) tests/e2e/guidance.spec.ts:202:1 › 原生文件选择期间不打开指引，结束后允许重新查看 ───────────────────────────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: '从备份恢复', exact: true })
+
+
+      221 |         })) as typeof dialog.showOpenDialog;
+      222 |     });
+    > 223 |     await page.getByRole('button', { name: '从备份恢复', exact: true }).click();
+          |                                                                    ^
+      224 |     await expect
+      225 |       .poll(() => app.evaluate(() => typeof (globalThis as any).guidanceCancelDialog))
+      226 |       .toBe('function');
+        at /Users/axelton/code/clever-workbench/tests/e2e/guidance.spec.ts:223:68
+
+    Error Context: test-results/guidance-原生文件选择期间不打开指引，结束后允许重新查看/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/guidance-原生文件选择期间不打开指引，结束后允许重新查看/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/guidance-原生文件选择期间不打开指引，结束后允许重新查看/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10 failed
+    tests/e2e/daily-guidance.spec.ts:66:1 › 首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具 ─────────────────────────
+    tests/e2e/desktop.spec.ts:75:1 › pasted images survive immediate close, portable backup and restart
+    tests/e2e/dialog-polish.spec.ts:8:1 › 台账弹窗有固定关闭入口，表单统一且退出保留保存与粘贴保护 ─────────────────────────────
+    tests/e2e/guidance-versions.spec.ts:49:1 › 首次只显示当前绑定版本，成功展示后关闭和重启不重复，设置可手动重看 ───────────────────
+    tests/e2e/guidance-versions.spec.ts:285:1 › 后台操作繁忙时不反复检查可用性，操作结束后仍显示一次 ─────────────────────────
+    tests/e2e/guidance-versions.spec.ts:321:1 › 更新重启提示等待当前指引关闭，版本提示也避让更新重启窗口 ───────────────────────
+    tests/e2e/guidance-versions.spec.ts:421:1 › 真实恢复旧业务备份不回退设备提示记录，另一设备恢复后按首次提示 ────────────────────
+    tests/e2e/guidance-versions.spec.ts:491:3 › 设备记录损坏只考虑当前版本 ──────────────────────────────────────
+    tests/e2e/guidance.spec.ts:13:1 › 离线从设置和更新旁阅读同一指引，步骤、关闭与安全前往功能可用 ───────────────────────────────
+    tests/e2e/guidance.spec.ts:202:1 › 原生文件选择期间不打开指引，结束后允许重新查看 ─────────────────────────────────────
+  93 did not run
+  45 passed (6.3m)
+  1 error was not a part of any test, see above for details

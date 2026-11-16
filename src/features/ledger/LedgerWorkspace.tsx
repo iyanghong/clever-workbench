@@ -1,6 +1,7 @@
+import { Avatar, Button, Empty, Input, Select, Table, Tabs, Typography, Collapse } from 'antd';
 import { GuidanceButton, useGuidance } from '../guidance/Guidance';
 import type { GuidancePlacement } from '../../guidance/registry';
-import { closeNewRecord, saveNewRecord } from '../../shared/new-record';
+import { closeNewRecord, saveNewRecord, markNewRecordChanged } from '../../shared/new-record';
 import { DocumentReferences } from './RecordFields';
 import { connectionAddress, resourceConnectionText } from '../../ledger-fields';
 import { PageHeading } from '../../shared/WorkspaceUI';
@@ -245,10 +246,8 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
   const saves = useSaveGroup(registerFlush),
     memory = useRef(savedViews()),
     list = useRef<HTMLDivElement>(null),
-    systemSearch = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (picker) systemSearch.current?.focus();
-  }, [picker]);
+    systemTrigger = useRef<HTMLButtonElement>(null),
+    captureOrigin = useRef<HTMLElement | null>(null);
   function locate(s: Snapshot, id?: string) {
     const account = s.accounts.find((r) => r.id === id),
       access = s.accessEntries.find((r) => r.id === id),
@@ -419,6 +418,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
   };
   const system = snapshot?.systems.find((s) => s.id === systemId);
   function captureNew(kind: string, context?: CreationContext) {
+    captureOrigin.current = picker ? systemTrigger.current : null;
     void transition(() => {
       setPicker(false);
       setCapture(kind);
@@ -674,7 +674,9 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
             onSnapshot={setSnapshot}
             onError={setError}
           />
-          <button
+          <Button
+            htmlType="submit"
+            type="text"
             className="text-button"
             onClick={() =>
               void transition(() => {
@@ -685,7 +687,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
             }
           >
             编辑账号
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -723,26 +725,34 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
   }
   const content = (
     <main className="main ledger-workspace">
+      <div className="ledger-page-heading">
+        <PageHeading title="技术台账" description="集中管理系统资料，快速查找、复制和维护。" />
+      </div>
       <header className="window-toolbar ledger-workspace-header">
-        <div className="breadcrumb">
-          <StackIcon size={18} />
-          <span>台账</span>
+        <Avatar shape="square" size={40} className="system-avatar" icon={<StackIcon size={22} />} />
+        <div className="system-context-copy">
+          <Button
+            htmlType="submit"
+            type="text"
+            className="system-switcher"
+            ref={systemTrigger}
+            aria-label="切换系统"
+            aria-haspopup="dialog"
+            aria-expanded={picker}
+            onClick={() =>
+              void transition(() => {
+                setSystemQuery('');
+                setPicker(true);
+              })
+            }
+          >
+            {system?.name ?? '选择系统'}
+            <CaretDownIcon size={14} />
+          </Button>
+          <Typography.Text type="secondary">
+            {system?.notes || '系统资料与适用环境'}
+          </Typography.Text>
         </div>
-        <button
-          className="system-switcher"
-          aria-label="切换系统"
-          aria-haspopup="dialog"
-          aria-expanded={picker}
-          onClick={() =>
-            void transition(() => {
-              setSystemQuery('');
-              setPicker(true);
-            })
-          }
-        >
-          {system?.name ?? '选择系统'}
-          <CaretDownIcon size={14} />
-        </button>
         <div className="spacer" />
         <GuidanceButton
           placement={system ? categoryGuidance[view.category] : 'ledger'}
@@ -750,12 +760,14 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
         />
         {system && (
           <>
-            <button
+            <Button
+              htmlType="submit"
+              type="text"
               className="text-button"
               onClick={() => void transition(() => setRelatedOpen(true))}
             >
               相关工作
-            </button>
+            </Button>
             <SystemActionsMenu
               onInfo={() => void transition(() => setInfo(true))}
               onExport={() => void transition(() => setExporting(true))}
@@ -775,16 +787,15 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
         <>
           <div className="workspace-category-toolbar">
             <nav className="workspace-categories" aria-label="系统资料类型">
-              {categories.map(([id, label]) => (
-                <button
-                  key={id}
-                  aria-pressed={view.category === id}
-                  onClick={() => changeView({ category: id, query: '' })}
-                >
-                  <CategoryIcon kind={id} />
-                  {label}
-                </button>
-              ))}
+              <Tabs
+                activeKey={view.category}
+                onChange={(key) => changeView({ category: key as Category, query: '' })}
+                items={categories.map(([id, label]) => ({
+                  key: id,
+                  label,
+                  icon: <CategoryIcon kind={id} />,
+                }))}
+              />
             </nav>
             <div className="workspace-category-actions">
               <GuidanceButton
@@ -792,10 +803,17 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                 label="录入指引"
                 accessibleLabel="批量录入使用指引"
               />
-              <button className="secondary-button" onClick={() => captureNew('paste')}>
+              <Button
+                htmlType="submit"
+                type="default"
+                className="secondary-button"
+                onClick={() => captureNew('paste')}
+              >
                 批量录入
-              </button>
-              <button
+              </Button>
+              <Button
+                htmlType="submit"
+                type="primary"
                 className="primary-button"
                 onClick={() =>
                   view.category === 'documents'
@@ -810,7 +828,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
               >
                 <PlusIcon size={16} />
                 新增{categories.find((c) => c[0] === view.category)?.[1]}
-              </button>
+              </Button>
             </div>
           </div>
           <div className={`workspace-browser ${picked ? 'show-inspector' : ''}`}>
@@ -818,63 +836,93 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
               <div className="workspace-query">
                 <label className="workspace-search">
                   <MagnifyingGlassIcon />
-                  <input
+                  <Input
                     aria-label="搜索台账清单"
                     placeholder={`搜索${categories.find((c) => c[0] === view.category)?.[1]}…`}
                     value={view.query}
                     onChange={(e) => changeView({ query: e.target.value })}
                   />
                 </label>
-                <select
+                <Select
                   aria-label="台账环境筛选"
                   value={view.environment}
-                  onChange={(e) => changeView({ environment: e.target.value })}
+                  onChange={(e) => {
+                    markNewRecordChanged();
+                    return changeView({ environment: e });
+                  }}
                 >
-                  <option value="all">全部环境</option>
-                  <option value="common">仅系统通用</option>
+                  <Select.Option data-value={String('all')} value="all">
+                    全部环境
+                  </Select.Option>
+                  <Select.Option data-value={String('common')} value="common">
+                    仅系统通用
+                  </Select.Option>
                   {snapshot.environments
                     .filter((e) => e.systemId === systemId)
                     .map((e) => (
-                      <option value={e.id} key={e.id}>
+                      <Select.Option data-value={String(e.id)} value={e.id} key={e.id}>
                         {e.name}
-                      </option>
+                      </Select.Option>
                     ))}
-                </select>
-                <select
+                </Select>
+                <Select
                   aria-label="台账标签筛选"
                   value={view.tag}
-                  onChange={(e) => changeView({ tag: e.target.value })}
+                  onChange={(e) => {
+                    markNewRecordChanged();
+                    return changeView({ tag: e });
+                  }}
                 >
-                  <option value="all">全部标签</option>
+                  <Select.Option data-value={String('all')} value="all">
+                    全部标签
+                  </Select.Option>
                   {tags.map((t) => (
-                    <option key={t}>{t}</option>
+                    <Select.Option data-value={String(t)} value={t} key={t}>
+                      {t}
+                    </Select.Option>
                   ))}
-                </select>
+                </Select>
                 {view.category === 'operations' && (
                   <>
-                    <select
+                    <Select
                       aria-label="运维类型筛选"
                       value={view.operationKind}
-                      onChange={(e) =>
-                        changeView({ operationKind: e.target.value as View['operationKind'] })
-                      }
+                      onChange={(e) => {
+                        markNewRecordChanged();
+                        return changeView({ operationKind: e as View['operationKind'] });
+                      }}
                     >
-                      <option value="all">全部运维类型</option>
-                      <option value="job">运行作业</option>
-                      <option value="backup">备份策略</option>
-                    </select>
-                    <select
+                      <Select.Option data-value={String('all')} value="all">
+                        全部运维类型
+                      </Select.Option>
+                      <Select.Option data-value={String('job')} value="job">
+                        运行作业
+                      </Select.Option>
+                      <Select.Option data-value={String('backup')} value="backup">
+                        备份策略
+                      </Select.Option>
+                    </Select>
+                    <Select
                       aria-label="运维状态筛选"
                       value={view.operationStatus}
-                      onChange={(e) =>
-                        changeView({ operationStatus: e.target.value as View['operationStatus'] })
-                      }
+                      onChange={(e) => {
+                        markNewRecordChanged();
+                        return changeView({ operationStatus: e as View['operationStatus'] });
+                      }}
                     >
-                      <option value="all">全部状态</option>
-                      <option value="active">在用</option>
-                      <option value="inactive">停用</option>
-                      <option value="unverified">待确认</option>
-                    </select>
+                      <Select.Option data-value={String('all')} value="all">
+                        全部状态
+                      </Select.Option>
+                      <Select.Option data-value={String('active')} value="active">
+                        在用
+                      </Select.Option>
+                      <Select.Option data-value={String('inactive')} value="inactive">
+                        停用
+                      </Select.Option>
+                      <Select.Option data-value={String('unverified')} value="unverified">
+                        待确认
+                      </Select.Option>
+                    </Select>
                   </>
                 )}
               </div>
@@ -910,13 +958,18 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                         {copyRef(row) && (
                           <LedgerCopyCheckbox object={copyRef(row)!} name={row.name} />
                         )}
-                        <button className="workspace-summary-open" onClick={() => openRow(row)}>
+                        <Button
+                          htmlType="submit"
+                          type="text"
+                          className="workspace-summary-open"
+                          onClick={() => openRow(row)}
+                        >
                           <span className="workspace-summary-title">
                             <CategoryIcon kind={row.kind} />
                             <strong>{row.name}</strong>
                           </span>
                           <small>{scopeLabel(row)}</small>
-                        </button>
+                        </Button>
                         <div className="workspace-summary-content">
                           <CopyableField
                             value={row.address}
@@ -955,86 +1008,130 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                     onError={setError}
                   />
                 ) : (
-                  <table className="ledger-object-table">
-                    <thead>
-                      <tr>
-                        <th>名称</th>
-                        <th>{view.category === 'operations' ? '频率' : '地址／信息'}</th>
-                        <th>说明</th>
-                        <th className="workspace-row-actions">快捷操作</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visible.map((row) => (
-                        <tr key={row.id} className={selected === row.id ? 'selected' : ''}>
-                          <td>
-                            {copyRef(row) && (
-                              <LedgerCopyCheckbox object={copyRef(row)!} name={row.name} />
-                            )}
-                            <button onClick={() => openRow(row)}>
-                              <CategoryIcon kind={row.kind} />
-                              <span className="record-name">
-                                <strong>{row.name}</strong>
-                                <small>{scopeLabel(row)}</small>
-                              </span>
-                            </button>
-                          </td>
-                          <td>
-                            {copyRef(row) ? (
-                              <CopyableField
-                                value={row.address}
-                                currentValue={(snapshot) => currentRowValue(snapshot, row)}
-                                label={
-                                  row.kind === 'services'
-                                    ? '代码仓库'
-                                    : row.kind === 'operations'
-                                      ? '频率'
-                                      : '地址'
-                                }
-                                onError={setError}
-                              />
-                            ) : (
-                              <span className="workspace-value">{row.address || '—'}</span>
-                            )}
-                          </td>
-                          <td>{row.extra || '—'}</td>
-                          <td className="workspace-row-actions">
-                            {copyRef(row) && (
-                              <LedgerCopyActions
-                                iconOnly
-                                objects={[copyRef(row)!]}
-                                name={row.name}
-                              />
-                            )}
-                            {row.kind === 'access' && row.address && (
-                              <button
+                  <Table<Row>
+                    className="ledger-object-table"
+                    rowKey={'id'}
+                    dataSource={visible}
+                    pagination={false}
+                    scroll={{ x: 850 }}
+                    locale={{
+                      emptyText: (
+                        <Empty
+                          image={Empty.PRESENTED_IMAGE_SIMPLE}
+                          description={
+                            <>
+                              <h3>这里还没有符合条件的记录</h3>
+                              <p>可快速新建，或调整环境与标签筛选。</p>
+                            </>
+                          }
+                        />
+                      ),
+                    }}
+                    rowClassName={(row) => (selected === row.id ? 'selected' : '')}
+                    columns={[
+                      {
+                        key: 'c0',
+                        title: '名称',
+                        width: 270,
+                        render: (_value, row) => {
+                          return (
+                            <>
+                              {copyRef(row) && (
+                                <LedgerCopyCheckbox object={copyRef(row)!} name={row.name} />
+                              )}
+                              <Button htmlType="submit" type="text" onClick={() => openRow(row)}>
+                                <CategoryIcon kind={row.kind} />
+                                <span className="record-name">
+                                  <strong>{row.name}</strong>
+                                  <small>{scopeLabel(row)}</small>
+                                </span>
+                              </Button>
+                            </>
+                          );
+                        },
+                      },
+                      {
+                        key: 'c1',
+                        title: view.category === 'operations' ? '频率' : '地址／信息',
+                        render: (_value, row) => {
+                          return (
+                            <>
+                              {copyRef(row) ? (
+                                <CopyableField
+                                  value={row.address}
+                                  currentValue={(snapshot) => currentRowValue(snapshot, row)}
+                                  label={
+                                    row.kind === 'services'
+                                      ? '代码仓库'
+                                      : row.kind === 'operations'
+                                        ? '频率'
+                                        : '地址'
+                                  }
+                                  onError={setError}
+                                />
+                              ) : (
+                                <span className="workspace-value">{row.address || '—'}</span>
+                              )}
+                            </>
+                          );
+                        },
+                      },
+                      {
+                        key: 'c2',
+                        title: '说明',
+                        render: (_value, row) => {
+                          return <>{row.extra || '—'}</>;
+                        },
+                      },
+                      {
+                        key: 'c3',
+                        title: '快捷操作',
+                        width: 150,
+                        fixed: 'right',
+                        render: (_value, row) => {
+                          return (
+                            <>
+                              {copyRef(row) && (
+                                <LedgerCopyActions
+                                  iconOnly
+                                  objects={[copyRef(row)!]}
+                                  name={row.name}
+                                />
+                              )}
+                              {row.kind === 'access' && row.address && (
+                                <Button
+                                  htmlType="submit"
+                                  type="text"
+                                  className="icon-button"
+                                  aria-label={`打开 ${row.name}`}
+                                  title={`打开 ${row.name}`}
+                                  onClick={() =>
+                                    void window.desktop
+                                      .openExternal(row.address)
+                                      .catch((e) => setError(String(e)))
+                                  }
+                                >
+                                  <ArrowUpRightIcon size={16} />
+                                </Button>
+                              )}
+                              <Button
+                                htmlType="submit"
+                                type="text"
                                 className="icon-button"
-                                aria-label={`打开 ${row.name}`}
-                                title={`打开 ${row.name}`}
-                                onClick={() =>
-                                  void window.desktop
-                                    .openExternal(row.address)
-                                    .catch((e) => setError(String(e)))
-                                }
+                                aria-label={`查看详情 ${row.name}`}
+                                title={`查看详情 ${row.name}`}
+                                onClick={() => openRow(row)}
                               >
-                                <ArrowUpRightIcon size={16} />
-                              </button>
-                            )}
-                            <button
-                              className="icon-button"
-                              aria-label={`查看详情 ${row.name}`}
-                              title={`查看详情 ${row.name}`}
-                              onClick={() => openRow(row)}
-                            >
-                              <CaretRightIcon size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                                <CaretRightIcon size={16} />
+                              </Button>
+                            </>
+                          );
+                        },
+                      },
+                    ]}
+                  />
                 )}
-                {!visible.length && (
+                {!visible.length && picked && (
                   <div className="empty-state">
                     <h3>这里还没有符合条件的记录</h3>
                     <p>可快速新建，或调整环境与标签筛选。</p>
@@ -1045,7 +1142,9 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
             {picked && (
               <aside className="workspace-inspector" aria-label="台账详情">
                 <div className="workspace-inspector-toolbar">
-                  <button
+                  <Button
+                    htmlType="submit"
+                    type="text"
                     className="text-button"
                     onClick={() =>
                       void transition(() => {
@@ -1056,14 +1155,16 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                   >
                     <ArrowLeftIcon size={15} />
                     返回清单
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    htmlType="submit"
+                    type="default"
                     className="secondary-button"
                     onClick={() => void transition(() => setEditing(!editing))}
                   >
                     <PencilSimpleIcon size={15} />
                     {editing ? '完成编辑' : '编辑'}
-                  </button>
+                  </Button>
                 </div>
                 <small className="secondary-copy">
                   {categories.find((c) => c[0] === picked.kind)?.[1]}
@@ -1173,7 +1274,9 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                         <div className="section-heading">
                           <h3>账号 {ownedAccounts.length}</h3>
                           {!account && (
-                            <button
+                            <Button
+                              htmlType="submit"
+                              type="text"
                               className="text-button"
                               onClick={() =>
                                 captureNew('accounts', {
@@ -1186,7 +1289,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                               }
                             >
                               新增账号
-                            </button>
+                            </Button>
                           )}
                         </div>
                         {ownedAccounts.length ? (
@@ -1209,7 +1312,9 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                               </strong>
                               <p>{address.url}</p>
                             </div>
-                            <button
+                            <Button
+                              htmlType="submit"
+                              type="text"
                               className="text-button"
                               onClick={() =>
                                 void window.desktop
@@ -1218,7 +1323,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                               }
                             >
                               打开
-                            </button>
+                            </Button>
                             <CopyValue
                               value={address.url}
                               resolveValue={async () => {
@@ -1244,7 +1349,9 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                     )}
                     <section>
                       <div className="workspace-account-actions">
-                        <button
+                        <Button
+                          htmlType="submit"
+                          type="text"
                           className="text-button"
                           onClick={() =>
                             void createDocument(
@@ -1253,13 +1360,15 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                           }
                         >
                           为当前对象写文档
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          htmlType="submit"
+                          type="text"
                           className="text-button"
                           onClick={() => captureNew('task', { systemId })}
                         >
                           记录工作任务
-                        </button>
+                        </Button>
                       </div>
                       <h3>说明</h3>
                       <p className="multiline">
@@ -1330,49 +1439,72 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                       </dl>
                     )}
                     {resource && (
-                      <details className="compact-details">
-                        <summary>基本信息与配置</summary>
-                        <dl className="workspace-properties">
-                          <dt>端口</dt>
-                          <dd>
-                            <CopyableField
-                              value={resource.port}
-                              currentValue={(s) => currentRecord(s.resources, resource.id).port}
-                              label="端口"
-                              onError={setError}
-                            />
-                          </dd>
-                          {Object.entries(resource.fields).map(([key, value]) => (
-                            <div key={key}>
-                              <dt>{key}</dt>
-                              <dd>
-                                <CopyableField
-                                  value={value}
-                                  currentValue={(s) =>
-                                    currentRecord(s.resources, resource.id).fields[key] ?? ''
-                                  }
-                                  label={key}
-                                  onError={setError}
-                                />
-                              </dd>
-                            </div>
-                          ))}
-                        </dl>
-                      </details>
+                      <Collapse
+                        className="compact-details"
+                        ghost
+                        defaultActiveKey={false ? ['details'] : []}
+                        items={[
+                          {
+                            key: 'details',
+                            label: <>基本信息与配置</>,
+                            forceRender: true,
+                            children: (
+                              <>
+                                <dl className="workspace-properties">
+                                  <dt>端口</dt>
+                                  <dd>
+                                    <CopyableField
+                                      value={resource.port}
+                                      currentValue={(s) =>
+                                        currentRecord(s.resources, resource.id).port
+                                      }
+                                      label="端口"
+                                      onError={setError}
+                                    />
+                                  </dd>
+                                  {Object.entries(resource.fields).map(([key, value]) => (
+                                    <div key={key}>
+                                      <dt>{key}</dt>
+                                      <dd>
+                                        <CopyableField
+                                          value={value}
+                                          currentValue={(s) =>
+                                            currentRecord(s.resources, resource.id).fields[key] ??
+                                            ''
+                                          }
+                                          label={key}
+                                          onError={setError}
+                                        />
+                                      </dd>
+                                    </div>
+                                  ))}
+                                </dl>
+                              </>
+                            ),
+                          },
+                        ]}
+                      />
                     )}
                     {service && (
                       <section>
                         <div className="section-heading">
                           <h3>部署节点</h3>
-                          <button className="text-button" onClick={() => setNode('new')}>
+                          <Button
+                            htmlType="submit"
+                            type="text"
+                            className="text-button"
+                            onClick={() => setNode('new')}
+                          >
                             新增节点
-                          </button>
-                          <button
+                          </Button>
+                          <Button
+                            htmlType="submit"
+                            type="text"
                             className="text-button"
                             onClick={() => setDeletion({ type: 'service.delete', id: service.id })}
                           >
                             删除服务
-                          </button>
+                          </Button>
                         </div>
                         {snapshot.deploymentNodes
                           .filter(
@@ -1428,15 +1560,22 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                                     void navigate({ module: 'documents', objectId: id })
                                   }
                                 />
-                                <button className="text-button" onClick={() => setNode(n)}>
+                                <Button
+                                  htmlType="submit"
+                                  type="text"
+                                  className="text-button"
+                                  onClick={() => setNode(n)}
+                                >
                                   编辑节点
-                                </button>
-                                <button
+                                </Button>
+                                <Button
+                                  htmlType="submit"
+                                  type="text"
                                   className="text-button"
                                   onClick={() => setDeletion({ type: 'node.delete', id: n.id })}
                                 >
                                   删除节点
-                                </button>
+                                </Button>
                               </div>
                             );
                           })}
@@ -1466,7 +1605,9 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                           </dd>
                         </dl>
                         {operation.documentId && (
-                          <button
+                          <Button
+                            htmlType="submit"
+                            type="text"
                             className="text-button"
                             onClick={() =>
                               void navigate({
@@ -1476,16 +1617,18 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                             }
                           >
                             阅读步骤文档
-                          </button>
+                          </Button>
                         )}
-                        <button
+                        <Button
+                          htmlType="submit"
+                          type="text"
                           className="text-button"
                           onClick={() =>
                             setDeletion({ type: 'operation.delete', id: operation.id })
                           }
                         >
                           删除运维记录
-                        </button>
+                        </Button>
                       </section>
                     )}
                     {(resource || service) &&
@@ -1501,7 +1644,9 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                                 (service && o.serviceId === service.id),
                             )
                             .map((o) => (
-                              <button
+                              <Button
+                                htmlType="submit"
+                                type="text"
                                 key={o.id}
                                 className="workspace-link"
                                 onClick={() =>
@@ -1512,7 +1657,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                                 }
                               >
                                 {o.name} · {stateName[o.status]}
-                              </button>
+                              </Button>
                             ))}
                         </section>
                       )}
@@ -1523,27 +1668,42 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                           d.deletedAt === null &&
                           (!resource || d.resourceId === resource.id),
                       ) && (
-                        <details className="compact-details">
-                          <summary>相关文档</summary>
-                          {snapshot.documents
-                            .filter(
-                              (d) =>
-                                d.systemId === systemId &&
-                                d.deletedAt === null &&
-                                (!resource || d.resourceId === resource.id),
-                            )
-                            .map((d) => (
-                              <button
-                                className="workspace-link"
-                                key={d.id}
-                                onClick={() =>
-                                  void navigate({ module: 'documents', objectId: d.id })
-                                }
-                              >
-                                {d.title || '未命名文档'}
-                              </button>
-                            ))}
-                        </details>
+                        <Collapse
+                          className="compact-details"
+                          ghost
+                          defaultActiveKey={false ? ['details'] : []}
+                          items={[
+                            {
+                              key: 'details',
+                              label: <>相关文档</>,
+                              forceRender: true,
+                              children: (
+                                <>
+                                  {snapshot.documents
+                                    .filter(
+                                      (d) =>
+                                        d.systemId === systemId &&
+                                        d.deletedAt === null &&
+                                        (!resource || d.resourceId === resource.id),
+                                    )
+                                    .map((d) => (
+                                      <Button
+                                        htmlType="submit"
+                                        type="text"
+                                        className="workspace-link"
+                                        key={d.id}
+                                        onClick={() =>
+                                          void navigate({ module: 'documents', objectId: d.id })
+                                        }
+                                      >
+                                        {d.title || '未命名文档'}
+                                      </Button>
+                                    ))}
+                                </>
+                              ),
+                            },
+                          ]}
+                        />
                       )}
                   </>
                 )}
@@ -1555,15 +1715,20 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
         <div className="empty-state">
           <h2>从一个系统开始</h2>
           <p>名称即可创建，其他信息随时补充。</p>
-          <button className="primary-button" onClick={() => captureNew('system')}>
+          <Button
+            htmlType="submit"
+            type="primary"
+            className="primary-button"
+            onClick={() => captureNew('system')}
+          >
             新增系统
-          </button>
+          </Button>
         </div>
       )}
       {picker && (
         <Dialog title="切换系统" onClose={() => setPicker(false)}>
-          <input
-            ref={systemSearch}
+          <Input
+            autoFocus
             aria-label="搜索系统"
             placeholder="搜索系统…"
             value={systemQuery}
@@ -1584,7 +1749,13 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
               )
               .filter((s) => s.name.toLowerCase().includes(systemQuery.toLowerCase()))
               .map((s) => (
-                <button className="workspace-link" key={s.id} onClick={() => chooseSystem(s.id)}>
+                <Button
+                  htmlType="submit"
+                  type="text"
+                  className="workspace-link"
+                  key={s.id}
+                  onClick={() => chooseSystem(s.id)}
+                >
                   {s.name}
                   {s.id === systemId ? ' · 当前' : ''}
                   {snapshot.favorites.some((f) => f.kind === 'system' && f.id === s.id)
@@ -1592,14 +1763,19 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
                     : memory.current.recent.includes(s.id)
                       ? ' · 最近'
                       : ''}
-                </button>
+                </Button>
               ))}
           </div>
           <div className="modal-actions">
-            <button className="primary-button" onClick={() => captureNew('system', {})}>
+            <Button
+              htmlType="submit"
+              type="primary"
+              className="primary-button"
+              onClick={() => captureNew('system', {})}
+            >
               <PlusIcon size={16} />
               新增系统
-            </button>
+            </Button>
           </div>
         </Dialog>
       )}
@@ -1613,12 +1789,14 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
         >
           <SystemConfiguration {...host} id={systemId} snapshot={snapshot} />
           <div className="modal-actions">
-            <button
+            <Button
+              htmlType="submit"
+              type="primary"
               className="primary-button"
               onClick={() => void transition(() => setInfo(false))}
             >
               完成
-            </button>
+            </Button>
           </div>
         </Dialog>
       )}
@@ -1640,6 +1818,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
       )}
       {capture && Form && (
         <Dialog
+          returnFocus={captureOrigin.current}
           title={`新增${capture === 'task' ? '任务' : capture === 'system' ? '系统' : categories.find((c) => c[0] === capture)?.[1]}`}
           onClose={() => {
             if (!busy) void transition(() => setCapture(null));
@@ -1729,10 +1908,18 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
         <Dialog title="删除这条记录？" onClose={() => setDeletion(null)} error={error}>
           <p>相关引用需要先处理，删除不会自动转移其他资料。</p>
           <div className="modal-actions">
-            <button className="secondary-button" onClick={() => setDeletion(null)}>
+            <Button
+              htmlType="submit"
+              type="default"
+              className="secondary-button"
+              onClick={() => setDeletion(null)}
+            >
               取消
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
+              danger
               className="danger-button"
               onClick={() =>
                 void run(deletion)
@@ -1741,16 +1928,16 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
               }
             >
               删除
-            </button>
+            </Button>
           </div>
         </Dialog>
       )}
       {error && !info && (
         <div role="alert" className="error-banner">
           <span>{error}</span>
-          <button aria-label="关闭提示" onClick={() => setError('')}>
+          <Button htmlType="submit" type="text" aria-label="关闭提示" onClick={() => setError('')}>
             <XIcon />
-          </button>
+          </Button>
         </div>
       )}
     </main>
@@ -1776,15 +1963,16 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
   );
 }
 
-export function ProjectArchiveWorkspace() {
+export function ProjectArchiveWorkspace({ setContext }: ModuleProps) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
     [error, setError] = useState('');
   useEffect(() => {
+    setContext({});
     void window.desktop
       .snapshot()
       .then(setSnapshot)
       .catch((e) => setError(String(e)));
-  }, []);
+  }, [setContext]);
   return (
     <main className="main" aria-busy={!snapshot}>
       <section className="archive-page">

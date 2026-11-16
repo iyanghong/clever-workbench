@@ -1,0 +1,12 @@
+{
+  "offline": true,
+  "standalone": true,
+  "browser": "157.0.8103.51",
+  "errors": [],
+  "externalRequests": [],
+  "checked": [
+    "离线首页",
+    "离线导航",
+    "实际 JSON 格式化"
+  ]
+}

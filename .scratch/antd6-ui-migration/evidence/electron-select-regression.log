@@ -1,0 +1,20 @@
+
+> clever-workbench@0.1.23 pretest:e2e
+> npm run tools:generate
+
+
+> clever-workbench@0.1.23 tools:generate
+> node scripts/generate-tools.mjs
+
+
+> clever-workbench@0.1.23 test:e2e
+> playwright test tests/e2e/project-filter.spec.ts
+
+
+Running 1 test using 1 worker
+
+(node:75900) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/e2e/project-filter.spec.ts:8:1 › 任务页系统范围可在具体系统、未关联系统和全部之间切换 (4.3s)
+
+  1 passed (4.6s)

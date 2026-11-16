@@ -1,3 +1,5 @@
+import { Button, DatePicker, TimePicker } from 'antd';
+import dayjs from 'dayjs';
 import { localInput } from '../domain';
 import type { TaskTime } from '../task-time';
 
@@ -23,38 +25,53 @@ export function TaskTimeField({
         : { kind: 'date', value: day },
     );
   }
+  function commit(input: EventTarget | null) {
+    if (disabled || !(input instanceof HTMLInputElement)) return;
+    const text = input.value;
+    if (input.getAttribute('aria-label') === `${label}日期`) {
+      if (
+        text !== date &&
+        (!text || (dayjs(text).isValid() && dayjs(text).format('YYYY-MM-DD') === text))
+      )
+        update(text, time);
+    } else if (text !== time && date && (!text || /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(text)))
+      update(date, text);
+  }
   return (
-    <div className="task-time-field">
+    <div className="task-time-field" onInputCapture={(event) => commit(event.target)}>
       <label>
         {label}日期
-        <input
-          type="date"
+        <DatePicker
           aria-label={`${label}日期`}
           disabled={disabled}
-          value={date}
-          onChange={(event) => update(event.target.value, time)}
+          format="YYYY-MM-DD"
+          value={date ? dayjs(date) : null}
+          needConfirm={false}
+          onChange={(next) => update(next?.format('YYYY-MM-DD') ?? '', time)}
+          onBlur={(event) => commit(event.target)}
         />
       </label>
       <label>
         时分（可选）
-        <input
-          type="time"
+        <TimePicker
           aria-label={`${label}时分`}
           disabled={disabled || !date}
-          value={time}
-          onChange={(event) => update(date, event.target.value)}
+          format="HH:mm"
+          value={time ? dayjs(`${date}T${time}`) : null}
+          needConfirm={false}
+          onChange={(next) => update(date, next?.format('HH:mm') ?? '')}
+          onBlur={(event) => commit(event.target)}
         />
       </label>
       {value && (
-        <button
-          type="button"
-          className="text-button"
+        <Button
+          type="text"
           aria-label={`清除${label}时间`}
           disabled={disabled}
           onClick={() => onChange(null)}
         >
           清除
-        </button>
+        </Button>
       )}
     </div>
   );

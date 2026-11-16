@@ -1,6 +1,6 @@
+import { Button, Input } from 'antd';
 import type { JSONContent } from '@tiptap/core';
 import Vditor from 'vditor';
-import 'vditor/dist/index.css';
 import { ImageIcon, TextAaIcon } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -11,6 +11,7 @@ import {
 } from '../shared/markdown';
 import { emptyContent } from '../domain';
 import type { Asset } from '../types';
+import { Dialog } from '../shared/Dialog';
 
 export function Editor({
   markdown,
@@ -40,7 +41,6 @@ export function Editor({
     [preview, setPreview] = useState<string | null>(null);
   const host = useRef<HTMLDivElement>(null),
     sourceInput = useRef<HTMLTextAreaElement>(null),
-    previewDialog = useRef<HTMLDialogElement>(null),
     editor = useRef<Vditor | null>(null),
     latest = useRef(markdown),
     normalized = useRef(''),
@@ -76,9 +76,6 @@ export function Editor({
     if (composing.current) throw new Error('中文输入尚未完成，请先确认候选词。');
     captureRef.current();
   };
-  useEffect(() => {
-    if (preview) previewDialog.current?.showModal();
-  }, [preview]);
   useEffect(() => {
     const current = editor.current;
     if (!current) return;
@@ -396,8 +393,9 @@ export function Editor({
     <div className={`editor-wrap ${formatting ? 'format-open' : ''}`}>
       <div className="editor-actions" role="group" aria-label="编辑模式">
         {mode === 'rich' && (
-          <button
-            type="button"
+          <Button
+            type="text"
+            htmlType="button"
             aria-label="文字格式"
             aria-expanded={formatting}
             onMouseDown={(event) => event.preventDefault()}
@@ -405,10 +403,11 @@ export function Editor({
           >
             <TextAaIcon size={17} />
             格式
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
+        <Button
+          type="text"
+          htmlType="button"
           aria-label="插入图片"
           title="插入图片"
           onMouseDown={(event) => event.preventDefault()}
@@ -416,22 +415,24 @@ export function Editor({
           disabled={readOnly || importing || (mode === 'rich' && !ready)}
         >
           <ImageIcon size={17} />
-        </button>
+        </Button>
         <span className="spacer" />
-        <button
-          type="button"
+        <Button
+          type="text"
+          htmlType="button"
           aria-pressed={mode === 'rich'}
           onClick={() => void switchMode('rich')}
         >
           即时排版
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          type="text"
+          htmlType="button"
           aria-pressed={mode === 'source'}
           onClick={() => void switchMode('source')}
         >
           Markdown 源码
-        </button>
+        </Button>
       </div>
       {notice && (
         <p className="editor-notice" role="status">
@@ -439,8 +440,10 @@ export function Editor({
         </p>
       )}
       {mode === 'source' ? (
-        <textarea
-          ref={sourceInput}
+        <Input.TextArea
+          ref={(node) => {
+            sourceInput.current = node?.resizableTextArea?.textArea ?? null;
+          }}
           className="markdown-source"
           aria-label="Markdown 源码内容"
           value={source}
@@ -483,17 +486,21 @@ export function Editor({
         </div>
       )}
       {preview && (
-        <dialog
-          ref={previewDialog}
-          className="image-preview"
-          onCancel={() => setPreview(null)}
-          onClick={() => setPreview(null)}
+        <Dialog
+          title="图片预览"
+          closeLabel="关闭图片"
+          className="modal image-preview"
+          onClose={() => setPreview(null)}
         >
-          <button aria-label="关闭图片" onClick={() => setPreview(null)}>
-            关闭
-          </button>
-          <img src={preview} alt="图片原图" />
-        </dialog>
+          <Button
+            type="text"
+            className="image-preview-content"
+            aria-label="关闭图片预览"
+            onClick={() => setPreview(null)}
+          >
+            <img src={preview} alt="图片原图" />
+          </Button>
+        </Dialog>
       )}
     </div>
   );

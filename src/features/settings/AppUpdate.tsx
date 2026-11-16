@@ -1,3 +1,4 @@
+import { Button, Collapse, Progress } from 'antd';
 import { GuidanceButton } from '../guidance/Guidance';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -186,7 +187,12 @@ export function UpdateDetails({
               </span>
               <strong>{percent === null ? '下载中' : `${percent}%`}</strong>
             </div>
-            <progress aria-label="更新下载进度" value={progress.received} max={progress.total} />
+            <Progress
+              aria-label="更新下载进度"
+              percent={percent ?? 0}
+              status="active"
+              showInfo={false}
+            />
           </div>
         )}
       </section>
@@ -225,17 +231,34 @@ export function UpdateDetails({
           accessibleLabel="应用更新使用指引"
           beforeOpen={onBeforeGuidance}
         />
-        <details className="update-disclosure update-source">
-          <summary>
-            <LockKeyIcon size={16} aria-hidden="true" />
-            <span>更新来源与访问权限</span>
-            <CaretDownIcon size={13} aria-hidden="true" />
-          </summary>
-          <div className="update-source-content">
-            <strong>iyanghong/clever-workbench</strong>
-            <p>私有仓库更新使用本机 Git 保存的 GitHub 登录；此电脑的账号须有仓库读取权限。</p>
-          </div>
-        </details>
+        <Collapse
+          className="update-disclosure update-source"
+          ghost
+          defaultActiveKey={false ? ['details'] : []}
+          items={[
+            {
+              key: 'details',
+              label: (
+                <>
+                  <LockKeyIcon size={16} aria-hidden="true" />
+                  <span>更新来源与访问权限</span>
+                  <CaretDownIcon size={13} aria-hidden="true" />
+                </>
+              ),
+              forceRender: true,
+              children: (
+                <>
+                  <div className="update-source-content">
+                    <strong>iyanghong/clever-workbench</strong>
+                    <p>
+                      私有仓库更新使用本机 Git 保存的 GitHub 登录；此电脑的账号须有仓库读取权限。
+                    </p>
+                  </div>
+                </>
+              ),
+            },
+          ]}
+        />
         <GuidanceButton
           guideId="update-history-and-recovery"
           accessibleLabel="更新历史使用指引"
@@ -245,7 +268,9 @@ export function UpdateDetails({
       </div>
       <footer className="update-footer">
         <div className="update-actions">
-          <button
+          <Button
+            htmlType="submit"
+            type="text"
             className="update-history-link"
             onClick={() => {
               void window.desktop
@@ -255,9 +280,11 @@ export function UpdateDetails({
           >
             <ArrowSquareOutIcon size={15} aria-hidden="true" />
             历史版本
-          </button>
+          </Button>
           {canManualInstall && (
-            <button
+            <Button
+              htmlType="submit"
+              type="text"
               className="update-history-link update-manual-link"
               onClick={() => {
                 void window.desktop
@@ -267,11 +294,13 @@ export function UpdateDetails({
             >
               <ArrowSquareOutIcon size={15} aria-hidden="true" />
               查看正式 Release 手动安装
-            </button>
+            </Button>
           )}
           <div className="update-primary-actions">
             {allowCheck && (
-              <button
+              <Button
+                htmlType="submit"
+                type="primary"
                 className={
                   canDownload || canInstall || manualInstall ? 'secondary-button' : 'primary-button'
                 }
@@ -283,10 +312,12 @@ export function UpdateDetails({
               >
                 <ArrowClockwiseIcon size={15} aria-hidden="true" />
                 检查更新
-              </button>
+              </Button>
             )}
             {canDownload && (
-              <button
+              <Button
+                htmlType="submit"
+                type="primary"
                 className="primary-button"
                 onClick={() => {
                   setError('');
@@ -295,10 +326,12 @@ export function UpdateDetails({
               >
                 <DownloadSimpleIcon size={16} aria-hidden="true" />
                 {status === 'error' ? '重试下载' : '下载更新'}
-              </button>
+              </Button>
             )}
             {canCancelDownload && (
-              <button
+              <Button
+                htmlType="submit"
+                type="default"
                 className="secondary-button"
                 onClick={() => {
                   void window.desktop
@@ -307,13 +340,15 @@ export function UpdateDetails({
                 }}
               >
                 取消下载
-              </button>
+              </Button>
             )}
             {manualInstall && (
               <OfficialReleaseButton url={state.release!.pageUrl} onError={setError} />
             )}
             {canInstall && (
-              <button
+              <Button
+                htmlType="submit"
+                type="primary"
                 className="primary-button"
                 onClick={() => {
                   setError('');
@@ -332,7 +367,7 @@ export function UpdateDetails({
               >
                 <ArrowClockwiseIcon size={16} aria-hidden="true" />
                 重启并更新
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -374,7 +409,9 @@ export function UpdateBadge({ state }: { state: UpdateSnapshot | null }) {
   return (
     <>
       {hasUpdate && (
-        <button
+        <Button
+          htmlType="submit"
+          type="text"
           className="update-badge"
           onClick={() => {
             if (state.status === 'ready') setPrompt(true);
@@ -385,7 +422,7 @@ export function UpdateBadge({ state }: { state: UpdateSnapshot | null }) {
         >
           <DownloadSimpleIcon size={12} aria-hidden="true" />
           更新
-        </button>
+        </Button>
       )}
       {open && !prompt && (
         <Dialog className="modal update-dialog" title="应用更新" onClose={() => setOpen(false)}>
@@ -453,13 +490,21 @@ function UpdateRestartPrompt({
         )}
       </div>
       <footer className="update-restart-actions">
-        <button className="secondary-button" disabled={busy} onClick={onClose}>
+        <Button
+          htmlType="submit"
+          type="default"
+          className="secondary-button"
+          disabled={busy}
+          onClick={onClose}
+        >
           {manualInstall ? '继续工作' : '稍后重启'}
-        </button>
+        </Button>
         {manualInstall ? (
           <OfficialReleaseButton url={state.release!.pageUrl} onError={setError} />
         ) : (
-          <button
+          <Button
+            htmlType="submit"
+            type="primary"
             className="primary-button"
             disabled={busy}
             onClick={() => {
@@ -480,7 +525,7 @@ function UpdateRestartPrompt({
           >
             <ArrowClockwiseIcon size={16} aria-hidden="true" />
             {busy ? '正在准备…' : '立即重启并更新'}
-          </button>
+          </Button>
         )}
       </footer>
     </Dialog>
@@ -494,7 +539,9 @@ function OfficialReleaseButton({
   onError: (message: string) => void;
 }) {
   return (
-    <button
+    <Button
+      htmlType="submit"
+      type="primary"
       className="primary-button"
       onClick={() => {
         onError('');
@@ -505,7 +552,7 @@ function OfficialReleaseButton({
     >
       <ArrowSquareOutIcon size={16} aria-hidden="true" />
       打开正式版本页
-    </button>
+    </Button>
   );
 }
 export function AboutUpdate() {
@@ -540,92 +587,126 @@ function UpdateHistory() {
       .catch(() => setError('恢复资料不存在或无法打开，请检查记录中的位置。'));
   };
   return (
-    <details className="update-history update-disclosure">
-      <summary>
-        <ClockCounterClockwiseIcon size={16} aria-hidden="true" />
-        <span>更新历史（最近 30 次）</span>
-        <CaretDownIcon size={13} aria-hidden="true" />
-      </summary>
-      {entries.length === 0 && <p className="update-history-empty">尚无更新记录。</p>}
-      {entries.map((entry) => (
-        <article key={entry.id} className="update-history-entry" data-outcome={entry.outcome}>
-          <strong>
-            v{entry.currentVersion} →{' '}
-            {entry.targetVersion ? `v${entry.targetVersion}` : '待确认版本'}
-          </strong>
-          <p>
-            {new Date(entry.createdAt).toLocaleString('zh-CN')} ·{' '}
-            {
-              (
-                {
-                  success: '成功',
-                  failed: '失败',
-                  cancelled: '已取消',
-                  manual: '需要处理',
-                  ready: '待安装',
-                  'in-progress': '进行中',
-                } as const
-              )[entry.outcome]
-            }
-          </p>
-          {entry.message && <p>{entry.message}</p>}
-          {(entry.downloadedBytes !== undefined ||
-            entry.downloadAttempts ||
-            entry.downloadErrorCode) && (
-            <p>
-              {entry.downloadedBytes !== undefined &&
-                `已下载 ${formatBytes(entry.downloadedBytes)}`}
-              {entry.downloadAttempts ? ` · 尝试 ${entry.downloadAttempts} 次` : ''}
-              {entry.downloadErrorCode ? ` · 错误码 ${entry.downloadErrorCode}` : ''}
-            </p>
-          )}
-          {entry.cleanup && (
-            <p>
-              {entry.cleanup === 'complete'
-                ? '旧应用和本次下载文件已清理；完整加密备份与更新日志已保留。'
-                : '更新已成功，部分旧文件未能清理。请查看日志，确认文件未被占用后再处理。'}
-            </p>
-          )}
-          <p>
-            阶段耗时：
-            {Object.entries(entry.durations)
-              .map(
-                ([phase, ms]) =>
-                  `${labels[phase as UpdateSnapshot['status']] ?? phase} ${(ms / 1000).toFixed(1)} 秒`,
-              )
-              .join(' · ') || '尚未记录'}
-          </p>
-          {entry.backup && <p className="path-text">备份：{entry.backup}</p>}
-          <div className="update-recovery-actions">
-            {entry.backup && (
-              <button className="secondary-button" onClick={() => reveal(entry.id, 'backup')}>
-                定位备份
-              </button>
-            )}
-            {entry.previousApp && (
-              <button className="secondary-button" onClick={() => reveal(entry.id, 'previous')}>
-                定位旧应用
-              </button>
-            )}
-            {entry.transactionDirectory && (
-              <button className="secondary-button" onClick={() => reveal(entry.id, 'logs')}>
-                查看日志文件
-              </button>
-            )}
-          </div>
-          {entry.outcome === 'manual' && (
-            <p>
-              保留当前资料和完整备份。使用历史版本前确认数据兼容性；需要恢复时在设置中明确选择备份，不会自动覆盖数据库。
-            </p>
-          )}
-        </article>
-      ))}
-      {error && (
-        <p role="alert" className="update-action-error">
-          {error}
-        </p>
-      )}
-    </details>
+    <Collapse
+      className="update-history update-disclosure"
+      ghost
+      defaultActiveKey={false ? ['details'] : []}
+      items={[
+        {
+          key: 'details',
+          label: (
+            <>
+              <ClockCounterClockwiseIcon size={16} aria-hidden="true" />
+              <span>更新历史（最近 30 次）</span>
+              <CaretDownIcon size={13} aria-hidden="true" />
+            </>
+          ),
+          forceRender: true,
+          children: (
+            <>
+              {entries.length === 0 && <p className="update-history-empty">尚无更新记录。</p>}
+              {entries.map((entry) => (
+                <article
+                  key={entry.id}
+                  className="update-history-entry"
+                  data-outcome={entry.outcome}
+                >
+                  <strong>
+                    v{entry.currentVersion} →{' '}
+                    {entry.targetVersion ? `v${entry.targetVersion}` : '待确认版本'}
+                  </strong>
+                  <p>
+                    {new Date(entry.createdAt).toLocaleString('zh-CN')} ·{' '}
+                    {
+                      (
+                        {
+                          success: '成功',
+                          failed: '失败',
+                          cancelled: '已取消',
+                          manual: '需要处理',
+                          ready: '待安装',
+                          'in-progress': '进行中',
+                        } as const
+                      )[entry.outcome]
+                    }
+                  </p>
+                  {entry.message && <p>{entry.message}</p>}
+                  {(entry.downloadedBytes !== undefined ||
+                    entry.downloadAttempts ||
+                    entry.downloadErrorCode) && (
+                    <p>
+                      {entry.downloadedBytes !== undefined &&
+                        `已下载 ${formatBytes(entry.downloadedBytes)}`}
+                      {entry.downloadAttempts ? ` · 尝试 ${entry.downloadAttempts} 次` : ''}
+                      {entry.downloadErrorCode ? ` · 错误码 ${entry.downloadErrorCode}` : ''}
+                    </p>
+                  )}
+                  {entry.cleanup && (
+                    <p>
+                      {entry.cleanup === 'complete'
+                        ? '旧应用和本次下载文件已清理；完整加密备份与更新日志已保留。'
+                        : '更新已成功，部分旧文件未能清理。请查看日志，确认文件未被占用后再处理。'}
+                    </p>
+                  )}
+                  <p>
+                    阶段耗时：
+                    {Object.entries(entry.durations)
+                      .map(
+                        ([phase, ms]) =>
+                          `${labels[phase as UpdateSnapshot['status']] ?? phase} ${(ms / 1000).toFixed(1)} 秒`,
+                      )
+                      .join(' · ') || '尚未记录'}
+                  </p>
+                  {entry.backup && <p className="path-text">备份：{entry.backup}</p>}
+                  <div className="update-recovery-actions">
+                    {entry.backup && (
+                      <Button
+                        htmlType="submit"
+                        type="default"
+                        className="secondary-button"
+                        onClick={() => reveal(entry.id, 'backup')}
+                      >
+                        定位备份
+                      </Button>
+                    )}
+                    {entry.previousApp && (
+                      <Button
+                        htmlType="submit"
+                        type="default"
+                        className="secondary-button"
+                        onClick={() => reveal(entry.id, 'previous')}
+                      >
+                        定位旧应用
+                      </Button>
+                    )}
+                    {entry.transactionDirectory && (
+                      <Button
+                        htmlType="submit"
+                        type="default"
+                        className="secondary-button"
+                        onClick={() => reveal(entry.id, 'logs')}
+                      >
+                        查看日志文件
+                      </Button>
+                    )}
+                  </div>
+                  {entry.outcome === 'manual' && (
+                    <p>
+                      保留当前资料和完整备份。使用历史版本前确认数据兼容性；需要恢复时在设置中明确选择备份，不会自动覆盖数据库。
+                    </p>
+                  )}
+                </article>
+              ))}
+              {error && (
+                <p role="alert" className="update-action-error">
+                  {error}
+                </p>
+              )}
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }
 

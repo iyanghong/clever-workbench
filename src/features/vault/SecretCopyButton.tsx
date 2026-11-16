@@ -1,3 +1,4 @@
+import { Button } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { CopyIcon, CheckIcon } from '@phosphor-icons/react';
 import { secretLabels, type SecretKind } from '../../vault-types';
@@ -35,7 +36,9 @@ export function SecretCopyButton({
     [],
   );
   return (
-    <button
+    <Button
+      htmlType="submit"
+      type="text"
       className="icon-button"
       aria-label={`复制${secretLabels[kind]} ${name}`}
       title={
@@ -58,6 +61,6 @@ export function SecretCopyButton({
       }}
     >
       {copied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
-    </button>
+    </Button>
   );
 }

@@ -30,8 +30,8 @@ test('以 Markdown 为准加载，粘贴截图后立即退出仍保留正文和�
           })
         ).createdId!,
     );
-    await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
     await page.getByRole('button', { name: /正文权威来源.*未关联系统/ }).click();
     let editor = page.getByRole('textbox', { name: '工作内容' });
     await expect(editor).toContainText('检查连接池', { timeout: 3000 });
@@ -90,7 +90,7 @@ test('以 Markdown 为准加载，粘贴截图后立即退出仍保留正文和�
     await page.getByRole('button', { name: '插入图片', exact: true }).click();
     await expect(editor.locator('img')).toHaveCount(2);
     await fs.rm(original);
-    await page.getByLabel('关闭详情').click();
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
     await page.getByRole('button', { name: /正文权威来源.*未关联系统/ }).click();
     await expect(editor.locator('img')).toHaveCount(2);
     await expect
@@ -168,11 +168,11 @@ test('保存失败时留在编辑页并保留最新内容，重试成功后再�
     );
     const editor = page.getByRole('textbox', { name: '工作内容' });
     await editor.fill('最新的排障结论不能丢失。');
-    await page.getByLabel('关闭详情').click();
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
     await expect(editor).toContainText('最新的排障结论不能丢失。');
     await expect(page.getByRole('button', { name: /保存失败.*点击重试/ })).toBeVisible();
     database.exec('DROP TRIGGER test_write_failure');
-    await page.getByLabel('关闭详情').click();
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
     await expect(page.getByRole('complementary', { name: '任务详情' })).toHaveCount(0);
     await page.getByRole('button', { name: /保留未保存内容.*未关联系统/ }).click();
     await expect(editor).toContainText('最新的排障结论不能丢失。');
@@ -196,7 +196,7 @@ test('任务快录的定时保存失败后，不改文字即可重试导航并�
   let passed = false;
   try {
     const page = await app.firstWindow();
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
     const generation = (await fs.readFile(path.join(directory, 'data', 'CURRENT'), 'utf8')).trim();
     database = new DatabaseSync(
       path.join(directory, 'data', 'vaults', generation, 'database.sqlite'),
@@ -206,13 +206,13 @@ test('任务快录的定时保存失败后，不改文字即可重试导航并�
     );
     await page.getByLabel('快速新增任务').fill('原样重试的任务');
     await expect(page.getByRole('alert')).toContainText('模拟草稿保存失败');
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
-    await expect(page.getByRole('button', { name: '工作任务', exact: true })).toHaveAttribute(
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
+    await expect(page.getByRole('menuitem', { name: '工作任务', exact: true })).toHaveAttribute(
       'aria-current',
       'page',
     );
     database.exec('DROP TRIGGER test_draft_failure');
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     await expect(page.getByRole('heading', { name: '我的工作台', exact: true })).toBeVisible();
     await expect(page.getByLabel('快速新增任务')).toHaveValue('原样重试的任务');
     passed = true;
@@ -250,7 +250,7 @@ test('表格内不可逆格式不可执行，拒绝换行后仍能保存并重�
     await page.keyboard.press('Shift+Enter');
     await expect(page.getByRole('status').filter({ hasText: '单段文字' })).toBeVisible();
     await expect(editor.locator('td').first()).toHaveText('连接');
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     await page.getByRole('button', { name: '打开文档 单元格格式保护', exact: true }).click();
     await expect(editor.locator('td').first()).toHaveText('连接');
     await expect(page.getByRole('button', { name: '即时排版', exact: true })).toHaveAttribute(

@@ -51,6 +51,12 @@ async function start(options: { history?: boolean } = {}) {
 
 async function openNearby(app: ElectronApplication, page: Page, label: string, guideId: string) {
   const feature = await expectedFeatureGuide(app, guideId);
+  await page
+    .getByRole('tab', {
+      name: guideId === 'update-history-and-recovery' ? '关于与更新' : '备份与恢复',
+      exact: true,
+    })
+    .click();
   await page.getByRole('button', { name: label, exact: true }).click({ timeout: 5000 });
   if (await verifyUnavailableOrNoTarget(page, feature)) return;
   const dialog = page.getByRole('dialog', { name: feature!.title, exact: true });
@@ -65,7 +71,8 @@ test('备份密码指引从设置就近打开；取消与保存各自保持独�
   const fixture = await start();
   const { app, page } = fixture;
   try {
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '备份与恢复', exact: true }).click();
     await openNearby(app, page, '备份密码使用指引', 'backup-password');
     expect((await page.evaluate(() => window.desktop.vaultStatus())).backupConfigured).toBe(false);
     await page.getByRole('button', { name: '设置备份密码', exact: true }).click();
@@ -87,7 +94,8 @@ test('更新历史指引只导航；历史显示恢复材料、阶段和缺失�
   const fixture = await start({ history: true });
   const { app, page } = fixture;
   try {
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '备份与恢复', exact: true }).click();
     expect(await page.evaluate(() => window.desktop.updateHistory())).toHaveLength(1);
     await openNearby(app, page, '更新历史使用指引', 'update-history-and-recovery');
     const history = page.locator('.update-history');
@@ -100,7 +108,7 @@ test('更新历史指引只导航；历史显示恢复材料、阶段和缺失�
     await expect(history.getByRole('alert')).toContainText('恢复资料不存在或无法打开');
     expect((await page.evaluate(() => window.desktop.updateHistory()))[0].outcome).toBe('manual');
 
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     const currentVersion = (await page.evaluate(() => window.desktop.updateSnapshot()))
       .currentVersion;
     await app.evaluate(({ BrowserWindow }, version) => {
@@ -135,7 +143,8 @@ test('手动与自动备份指引只导航；导出、立即备份及目录失�
   try {
     await page.getByLabel('快速新增任务').fill('隔离备份示例');
     await page.getByLabel('快速新增任务').press('Enter');
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '备份与恢复', exact: true }).click();
     const manual = path.join(directory, 'manual.cwb');
     await openNearby(app, page, '完整备份使用指引', 'full-backup');
     await expect(
@@ -202,7 +211,8 @@ test('恢复指引只前往入口；错误密码、取消及目标解锁后整�
         },
       });
     });
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '备份与恢复', exact: true }).click();
     const filename = path.join(directory, 'restore-source.cwb');
     await app.evaluate(({ dialog }, filePath) => {
       dialog.showSaveDialog = (async () => ({

@@ -1,3 +1,7 @@
+import { markNewRecordChanged } from '../shared/new-record';
+import { Button, Card, Col, DatePicker, Row, Select, Statistic } from 'antd';
+import dayjs from 'dayjs';
+import { PageHeading, SegmentedControl } from '../shared/WorkspaceUI';
 import type { SystemRecord } from '../ledger-types';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -86,98 +90,133 @@ export function Timeline({
   };
   return (
     <section className="review">
-      <div className="review-heading">
-        <div>
-          <span className="eyebrow">WORK, IN PERSPECTIVE</span>
-          <h1>
-            看见每一步进展<span className="heading-dot">.</span>
-          </h1>
-          <p>把做过的事，连成时间里的轨迹。</p>
-        </div>
-        <div className="segmented">
-          <button className={mode === 'month' ? 'active' : ''} onClick={() => setMode('month')}>
-            月度回顾
-          </button>
-          <button className={mode === 'project' ? 'active' : ''} onClick={() => setMode('project')}>
-            系统回顾
-          </button>
-        </div>
-      </div>
+      <PageHeading
+        title="工作回顾"
+        description="展示任务从开始到完成的日历跨度，未完成任务延伸至当前时间。"
+        actions={
+          <SegmentedControl
+            label="回顾范围"
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: 'month', label: '月度回顾' },
+              { value: 'project', label: '系统回顾' },
+            ]}
+          />
+        }
+      />
       <div className="review-controls">
         <div className="month-picker">
           {mode === 'project' && (
-            <select
+            <Select
               aria-label="系统时间范围"
               value={zoom}
-              onChange={(e) => setZoom(e.target.value as 'all' | 'month')}
+              onChange={(e) => {
+                markNewRecordChanged();
+                return setZoom(e as 'all' | 'month');
+              }}
             >
-              <option value="all">系统全貌</option>
-              <option value="month">逐月查看</option>
-            </select>
+              <Select.Option data-value={String('all')} value="all">
+                系统全貌
+              </Select.Option>
+              <Select.Option data-value={String('month')} value="month">
+                逐月查看
+              </Select.Option>
+            </Select>
           )}
-          <button disabled={overview} aria-label="上个月" onClick={() => move(-1)}>
+          <Button
+            htmlType="submit"
+            type="text"
+            disabled={overview}
+            aria-label="上个月"
+            onClick={() => move(-1)}
+          >
             <CaretLeftIcon />
-          </button>
-          <input
+          </Button>
+          <DatePicker
             aria-label="回顾月份"
-            type="month"
-            value={month}
-            onChange={(e) => e.target.value && setMonth(e.target.value)}
+            picker="month"
+            allowClear={false}
+            value={dayjs(`${month}-01`)}
+            onChange={(value) => value && setMonth(value.format('YYYY-MM'))}
             disabled={overview}
           />
-          <button disabled={overview} aria-label="下个月" onClick={() => move(1)}>
+          <Button
+            htmlType="submit"
+            type="text"
+            disabled={overview}
+            aria-label="下个月"
+            onClick={() => move(1)}
+          >
             <CaretRightIcon />
-          </button>
-          <button
+          </Button>
+          <Button
+            htmlType="submit"
+            type="default"
             className="small-button"
             onClick={() =>
               setMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
             }
           >
             本月
-          </button>
+          </Button>
         </div>
-        <select aria-label="回顾系统" value={project} onChange={(e) => setProject(e.target.value)}>
-          <option value="all">全部系统</option>
-          <option value="none">未关联系统</option>
+        <Select
+          aria-label="回顾系统"
+          value={project}
+          onChange={(e) => {
+            markNewRecordChanged();
+            return setProject(e);
+          }}
+        >
+          <Select.Option data-value={String('all')} value="all">
+            全部系统
+          </Select.Option>
+          <Select.Option data-value={String('none')} value="none">
+            未关联系统
+          </Select.Option>
           {systems.map((p) => (
-            <option key={p.id} value={p.id}>
+            <Select.Option data-value={String(p.id)} key={p.id} value={p.id}>
               {p.name}
-            </option>
+            </Select.Option>
           ))}
-        </select>
+        </Select>
       </div>
-      <div className="review-stats">
-        <div>
-          <span>{mode === 'month' ? '本月涉及任务' : '系统任务总数'}</span>
-          <strong>
-            {(mode === 'month' ? rows.length : scoped.length).toString().padStart(2, '0')}
-          </strong>
-          <ChartBarHorizontalIcon />
-        </div>
-        <div>
-          <span>{mode === 'month' ? '本月完成任务' : '已完成'}</span>
-          <strong>
-            {scoped
-              .filter((t) =>
-                mode === 'month' ? completedInMonth(t, year, m - 1) : t.completedAt !== null,
-              )
-              .length.toString()
-              .padStart(2, '0')}
-          </strong>
-          <CheckCircleIcon />
-        </div>
-        <div>
-          <span>当前未完成</span>
-          <strong>
-            {(mode === 'month' ? rows : scoped)
-              .filter((t) => t.completedAt === null)
-              .length.toString()
-              .padStart(2, '0')}
-          </strong>
-          <ClockIcon />
-        </div>
-      </div>
+      <Row gutter={[18, 18]} className="review-metrics">
+        <Col xs={8}>
+          <Card>
+            <Statistic
+              title={mode === 'month' ? '本月涉及任务' : '系统任务总数'}
+              value={mode === 'month' ? rows.length : scoped.length}
+              suffix="项"
+            />
+          </Card>
+        </Col>
+        <Col xs={8}>
+          <Card>
+            <Statistic
+              title={mode === 'month' ? '本月完成任务' : '已完成'}
+              value={
+                scoped.filter((t) =>
+                  mode === 'month' ? completedInMonth(t, year, m - 1) : t.completedAt !== null,
+                ).length
+              }
+              suffix="项"
+            />
+          </Card>
+        </Col>
+        <Col xs={8}>
+          <Card>
+            <Statistic
+              title="当前未完成"
+              value={
+                (mode === 'month' ? rows : scoped).filter((t) => t.completedAt === null).length
+              }
+              suffix="项"
+            />
+          </Card>
+        </Col>
+      </Row>
       <div className="timeline-header">
         <div>任务 / 系统</div>
         <div className="timeline-axis">
@@ -207,7 +246,9 @@ export function Timeline({
                 left = Math.max(0, ((t.startedAt - first) / span) * 100),
                 right = Math.min(100, (((t.completedAt ?? clock) - first) / span) * 100);
               return (
-                <button
+                <Button
+                  htmlType="submit"
+                  type="text"
                   className="timeline-row"
                   key={t.id}
                   onClick={() => onSelect(t.id)}
@@ -241,7 +282,7 @@ export function Timeline({
                       {right - left > 16 ? <span>{p?.name ?? '未关联系统'}</span> : null}
                     </span>
                   </span>
-                </button>
+                </Button>
               );
             })}
             <div style={{ height: paddingBottom }} />

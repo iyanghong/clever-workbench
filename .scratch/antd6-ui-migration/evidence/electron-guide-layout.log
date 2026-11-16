@@ -1,0 +1,67 @@
+
+> clever-workbench@0.1.23 pretest:e2e
+> npm run tools:generate
+
+
+> clever-workbench@0.1.23 tools:generate
+> node scripts/generate-tools.mjs
+
+
+> clever-workbench@0.1.23 test:e2e
+> playwright test tests/e2e/daily-guidance.spec.ts tests/e2e/guidance.spec.ts tests/e2e/ledger-system-actions.spec.ts --max-failures=3
+
+
+Running 12 tests using 1 worker
+
+(node:27753) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/e2e/daily-guidance.spec.ts:66:1 › 首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具 (2.1s)
+  ✓   2 tests/e2e/daily-guidance.spec.ts:120:1 › 搜索新建旁指引只导航，九项选择可取消且键盘搜索可打开任务 (2.4s)
+  ✓   3 tests/e2e/daily-guidance.spec.ts:169:1 › 任务指引关闭保留详情，计划、标签与批量归属可按说明操作 (4.5s)
+  ✓   4 tests/e2e/daily-guidance.spec.ts:222:1 › 阅读任务指引期间创建快捷键不会提交底层草稿 (1.8s)
+  ✓   5 tests/e2e/daily-guidance.spec.ts:248:1 › 文档附近和设置可查看共用编辑指引，源码与本地图片保存后仍可阅读 (3.6s)
+  ✓   6 tests/e2e/daily-guidance.spec.ts:328:1 › 工作回顾指引与月份、系统全貌入口一致，打开任务后可返回 (3.2s)
+  ✓   7 tests/e2e/guidance.spec.ts:13:1 › 离线从设置和更新旁阅读同一指引，步骤、关闭与安全前往功能可用 (3.0s)
+  ✓   8 tests/e2e/guidance.spec.ts:97:1 › 从更新弹窗切换到指引后可关闭，导航不会遗留更新弹窗 (1.9s)
+  ✓   9 tests/e2e/guidance.spec.ts:143:1 › 指引导航保存失败保留输入，恢复保存后可以重试 (4.1s)
+  ✓  10 tests/e2e/guidance.spec.ts:204:1 › 原生文件选择期间不打开指引，结束后允许重新查看 (1.9s)
+  ✓  11 tests/e2e/guidance.spec.ts:257:1 › 前往功能等待期间关闭指引，不执行迟到导航 (1.3s)
+  ✘  12 tests/e2e/ledger-system-actions.spec.ts:7:1 › 系统动作收纳后支持键盘、保存及弹窗关闭焦点链 (7.4s)
+
+
+  1) tests/e2e/ledger-system-actions.spec.ts:7:1 › 系统动作收纳后支持键盘、保存及弹窗关闭焦点链 ──────────────────────────
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('dialog', { name: '导出系统资料', exact: true })
+    Expected substring: "订单平台 · 已保存"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" getByRole('dialog', { name: '导出系统资料', exact: true }) with timeout 5000ms
+      - waiting for getByRole('dialog', { name: '导出系统资料', exact: true })
+
+
+      68 |     await page.keyboard.press('Enter');
+      69 |     const exporter = page.getByRole('dialog', { name: '导出系统资料', exact: true });
+    > 70 |     await expect(exporter).toContainText('订单平台 · 已保存');
+         |                            ^
+      71 |     await page.keyboard.press('Escape');
+      72 |     await expect(exporter).toHaveCount(0);
+      73 |     await expect(more).toBeFocused();
+        at /Users/axelton/code/clever-workbench/tests/e2e/ledger-system-actions.spec.ts:70:28
+
+    Error Context: test-results/ledger-system-actions-系统动作收纳后支持键盘、保存及弹窗关闭焦点链/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/ledger-system-actions-系统动作收纳后支持键盘、保存及弹窗关闭焦点链/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/ledger-system-actions-系统动作收纳后支持键盘、保存及弹窗关闭焦点链/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests/e2e/ledger-system-actions.spec.ts:7:1 › 系统动作收纳后支持键盘、保存及弹窗关闭焦点链 ───────────────────────────
+  11 passed (37.7s)

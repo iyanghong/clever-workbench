@@ -12,7 +12,7 @@ test('台账弹窗有固定关闭入口，表单统一且退出保留保存与�
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await page.getByRole('button', { name: '台账', exact: true }).waitFor();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).waitFor();
     await page.evaluate(async () => {
       const projectId = (
         await window.desktop.mutate({
@@ -26,7 +26,7 @@ test('台账弹窗有固定关闭入口，表单统一且退出保留保存与�
       ).createdId!;
       await window.desktop.mutate({ type: 'environment.save', systemId, name: '生产' });
     });
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await openSystemAction(page, '系统信息');
     const system = page.getByRole('dialog', { name: '系统信息', exact: true });
     await expect(system.getByRole('button', { name: '关闭系统信息', exact: true })).toBeVisible();
@@ -34,6 +34,9 @@ test('台账弹窗有固定关闭入口，表单统一且退出保留保存与�
       .poll(() =>
         system
           .getByLabel('当前项目', { exact: true })
+          .locator(
+            'xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " ")," ant-select ")][1]',
+          )
           .evaluate((el) => el.getBoundingClientRect().height),
       )
       .toBeGreaterThanOrEqual(32);
@@ -45,13 +48,13 @@ test('台账弹窗有固定关闭入口，表单统一且退出保留保存与�
     await expect(system.getByRole('alert')).toBeVisible();
     await expect(system.getByLabel('系统名称', { exact: true })).toHaveValue('');
     await system.getByLabel('系统名称', { exact: true }).fill('协作平台');
-    await system.getByRole('button', { name: '环境管理', exact: true }).click();
+    await system.getByRole('tab', { name: '环境管理', exact: true }).click();
     await expect(system.getByLabel('环境名称 生产', { exact: true })).toBeVisible();
     await page.screenshot({
       animations: 'disabled',
       path: info.outputPath('system-environments.png'),
     });
-    await system.getByRole('button', { name: '项目档案', exact: true }).click();
+    await system.getByRole('tab', { name: '项目档案', exact: true }).click();
     await expect(system.getByLabel('项目名称', { exact: true })).toBeVisible();
     await page.screenshot({ animations: 'disabled', path: info.outputPath('system-projects.png') });
     await system.getByRole('button', { name: '关闭系统信息', exact: true }).click();
@@ -94,7 +97,7 @@ test('台账弹窗有固定关闭入口，表单统一且退出保留保存与�
     await expect(paste.getByRole('button', { name: '继续校对', exact: true })).toBeInViewport();
     await expect(paste.getByRole('button', { name: '继续校对', exact: true })).toBeFocused();
     await paste.getByRole('button', { name: '放弃并离开', exact: true }).click();
-    await page.getByRole('button', { name: '运行维护', exact: true }).click();
+    await page.getByRole('tab', { name: '运行维护', exact: true }).click();
     await page.getByRole('button', { name: '新增运行维护', exact: true }).click();
     const operation = page.getByRole('dialog', { name: '新增运维记录', exact: true });
     await expect(operation.getByRole('button', { name: '取消', exact: true })).toBeVisible();

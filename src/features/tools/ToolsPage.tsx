@@ -1,3 +1,4 @@
+import { Button, Card } from 'antd';
 import { PageHeading } from '../../shared/WorkspaceUI';
 import { Suspense, useEffect, useState } from 'react';
 import { ArrowRightIcon, WrenchIcon } from '@phosphor-icons/react';
@@ -34,9 +35,14 @@ export function ToolsPage({ route, navigate, setContext, registerFlush }: Module
       <header className="window-toolbar">
         <div className="breadcrumb">
           <WrenchIcon size={17} />
-          <button className="text-button" onClick={() => void navigate({ module: 'tools' })}>
+          <Button
+            htmlType="submit"
+            type="text"
+            className="text-button"
+            onClick={() => void navigate({ module: 'tools' })}
+          >
             工具
-          </button>
+          </Button>
           {selected && (
             <>
               <span>/</span>
@@ -73,26 +79,28 @@ export function ToolsPage({ route, navigate, setContext, registerFlush }: Module
             {route.objectId && <p role="alert">这个工具已不可用，请从工具目录重新选择。</p>}
             <div className="tool-directory">
               {registeredTools.map((tool) => (
-                <article className="tool-card" key={tool.id}>
+                <Card role="article" className="tool-card" key={tool.id}>
                   <div className="tool-card-top">
                     <tool.Icon size={30} weight="duotone" />
                     {favorite(tool.id)}
                   </div>
                   <h2>{tool.title}</h2>
                   <p>{tool.description}</p>
-                  <button
+                  <Button
+                    htmlType="submit"
+                    type="text"
                     className="text-button"
                     onClick={() => void navigate({ module: 'tools', objectId: tool.id })}
                   >
                     打开工具 <ArrowRightIcon size={16} />
-                  </button>
+                  </Button>
                   {tool.guidance && (
                     <GuidanceButton
                       placement={tool.guidance}
                       accessibleLabel={`${tool.title}使用指引`}
                     />
                   )}
-                </article>
+                </Card>
               ))}
             </div>
           </>

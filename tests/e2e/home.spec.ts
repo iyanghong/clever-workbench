@@ -1,3 +1,4 @@
+import { expectSelectValue } from './antd-controls';
 import { electron } from './launch';
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
@@ -13,7 +14,7 @@ test('默认工作台可固定账号、快速完成任务与写方案，入口�
     await expect(page.getByRole('heading', { name: '我的工作台', exact: true })).toBeVisible({
       timeout: 3000,
     });
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     await expect(page.getByRole('button', { name: '快速新建', exact: true })).toBeEnabled();
     await page.evaluate(async () => {
       const systemId = (await window.desktop.mutate({ type: 'system.save', name: '订单平台' }))
@@ -28,8 +29,8 @@ test('默认工作台可固定账号、快速完成任务与写方案，入口�
         username: 'admin',
       });
     });
-    await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     await page.getByRole('button', { name: '选择常用对象', exact: true }).click();
     await page.getByLabel('常用 长期系统 订单平台', { exact: true }).check();
     await page.getByLabel('常用 订单平台 / 生产 超管', { exact: true }).check();
@@ -46,7 +47,7 @@ test('默认工作台可固定账号、快速完成任务与写方案，入口�
     await page.getByRole('button', { name: '写一份方案', exact: true }).click();
     await page.getByLabel('文档标题').fill('连接排障手册');
     await page.getByRole('textbox', { name: '工作内容' }).fill('先看连接池使用率。');
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     await expect(
       page.getByRole('button', { name: '打开文档 连接排障手册', exact: true }),
     ).toBeVisible();
@@ -92,21 +93,21 @@ test('统一新建沿用当前系统环境资源，另建任务保留之前的�
       async () => (await window.desktop.snapshot()).systems[0].id,
     );
     await choose('新环境');
-    await expect(page.getByLabel('新记录所属系统')).toHaveValue(systemId);
+    await expectSelectValue(page.getByLabel('新记录所属系统'), systemId);
     await page.getByLabel('快速新建环境名称').fill('生产');
     await page.getByRole('button', { name: '创建环境', exact: true }).click();
     const environmentId = await page.evaluate(
       async () => (await window.desktop.snapshot()).environments[0].id,
     );
     await choose('新资源');
-    await expect(page.getByLabel('新记录所属环境')).toHaveValue(environmentId);
+    await expectSelectValue(page.getByLabel('新记录所属环境'), environmentId);
     await page.getByLabel('快速新建资源名称').fill('主缓存');
     await page.getByRole('button', { name: '创建资源', exact: true }).click();
     const resourceId = await page.evaluate(
       async () => (await window.desktop.snapshot()).resources[0].id,
     );
     await choose('新账号');
-    await expect(page.getByLabel('新账号所属资源')).toHaveValue(resourceId);
+    await expectSelectValue(page.getByLabel('新账号所属资源'), resourceId);
     await page.getByLabel('快速新建账号名称').fill('应用连接');
     await page.getByRole('button', { name: '创建账号', exact: true }).click();
     await expect(page.getByRole('heading', { name: '应用连接', exact: true })).toBeVisible();
@@ -132,7 +133,7 @@ test('统一新建沿用当前系统环境资源，另建任务保留之前的�
     });
     expect(state.task).toMatchObject({ systemId, environmentId: null, resourceId: null });
     expect(state.draft?.markdown).toBe('保留这个草稿正文');
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     await expect(page.getByLabel('快速新增任务')).toHaveValue('尚未提交的排障记录');
   } finally {
     await app.close();

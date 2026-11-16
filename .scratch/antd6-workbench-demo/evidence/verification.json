@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-16T12:26:09.953Z",
+  "browser": "157.0.8103.51",
+  "entry": "file:///Users/axelton/code/clever-workbench/.scratch/antd6-workbench-demo/Clever-Workbench-AntD6-Demo.html",
+  "offline": true,
+  "externalRequests": [],
+  "routes": 28,
+  "visualStates": 84,
+  "checks": [
+    "light: 28 个页面显示正常，无页面横向溢出",
+    "dark: 28 个页面显示正常，无页面横向溢出",
+    "narrow: 28 个页面显示正常，无页面横向溢出",
+    "台账表单校验、弹窗内下拉选择、创建、编辑与返回",
+    "导出可下载的演示 Markdown 资料",
+    "批量录入真实更新台账列表",
+    "系统配置与环境管理",
+    "任务创建、完成、重开、日期浮层、删除与回收站恢复",
+    "文档 Markdown 编辑、阅读和跨页保留",
+    "键盘全局搜索与定位资料详情",
+    "JSON 实际处理与错误反馈",
+    "文本去重使用项目真实处理逻辑",
+    "CSV 与 JSON 转换",
+    "配置差异计算",
+    "时间转换与 Cron 预测",
+    "ZIP 四个模式和归档流程演示",
+    "备份恢复确认流程",
+    "版本更新检查、下载与待安装状态演示",
+    "外观跟随系统、增强对比、减少动效与透明度设置"
+  ],
+  "errors": [],
+  "warnings": []
+}

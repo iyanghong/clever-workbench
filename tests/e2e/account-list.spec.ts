@@ -1,3 +1,4 @@
+import { selectChoice } from './antd-controls';
 import { test, expect } from '@playwright/test';
 import { electron } from './launch';
 import fs from 'node:fs/promises';
@@ -13,7 +14,7 @@ test('密码列显隐、当前范围批量展示与整行复制沿用解锁和�
     const page = await app.firstWindow();
     // This case exercises list and inspector together; CI desktops can clamp native windows.
     await page.setViewportSize({ width: 1380, height: 850 });
-    await page.getByRole('button', { name: '台账', exact: true }).waitFor();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).waitFor();
     const ids = await page.evaluate(async () => {
       const api = window.desktop;
       const systemId = (
@@ -78,8 +79,8 @@ test('密码列显隐、当前范围批量展示与整行复制沿用解锁和�
       await api.lockVault();
       return { admin, reader, prod, test };
     });
-    await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('button', { name: '账号', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
+    await page.getByRole('tab', { name: '账号', exact: true }).click();
     const table = page.locator('.account-table');
     await expect(table.getByRole('columnheader', { name: '密码', exact: true })).toBeVisible();
     await expect(table.getByLabel('隐藏的密码 运维', { exact: true })).toHaveText('***');
@@ -112,7 +113,7 @@ test('密码列显隐、当前范围批量展示与整行复制沿用解锁和�
       'fixture-admin-password',
     );
     await expect(table.getByLabel('隐藏的密码 只读', { exact: true })).toHaveText('***');
-    await page.getByLabel('台账环境筛选').selectOption(ids.prod);
+    await selectChoice(page.getByLabel('台账环境筛选'), ids.prod);
     await expect(table).not.toContainText('fixture-admin-password');
     await page.getByRole('button', { name: '显示当前列表密码', exact: true }).click();
     await expect(table).toContainText('fixture-admin-password');
@@ -211,7 +212,7 @@ test('密码列显隐、当前范围批量展示与整行复制沿用解锁和�
     await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toBe('');
     await detail.getByRole('button', { name: '返回清单', exact: true }).click();
     await page.getByLabel('搜索台账清单').fill('');
-    await page.getByLabel('台账环境筛选').selectOption('all');
+    await selectChoice(page.getByLabel('台账环境筛选'), 'all');
     await page.screenshot({
       path: info.outputPath('account-list-masked.png'),
       animations: 'disabled',

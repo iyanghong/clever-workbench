@@ -1,3 +1,4 @@
+import { Button, Checkbox, Collapse } from 'antd';
 import type { Snapshot } from '../../types';
 import {
   createContext,
@@ -190,26 +191,38 @@ export function LedgerCopyProvider({
           <p>
             {dialog.preview.titles.length} 条资料 · {dialog.preview.environment}
           </p>
-          <details className="compact-details">
-            <summary>查看资料范围</summary>
-            {dialog.preview.titles.map((title, i) => (
-              <p key={i}>{title}</p>
-            ))}
-          </details>
+          <Collapse
+            className="compact-details"
+            ghost
+            defaultActiveKey={false ? ['details'] : []}
+            items={[
+              {
+                key: 'details',
+                label: <>查看资料范围</>,
+                forceRender: true,
+                children: (
+                  <>
+                    {dialog.preview.titles.map((title, i) => (
+                      <p key={i}>{title}</p>
+                    ))}
+                  </>
+                ),
+              },
+            ]}
+          />
           <div className="copy-account-options">
             {dialog.preview.accounts.map((a) => (
-              <label key={a.id}>
-                <input
-                  type="checkbox"
-                  disabled={busy}
-                  checked={accounts.includes(a.id)}
-                  onChange={(e) =>
-                    setAccounts((previous) =>
-                      e.target.checked ? [...previous, a.id] : previous.filter((id) => id !== a.id),
-                    )
-                  }
-                  aria-label={`附带账号 ${a.ownerName} / ${a.name}`}
-                />
+              <Checkbox
+                key={a.id}
+                disabled={busy}
+                checked={accounts.includes(a.id)}
+                onChange={(e) =>
+                  setAccounts((previous) =>
+                    e.target.checked ? [...previous, a.id] : previous.filter((id) => id !== a.id),
+                  )
+                }
+                aria-label={`附带账号 ${a.ownerName} / ${a.name}`}
+              >
                 <span>
                   <strong>
                     {a.ownerName} / {a.name}
@@ -219,33 +232,40 @@ export function LedgerCopyProvider({
                     {!a.hasPassword ? ' · 未保存密码' : ''}
                   </small>
                 </span>
-              </label>
+              </Checkbox>
             ))}
             {!dialog.preview.accounts.length && (
               <p className="secondary-copy">本次范围没有可附带的账号。</p>
             )}
           </div>
-          <label className="copy-password-option">
-            <input
-              type="checkbox"
-              disabled={busy || !accounts.length}
-              checked={passwords}
-              onChange={(e) => setPasswords(e.target.checked)}
-            />
+          <Checkbox
+            className="copy-password-option"
+            disabled={busy || !accounts.length}
+            checked={passwords}
+            onChange={(e) => setPasswords(e.target.checked)}
+          >
             包含密码
-          </label>
+          </Checkbox>
           <div className="modal-actions">
             <span>已选 {accounts.length} 个账号</span>
-            <button className="secondary-button" disabled={busy} onClick={() => setDialog(null)}>
+            <Button
+              htmlType="submit"
+              type="default"
+              className="secondary-button"
+              disabled={busy}
+              onClick={() => setDialog(null)}
+            >
               取消
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
               className="primary-button"
               disabled={busy || !accounts.length}
               onClick={() => void perform(dialog.selection.objects, false, accounts, passwords)}
             >
               {busy ? '复制中…' : '复制资料'}
-            </button>
+            </Button>
           </div>
         </Dialog>
       )}
@@ -264,8 +284,9 @@ export function LedgerCopyActions({
   const c = useCopy();
   return (
     <span className="ledger-copy-actions">
-      <button
-        type="button"
+      <Button
+        type="text"
+        htmlType="button"
         className={iconOnly ? 'icon-button' : 'text-button'}
         disabled={c.busy || !objects.length}
         aria-label={`复制资料 ${name}`}
@@ -274,9 +295,10 @@ export function LedgerCopyActions({
       >
         <CopyIcon size={15} />
         {!iconOnly && '复制资料'}
-      </button>
-      <button
-        type="button"
+      </Button>
+      <Button
+        type="text"
+        htmlType="button"
         className={iconOnly ? 'icon-button' : 'text-button copy-with-accounts'}
         disabled={c.busy || !objects.length}
         aria-label={`包含账号 ${name}`}
@@ -284,15 +306,14 @@ export function LedgerCopyActions({
         onClick={() => void c.choose(objects)}
       >
         {iconOnly ? <UsersIcon size={16} /> : '包含账号…'}
-      </button>
+      </Button>
     </span>
   );
 }
 export function LedgerCopyCheckbox({ object, name }: { object: LedgerCopyRef; name: string }) {
   const c = useCopy();
   return (
-    <input
-      type="checkbox"
+    <Checkbox
       className="ledger-copy-check"
       aria-label={`选择资料 ${name}`}
       disabled={c.busy}
@@ -311,27 +332,41 @@ export function LedgerCopySelectionBar({ objects }: { objects: LedgerCopyRef[] }
     selected = objects.filter((r) => c.selected.some((s) => same(r, s)));
   return (
     <div className="ledger-copy-selection">
-      <label>
-        <input
-          type="checkbox"
-          aria-label="选择当前资料结果"
-          ref={selectAll}
-          disabled={c.busy || !objects.length}
-          checked={objects.length > 0 && selected.length === objects.length}
-          onChange={(e) => c.setSelected(e.target.checked ? objects : [])}
-        />
+      <Checkbox
+        aria-label="选择当前资料结果"
+        ref={(node) => {
+          selectAll.current = node?.input ?? null;
+        }}
+        disabled={c.busy || !objects.length}
+        checked={objects.length > 0 && selected.length === objects.length}
+        onChange={(e) => c.setSelected(e.target.checked ? objects : [])}
+      >
         选择当前结果
-      </label>
+      </Checkbox>
       <span>已选 {selected.length} 项</span>
       {selected.length > 0 && (
         <>
-          <button className="text-button" disabled={c.busy} onClick={() => void c.copy(selected)}>
+          <Button
+            htmlType="submit"
+            type="text"
+            className="text-button"
+            disabled={c.busy}
+            onClick={() => void c.copy(selected)}
+          >
             复制所选资料
-          </button>
-          <button className="text-button" disabled={c.busy} onClick={() => void c.choose(selected)}>
+          </Button>
+          <Button
+            htmlType="submit"
+            type="text"
+            className="text-button"
+            disabled={c.busy}
+            onClick={() => void c.choose(selected)}
+          >
             所选资料包含账号…
-          </button>
-          <button
+          </Button>
+          <Button
+            htmlType="submit"
+            type="text"
             className="text-button"
             disabled={c.busy}
             onClick={() => {
@@ -340,7 +375,7 @@ export function LedgerCopySelectionBar({ objects }: { objects: LedgerCopyRef[] }
             }}
           >
             取消选择
-          </button>
+          </Button>
         </>
       )}
     </div>

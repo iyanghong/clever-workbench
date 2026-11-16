@@ -1,3 +1,4 @@
+import { selectChoice } from './antd-controls';
 import { test, expect } from '@playwright/test';
 import { electron } from './launch';
 import fs from 'node:fs/promises';
@@ -25,17 +26,17 @@ test('任务可选保存预计完成日期，按创建月份归类，编辑正�
           })
         ).createdId!,
     );
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
     await expect(page.locator('[data-task-group]')).toHaveCount(1);
     await page.locator('.task-open').filter({ hasText: '计划上线' }).click();
-    await page.locator('.task-properties > summary').click();
+    await page.locator('.task-properties .ant-collapse-header').click();
     await expect(page.getByLabel('预计完成日期', { exact: true })).toBeVisible({ timeout: 3000 });
     await page.getByLabel('预计完成日期', { exact: true }).fill('2026-10-23');
     await expect
       .poll(() => page.evaluate(async (id) => (await window.desktop.task(id)).dueAt, id))
       .toEqual({ kind: 'date', value: '2026-10-23' });
     await page.getByLabel('任务标题', { exact: true }).fill('计划上线并验证');
-    await page.getByLabel('关闭详情').click();
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
     await expect
       .poll(() => page.evaluate(async (id) => await window.desktop.task(id), id))
       .toMatchObject({ title: '计划上线并验证', dueAt: { kind: 'date', value: '2026-10-23' } });
@@ -74,12 +75,12 @@ test('逾期和临期跨组置顶，切换到期口径及完成重开不产生�
         });
       }
     });
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
     await expect(page.locator('[data-task-group="pending-overdue"]')).toBeVisible({
       timeout: 3000,
     });
     await expect(page.locator('.task-title')).toHaveText(['逾期任务', '临期任务', '普通任务']);
-    await page.getByRole('button', { name: '紧凑', exact: true }).click();
+    await page.getByRole('radio', { name: '紧凑', exact: true }).locator('..').click();
     await page.locator('.task-open').first().click();
     await expect(page.locator('.task-row[data-urgency="near"] .task-timing')).toBeVisible();
     expect(
@@ -87,16 +88,22 @@ test('逾期和临期跨组置顶，切换到期口径及完成重开不产生�
         .locator('.task-row[data-urgency="near"] .task-open')
         .evaluate((element) => element.getBoundingClientRect().height),
     ).toBeLessThanOrEqual(44);
-    await page.getByLabel('关闭详情').click();
-    await page.getByLabel('时间归类', { exact: true }).selectOption('due');
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
+    await selectChoice(page.getByLabel('时间归类', { exact: true }), 'due');
     await expect(page.locator('.task-title')).toHaveText(['逾期任务', '临期任务', '普通任务']);
     await expect(page.locator('[data-task-group="pending-unplanned"]')).toBeVisible();
     await page.getByRole('button', { name: '完成 逾期任务', exact: true }).click();
     await expect(page.locator('.task-title')).toHaveText(['临期任务', '普通任务']);
-    await page.getByRole('button', { name: /^已完成/ }).click();
+    await page
+      .getByRole('radio', { name: /^已完成/ })
+      .locator('..')
+      .click();
     await expect(page.locator('.task-row[data-urgency="overdue"]')).toHaveCount(0);
     await page.getByRole('button', { name: '重新打开 逾期任务', exact: true }).click();
-    await page.getByRole('button', { name: /^未完成/ }).click();
+    await page
+      .getByRole('radio', { name: /^未完成/ })
+      .locator('..')
+      .click();
     await expect(page.locator('.task-title')).toHaveText(['逾期任务', '临期任务', '普通任务']);
   } finally {
     await app.close();
@@ -125,15 +132,15 @@ test('自定义临期在指定时刻生效，清除后恢复默认规则', async
         },
       }),
     );
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
     await expect(page.locator('.task-row')).toHaveAttribute('data-urgency', 'normal');
     await page.clock.setFixedTime(new Date('2026-10-20T03:00:00Z'));
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
     await expect(page.locator('.task-row')).toHaveAttribute('data-urgency', 'near');
     await page.locator('.task-open').click();
-    await page.locator('.task-properties > summary').click();
+    await page.locator('.task-properties .ant-collapse-header').click();
     await page.getByRole('button', { name: '清除临期开始时间', exact: true }).click();
-    await page.getByLabel('关闭详情').click();
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
     await expect(page.locator('.task-row')).toHaveAttribute('data-urgency', 'normal');
   } finally {
     await app.close();
@@ -148,7 +155,7 @@ test('管理共用标签并组合筛选，优先区不能绕过标签条件', as
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
     await expect(page.getByRole('button', { name: '管理标签', exact: true })).toBeVisible({
       timeout: 3000,
     });
@@ -159,14 +166,14 @@ test('管理共用标签并组合筛选，优先区不能绕过标签条件', as
       ['本周', 'blue'],
     ]) {
       await manager.getByLabel('标签名称', { exact: true }).fill(name);
-      await manager.getByLabel('标签颜色', { exact: true }).selectOption(color);
+      await selectChoice(manager.getByLabel('标签颜色', { exact: true }), color);
       await manager.getByRole('button', { name: '创建标签', exact: true }).click();
       await expect(
         manager.getByRole('button', { name: `编辑标签 ${name}`, exact: true }),
       ).toBeVisible();
     }
-    await manager.getByLabel('关闭任务标签').click();
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await manager.getByRole('button', { name: '关闭任务标签', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     const combined = await page.evaluate(async () => {
       const tags = (await window.desktop.snapshot()).taskTags!;
       const red = tags.find((tag) => tag.name === '排障')!.id;
@@ -195,17 +202,17 @@ test('管理共用标签并组合筛选，优先区不能绕过标签条件', as
       }
       return combined;
     });
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
     await page.getByText('标签筛选', { exact: true }).click();
     await page.getByLabel('筛选标签 排障', { exact: true }).check();
     await page.getByLabel('筛选标签 本周', { exact: true }).check();
     await expect(page.locator('.task-title')).toHaveCount(3);
-    await page.getByLabel('标签匹配方式').selectOption('all');
+    await selectChoice(page.getByLabel('标签匹配方式'), 'all');
     await expect(page.locator('.task-title')).toHaveText(['两类任务']);
     await page.locator('.task-open').click();
-    await page.locator('.task-properties > summary').click();
+    await page.locator('.task-properties .ant-collapse-header').click();
     await page.getByLabel('标签 本周', { exact: true }).uncheck();
-    await page.getByLabel('关闭详情').click();
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
     await expect(page.locator('.task-title')).toHaveCount(0);
     await expect
       .poll(() =>
@@ -218,7 +225,7 @@ test('管理共用标签并组合筛选，优先区不能绕过标签条件', as
     await expect(manager.getByRole('button', { name: '编辑标签 本周', exact: true })).toHaveCount(
       0,
     );
-    await manager.getByLabel('关闭任务标签').click();
+    await manager.getByRole('button', { name: '关闭任务标签', exact: true }).click();
     await expect(page.locator('.task-title')).toHaveCount(2);
     expect(await page.evaluate(async () => (await window.desktop.snapshot()).tasks.length)).toBe(3);
   } finally {
@@ -268,8 +275,8 @@ test('首页和实际台账入口共用紧迫排序及标签，完成后入口�
           },
         });
     });
-    await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     await expect(page.locator('.home-task-open strong')).toHaveText([
       '其他系统逾期',
       '自定义关注',
@@ -278,7 +285,7 @@ test('首页和实际台账入口共用紧迫排序及标签，完成后入口�
     await expect(page.locator('.home-task').filter({ hasText: '自定义关注' })).toContainText(
       '发布',
     );
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await page.getByRole('button', { name: '切换系统', exact: true }).click();
     await page
       .getByRole('button', { name: /计划系统/ })
@@ -290,7 +297,7 @@ test('首页和实际台账入口共用紧迫排序及标签，完成后入口�
     await expect(related.locator('.related-task-title')).toHaveText(['自定义关注', '普通计划']);
     await related.locator('.related-task').filter({ hasText: '自定义关注' }).click();
     await page.getByRole('button', { name: '标记完成', exact: true }).click();
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     await expect(page.locator('.home-task-open strong')).toHaveText(['其他系统逾期', '普通计划']);
   } finally {
     await app.close();

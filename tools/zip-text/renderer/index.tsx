@@ -1,3 +1,17 @@
+import { markNewRecordChanged } from '../../../src/shared/new-record';
+import {
+  Button,
+  Checkbox,
+  DatePicker,
+  Input,
+  InputNumber,
+  Select,
+  ConfigProvider,
+  Collapse,
+  Progress,
+} from 'antd';
+import dayjs from 'dayjs';
+import { openDialogSelector } from '../../../src/shared/modal-state';
 import { PageHeading } from '../../../src/shared/WorkspaceUI';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -153,10 +167,10 @@ export default function ZipTextPage({ registerFlush }: ToolPageProps) {
   }
   useEffect(() => {
     if (draft.mode !== 'paste') return;
-    if (!document.querySelector('dialog[open]'))
+    if (!document.querySelector(openDialogSelector))
       pasteTarget.current?.focus({ preventScroll: true });
     const acceptsPaste = (target: EventTarget | null) => {
-      if (document.querySelector('dialog[open]')) return false;
+      if (document.querySelector(openDialogSelector)) return false;
       if (!(target instanceof Element)) return false;
       if (pasteTarget.current?.contains(target)) return true;
       return !target.closest(
@@ -309,7 +323,9 @@ export default function ZipTextPage({ registerFlush }: ToolPageProps) {
       />
       <div className="tool-tabs" role="tablist" aria-label="归档操作">
         {modes.map((mode, index) => (
-          <button
+          <Button
+            htmlType="submit"
+            type="text"
             key={mode.id}
             role="tab"
             aria-selected={draft.mode === mode.id}
@@ -333,7 +349,7 @@ export default function ZipTextPage({ registerFlush }: ToolPageProps) {
             }}
           >
             {mode.title}
-          </button>
+          </Button>
         ))}
       </div>
       <div className="tool-workspace">
@@ -343,422 +359,514 @@ export default function ZipTextPage({ registerFlush }: ToolPageProps) {
           role="tabpanel"
           aria-label={modes.find((mode) => mode.id === draft.mode)?.title}
         >
-          <fieldset disabled={busy || !state}>
-            {draft.mode !== 'paste' && (
-              <div className="tool-field">
-                <label htmlFor="zip-source">
-                  {draft.mode === 'restore'
-                    ? '文本分片目录'
-                    : draft.mode === 'git'
-                      ? 'Git 工作目录'
-                      : '待归档文件或目录'}
-                </label>
-                <div className="tool-path">
-                  <input
-                    id="zip-source"
-                    value={draft.source}
-                    placeholder="选择或输入本地路径"
-                    onChange={(e) =>
-                      update({ source: e.target.value, selected: [], branch: '', gitSource: '' })
-                    }
-                  />
-                  {draft.mode === 'pack' && (
-                    <button className="secondary-button" onClick={() => void choose('file')}>
-                      选文件
-                    </button>
-                  )}
-                  <button className="secondary-button" onClick={() => void choose('directory')}>
-                    <FolderOpenIcon size={16} />
-                    选目录
-                  </button>
-                </div>
-                <p className="tool-hint">
-                  {draft.mode === 'restore'
-                    ? '选择包含 part-000001.txt 等分片的目录，无需填写原分片大小。'
-                    : draft.mode === 'git'
-                      ? '提交只确定文件路径，归档读取当前磁盘内容，包含未提交修改。'
-                      : '保留目录结构、空目录与二进制文件；完整目录包含隐藏文件。'}
-                </p>
-              </div>
-            )}
-            {draft.mode === 'git' && (
-              <div className="tool-git">
-                <div className="tool-section-title">
-                  <h2>选择 Git 提交</h2>
-                  <button
-                    className="secondary-button"
-                    disabled={!draft.source}
-                    onClick={() => {
-                      update({ selected: [], branch: '', gitSource: draft.source });
-                      void send({ type: 'git.branches', source: draft.source });
-                    }}
-                  >
-                    读取分支
-                  </button>
-                </div>
-                {draft.gitSource === draft.source && !!state?.branches.length && (
-                  <>
-                    <div className="tool-fields-two">
-                      <label className="tool-field">
-                        查找分支
-                        <input
-                          value={draft.branchSearch}
-                          placeholder="输入分支名"
-                          onChange={(e) => update({ branchSearch: e.target.value })}
-                        />
-                      </label>
-                      <div className="tool-field">
-                        <label htmlFor="zip-git-branch">分支</label>
-                        <select
-                          id="zip-git-branch"
-                          value={draft.branch}
-                          onChange={(e) => {
-                            update({ branch: e.target.value, selected: [] });
-                            setVisibleCommits(200);
-                          }}
-                        >
-                          {state.branches
-                            .filter(
-                              (b) =>
-                                b.ref === draft.branch ||
-                                b.label.toLowerCase().includes(draft.branchSearch.toLowerCase()),
-                            )
-                            .map((b) => (
-                              <option key={b.ref} value={b.ref}>
-                                {b.label}
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-                    </div>
-                    <label className="tool-field">
-                      作者
-                      <input
-                        value={draft.author}
-                        placeholder="姓名或邮箱，支持部分匹配"
-                        onChange={(e) => update({ author: e.target.value })}
-                      />
-                    </label>
-                    <div className="tool-date-presets">
-                      {[
-                        ['all', '不限'],
-                        ['24', '近 1 天'],
-                        ['48', '近 2 天'],
-                        ['week', '最近 7 天'],
-                        ['month', '本月'],
-                      ].map(([value, label]) => (
-                        <button
-                          type="button"
-                          key={value}
-                          className="text-button"
-                          onClick={() => datePreset(value)}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="tool-fields-two">
-                      <label className="tool-field">
-                        开始日期
-                        <input
-                          type="date"
-                          value={draft.start}
-                          onChange={(e) => update({ start: e.target.value, recentHours: 0 })}
-                        />
-                      </label>
-                      <label className="tool-field">
-                        结束日期
-                        <input
-                          type="date"
-                          value={draft.end}
-                          onChange={(e) => update({ end: e.target.value, recentHours: 0 })}
-                        />
-                      </label>
-                    </div>
-                    {draft.recentHours > 0 && (
-                      <p className="tool-hint">当前范围：过去 {draft.recentHours} 小时。</p>
+          <ConfigProvider componentDisabled={busy || !state}>
+            <fieldset disabled={busy || !state}>
+              {draft.mode !== 'paste' && (
+                <div className="tool-field">
+                  <label htmlFor="zip-source">
+                    {draft.mode === 'restore'
+                      ? '文本分片目录'
+                      : draft.mode === 'git'
+                        ? 'Git 工作目录'
+                        : '待归档文件或目录'}
+                  </label>
+                  <div className="tool-path">
+                    <Input
+                      id="zip-source"
+                      value={draft.source}
+                      placeholder="选择或输入本地路径"
+                      onChange={(e) =>
+                        update({ source: e.target.value, selected: [], branch: '', gitSource: '' })
+                      }
+                    />
+                    {draft.mode === 'pack' && (
+                      <Button
+                        htmlType="submit"
+                        type="default"
+                        className="secondary-button"
+                        onClick={() => void choose('file')}
+                      >
+                        选文件
+                      </Button>
                     )}
-                    <button
+                    <Button
+                      htmlType="submit"
+                      type="default"
                       className="secondary-button"
+                      onClick={() => void choose('directory')}
+                    >
+                      <FolderOpenIcon size={16} />
+                      选目录
+                    </Button>
+                  </div>
+                  <p className="tool-hint">
+                    {draft.mode === 'restore'
+                      ? '选择包含 part-000001.txt 等分片的目录，无需填写原分片大小。'
+                      : draft.mode === 'git'
+                        ? '提交只确定文件路径，归档读取当前磁盘内容，包含未提交修改。'
+                        : '保留目录结构、空目录与二进制文件；完整目录包含隐藏文件。'}
+                  </p>
+                </div>
+              )}
+              {draft.mode === 'git' && (
+                <div className="tool-git">
+                  <div className="tool-section-title">
+                    <h2>选择 Git 提交</h2>
+                    <Button
+                      htmlType="submit"
+                      type="default"
+                      className="secondary-button"
+                      disabled={!draft.source}
                       onClick={() => {
-                        setVisibleCommits(200);
-                        void send({
-                          type: 'git.commits',
-                          filter: {
-                            source: draft.source,
-                            branch: draft.branch,
-                            author: draft.author,
-                            start: draft.start,
-                            end: draft.end,
-                            recentHours: draft.recentHours,
-                          } satisfies GitFilter,
-                        });
+                        update({ selected: [], branch: '', gitSource: draft.source });
+                        void send({ type: 'git.branches', source: draft.source });
                       }}
                     >
-                      应用筛选
-                    </button>
-                    <div className="tool-selection-actions">
-                      <span>
-                        已选 {draft.selected.length} 项
-                        {outside ? `（${outside} 项在当前筛选外）` : ''}
-                      </span>
-                      <button className="text-button" onClick={() => selectAll()}>
-                        全选筛选结果
-                      </button>
-                      <button className="text-button" onClick={() => selectAll(true)}>
-                        反选
-                      </button>
-                      <button className="text-button" onClick={() => update({ selected: [] })}>
-                        清空
-                      </button>
-                    </div>
-                    <div className="tool-commits">
-                      {displayedCommits.slice(0, visibleCommits).map((commit) => (
-                        <label className="tool-commit" key={commit.sha}>
-                          <input
-                            type="checkbox"
+                      读取分支
+                    </Button>
+                  </div>
+                  {draft.gitSource === draft.source && !!state?.branches.length && (
+                    <>
+                      <div className="tool-fields-two">
+                        <label className="tool-field">
+                          查找分支
+                          <Input
+                            value={draft.branchSearch}
+                            placeholder="输入分支名"
+                            onChange={(e) => update({ branchSearch: e.target.value })}
+                          />
+                        </label>
+                        <div className="tool-field">
+                          <label htmlFor="zip-git-branch">分支</label>
+                          <Select
+                            id="zip-git-branch"
+                            value={draft.branch}
+                            onChange={(e) => {
+                              markNewRecordChanged();
+                              update({ branch: e, selected: [] });
+                              setVisibleCommits(200);
+                            }}
+                          >
+                            {state.branches
+                              .filter(
+                                (b) =>
+                                  b.ref === draft.branch ||
+                                  b.label.toLowerCase().includes(draft.branchSearch.toLowerCase()),
+                              )
+                              .map((b) => (
+                                <Select.Option data-value={String(b.ref)} key={b.ref} value={b.ref}>
+                                  {b.label}
+                                </Select.Option>
+                              ))}
+                          </Select>
+                        </div>
+                      </div>
+                      <label className="tool-field">
+                        作者
+                        <Input
+                          value={draft.author}
+                          placeholder="姓名或邮箱，支持部分匹配"
+                          onChange={(e) => update({ author: e.target.value })}
+                        />
+                      </label>
+                      <div className="tool-date-presets">
+                        {[
+                          ['all', '不限'],
+                          ['24', '近 1 天'],
+                          ['48', '近 2 天'],
+                          ['week', '最近 7 天'],
+                          ['month', '本月'],
+                        ].map(([value, label]) => (
+                          <Button
+                            type="text"
+                            htmlType="button"
+                            key={value}
+                            className="text-button"
+                            onClick={() => datePreset(value)}
+                          >
+                            {label}
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="tool-fields-two">
+                        <label className="tool-field">
+                          开始日期
+                          <DatePicker
+                            aria-label="开始日期"
+                            value={draft.start ? dayjs(draft.start) : null}
+                            onChange={(value) =>
+                              update({ start: value?.format('YYYY-MM-DD') ?? '', recentHours: 0 })
+                            }
+                          />
+                        </label>
+                        <label className="tool-field">
+                          结束日期
+                          <DatePicker
+                            aria-label="结束日期"
+                            value={draft.end ? dayjs(draft.end) : null}
+                            onChange={(value) =>
+                              update({ end: value?.format('YYYY-MM-DD') ?? '', recentHours: 0 })
+                            }
+                          />
+                        </label>
+                      </div>
+                      {draft.recentHours > 0 && (
+                        <p className="tool-hint">当前范围：过去 {draft.recentHours} 小时。</p>
+                      )}
+                      <Button
+                        htmlType="submit"
+                        type="default"
+                        className="secondary-button"
+                        onClick={() => {
+                          setVisibleCommits(200);
+                          void send({
+                            type: 'git.commits',
+                            filter: {
+                              source: draft.source,
+                              branch: draft.branch,
+                              author: draft.author,
+                              start: draft.start,
+                              end: draft.end,
+                              recentHours: draft.recentHours,
+                            } satisfies GitFilter,
+                          });
+                        }}
+                      >
+                        应用筛选
+                      </Button>
+                      <div className="tool-selection-actions">
+                        <span>
+                          已选 {draft.selected.length} 项
+                          {outside ? `（${outside} 项在当前筛选外）` : ''}
+                        </span>
+                        <Button
+                          htmlType="submit"
+                          type="text"
+                          className="text-button"
+                          onClick={() => selectAll()}
+                        >
+                          全选筛选结果
+                        </Button>
+                        <Button
+                          htmlType="submit"
+                          type="text"
+                          className="text-button"
+                          onClick={() => selectAll(true)}
+                        >
+                          反选
+                        </Button>
+                        <Button
+                          htmlType="submit"
+                          type="text"
+                          className="text-button"
+                          onClick={() => update({ selected: [] })}
+                        >
+                          清空
+                        </Button>
+                      </div>
+                      <div className="tool-commits">
+                        {displayedCommits.slice(0, visibleCommits).map((commit) => (
+                          <Checkbox
+                            className="tool-commit"
+                            key={commit.sha}
                             checked={draft.selected.includes(commit.sha)}
                             onChange={() => toggle(commit.sha)}
-                          />
-                          <span>
-                            <strong>{commit.subject}</strong>
-                            <small>
-                              {commit.sha.slice(0, 8)} · {commit.author} ·{' '}
-                              {new Date(commit.timestamp * 1000).toLocaleString()}
-                            </small>
-                          </span>
-                        </label>
-                      ))}
-                      {!displayedCommits.length && (
-                        <p className="tool-hint">应用筛选后选择提交；查询只读取本机历史。</p>
+                          >
+                            <span>
+                              <strong>{commit.subject}</strong>
+                              <small>
+                                {commit.sha.slice(0, 8)} · {commit.author} ·{' '}
+                                {new Date(commit.timestamp * 1000).toLocaleString()}
+                              </small>
+                            </span>
+                          </Checkbox>
+                        ))}
+                        {!displayedCommits.length && (
+                          <p className="tool-hint">应用筛选后选择提交；查询只读取本机历史。</p>
+                        )}
+                      </div>
+                      {displayedCommits.length > visibleCommits && (
+                        <Button
+                          htmlType="submit"
+                          type="text"
+                          className="text-button"
+                          onClick={() => setVisibleCommits((count) => count + 200)}
+                        >
+                          再显示 200 项（共 {displayedCommits.length} 项）
+                        </Button>
+                      )}
+                      <Button
+                        htmlType="submit"
+                        type="default"
+                        className="secondary-button"
+                        disabled={!draft.selected.length}
+                        onClick={() =>
+                          void send({
+                            type: 'git.preview',
+                            source: draft.source,
+                            commits: draft.selected,
+                          })
+                        }
+                      >
+                        刷新文件预览
+                      </Button>
+                    </>
+                  )}
+                  {previewCurrent && (
+                    <div className="tool-preview">
+                      <h3>
+                        将打包 {preview.available.length} 个文件
+                        {preview.missing.length > 0
+                          ? `，跳过 ${preview.missing.length} 个缺失文件`
+                          : ''}
+                      </h3>
+                      <p>当前未压缩大小：{(preview.bytes / 1_000_000).toFixed(2)} MB</p>
+                      <Collapse
+                        ghost
+                        defaultActiveKey={true ? ['details'] : []}
+                        items={[
+                          {
+                            key: 'details',
+                            label: <>文件范围</>,
+                            forceRender: true,
+                            children: (
+                              <>
+                                <ul>
+                                  {preview.available.slice(0, visibleFiles).map((name) => (
+                                    <li key={name}>
+                                      {name}{' '}
+                                      <small>({(preview.sizes[name] / 1024).toFixed(1)} KB)</small>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </>
+                            ),
+                          },
+                        ]}
+                      />
+                      {!!preview.missing.length && (
+                        <Collapse
+                          ghost
+                          defaultActiveKey={true ? ['details'] : []}
+                          items={[
+                            {
+                              key: 'details',
+                              label: <>缺失文件，不输出删除指令</>,
+                              forceRender: true,
+                              children: (
+                                <>
+                                  <ul>
+                                    {preview.missing.slice(0, visibleFiles).map((name) => (
+                                      <li key={name}>{name}</li>
+                                    ))}
+                                  </ul>
+                                </>
+                              ),
+                            },
+                          ]}
+                        />
+                      )}
+                      {Math.max(preview.available.length, preview.missing.length) >
+                        visibleFiles && (
+                        <Button
+                          htmlType="submit"
+                          type="text"
+                          className="text-button"
+                          onClick={() => setVisibleFiles((count) => count + 200)}
+                        >
+                          显示更多文件
+                        </Button>
                       )}
                     </div>
-                    {displayedCommits.length > visibleCommits && (
-                      <button
-                        className="text-button"
-                        onClick={() => setVisibleCommits((count) => count + 200)}
-                      >
-                        再显示 200 项（共 {displayedCommits.length} 项）
-                      </button>
-                    )}
-                    <button
+                  )}
+                </div>
+              )}
+              {draft.mode === 'paste' && (
+                <div className="tool-paste">
+                  <div className="tool-section-title">
+                    <h2>收集文本分片</h2>
+                    <Button
+                      htmlType="submit"
+                      type="default"
                       className="secondary-button"
-                      disabled={!draft.selected.length}
-                      onClick={() =>
-                        void send({
-                          type: 'git.preview',
-                          source: draft.source,
-                          commits: draft.selected,
-                        })
-                      }
+                      onClick={() => void send({ type: 'paste.capture' })}
                     >
-                      刷新文件预览
-                    </button>
-                  </>
-                )}
-                {previewCurrent && (
-                  <div className="tool-preview">
-                    <h3>
-                      将打包 {preview.available.length} 个文件
-                      {preview.missing.length > 0
-                        ? `，跳过 ${preview.missing.length} 个缺失文件`
-                        : ''}
-                    </h3>
-                    <p>当前未压缩大小：{(preview.bytes / 1_000_000).toFixed(2)} MB</p>
-                    <details open>
-                      <summary>文件范围</summary>
-                      <ul>
-                        {preview.available.slice(0, visibleFiles).map((name) => (
-                          <li key={name}>
-                            {name} <small>({(preview.sizes[name] / 1024).toFixed(1)} KB)</small>
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                    {!!preview.missing.length && (
-                      <details open>
-                        <summary>缺失文件，不输出删除指令</summary>
-                        <ul>
-                          {preview.missing.slice(0, visibleFiles).map((name) => (
-                            <li key={name}>{name}</li>
-                          ))}
-                        </ul>
-                      </details>
-                    )}
-                    {Math.max(preview.available.length, preview.missing.length) > visibleFiles && (
-                      <button
-                        className="text-button"
-                        onClick={() => setVisibleFiles((count) => count + 200)}
-                      >
-                        显示更多文件
-                      </button>
-                    )}
+                      <ClipboardTextIcon size={16} />
+                      从剪贴板加入
+                    </Button>
                   </div>
-                )}
-              </div>
-            )}
-            {draft.mode === 'paste' && (
-              <div className="tool-paste">
-                <div className="tool-section-title">
-                  <h2>收集文本分片</h2>
-                  <button
-                    className="secondary-button"
-                    onClick={() => void send({ type: 'paste.capture' })}
-                  >
-                    <ClipboardTextIcon size={16} />
-                    从剪贴板加入
-                  </button>
-                </div>
-                <p className="tool-hint">
-                  先复制一个 TXT 的完整内容，再按 {pasteShortcut}{' '}
-                  加入分片。顺序不限，重复会自动跳过。
-                </p>
-                <div
-                  className="tool-paste-target"
-                  ref={pasteTarget}
-                  tabIndex={0}
-                  role="textbox"
-                  aria-label="粘贴分片区域"
-                  aria-readonly="true"
-                  aria-disabled={busy || !state}
-                  aria-keyshortcuts={window.desktop.platform === 'darwin' ? 'Meta+V' : 'Control+V'}
-                  onClick={() => pasteTarget.current?.focus({ preventScroll: true })}
-                >
-                  <ClipboardTextIcon size={24} />
-                  <div>
-                    <strong>按 {pasteShortcut} 粘贴分片</strong>
-                    <span>点击此处后粘贴；每次加入一片，可连续添加。</span>
-                  </div>
-                </div>
-                <p className={state?.partsReady ? 'tool-ready' : 'tool-hint'} role="status">
-                  {state?.partsDescription}
-                </p>
-                {state?.notice && (
-                  <p className="tool-ready" role="status">
-                    {state.notice}
+                  <p className="tool-hint">
+                    先复制一个 TXT 的完整内容，再按 {pasteShortcut}{' '}
+                    加入分片。顺序不限，重复会自动跳过。
                   </p>
-                )}
-                <div className="tool-parts">
-                  {state?.parts.slice(0, visibleParts).map((part) => (
-                    <div className="tool-part" key={part.id}>
-                      <div>
-                        <strong>
-                          第 {part.index} / {part.count} 片
-                        </strong>
-                        <small>{(part.size / 1_000_000).toFixed(2)} MB</small>
-                        <code>{part.preview}…</code>
-                        {part.error && <p className="tool-error">{part.error}</p>}
-                      </div>
-                      <button
-                        className="text-button"
-                        aria-label={`替换第 ${part.index} 片`}
-                        onClick={() => void send({ type: 'paste.capture', replaceId: part.id })}
-                      >
-                        从剪贴板替换
-                      </button>
-                      <button
-                        className="text-button"
-                        aria-label={`移除第 ${part.index} 片`}
-                        onClick={() => void send({ type: 'paste.remove', id: part.id })}
-                      >
-                        移除
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                {(state?.parts.length ?? 0) > visibleParts && (
-                  <button className="text-button" onClick={() => setVisibleParts((n) => n + 200)}>
-                    显示更多分片
-                  </button>
-                )}
-                {!!state?.parts.length && (
-                  <button
-                    className="text-button"
-                    onClick={() => void send({ type: 'paste.clear' })}
+                  <div
+                    className="tool-paste-target"
+                    ref={pasteTarget}
+                    tabIndex={0}
+                    role="textbox"
+                    aria-label="粘贴分片区域"
+                    aria-readonly="true"
+                    aria-disabled={busy || !state}
+                    aria-keyshortcuts={
+                      window.desktop.platform === 'darwin' ? 'Meta+V' : 'Control+V'
+                    }
+                    onClick={() => pasteTarget.current?.focus({ preventScroll: true })}
                   >
-                    清空本次分片
-                  </button>
-                )}
-              </div>
-            )}
-            <div className="tool-field">
-              <label htmlFor="zip-output">输出位置</label>
-              <div className="tool-path">
-                <input
-                  id="zip-output"
-                  value={draft.outputDir}
-                  placeholder={
-                    draft.mode === 'paste'
-                      ? '请选择输出目录'
-                      : packing
-                        ? '留空保存到源文件或目录旁'
-                        : '留空保存到分片目录内'
-                  }
-                  onChange={(e) => update({ outputDir: e.target.value })}
-                />
-                <button className="secondary-button" onClick={() => void choose('output')}>
-                  <FolderOpenIcon size={16} />
-                  选择
-                </button>
-              </div>
-            </div>
-            <p className="tool-hint">
-              {packing
-                ? '在输出位置新建“原名称.txtparts”；留空则保存到源文件或目录旁。'
-                : '在输出位置新建 restored；目录还原留空则保存到分片目录内。'}{' '}
-              已有目标目录不会被覆盖。
-            </p>
-            {packing && (
-              <div className="tool-field tool-part-size">
-                <label htmlFor="zip-part-size">每个 TXT 大小上限</label>
-                <div className="tool-inline">
-                  <input
-                    id="zip-part-size"
-                    type="number"
-                    min="1"
-                    max="200"
-                    step="1"
-                    value={draft.partSizeMB || ''}
-                    onChange={(e) => update({ partSizeMB: Number(e.target.value) })}
-                  />
-                  <span>MB</span>
+                    <ClipboardTextIcon size={24} />
+                    <div>
+                      <strong>按 {pasteShortcut} 粘贴分片</strong>
+                      <span>点击此处后粘贴；每次加入一片，可连续添加。</span>
+                    </div>
+                  </div>
+                  <p className={state?.partsReady ? 'tool-ready' : 'tool-hint'} role="status">
+                    {state?.partsDescription}
+                  </p>
+                  {state?.notice && (
+                    <p className="tool-ready" role="status">
+                      {state.notice}
+                    </p>
+                  )}
+                  <div className="tool-parts">
+                    {state?.parts.slice(0, visibleParts).map((part) => (
+                      <div className="tool-part" key={part.id}>
+                        <div>
+                          <strong>
+                            第 {part.index} / {part.count} 片
+                          </strong>
+                          <small>{(part.size / 1_000_000).toFixed(2)} MB</small>
+                          <code>{part.preview}…</code>
+                          {part.error && <p className="tool-error">{part.error}</p>}
+                        </div>
+                        <Button
+                          htmlType="submit"
+                          type="text"
+                          className="text-button"
+                          aria-label={`替换第 ${part.index} 片`}
+                          onClick={() => void send({ type: 'paste.capture', replaceId: part.id })}
+                        >
+                          从剪贴板替换
+                        </Button>
+                        <Button
+                          htmlType="submit"
+                          type="text"
+                          className="text-button"
+                          aria-label={`移除第 ${part.index} 片`}
+                          onClick={() => void send({ type: 'paste.remove', id: part.id })}
+                        >
+                          移除
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  {(state?.parts.length ?? 0) > visibleParts && (
+                    <Button
+                      htmlType="submit"
+                      type="text"
+                      className="text-button"
+                      onClick={() => setVisibleParts((n) => n + 200)}
+                    >
+                      显示更多分片
+                    </Button>
+                  )}
+                  {!!state?.parts.length && (
+                    <Button
+                      htmlType="submit"
+                      type="text"
+                      className="text-button"
+                      onClick={() => void send({ type: 'paste.clear' })}
+                    >
+                      清空本次分片
+                    </Button>
+                  )}
                 </div>
-                <small>1～200 MB，默认 50 MB。</small>
+              )}
+              <div className="tool-field">
+                <label htmlFor="zip-output">输出位置</label>
+                <div className="tool-path">
+                  <Input
+                    id="zip-output"
+                    value={draft.outputDir}
+                    placeholder={
+                      draft.mode === 'paste'
+                        ? '请选择输出目录'
+                        : packing
+                          ? '留空保存到源文件或目录旁'
+                          : '留空保存到分片目录内'
+                    }
+                    onChange={(e) => update({ outputDir: e.target.value })}
+                  />
+                  <Button
+                    htmlType="submit"
+                    type="default"
+                    className="secondary-button"
+                    onClick={() => void choose('output')}
+                  >
+                    <FolderOpenIcon size={16} />
+                    选择
+                  </Button>
+                </div>
               </div>
-            )}
-            <div className="tool-fields-two">
-              <label className="tool-field">
-                {packing ? '设置归档密码' : '归档密码'}
-                <input
-                  type="password"
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </label>
+              <p className="tool-hint">
+                {packing
+                  ? '在输出位置新建“原名称.txtparts”；留空则保存到源文件或目录旁。'
+                  : '在输出位置新建 restored；目录还原留空则保存到分片目录内。'}{' '}
+                已有目标目录不会被覆盖。
+              </p>
               {packing && (
+                <div className="tool-field tool-part-size">
+                  <label htmlFor="zip-part-size">每个 TXT 大小上限</label>
+                  <div className="tool-inline">
+                    <InputNumber
+                      id="zip-part-size"
+                      min={1}
+                      max={200}
+                      step={1}
+                      value={draft.partSizeMB || null}
+                      onChange={(value) => update({ partSizeMB: value ?? 0 })}
+                    />
+                    <span>MB</span>
+                  </div>
+                  <small>1～200 MB，默认 50 MB。</small>
+                </div>
+              )}
+              <div className="tool-fields-two">
                 <label className="tool-field">
-                  再次输入密码
-                  <input
-                    type="password"
+                  {packing ? '设置归档密码' : '归档密码'}
+                  <Input.Password
                     autoComplete="new-password"
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                   />
                 </label>
-              )}
-            </div>
-          </fieldset>
+                {packing && (
+                  <label className="tool-field">
+                    再次输入密码
+                    <Input.Password
+                      autoComplete="new-password"
+                      value={confirm}
+                      onChange={(e) => setConfirm(e.target.value)}
+                    />
+                  </label>
+                )}
+              </div>
+            </fieldset>
+          </ConfigProvider>
           {(error || state?.error) && (
             <p className="tool-error" role="alert">
               {error || state?.error}
             </p>
           )}
           <div className="tool-run">
-            <button className="primary-button" disabled={!canRun} onClick={() => void start()}>
+            <Button
+              htmlType="submit"
+              type="primary"
+              className="primary-button"
+              disabled={!canRun}
+              onClick={() => void start()}
+            >
               {packing ? <ArchiveIcon size={18} /> : <ArrowRightIcon size={18} />}
               {packing ? '开始归档' : '开始还原'}
-            </button>
+            </Button>
             <span>密码仅用于本次处理，不会保存。</span>
           </div>
         </section>
@@ -767,14 +875,17 @@ export default function ZipTextPage({ registerFlush }: ToolPageProps) {
           {state?.busy && state.progress && (
             <div className="tool-progress" role="status">
               <strong>{state.progress.phase}</strong>
-              <progress
+              <Progress
                 aria-label="当前阶段进度"
-                {...(state.progress.total !== null
-                  ? {
-                      max: Math.max(1, state.progress.total),
-                      value: state.progress.total ? state.progress.processed : 1,
-                    }
-                  : {})}
+                showInfo={false}
+                status="active"
+                percent={
+                  state.progress.total === null
+                    ? 0
+                    : state.progress.total
+                      ? Math.min(100, (state.progress.processed / state.progress.total) * 100)
+                      : 100
+                }
               />
               <small>
                 {state.progress.total !== null
@@ -792,22 +903,26 @@ export default function ZipTextPage({ registerFlush }: ToolPageProps) {
               <CheckCircleIcon size={30} weight="duotone" />
               <p>处理完成，文件已保存。</p>
               <code>{state.output}</code>
-              <button
+              <Button
+                htmlType="submit"
+                type="default"
                 className="secondary-button"
                 onClick={() =>
                   void window.desktop.tools.openOutput('zip-text').catch((e) => setError(String(e)))
                 }
               >
                 打开结果目录
-              </button>
-              <button
+              </Button>
+              <Button
+                htmlType="submit"
+                type="text"
                 className="text-button"
                 onClick={() =>
                   void window.desktop.copyText(state.output).catch((e) => setError(String(e)))
                 }
               >
                 复制输出路径
-              </button>
+              </Button>
             </div>
           )}
           {!state?.busy && !state?.output && (

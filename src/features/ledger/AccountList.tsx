@@ -1,3 +1,4 @@
+import { Button, Empty, Table } from 'antd';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   CopyIcon,
@@ -108,7 +109,9 @@ export function AccountList({
     <>
       <div className="account-list-heading">
         <span>{rows.length} 条记录</span>
-        <button
+        <Button
+          htmlType="submit"
+          type="default"
           className="secondary-button"
           disabled={!passwords.length}
           onClick={() => {
@@ -124,27 +127,34 @@ export function AccountList({
             <EyeIcon size={16} />
           )}
           {reading ? '取消显示' : allVisible ? '隐藏当前列表密码' : '显示当前列表密码'}
-        </button>
+        </Button>
       </div>
-      <table className="account-table">
-        <thead>
-          <tr>
-            <th>用途／角色</th>
-            <th>用户名</th>
-            <th>密码</th>
-            <th>所属对象</th>
-            <th>快捷操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(({ account, scope, owner }) => {
-            const value = vault.status.unlocked ? values[account.id] : undefined;
-            const key = `${account.id}:row`;
-            const passwordKey = `${account.id}:password`;
-            return (
-              <tr key={account.id} className={selected === account.id ? 'selected' : ''}>
-                <td>
-                  <button className="account-name-cell" onClick={() => onOpen(account.id)}>
+      <Table<AccountRow>
+        className="account-table"
+        rowKey={(item) => item.account.id}
+        dataSource={rows}
+        pagination={false}
+        scroll={{ x: 850 }}
+        locale={{
+          emptyText: (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="这里还没有符合条件的记录" />
+          ),
+        }}
+        rowClassName={({ account }) => (selected === account.id ? 'selected' : '')}
+        columns={[
+          {
+            key: 'c0',
+            title: '用途／角色',
+            width: 270,
+            render: (_value, { account, scope, owner }) => {
+              return (
+                <>
+                  <Button
+                    htmlType="submit"
+                    type="text"
+                    className="account-name-cell"
+                    onClick={() => onOpen(account.id)}
+                  >
                     <span className="record-kind-icon accounts" aria-hidden="true">
                       <UserIcon size={16} />
                     </span>
@@ -152,9 +162,17 @@ export function AccountList({
                       <strong>{account.name}</strong>
                       <small>{scope}</small>
                     </span>
-                  </button>
-                </td>
-                <td>
+                  </Button>
+                </>
+              );
+            },
+          },
+          {
+            key: 'c1',
+            title: '用户名',
+            render: (_value, { account, scope, owner }) => {
+              return (
+                <>
                   <div className="account-copy-field">
                     <code>{account.username || '未填写'}</code>
                     <span className="field-copy-action">
@@ -165,8 +183,18 @@ export function AccountList({
                       />
                     </span>
                   </div>
-                </td>
-                <td>
+                </>
+              );
+            },
+          },
+          {
+            key: 'c2',
+            title: '密码',
+            render: (_value, { account, scope, owner }) => {
+              const value = vault.status.unlocked ? values[account.id] : undefined;
+              const passwordKey = `${account.id}:password`;
+              return (
+                <>
                   {account.secretKinds.includes('password') ? (
                     <div className="account-copy-field account-password-field">
                       <code
@@ -174,7 +202,9 @@ export function AccountList({
                       >
                         {value ?? '***'}
                       </code>
-                      <button
+                      <Button
+                        htmlType="submit"
+                        type="text"
                         className="icon-button"
                         aria-label={`${value === undefined ? '显示' : '隐藏'}密码 ${account.name}`}
                         title={value === undefined ? '显示密码' : '隐藏密码'}
@@ -191,8 +221,10 @@ export function AccountList({
                         }}
                       >
                         {value === undefined ? <EyeIcon size={16} /> : <EyeSlashIcon size={16} />}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        htmlType="submit"
+                        type="text"
                         className="icon-button field-copy-action"
                         aria-label={`复制密码 ${account.name} ${account.username}`}
                         title={copied === passwordKey ? '已复制 · 30 秒后清理' : '复制密码'}
@@ -201,7 +233,7 @@ export function AccountList({
                         onClick={() => void copy(account, 'password')}
                       >
                         {copied === passwordKey ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
-                      </button>
+                      </Button>
                     </div>
                   ) : (
                     <span className="account-no-password">未保存密码</span>
@@ -209,7 +241,9 @@ export function AccountList({
                   {account.secretKinds
                     .filter((kind) => kind !== 'password')
                     .map((kind) => (
-                      <button
+                      <Button
+                        htmlType="submit"
+                        type="text"
                         key={kind}
                         className="icon-button account-other-secret"
                         aria-label={`复制${secretLabels[kind]} ${account.name} ${account.username}`}
@@ -227,15 +261,36 @@ export function AccountList({
                         ) : (
                           <CopyIcon size={16} />
                         )}
-                      </button>
+                      </Button>
                     ))}
-                </td>
-                <td>
+                </>
+              );
+            },
+          },
+          {
+            key: 'c3',
+            title: '所属对象',
+            render: (_value, { account, scope, owner }) => {
+              return (
+                <>
                   <span className="account-owner">{owner}</span>
-                </td>
-                <td>
+                </>
+              );
+            },
+          },
+          {
+            key: 'c4',
+            title: '快捷操作',
+            width: 150,
+            fixed: 'right',
+            render: (_value, { account, scope, owner }) => {
+              const key = `${account.id}:row`;
+              return (
+                <>
                   <div className="account-row-actions">
-                    <button
+                    <Button
+                      htmlType="submit"
+                      type="text"
                       className="icon-button account-copy-row"
                       aria-label={`复制整行 ${owner} / ${account.name}`}
                       title="复制名称、地址、用户名和密码 · 30 秒后清理"
@@ -244,22 +299,24 @@ export function AccountList({
                       onClick={() => void copy(account)}
                     >
                       {copied === key ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      htmlType="submit"
+                      type="text"
                       className="icon-button"
                       aria-label={`查看详情 ${account.name}`}
                       title={`查看详情 ${account.name}`}
                       onClick={() => onOpen(account.id)}
                     >
                       <CaretRightIcon size={16} />
-                    </button>
+                    </Button>
                   </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                </>
+              );
+            },
+          },
+        ]}
+      />
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { Button } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import type { RefObject } from 'react';
 import { AppWindowIcon, SidebarSimpleIcon, XIcon } from '@phosphor-icons/react';
@@ -171,7 +172,9 @@ export function DocumentOutline({
         <span>{headings.length ? `${headings.length} 个章节` : ''}</span>
         <div className="document-outline-layouts" role="group" aria-label="大纲布局">
           {layoutOptions.map((option) => (
-            <button
+            <Button
+              htmlType="submit"
+              type="text"
               key={option.value}
               aria-label={option.label}
               title={`${option.label}布局`}
@@ -179,18 +182,26 @@ export function DocumentOutline({
               onClick={() => onLayout(option.value)}
             >
               {layoutIcons[option.value]}
-            </button>
+            </Button>
           ))}
         </div>
-        <button className="icon-button" aria-label="关闭大纲" onClick={onClose}>
+        <Button
+          htmlType="submit"
+          type="text"
+          className="icon-button"
+          aria-label="关闭大纲"
+          onClick={onClose}
+        >
           <XIcon size={14} />
-        </button>
+        </Button>
       </div>
       <div className="document-outline-items">
         {headings.map((heading) => {
           const depth = Math.min(3, Math.max(0, heading.level - minimumLevel));
           return (
-            <button
+            <Button
+              htmlType="submit"
+              type="text"
               key={heading.id}
               title={heading.text}
               aria-current={activeId === heading.id ? 'location' : undefined}
@@ -198,7 +209,7 @@ export function DocumentOutline({
               onClick={() => onNavigate(heading.id)}
             >
               {heading.text}
-            </button>
+            </Button>
           );
         })}
         {!headings.length && <p>使用 Markdown 标题后，这里会显示章节导航。</p>}

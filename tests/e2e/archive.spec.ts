@@ -47,23 +47,28 @@ test('归档项目能查看文档和完成任务，长期账号可编辑，重�
       await window.desktop.mutate({ type: 'task.complete', id: task, complete: true });
       await window.desktop.mutate({ type: 'project.archive', id: projectId, archived: true });
     });
-    await page.getByRole('button', { name: '项目档案', exact: true }).click();
-    await expect(page.locator('.workspace-management-row')).toContainText('阶段项目 · 已归档');
+    await page.getByRole('menuitem', { name: '项目档案', exact: true }).click();
+    await expect(page.locator('.project-manager .ant-table-tbody tr.ant-table-row')).toContainText(
+      /阶段项目.*已归档/,
+    );
     await page.getByLabel('文档', { exact: true }).click();
     await page.getByRole('button', { name: '文档 阶段复盘', exact: true }).click();
     await expect(page.getByRole('textbox', { name: '工作内容' })).toContainText('历史记录');
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await openLedgerRecord(page, '账号', '超管', true);
     await page.getByLabel('账号用户名', { exact: true }).fill('ops');
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
-    await page.getByRole('button', { name: /^已完成/ }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
+    await page
+      .getByRole('radio', { name: /^已完成/ })
+      .locator('..')
+      .click();
     await page.locator('.task-open').filter({ hasText: '阶段收尾' }).click();
     await page.getByRole('button', { name: '重新打开', exact: true }).click();
     await expect(page.getByRole('button', { name: '标记完成', exact: true })).toBeVisible();
     const state = await page.evaluate(() => window.desktop.snapshot());
     expect(state.projects[0].archivedAt).not.toBeNull();
     expect(state.accounts[0].username).toBe('ops');
-    await page.getByRole('button', { name: '回收站', exact: true }).click();
+    await page.getByRole('menuitem', { name: '回收站', exact: true }).click();
     await page.getByRole('button', { name: '文档回收站', exact: true }).click();
     await expect(page.getByRole('button', { name: '文档回收站', exact: true })).toHaveAttribute(
       'aria-pressed',

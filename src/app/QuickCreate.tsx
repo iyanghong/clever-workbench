@@ -1,3 +1,5 @@
+import { Button } from 'antd';
+import { openDialogSelector } from '../shared/modal-state';
 import { closeNewRecord, saveNewRecord } from '../shared/new-record';
 import { useEffect, useRef, useState } from 'react';
 import { PlusIcon, CaretLeftIcon, CaretRightIcon } from '@phosphor-icons/react';
@@ -36,7 +38,7 @@ export function QuickCreate({
   readyRef.current = ready;
   flushRef.current = flush;
   async function show() {
-    if (!readyRef.current || opening.current || document.querySelector('dialog[open]')) return;
+    if (!readyRef.current || opening.current || document.querySelector(openDialogSelector)) return;
     opening.current = true;
     try {
       await flushRef.current();
@@ -97,7 +99,9 @@ export function QuickCreate({
   const Form = action?.Form;
   return (
     <>
-      <button
+      <Button
+        htmlType="submit"
+        type="primary"
         className="global-new"
         aria-label="快速新建"
         disabled={!ready}
@@ -105,7 +109,7 @@ export function QuickCreate({
       >
         <PlusIcon size={17} />
         <span>新建</span>
-      </button>
+      </Button>
       {error && !snapshot && (
         <span className="error-text" role="alert">
           {error}
@@ -122,14 +126,16 @@ export function QuickCreate({
         >
           {Form ? (
             <>
-              <button
+              <Button
+                htmlType="submit"
+                type="text"
                 className="text-button quick-back"
                 disabled={busy}
                 onClick={() => closeNewRecord(() => setAction(null))}
               >
                 <CaretLeftIcon size={13} />
                 其他类型
-              </button>
+              </Button>
               <Form
                 snapshot={snapshot}
                 context={context}
@@ -146,7 +152,9 @@ export function QuickCreate({
                   {actions
                     .filter((item) => item.group === group.id)
                     .map((item) => (
-                      <button
+                      <Button
+                        htmlType="submit"
+                        type="text"
                         key={item.id}
                         className="quick-action"
                         aria-label={item.title}
@@ -164,7 +172,7 @@ export function QuickCreate({
                           <small>{item.description}</small>
                         </span>
                         <CaretRightIcon size={15} />
-                      </button>
+                      </Button>
                     ))}
                 </section>
               ))}

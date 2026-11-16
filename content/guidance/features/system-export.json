@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "feature",
   "id": "system-export",
-  "revision": 2,
+  "revision": 3,
   "title": "导出可阅读的系统资料",
   "platforms": ["darwin", "win32"],
   "placements": ["system-export"],
@@ -43,7 +43,7 @@
       "action": "查看是否实际包含文档：没有文档或取消“文档”时，从 Markdown、Word、PDF 中单选一种；实际包含文档时可勾选一种或多种格式。阅读下方的输出形式提示。",
       "expectedResult": "未包含实际文档时只保存一个 md／docx／pdf 文件并嵌入图片；实际包含文档时保存 ZIP 资料包。切回单文件时默认保留最后选中的格式。",
       "image": {
-        "src": "assets/system-export-options.png",
+        "src": "assets/system-export-options-antd6.png",
         "alt": "系统资料导出弹窗，依次显示附加内容、任务开始日期、文件格式和账号秘密选项",
         "caption": "隔离示例资料的导出选项；秘密数量及文件形式以当前选择为准。"
       }
@@ -61,7 +61,7 @@
       "expectedResult": "导出前等待正在编辑的内容保存；保存失败或取消会显示反馈，不应把旧文件当成这次导出的结果。"
     }
   ],
-  "completion": "得到符合所选范围的可阅读资料文件，并已核对文件内容与明文秘密。此文件不能用于恢复或迁移应用；完整资料恢复应使用“设置 → 备份与迁移”的加密 .cwb 备份。",
+  "completion": "得到符合所选范围的可阅读资料文件，并已核对文件内容与明文秘密。此文件不能用于恢复或迁移应用；完整资料恢复应使用“设置 → 备份与恢复”的加密 .cwb 备份。",
   "faq": {
     "items": [
       {

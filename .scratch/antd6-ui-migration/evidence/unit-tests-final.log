@@ -1,0 +1,22 @@
+
+> clever-workbench@0.1.23 pretest
+> npm run tools:generate
+
+
+> clever-workbench@0.1.23 tools:generate
+> node scripts/generate-tools.mjs
+
+
+> clever-workbench@0.1.23 test
+> vitest run
+
+
+ RUN  v4.1.12 /Users/axelton/code/clever-workbench
+
+(node:55848) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ Test Files  37 passed (37)
+      Tests  247 passed | 3 skipped (250)
+   Start at  22:38:35
+   Duration  41.47s (transform 503ms, setup 0ms, import 1.65s, tests 77.11s, environment 2ms)

@@ -1,3 +1,4 @@
+import { Button, Card, Input, Switch, Tabs } from 'antd';
 import { GuidanceButton, SettingsGuidance } from '../guidance/Guidance';
 import { PageHeading, SegmentedControl } from '../../shared/WorkspaceUI';
 import { useEffect, useRef, useState } from 'react';
@@ -22,6 +23,7 @@ import { AboutUpdate } from './AppUpdate';
 const message = (cause: unknown) =>
   String(cause).replace(/^Error: Error invoking remote method '[^']+': Error: /, '');
 export function SettingsPage({ setContext, route }: ModuleProps) {
+  const [section, setSection] = useState(route.section ?? 'appearance');
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
@@ -57,7 +59,7 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
       !['appearance', 'vault', 'backup', 'about', 'guidance'].includes(route.section)
     )
       return;
-    document.getElementById(`settings-${route.section}`)?.scrollIntoView({ block: 'start' });
+    setSection(route.section);
   }, [snapshot !== null, route.section]);
   async function run(label: string, operation: () => Promise<void>) {
     if (working.current) return;
@@ -183,279 +185,366 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
         </div>
       </header>
       <section className="settings-page">
-        <PageHeading
-          title="你的工作空间"
-          eyebrow="CLEVER WORKBENCH"
-          description="外观、秘密保护和本地资料备份。"
-        />
+        <PageHeading title="设置" description="外观、秘密保护和本地资料备份。" />
         {snapshot && (
-          <>
-            <h3 id="settings-appearance">外观</h3>
-            <GuidanceButton guideId="appearance" accessibleLabel="外观使用指引" />
-            <div className="setting-row">
-              <div>
-                <strong>界面主题</strong>
-                <p>跟随系统，或选择固定外观</p>
-              </div>
-              <SegmentedControl
-                label="界面主题"
-                value={snapshot.settings.theme}
-                disabled={Boolean(busy)}
-                options={[
-                  {
-                    value: 'light',
-                    label: (
-                      <>
-                        <SunIcon size={16} />
-                        浅色
-                      </>
-                    ),
-                  },
-                  {
-                    value: 'dark',
-                    label: (
-                      <>
-                        <MoonIcon size={16} />
-                        深色
-                      </>
-                    ),
-                  },
-                  {
-                    value: 'system',
-                    label: (
-                      <>
-                        <DesktopIcon size={16} />
-                        系统
-                      </>
-                    ),
-                  },
-                ]}
-                onChange={(theme) => void update({ type: 'settings', theme })}
-              />
-            </div>
-            <h3>可访问性</h3>
-            {(
-              [
-                {
-                  key: 'reduceTransparency',
-                  title: '减少透明度',
-                  description: '使用实色导航和工具栏，让文字背景更稳定。',
-                },
-                {
-                  key: 'highContrast',
-                  title: '增强对比',
-                  description: '加深次要文字与分隔线，突出操作焦点。',
-                },
-                {
-                  key: 'reduceMotion',
-                  title: '减少动态效果',
-                  description: '关闭过渡和动画，保留即时状态反馈。',
-                },
-              ] as const
-            ).map((preference) => (
-              <div className="setting-row" key={preference.key}>
-                <div>
-                  <strong>{preference.title}</strong>
-                  <p>{preference.description}</p>
-                </div>
-                <input
-                  role="switch"
-                  type="checkbox"
-                  aria-label={preference.title}
-                  checked={snapshot.settings[preference.key]}
-                  disabled={Boolean(busy)}
-                  onChange={(event) =>
-                    void update({ type: 'settings', [preference.key]: event.target.checked })
-                  }
-                />
-              </div>
-            ))}
-            <p className="backup-note">系统启用的可访问性偏好也会自动生效。</p>
-            <h3 id="settings-vault">秘密保护</h3>
-            <GuidanceButton placement="settings-vault" accessibleLabel="秘密保护使用指引" />
-            <div className="setting-row">
-              <div>
-                <strong>{vault.status.initialized ? '主密码已设置' : '系统加密保护'}</strong>
-                <p>
-                  {vault.status.initialized
-                    ? '普通资料可直接查看，秘密按需解锁。'
-                    : '凭据由当前系统账户加密保管，日常无需应用主密码。'}
-                </p>
-              </div>
-              {vault.status.initialized && (
-                <button
-                  className="secondary-button"
-                  onClick={() =>
-                    void (vault.status.unlocked ? vault.lock() : vault.ensureUnlocked()).catch(
-                      (cause) => setError(message(cause)),
-                    )
-                  }
-                >
-                  <LockKeyIcon size={15} />
-                  {vault.status.unlocked
-                    ? '立即锁定'
-                    : vault.status.initialized
-                      ? '解锁秘密'
-                      : '设置主密码'}
-                </button>
-              )}
-              {!vault.status.initialized && (
-                <button
-                  className="secondary-button"
-                  disabled={Boolean(busy)}
-                  onClick={() =>
-                    void vault.enableMaster().catch((cause) => setError(message(cause)))
-                  }
-                >
-                  启用主密码
-                </button>
-              )}
-            </div>
-            {vault.status.initialized && (
-              <div className="setting-row">
-                <div>
-                  <strong>更改主密码</strong>
-                  <p>只更改本机解锁密码，独立备份密码保持不变。</p>
-                </div>
-                <div className="setting-actions">
-                  <button
-                    className="secondary-button"
-                    disabled={Boolean(busy)}
-                    onClick={() => {
-                      setNotice('');
-                      setError('');
-                      setChangingPassword('change');
-                    }}
-                  >
-                    更改主密码
-                  </button>
-                  <button
-                    className="secondary-button"
-                    disabled={Boolean(busy)}
-                    onClick={() => setChangingPassword('disable')}
-                  >
-                    关闭主密码
-                  </button>
-                </div>
-              </div>
-            )}
-            <h3 id="settings-backup">备份与迁移</h3>
-            <div className="setting-row">
-              <div>
-                <strong>独立备份密码</strong>
-                <p>配置一次，恢复时使用。与本机主密码分别管理。</p>
-              </div>
-              <div className="setting-actions">
-                <GuidanceButton guideId="backup-password" accessibleLabel="备份密码使用指引" />
-                <button
-                  className="secondary-button"
-                  disabled={Boolean(busy)}
-                  onClick={() =>
-                    void vault.ensureBackup(true).catch((cause) => setError(message(cause)))
-                  }
-                >
-                  {vault.status.backupConfigured ? '更改备份密码' : '设置备份密码'}
-                </button>
-              </div>
-            </div>
-            <div className="setting-row">
-              <div>
-                <strong>自动加密备份</strong>
-                <p>
-                  {vault.status.backupConfigured
-                    ? '有变更时每日备份一次，保留最近 7 份。锁定秘密时也可运行。'
-                    : '未启用：首次备份时设置独立备份密码。'}
-                </p>
-              </div>
-              <div className="setting-actions">
-                <GuidanceButton guideId="automatic-backup" accessibleLabel="自动备份使用指引" />
-                <input
-                  role="switch"
-                  aria-label="自动备份"
-                  type="checkbox"
-                  disabled={Boolean(busy)}
-                  checked={Boolean(vault.status.backupConfigured && snapshot.settings.autoBackup)}
-                  onChange={(event) => void automaticBackup(event.target.checked)}
-                />
-              </div>
-            </div>
-            <div className="setting-row">
-              <div>
-                <strong>备份位置</strong>
-                <p className="path-text">{snapshot.settings.backupDir}</p>
-              </div>
-              <button
-                className="secondary-button"
-                disabled={Boolean(busy)}
-                onClick={() =>
-                  void run('', async () => {
-                    const next = await window.desktop.backupDirectory();
-                    if (next) setSnapshot(next);
-                  })
-                }
-              >
-                更改目录
-              </button>
-            </div>
-            <div className="setting-row">
-              <div>
-                <strong>最近自动备份</strong>
-                <p>
-                  {snapshot.settings.lastBackupAt
-                    ? dateLabel(snapshot.settings.lastBackupAt, true)
-                    : vault.status.backupConfigured
-                      ? '尚未生成，应用运行时会自动检查。'
-                      : '尚未启用'}
-                </p>
-                {snapshot.settings.lastBackupError && (
-                  <p className="error-text">{snapshot.settings.lastBackupError}</p>
-                )}
-              </div>
-              {vault.status.backupConfigured && (
-                <button
-                  className="secondary-button"
-                  disabled={Boolean(busy)}
-                  onClick={() =>
-                    void run('正在重试自动备份…', async () => {
-                      const next = await window.desktop.retryBackup();
-                      setSnapshot(next);
-                      if (next.settings.lastBackupError)
-                        throw new Error(next.settings.lastBackupError);
-                      setNotice('自动备份已完成。');
-                    })
-                  }
-                >
-                  立即备份
-                </button>
-              )}
-            </div>
-            <div className="backup-actions">
-              <GuidanceButton guideId="full-backup" accessibleLabel="完整备份使用指引" />
-              <button
-                className="primary-button"
-                disabled={Boolean(busy)}
-                onClick={() => void exportBackup()}
-              >
-                <DownloadSimpleIcon size={17} />
-                导出完整备份
-              </button>
-              <GuidanceButton guideId="restore-and-migrate" accessibleLabel="恢复与迁移使用指引" />
-              <button
-                className="secondary-button"
-                disabled={Boolean(busy)}
-                onClick={() => void chooseBackup()}
-              >
-                <UploadSimpleIcon size={17} />
-                从备份恢复
-              </button>
-            </div>
-            <p className="backup-note">
-              项目历史、台账、账号、任务、文档、草稿和引用图片整体加密。换机使用该备份的独立备份密码；旧备份继续使用生成时的密码。
-            </p>
-            <SettingsGuidance />
-            <h3 id="settings-about">关于</h3>
-            <AboutUpdate />
-          </>
+          <Tabs
+            activeKey={section}
+            onChange={setSection}
+            items={[
+              {
+                key: 'appearance',
+                label: '外观',
+                disabled: Boolean(busy),
+                children: (
+                  <Card className="settings-tab-panel">
+                    <h3 id="settings-appearance">外观</h3>
+
+                    <GuidanceButton guideId="appearance" accessibleLabel="外观使用指引" />
+
+                    <div className="setting-row">
+                      <div>
+                        <strong>界面主题</strong>
+                        <p>跟随系统，或选择固定外观</p>
+                      </div>
+                      <SegmentedControl
+                        label="界面主题"
+                        value={snapshot.settings.theme}
+                        disabled={Boolean(busy)}
+                        options={[
+                          {
+                            value: 'light',
+                            label: (
+                              <>
+                                <SunIcon size={16} />
+                                浅色
+                              </>
+                            ),
+                          },
+                          {
+                            value: 'dark',
+                            label: (
+                              <>
+                                <MoonIcon size={16} />
+                                深色
+                              </>
+                            ),
+                          },
+                          {
+                            value: 'system',
+                            label: (
+                              <>
+                                <DesktopIcon size={16} />
+                                系统
+                              </>
+                            ),
+                          },
+                        ]}
+                        onChange={(theme) => void update({ type: 'settings', theme })}
+                      />
+                    </div>
+
+                    <h3>可访问性</h3>
+
+                    {(
+                      [
+                        {
+                          key: 'reduceTransparency',
+                          title: '减少透明度',
+                          description: '使用实色导航和工具栏，让文字背景更稳定。',
+                        },
+                        {
+                          key: 'highContrast',
+                          title: '增强对比',
+                          description: '加深次要文字与分隔线，突出操作焦点。',
+                        },
+                        {
+                          key: 'reduceMotion',
+                          title: '减少动态效果',
+                          description: '关闭过渡和动画，保留即时状态反馈。',
+                        },
+                      ] as const
+                    ).map((preference) => (
+                      <div className="setting-row" key={preference.key}>
+                        <div>
+                          <strong>{preference.title}</strong>
+                          <p>{preference.description}</p>
+                        </div>
+                        <Switch
+                          aria-label={preference.title}
+                          checked={snapshot.settings[preference.key]}
+                          disabled={Boolean(busy)}
+                          onChange={(checked) =>
+                            void update({ type: 'settings', [preference.key]: checked })
+                          }
+                        />
+                      </div>
+                    ))}
+
+                    <p className="backup-note">系统启用的可访问性偏好也会自动生效。</p>
+                  </Card>
+                ),
+              },
+              {
+                key: 'vault',
+                label: '凭据保护',
+                disabled: Boolean(busy),
+                children: (
+                  <Card className="settings-tab-panel">
+                    <h3 id="settings-vault">秘密保护</h3>
+
+                    <GuidanceButton placement="settings-vault" accessibleLabel="秘密保护使用指引" />
+
+                    <div className="setting-row">
+                      <div>
+                        <strong>
+                          {vault.status.initialized ? '主密码已设置' : '系统加密保护'}
+                        </strong>
+                        <p>
+                          {vault.status.initialized
+                            ? '普通资料可直接查看，秘密按需解锁。'
+                            : '凭据由当前系统账户加密保管，日常无需应用主密码。'}
+                        </p>
+                      </div>
+                      {vault.status.initialized && (
+                        <Button
+                          htmlType="submit"
+                          type="default"
+                          className="secondary-button"
+                          onClick={() =>
+                            void (
+                              vault.status.unlocked ? vault.lock() : vault.ensureUnlocked()
+                            ).catch((cause) => setError(message(cause)))
+                          }
+                        >
+                          <LockKeyIcon size={15} />
+                          {vault.status.unlocked
+                            ? '立即锁定'
+                            : vault.status.initialized
+                              ? '解锁秘密'
+                              : '设置主密码'}
+                        </Button>
+                      )}
+                      {!vault.status.initialized && (
+                        <Button
+                          htmlType="submit"
+                          type="default"
+                          className="secondary-button"
+                          disabled={Boolean(busy)}
+                          onClick={() =>
+                            void vault.enableMaster().catch((cause) => setError(message(cause)))
+                          }
+                        >
+                          启用主密码
+                        </Button>
+                      )}
+                    </div>
+
+                    {vault.status.initialized && (
+                      <div className="setting-row">
+                        <div>
+                          <strong>更改主密码</strong>
+                          <p>只更改本机解锁密码，独立备份密码保持不变。</p>
+                        </div>
+                        <div className="setting-actions">
+                          <Button
+                            htmlType="submit"
+                            type="default"
+                            className="secondary-button"
+                            disabled={Boolean(busy)}
+                            onClick={() => {
+                              setNotice('');
+                              setError('');
+                              setChangingPassword('change');
+                            }}
+                          >
+                            更改主密码
+                          </Button>
+                          <Button
+                            htmlType="submit"
+                            type="default"
+                            className="secondary-button"
+                            disabled={Boolean(busy)}
+                            onClick={() => setChangingPassword('disable')}
+                          >
+                            关闭主密码
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                ),
+              },
+              {
+                key: 'backup',
+                label: '备份与恢复',
+                disabled: Boolean(busy),
+                children: (
+                  <Card className="settings-tab-panel">
+                    <h3 id="settings-backup">备份与迁移</h3>
+
+                    <div className="setting-row">
+                      <div>
+                        <strong>独立备份密码</strong>
+                        <p>配置一次，恢复时使用。与本机主密码分别管理。</p>
+                      </div>
+                      <div className="setting-actions">
+                        <GuidanceButton
+                          guideId="backup-password"
+                          accessibleLabel="备份密码使用指引"
+                        />
+                        <Button
+                          htmlType="submit"
+                          type="default"
+                          className="secondary-button"
+                          disabled={Boolean(busy)}
+                          onClick={() =>
+                            void vault.ensureBackup(true).catch((cause) => setError(message(cause)))
+                          }
+                        >
+                          {vault.status.backupConfigured ? '更改备份密码' : '设置备份密码'}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="setting-row">
+                      <div>
+                        <strong>自动加密备份</strong>
+                        <p>
+                          {vault.status.backupConfigured
+                            ? '有变更时每日备份一次，保留最近 7 份。锁定秘密时也可运行。'
+                            : '未启用：首次备份时设置独立备份密码。'}
+                        </p>
+                      </div>
+                      <div className="setting-actions">
+                        <GuidanceButton
+                          guideId="automatic-backup"
+                          accessibleLabel="自动备份使用指引"
+                        />
+                        <Switch
+                          aria-label="自动备份"
+                          disabled={Boolean(busy)}
+                          checked={Boolean(
+                            vault.status.backupConfigured && snapshot.settings.autoBackup,
+                          )}
+                          onChange={(checked) => void automaticBackup(checked)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="setting-row">
+                      <div>
+                        <strong>备份位置</strong>
+                        <p className="path-text">{snapshot.settings.backupDir}</p>
+                      </div>
+                      <Button
+                        htmlType="submit"
+                        type="default"
+                        className="secondary-button"
+                        disabled={Boolean(busy)}
+                        onClick={() =>
+                          void run('', async () => {
+                            const next = await window.desktop.backupDirectory();
+                            if (next) setSnapshot(next);
+                          })
+                        }
+                      >
+                        更改目录
+                      </Button>
+                    </div>
+
+                    <div className="setting-row">
+                      <div>
+                        <strong>最近自动备份</strong>
+                        <p>
+                          {snapshot.settings.lastBackupAt
+                            ? dateLabel(snapshot.settings.lastBackupAt, true)
+                            : vault.status.backupConfigured
+                              ? '尚未生成，应用运行时会自动检查。'
+                              : '尚未启用'}
+                        </p>
+                        {snapshot.settings.lastBackupError && (
+                          <p className="error-text">{snapshot.settings.lastBackupError}</p>
+                        )}
+                      </div>
+                      {vault.status.backupConfigured && (
+                        <Button
+                          htmlType="submit"
+                          type="default"
+                          className="secondary-button"
+                          disabled={Boolean(busy)}
+                          onClick={() =>
+                            void run('正在重试自动备份…', async () => {
+                              const next = await window.desktop.retryBackup();
+                              setSnapshot(next);
+                              if (next.settings.lastBackupError)
+                                throw new Error(next.settings.lastBackupError);
+                              setNotice('自动备份已完成。');
+                            })
+                          }
+                        >
+                          立即备份
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="backup-actions">
+                      <GuidanceButton guideId="full-backup" accessibleLabel="完整备份使用指引" />
+                      <Button
+                        htmlType="submit"
+                        type="primary"
+                        className="primary-button"
+                        disabled={Boolean(busy)}
+                        onClick={() => void exportBackup()}
+                      >
+                        <DownloadSimpleIcon size={17} />
+                        导出完整备份
+                      </Button>
+                      <GuidanceButton
+                        guideId="restore-and-migrate"
+                        accessibleLabel="恢复与迁移使用指引"
+                      />
+                      <Button
+                        htmlType="submit"
+                        type="default"
+                        className="secondary-button"
+                        disabled={Boolean(busy)}
+                        onClick={() => void chooseBackup()}
+                      >
+                        <UploadSimpleIcon size={17} />
+                        从备份恢复
+                      </Button>
+                    </div>
+
+                    <p className="backup-note">
+                      项目历史、台账、账号、任务、文档、草稿和引用图片整体加密。换机使用该备份的独立备份密码；旧备份继续使用生成时的密码。
+                    </p>
+                  </Card>
+                ),
+              },
+              {
+                key: 'about',
+                label: '关于与更新',
+                disabled: Boolean(busy),
+                children: (
+                  <Card className="settings-tab-panel">
+                    <h3 id="settings-about">关于</h3>
+
+                    <AboutUpdate />
+                  </Card>
+                ),
+              },
+              {
+                key: 'guidance',
+                label: '使用指引',
+                disabled: Boolean(busy),
+                children: (
+                  <Card className="settings-tab-panel">
+                    <SettingsGuidance />
+                  </Card>
+                ),
+              },
+            ]}
+          />
         )}
       </section>
       {changingPassword && (
@@ -478,8 +567,7 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
           <p>请输入这份文件的备份密码；旧格式使用生成时的主密码。校验不会修改当前资料。</p>
           <label>
             备份密码
-            <input
-              type="password"
+            <Input.Password
               aria-label="备份密码"
               autoFocus
               autoComplete="off"
@@ -491,20 +579,24 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
             />
           </label>
           <div className="modal-actions">
-            <button
+            <Button
+              htmlType="submit"
+              type="default"
               className="secondary-button"
               disabled={Boolean(busy)}
               onClick={() => void cancelBackup()}
             >
               取消
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
               className="primary-button"
               disabled={!password || Boolean(busy)}
               onClick={() => void inspect()}
             >
               {busy ? '校验中…' : '校验备份'}
-            </button>
+            </Button>
           </div>
         </Dialog>
       )}
@@ -528,20 +620,24 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
             <p>当前尚未设置备份密码，恢复前副本使用本次导入文件的备份密码。</p>
           )}
           <div className="modal-actions">
-            <button
+            <Button
+              htmlType="submit"
+              type="default"
               className="secondary-button"
               disabled={Boolean(busy)}
               onClick={() => void cancelBackup()}
             >
               取消
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
               className="primary-button"
               disabled={Boolean(busy)}
               onClick={() => void restore()}
             >
               {busy ? '恢复中…' : '恢复备份'}
-            </button>
+            </Button>
           </div>
         </Dialog>
       )}
@@ -560,9 +656,9 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
       {error && (
         <div className="error-banner" role="alert">
           <span>{error}</span>
-          <button aria-label="关闭提示" onClick={() => setError('')}>
+          <Button htmlType="submit" type="text" aria-label="关闭提示" onClick={() => setError('')}>
             <XIcon />
-          </button>
+          </Button>
         </div>
       )}
     </main>

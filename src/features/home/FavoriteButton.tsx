@@ -1,3 +1,4 @@
+import { Button } from 'antd';
 import { StarIcon } from '@phosphor-icons/react';
 import type { Favorite } from '../../home-types';
 import type { Snapshot } from '../../types';
@@ -16,7 +17,9 @@ export function FavoriteButton({
     (favorite) => favorite.kind === item.kind && favorite.id === item.id,
   );
   return (
-    <button
+    <Button
+      htmlType="submit"
+      type="text"
       className="icon-button"
       aria-label={`${pinned ? '移出' : '设为'}常用${item.kind === 'tool' ? '工具' : item.kind === 'system' ? '系统' : item.kind === 'access' ? '访问入口' : '账号'}`}
       title={pinned ? '移出常用' : '设为常用'}
@@ -36,6 +39,6 @@ export function FavoriteButton({
         weight={pinned ? 'fill' : 'regular'}
         color={pinned ? 'var(--accent)' : 'currentColor'}
       />
-    </button>
+    </Button>
   );
 }

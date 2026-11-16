@@ -1,3 +1,4 @@
+import { fillDate } from './antd-controls';
 import { openSystemAction } from './ledger-actions';
 import { test, expect } from '@playwright/test';
 import { electron } from './launch';
@@ -59,7 +60,7 @@ test('勾选内容、开始日期筛选和单文件输出在主题、窄窗口�
         filePath: `${outputDirectory}/${options.defaultPath}`,
       })) as typeof dialog.showSaveDialog;
     }, outputDirectory);
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await openSystemAction(page, '导出资料');
     const dialog = page.getByRole('dialog', { name: '导出系统资料', exact: true });
     const submit = dialog.getByRole('button', { name: '导出资料', exact: true });
@@ -93,12 +94,12 @@ test('勾选内容、开始日期筛选和单文件输出在主题、窄窗口�
     expect(markdown).toContain('范围外任务正文');
     expect(markdown).not.toContain('不选时不导出的文档正文');
     expect(markdown).toContain('data:image/png;base64,');
-    await dialog.getByLabel('开始日期', { exact: true }).fill('2025-10-21');
-    await dialog.getByLabel('结束日期', { exact: true }).fill('2025-10-20');
+    await fillDate(dialog.getByLabel('开始日期', { exact: true }), '2025-10-21');
+    await fillDate(dialog.getByLabel('结束日期', { exact: true }), '2025-10-20');
     await expect(submit).toBeDisabled();
     await expect(dialog.getByRole('alert')).toContainText('开始日期不能晚于结束日期');
-    await dialog.getByLabel('开始日期', { exact: true }).fill('2025-10-20');
-    await dialog.getByLabel('结束日期', { exact: true }).fill('2025-10-21');
+    await fillDate(dialog.getByLabel('开始日期', { exact: true }), '2025-10-20');
+    await fillDate(dialog.getByLabel('结束日期', { exact: true }), '2025-10-21');
     await submit.click();
     await expect(dialog.getByRole('status')).toContainText('共 1 个文件');
     markdown = await fs.readFile(markdownPath, 'utf8');
@@ -273,7 +274,7 @@ test('系统资料分别导出 Markdown、Word、PDF，取消解锁无输出，�
         filePath: output,
       })) as typeof dialog.showSaveDialog;
     }, output);
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await openSystemAction(page, '导出资料');
     const dialog = page.getByRole('dialog', { name: '导出系统资料', exact: true });
     await dialog.getByLabel('Word', { exact: true }).check();

@@ -1,3 +1,5 @@
+import { markNewRecordChanged } from '../../shared/new-record';
+import { Button, Checkbox, Input, Radio, Select } from 'antd';
 import { useId, useState } from 'react';
 import type { Snapshot } from '../../types';
 import type { ResourceConnection } from '../../ledger-types';
@@ -32,13 +34,13 @@ export function OptionalFields({
         <label key={name}>
           {name}
           {/命令|说明|结果/.test(name) ? (
-            <textarea
+            <Input.TextArea
               aria-label={`${prefix}${name}`}
               value={value[name] ?? ''}
               onChange={(e) => onChange({ ...value, [name]: e.target.value })}
             />
           ) : (
-            <input
+            <Input
               aria-label={`${prefix}${name}`}
               value={value[name] ?? ''}
               placeholder={
@@ -49,8 +51,9 @@ export function OptionalFields({
             />
           )}
           {!names.includes(name) && (
-            <button
-              type="button"
+            <Button
+              type="text"
+              htmlType="button"
               className="text-button"
               onClick={() => {
                 const next = { ...value };
@@ -59,7 +62,7 @@ export function OptionalFields({
               }}
             >
               删除字段 {name}
-            </button>
+            </Button>
           )}
         </label>
       ))}
@@ -70,14 +73,15 @@ export function OptionalFields({
       </datalist>
       {custom && (
         <div className="extra-field">
-          <input
+          <Input
             aria-label="附加字段名称"
             placeholder="普通字段名称"
             value={fieldName}
             onChange={(e) => setFieldName(e.target.value)}
           />
-          <button
-            type="button"
+          <Button
+            type="default"
+            htmlType="button"
             className="secondary-button"
             disabled={!validField}
             onClick={() => {
@@ -86,7 +90,7 @@ export function OptionalFields({
             }}
           >
             添加附加字段
-          </button>
+          </Button>
           <small>密码、Token 和私钥请使用专门的凭据字段。</small>
         </div>
       )}
@@ -121,7 +125,7 @@ export function ConnectionFields({
           <div className="record-fields">
             <label>
               连接名称
-              <input
+              <Input
                 aria-label={`连接 ${index + 1} 名称`}
                 value={c.label}
                 onChange={(e) => update(index, { label: e.target.value })}
@@ -129,7 +133,7 @@ export function ConnectionFields({
             </label>
             <label>
               用途／节点角色
-              <input
+              <Input
                 aria-label={`连接 ${index + 1} 角色`}
                 value={c.role}
                 onChange={(e) => update(index, { role: e.target.value })}
@@ -138,7 +142,7 @@ export function ConnectionFields({
             </label>
             <label>
               地址
-              <input
+              <Input
                 aria-label={`连接 ${index + 1} 地址`}
                 value={c.address}
                 onChange={(e) => update(index, { address: e.target.value })}
@@ -152,7 +156,7 @@ export function ConnectionFields({
             </label>
             <label>
               端口
-              <input
+              <Input
                 aria-label={`连接 ${index + 1} 端口`}
                 inputMode="numeric"
                 value={c.port}
@@ -161,38 +165,40 @@ export function ConnectionFields({
             </label>
             <label>
               关联服务器
-              <select
+              <Select
                 aria-label={`连接 ${index + 1} 服务器`}
                 value={c.serverId ?? ''}
-                onChange={(e) =>
-                  update(index, {
-                    serverId: e.target.value || null,
-                    address: !e.target.value ? connectionAddress(c, snapshot.resources) : c.address,
-                  })
-                }
+                onChange={(e) => {
+                  markNewRecordChanged();
+                  return update(index, {
+                    serverId: e || null,
+                    address: !e ? connectionAddress(c, snapshot.resources) : c.address,
+                  });
+                }}
               >
-                <option value="">不关联</option>
+                <Select.Option data-value={String('')} value="">
+                  不关联
+                </Select.Option>
                 {snapshot.resources
                   .filter((r) => r.systemId === systemId && r.kind === 'server')
                   .map((r) => (
-                    <option key={r.id} value={r.id}>
+                    <Select.Option data-value={String(r.id)} key={r.id} value={r.id}>
                       {r.name}
-                    </option>
+                    </Select.Option>
                   ))}
-              </select>
+              </Select>
             </label>
-            <label>
-              <input
-                type="radio"
-                name="preferred-resource-connection"
-                checked={(preferred ?? value[0]?.id) === c.id}
-                onChange={() => onChange(value, c.id)}
-              />
+            <Radio
+              name="preferred-resource-connection"
+              checked={(preferred ?? value[0]?.id) === c.id}
+              onChange={() => onChange(value, c.id)}
+            >
               常用连接
-            </label>
+            </Radio>
           </div>
-          <button
-            type="button"
+          <Button
+            type="text"
+            htmlType="button"
             className="text-button"
             onClick={() => {
               const next = value.filter((_, i) => i !== index);
@@ -200,10 +206,11 @@ export function ConnectionFields({
             }}
           >
             删除连接 {index + 1}
-          </button>
+          </Button>
           {index > 0 && (
-            <button
-              type="button"
+            <Button
+              type="text"
+              htmlType="button"
               className="text-button"
               onClick={() => {
                 const next = [...value];
@@ -212,12 +219,13 @@ export function ConnectionFields({
               }}
             >
               上移连接 {index + 1}
-            </button>
+            </Button>
           )}
         </fieldset>
       ))}
-      <button
-        type="button"
+      <Button
+        type="default"
+        htmlType="button"
         className="secondary-button"
         onClick={() =>
           onChange(
@@ -237,7 +245,7 @@ export function ConnectionFields({
         }
       >
         添加连接
-      </button>
+      </Button>
     </section>
   );
 }
@@ -264,22 +272,25 @@ export function DocumentReferences({
       {(onChange ? documents : documents.filter((d) => value.includes(d.id))).map((d) => (
         <div key={d.id} className="document-reference">
           {onChange && (
-            <label>
-              <input
-                type="checkbox"
-                checked={value.includes(d.id)}
-                onChange={(e) =>
-                  onChange(e.target.checked ? [...value, d.id] : value.filter((id) => id !== d.id))
-                }
-              />
+            <Checkbox
+              checked={value.includes(d.id)}
+              onChange={(e) =>
+                onChange(e.target.checked ? [...value, d.id] : value.filter((id) => id !== d.id))
+              }
+            >
               {d.title || '未命名文档'}
               {d.systemId === null ? '（通用）' : ''}
-            </label>
+            </Checkbox>
           )}
           {onOpen && (
-            <button type="button" className="text-button" onClick={() => onOpen(d.id)}>
+            <Button
+              type="text"
+              htmlType="button"
+              className="text-button"
+              onClick={() => onOpen(d.id)}
+            >
               {onChange ? '打开文档' : d.title || '未命名文档'}
-            </button>
+            </Button>
           )}
         </div>
       ))}

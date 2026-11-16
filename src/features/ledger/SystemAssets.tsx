@@ -1,3 +1,5 @@
+import { markNewRecordChanged } from '../../shared/new-record';
+import { Button, Select } from 'antd';
 import { useEffect, useState } from 'react';
 import { GlobeIcon, DesktopTowerIcon, PlusIcon } from '@phosphor-icons/react';
 import type { Snapshot } from '../../types';
@@ -75,36 +77,48 @@ export function SystemAssets({
       <div className="entity-toolbar">
         <label className="scope-filter">
           范围
-          <select
+          <Select
             aria-label={`${label}环境筛选`}
             value={visibleFilter}
             onChange={(event) => {
-              const value = event.target.value;
+              markNewRecordChanged();
+              const value = event;
               void change(() => {
                 setSelected(undefined);
                 setFilter(value);
               });
             }}
           >
-            <option value="all">全部环境与通用</option>
-            <option value="common">仅系统通用</option>
+            <Select.Option data-value={String('all')} value="all">
+              全部环境与通用
+            </Select.Option>
+            <Select.Option data-value={String('common')} value="common">
+              仅系统通用
+            </Select.Option>
             {snapshot.environments
               .filter((e) => e.systemId === systemId)
               .map((e) => (
-                <option key={e.id} value={e.id}>
+                <Select.Option data-value={String(e.id)} key={e.id} value={e.id}>
                   {e.name}与通用
-                </option>
+                </Select.Option>
               ))}
-          </select>
+          </Select>
         </label>
-        <button className="toolbar-new" onClick={() => void change(() => setCreating(true))}>
+        <Button
+          htmlType="submit"
+          type="primary"
+          className="toolbar-new"
+          onClick={() => void change(() => setCreating(true))}
+        >
           <PlusIcon size={16} />
           新增{label}
-        </button>
+        </Button>
       </div>
       <div className="system-asset-list" role="group" aria-label={`${label}列表`}>
         {items.map((record) => (
-          <button
+          <Button
+            htmlType="submit"
+            type="text"
             key={record.id}
             className={`system-asset-row ${record.id === item?.id ? 'selected' : ''}`}
             aria-label={`${label} ${record.name}`}
@@ -120,7 +134,7 @@ export function SystemAssets({
                 {'address' in record && record.address ? ` · ${record.address}` : ''}
               </small>
             </span>
-          </button>
+          </Button>
         ))}
       </div>
       {item ? (

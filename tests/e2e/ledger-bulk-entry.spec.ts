@@ -1,3 +1,4 @@
+import { selectChoice, expectSelectValue } from './antd-controls';
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test';
 import { electron } from './launch';
 import fs from 'node:fs/promises';
@@ -18,7 +19,7 @@ test.beforeEach(async () => {
   delete env.ELECTRON_RUN_AS_NODE;
   app = await electron.launch({ args: ['.'], env });
   page = await app.firstWindow();
-  await page.getByRole('button', { name: '台账', exact: true }).waitFor();
+  await page.getByRole('menuitem', { name: '台账', exact: true }).waitFor();
   seed = await page.evaluate(async () => {
     const api = window.desktop;
     const systemId = (await api.mutate({ type: 'system.save', name: '批量录入验收' })).createdId!;
@@ -54,7 +55,7 @@ test.beforeEach(async () => {
     await api.initializeVault('fictional-bulk-master');
     return { systemId, environmentId, serverId, otherServerId, serviceId };
   });
-  await page.getByRole('button', { name: '台账', exact: true }).click();
+  await page.getByRole('menuitem', { name: '台账', exact: true }).click();
 });
 test.afterEach(async () => {
   // Failed assertions may leave an intentionally unsaved test draft open.
@@ -69,12 +70,12 @@ test.afterEach(async () => {
 const dialog = () => page.getByRole('dialog', { name: '批量录入 · 校对后新增', exact: true });
 
 test('手填与追加粘贴共用编辑表格，校验、秘密、键盘和窄窗口均保留', async ({}, info) => {
-  await page.getByRole('button', { name: '服务器', exact: true }).click();
-  await page.getByLabel('台账环境筛选').selectOption(seed.environmentId);
+  await page.getByRole('tab', { name: '服务器', exact: true }).click();
+  await selectChoice(page.getByLabel('台账环境筛选'), seed.environmentId);
   await page.getByRole('button', { name: '批量录入', exact: true }).click();
   const form = dialog();
-  await expect(form.getByLabel('批量条目类型')).toHaveValue('server');
-  await expect(form.getByLabel('批量环境')).toHaveValue(seed.environmentId);
+  await expectSelectValue(form.getByLabel('批量条目类型'), 'server');
+  await expectSelectValue(form.getByLabel('批量环境'), seed.environmentId);
   await form.getByLabel('第 1 行名称', { exact: true }).fill('手填服务器');
   await page.keyboard.press('Tab');
   await expect(form.getByLabel('第 1 行地址／IP')).toBeFocused();
@@ -112,7 +113,9 @@ test('手填与追加粘贴共用编辑表格，校验、秘密、键盘和窄�
   await expect(page.locator('html')).toHaveAttribute('data-reduce-motion', 'true');
   expect(await form.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
   const grid = form.getByRole('region', { name: '批量录入表格（可横向滚动）' });
-  expect(await grid.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+  expect(
+    await grid.locator('.ant-table-body').evaluate((el) => el.scrollWidth > el.clientWidth),
+  ).toBe(true);
   await page.screenshot({ path: info.outputPath('bulk-dark-narrow.png') });
   await page.keyboard.press('Escape');
   await expect(form.getByRole('button', { name: '继续校对', exact: true })).toBeFocused();
@@ -158,12 +161,12 @@ test('全部十类可直接录入，账号按所属对象查重，服务与节�
   ]) {
     await page.getByRole('button', { name: '批量录入', exact: true }).click();
     const form = dialog();
-    await form.getByLabel('批量条目类型').selectOption(kind);
-    if (kind !== 'account') await form.getByLabel('批量环境').selectOption(seed.environmentId);
+    await selectChoice(form.getByLabel('批量条目类型'), kind);
+    if (kind !== 'account') await selectChoice(form.getByLabel('批量环境'), seed.environmentId);
     if (kind === 'account')
-      await form.getByLabel('批量所属对象').selectOption(`resource:${seed.serverId}`);
+      await selectChoice(form.getByLabel('批量所属对象'), `resource:${seed.serverId}`);
     if (kind === 'node')
-      await form.getByLabel('批量所属对象').selectOption(`service:${seed.serviceId}`);
+      await selectChoice(form.getByLabel('批量所属对象'), `service:${seed.serviceId}`);
     await form
       .getByLabel('第 1 行名称', { exact: true })
       .fill(kind === 'account' ? '运维账号' : `手填-${kind}`);
@@ -178,12 +181,12 @@ test('全部十类可直接录入，账号按所属对象查重，服务与节�
       await form.getByLabel('第 1 行代码仓库').fill('https://example.invalid/repo');
     if (kind === 'job' || kind === 'backup') {
       await form.getByLabel('第 1 行频率').fill('每天');
-      await form.getByLabel('第 1 行状态').selectOption('active');
+      await selectChoice(form.getByLabel('第 1 行状态'), 'active');
       // Returning to the default must not send an invalid empty status to the main process.
-      await form.getByLabel('第 1 行状态').selectOption('');
+      await selectChoice(form.getByLabel('第 1 行状态'), '');
     }
     if (kind === 'node') {
-      await form.getByLabel('第 1 行运行方式').selectOption('scheduled');
+      await selectChoice(form.getByLabel('第 1 行运行方式'), 'scheduled');
       await form.getByLabel('第 1 行节点数量').fill('2～4');
     }
     await form.getByRole('button', { name: '确认新增', exact: true }).click();
@@ -213,7 +216,7 @@ test('全部十类可直接录入，账号按所属对象查重，服务与节�
 test('失败整批回滚，原生关闭保护草稿，全局保存等待解锁与提交', async () => {
   await page.getByRole('button', { name: '批量录入', exact: true }).click();
   let form = dialog();
-  await form.getByLabel('批量条目类型').selectOption('service');
+  await selectChoice(form.getByLabel('批量条目类型'), 'service');
   await form.getByLabel('第 1 行名称', { exact: true }).fill('回滚服务');
   await form.getByRole('button', { name: '增加一行', exact: true }).click();
   await form.getByLabel('第 2 行名称', { exact: true }).fill('已有服务');
@@ -232,7 +235,7 @@ test('失败整批回滚，原生关闭保护草稿，全局保存等待解锁�
   await form.getByRole('button', { name: '完成', exact: true }).click();
   await page.getByRole('button', { name: '批量录入', exact: true }).click();
   form = dialog();
-  await form.getByLabel('批量条目类型').selectOption('server');
+  await selectChoice(form.getByLabel('批量条目类型'), 'server');
   await form.getByLabel('第 1 行名称', { exact: true }).fill('退出保护服务器');
   const message = await app.evaluate(
     ({ BrowserWindow, dialog }) =>
@@ -283,13 +286,13 @@ test('失败整批回滚，原生关闭保护草稿，全局保存等待解锁�
 test('密码映射不能写入普通字段，追加超过上限后可选择二百条统一保存', async () => {
   await page.getByRole('button', { name: '批量录入', exact: true }).click();
   const form = dialog();
-  await form.getByLabel('批量条目类型').selectOption('server');
+  await selectChoice(form.getByLabel('批量条目类型'), 'server');
   await form.getByLabel('第 1 行名称', { exact: true }).fill('规模-手填');
   await form
     .getByLabel('粘贴表格', { exact: true })
     .fill('名称\t密码\n秘密映射\tfictional-mapping-secret');
   await form.getByRole('button', { name: '读取文本', exact: true }).click();
-  await form.getByLabel('映射第 2 列').selectOption('notes');
+  await selectChoice(form.getByLabel('映射第 2 列'), 'notes');
   await expect(form.getByRole('alert')).toContainText('密码列只能加密保存或忽略');
   await expect(
     form.getByRole('button', { name: '追加到录入表格（1 行）', exact: true }),

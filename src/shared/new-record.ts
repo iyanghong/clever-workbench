@@ -1,7 +1,15 @@
 const pending = new Set<Promise<unknown>>();
+export function markNewRecordChanged() {
+  const focused = document.activeElement?.closest<HTMLFormElement>('form[data-new-record]');
+  const forms = document.querySelectorAll<HTMLFormElement>(
+    ':is(dialog[open], [data-workbench-dialog]) form[data-new-record]',
+  );
+  const form = focused ?? forms.item(forms.length - 1);
+  if (form) form.dataset.dirty = 'true';
+}
 function draft() {
   return document.querySelector<HTMLFormElement>(
-    'dialog[open] form[data-new-record][data-dirty="true"]',
+    ':is(dialog[open], [data-workbench-dialog]) form[data-new-record][data-dirty="true"]',
   );
 }
 export function closeNewRecord(close: () => void) {

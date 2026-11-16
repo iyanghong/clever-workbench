@@ -1,3 +1,4 @@
+import { Button, Input, Collapse } from 'antd';
 import { useState } from 'react';
 import { PlusIcon, NotePencilIcon, ArrowUpRightIcon } from '@phosphor-icons/react';
 import type { Snapshot } from '../../types';
@@ -56,7 +57,9 @@ export function RelatedWork({
     <section className="related-work" aria-label={`${scope}相关资料`}>
       <div className="section-heading">
         <h3>相关工作</h3>
-        <button
+        <Button
+          htmlType="submit"
+          type="text"
           className="text-button"
           aria-label={`为${scope}写文档`}
           disabled={busy}
@@ -64,7 +67,7 @@ export function RelatedWork({
         >
           <NotePencilIcon size={15} />
           写文档
-        </button>
+        </Button>
       </div>
       <form
         className="quick-add system-task-add"
@@ -74,7 +77,7 @@ export function RelatedWork({
         }}
       >
         <PlusIcon size={17} />
-        <input
+        <Input
           aria-label={`为当前${scope}新增任务`}
           value={title}
           disabled={busy}
@@ -87,37 +90,56 @@ export function RelatedWork({
         <kbd>↵</kbd>
       </form>
       {(documents.length > 0 || tasks.length > 0) && (
-        <details className="compact-details">
-          <summary>
-            已有记录 · {documents.length} 份文档，{tasks.length} 项任务
-          </summary>
-          <div className="related-links">
-            {documents.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => void navigate({ module: 'documents', objectId: item.id })}
-              >
-                <NotePencilIcon size={14} />
-                {item.title || '未命名文档'}
-                <ArrowUpRightIcon size={13} />
-              </button>
-            ))}
-            {tasks.map((item) => (
-              <button
-                key={item.id}
-                className="related-task"
-                data-urgency={taskUrgency(item, now)}
-                onClick={() => void navigate({ module: 'tasks', objectId: item.id })}
-              >
-                <span aria-hidden="true">{item.completedAt ? '✓' : '○'}</span>
-                <span className="related-task-title">{item.title}</span>
-                <TaskTiming task={item} now={now} />
-                <TaskTagChips ids={item.tagIds} tags={snapshot.taskTags} />
-                <ArrowUpRightIcon size={13} />
-              </button>
-            ))}
-          </div>
-        </details>
+        <Collapse
+          className="compact-details"
+          ghost
+          defaultActiveKey={false ? ['details'] : []}
+          items={[
+            {
+              key: 'details',
+              label: (
+                <>
+                  已有记录 · {documents.length} 份文档，{tasks.length} 项任务
+                </>
+              ),
+              forceRender: true,
+              children: (
+                <>
+                  <div className="related-links">
+                    {documents.map((item) => (
+                      <Button
+                        htmlType="submit"
+                        type="text"
+                        key={item.id}
+                        onClick={() => void navigate({ module: 'documents', objectId: item.id })}
+                      >
+                        <NotePencilIcon size={14} />
+                        {item.title || '未命名文档'}
+                        <ArrowUpRightIcon size={13} />
+                      </Button>
+                    ))}
+                    {tasks.map((item) => (
+                      <Button
+                        htmlType="submit"
+                        type="text"
+                        key={item.id}
+                        className="related-task"
+                        data-urgency={taskUrgency(item, now)}
+                        onClick={() => void navigate({ module: 'tasks', objectId: item.id })}
+                      >
+                        <span aria-hidden="true">{item.completedAt ? '✓' : '○'}</span>
+                        <span className="related-task-title">{item.title}</span>
+                        <TaskTiming task={item} now={now} />
+                        <TaskTagChips ids={item.tagIds} tags={snapshot.taskTags} />
+                        <ArrowUpRightIcon size={13} />
+                      </Button>
+                    ))}
+                  </div>
+                </>
+              ),
+            },
+          ]}
+        />
       )}
     </section>
   );

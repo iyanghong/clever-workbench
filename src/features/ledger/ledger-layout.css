@@ -1,3 +1,4 @@
+@layer legacy {
 .ledger-workspace {
   container: ledger-workspace / inline-size;
 }
@@ -478,4 +479,5 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
 }

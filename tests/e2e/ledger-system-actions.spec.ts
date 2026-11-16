@@ -16,7 +16,7 @@ test('系统动作收纳后支持键盘、保存及弹窗关闭焦点链', async
       await window.desktop.mutate({ type: 'system.save', name: '订单平台' });
       await window.desktop.mutate({ type: 'system.save', name: '报表平台' });
     });
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     const switcher = page.getByRole('button', { name: '切换系统', exact: true });
     const more = page.getByRole('button', { name: '当前系统更多操作', exact: true });
     await expect(more).toBeVisible({ timeout: 2000 });

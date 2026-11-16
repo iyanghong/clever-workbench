@@ -1,3 +1,5 @@
+import { markNewRecordChanged } from '../../shared/new-record';
+import { Button, Checkbox, Input, Select, Collapse } from 'antd';
 import { ConnectionFields, OptionalFields } from './RecordFields';
 import { resourceTemplate, secretFieldName } from '../../ledger-fields';
 import { useEffect, useRef, useState } from 'react';
@@ -90,18 +92,21 @@ export function Resources({
             void create();
           }}
         >
-          <select
+          <Select
             aria-label="新增资源类型"
             value={kind}
-            onChange={(event) => setKind(event.target.value as ResourceKind)}
+            onChange={(event) => {
+              markNewRecordChanged();
+              return setKind(event as ResourceKind);
+            }}
           >
             {Object.entries(kinds).map(([value, label]) => (
-              <option key={value} value={value}>
+              <Select.Option data-value={String(value)} key={value} value={value}>
                 {label}
-              </option>
+              </Select.Option>
             ))}
-          </select>
-          <input
+          </Select>
+          <Input
             aria-label="新增资源名称"
             placeholder="名称，回车添加…"
             value={name}
@@ -115,7 +120,9 @@ export function Resources({
       </div>
       <div className="resource-list" role="group" aria-label="资源列表">
         {resources.map((item) => (
-          <button
+          <Button
+            htmlType="submit"
+            type="text"
             key={item.id}
             className={`resource-chip ${item.id === resource?.id ? 'selected' : ''}`}
             aria-label={`资源 ${item.name}`}
@@ -131,7 +138,7 @@ export function Resources({
             {item.kind === 'server' ? <DesktopTowerIcon size={17} /> : <DatabaseIcon size={17} />}
             <span>{item.name}</span>
             <small>{kinds[item.kind]}</small>
-          </button>
+          </Button>
         ))}
       </div>
       {resource ? (
@@ -284,17 +291,19 @@ export function ResourceEditor({
           {snapshot.systems.find((item) => item.id === resource.systemId)?.name} /{' '}
           {environment?.name ?? '通用'} / {resource.name}
         </strong>
-        <button
+        <Button
+          htmlType="submit"
+          type="text"
           className="save-indicator"
           onClick={() => void form.flush().catch((cause) => host.onError(String(cause)))}
         >
           {form.status}
-        </button>
+        </Button>
       </div>
       <div className="record-fields resource-name-fields">
         <label>
           名称
-          <input
+          <Input
             aria-label="资源名称"
             value={form.value.name}
             onChange={(event) => form.change({ ...form.value, name: event.target.value })}
@@ -303,19 +312,20 @@ export function ResourceEditor({
         {!serverView && (
           <label>
             类型
-            <select
+            <Select
               aria-label="资源类型"
               value={form.value.kind}
-              onChange={(event) =>
-                form.change({ ...form.value, kind: event.target.value as ResourceKind })
-              }
+              onChange={(event) => {
+                markNewRecordChanged();
+                return form.change({ ...form.value, kind: event as ResourceKind });
+              }}
             >
               {Object.entries(kinds).map(([value, label]) => (
-                <option key={value} value={value}>
+                <Select.Option data-value={String(value)} key={value} value={value}>
                   {label}
-                </option>
+                </Select.Option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
       </div>
@@ -323,7 +333,7 @@ export function ResourceEditor({
         <div className="record-fields">
           <label>
             用途
-            <input
+            <Input
               aria-label="服务器用途"
               value={form.value.fields['用途'] ?? ''}
               placeholder="如订单应用、缓存或定时任务"
@@ -338,22 +348,25 @@ export function ResourceEditor({
           {serverView && !scopeManaged && (
             <label>
               环境
-              <select
+              <Select
                 aria-label="服务器所属环境"
                 value={form.value.environmentId ?? ''}
-                onChange={(event) =>
-                  form.change({ ...form.value, environmentId: event.target.value || null })
-                }
+                onChange={(event) => {
+                  markNewRecordChanged();
+                  return form.change({ ...form.value, environmentId: event || null });
+                }}
               >
-                <option value="">系统通用</option>
+                <Select.Option data-value={String('')} value="">
+                  系统通用
+                </Select.Option>
                 {snapshot.environments
                   .filter((e) => e.systemId === resource.systemId)
                   .map((e) => (
-                    <option key={e.id} value={e.id}>
+                    <Select.Option data-value={String(e.id)} key={e.id} value={e.id}>
                       {e.name}
-                    </option>
+                    </Select.Option>
                   ))}
-              </select>
+              </Select>
             </label>
           )}
         </div>
@@ -373,7 +386,7 @@ export function ResourceEditor({
           <label>
             地址
             <div className="inline-field">
-              <input
+              <Input
                 aria-label="资源地址"
                 placeholder={resource.kind === 'server' ? 'IP 或 SSH 主机名' : '主机名、IP 或 URL'}
                 value={form.value.address}
@@ -389,7 +402,9 @@ export function ResourceEditor({
                 onError={host.onError}
               />
               {/^https?:\/\//i.test(form.value.address) && (
-                <button
+                <Button
+                  htmlType="submit"
+                  type="text"
                   className="icon-button"
                   aria-label="打开资源链接"
                   onClick={() =>
@@ -399,14 +414,14 @@ export function ResourceEditor({
                   }
                 >
                   <ArrowUpRightIcon size={17} />
-                </button>
+                </Button>
               )}
             </div>
           </label>
           <label>
             端口
             <div className="inline-field">
-              <input
+              <Input
                 aria-label="资源端口"
                 inputMode="numeric"
                 placeholder={'22'}
@@ -431,7 +446,7 @@ export function ResourceEditor({
           {serverConfigurationFields.map((field) => (
             <label key={field}>
               {field}
-              <input
+              <Input
                 aria-label={`服务器${field}`}
                 value={form.value.fields[field] ?? ''}
                 placeholder="可选"
@@ -459,101 +474,124 @@ export function ResourceEditor({
           form.change({ ...form.value, fields: { ...form.value.fields, ...fields } })
         }
       />
-      <details className="compact-details">
-        <summary>附加信息</summary>
-        <p className="field-hint">
-          连接方式、数据库编号等普通信息。密码、Token 和私钥请存入账号的秘密字段。
-        </p>
-        {Object.entries(form.value.fields)
-          .filter(
-            ([key]) =>
-              !resourceTemplate(resource.kind, form.value.fields['类型']).includes(key) &&
-              (resource.kind !== 'server' || !['用途', ...serverConfigurationFields].includes(key)),
-          )
-          .map(([key, value]) => (
-            <div className="extra-field" key={key}>
-              <label>
-                {key}
-                <input
-                  aria-label={`附加字段 ${key}`}
-                  value={value}
-                  onChange={(event) =>
-                    form.change({
-                      ...form.value,
-                      fields: { ...form.value.fields, [key]: event.target.value },
-                    })
-                  }
+      <Collapse
+        className="compact-details"
+        ghost
+        defaultActiveKey={false ? ['details'] : []}
+        items={[
+          {
+            key: 'details',
+            label: <>附加信息</>,
+            forceRender: true,
+            children: (
+              <>
+                <p className="field-hint">
+                  连接方式、数据库编号等普通信息。密码、Token 和私钥请存入账号的秘密字段。
+                </p>
+                {Object.entries(form.value.fields)
+                  .filter(
+                    ([key]) =>
+                      !resourceTemplate(resource.kind, form.value.fields['类型']).includes(key) &&
+                      (resource.kind !== 'server' ||
+                        !['用途', ...serverConfigurationFields].includes(key)),
+                  )
+                  .map(([key, value]) => (
+                    <div className="extra-field" key={key}>
+                      <label>
+                        {key}
+                        <Input
+                          aria-label={`附加字段 ${key}`}
+                          value={value}
+                          onChange={(event) =>
+                            form.change({
+                              ...form.value,
+                              fields: { ...form.value.fields, [key]: event.target.value },
+                            })
+                          }
+                        />
+                      </label>
+                      <CopyValue
+                        resolveValue={async () => {
+                          await flushAll();
+                          return value;
+                        }}
+                        value={value}
+                        label={key}
+                        onError={host.onError}
+                      />
+                      <Button
+                        htmlType="submit"
+                        type="text"
+                        className="icon-button"
+                        aria-label={`删除字段 ${key}`}
+                        onClick={() => {
+                          const fields = { ...form.value.fields };
+                          delete fields[key];
+                          form.change({ ...form.value, fields });
+                        }}
+                      >
+                        <TrashIcon size={15} />
+                      </Button>
+                    </div>
+                  ))}
+                <div className="extra-field">
+                  <Input
+                    aria-label="新字段名称"
+                    placeholder="字段名称，如 SSH 方式"
+                    value={fieldName}
+                    onChange={(event) => setFieldName(event.target.value)}
+                  />
+                  <Input
+                    aria-label="新字段值"
+                    placeholder="内容"
+                    value={fieldValue}
+                    onChange={(event) => setFieldValue(event.target.value)}
+                  />
+                  <Button
+                    htmlType="submit"
+                    type="text"
+                    className="icon-button"
+                    aria-label="添加字段"
+                    disabled={!fieldName.trim()}
+                    onClick={() => {
+                      const key = fieldName.trim();
+                      if (secretFieldName.test(key)) {
+                        host.onError('密码、Token 和私钥请存入账号的秘密字段。');
+                        return;
+                      }
+                      if (
+                        Object.hasOwn(form.value.fields, key) ||
+                        ['__proto__', 'prototype', 'constructor'].includes(key)
+                      ) {
+                        host.onError('字段名称已存在或不可使用。');
+                        return;
+                      }
+                      form.change({
+                        ...form.value,
+                        fields: { ...form.value.fields, [key]: fieldValue },
+                      });
+                      setFieldName('');
+                      setFieldValue('');
+                    }}
+                  >
+                    <PlusIcon size={17} />
+                  </Button>
+                </div>
+                <Input.TextArea
+                  aria-label="资源说明"
+                  placeholder="普通说明，按需记录…"
+                  value={form.value.notes}
+                  onChange={(event) => form.change({ ...form.value, notes: event.target.value })}
                 />
-              </label>
-              <CopyValue
-                resolveValue={async () => {
-                  await flushAll();
-                  return value;
-                }}
-                value={value}
-                label={key}
-                onError={host.onError}
-              />
-              <button
-                className="icon-button"
-                aria-label={`删除字段 ${key}`}
-                onClick={() => {
-                  const fields = { ...form.value.fields };
-                  delete fields[key];
-                  form.change({ ...form.value, fields });
-                }}
-              >
-                <TrashIcon size={15} />
-              </button>
-            </div>
-          ))}
-        <div className="extra-field">
-          <input
-            aria-label="新字段名称"
-            placeholder="字段名称，如 SSH 方式"
-            value={fieldName}
-            onChange={(event) => setFieldName(event.target.value)}
-          />
-          <input
-            aria-label="新字段值"
-            placeholder="内容"
-            value={fieldValue}
-            onChange={(event) => setFieldValue(event.target.value)}
-          />
-          <button
-            className="icon-button"
-            aria-label="添加字段"
-            disabled={!fieldName.trim()}
-            onClick={() => {
-              const key = fieldName.trim();
-              if (secretFieldName.test(key)) {
-                host.onError('密码、Token 和私钥请存入账号的秘密字段。');
-                return;
-              }
-              if (
-                Object.hasOwn(form.value.fields, key) ||
-                ['__proto__', 'prototype', 'constructor'].includes(key)
-              ) {
-                host.onError('字段名称已存在或不可使用。');
-                return;
-              }
-              form.change({ ...form.value, fields: { ...form.value.fields, [key]: fieldValue } });
-              setFieldName('');
-              setFieldValue('');
-            }}
-          >
-            <PlusIcon size={17} />
-          </button>
-        </div>
-        <textarea
-          aria-label="资源说明"
-          placeholder="普通说明，按需记录…"
-          value={form.value.notes}
-          onChange={(event) => form.change({ ...form.value, notes: event.target.value })}
-        />
-      </details>
+              </>
+            ),
+          },
+        ]}
+      />
       <div className="record-actions">
-        <button
+        <Button
+          htmlType="submit"
+          type="text"
           onClick={() => {
             setDialogError('');
             setIncludeSecrets(false);
@@ -565,8 +603,11 @@ export function ResourceEditor({
         >
           <CopyIcon size={15} />
           复制资源
-        </button>
-        <button
+        </Button>
+        <Button
+          htmlType="submit"
+          type="text"
+          danger
           className="subtle-danger"
           onClick={() => {
             setDialogError('');
@@ -575,7 +616,7 @@ export function ResourceEditor({
         >
           <TrashIcon size={15} />
           删除资源
-        </button>
+        </Button>
       </div>
       {modal && (
         <Dialog
@@ -588,7 +629,7 @@ export function ResourceEditor({
               <p>创建独立资源，复制普通资料及账号元数据；秘密需要明确选择。</p>
               <label>
                 名称
-                <input
+                <Input
                   aria-label="副本名称"
                   value={copyName}
                   onChange={(event) => setCopyName(event.target.value)}
@@ -597,65 +638,74 @@ export function ResourceEditor({
               {resource.kind === 'server' && (
                 <label>
                   目标系统
-                  <select
+                  <Select
                     aria-label="副本目标系统"
                     value={copySystem}
                     onChange={(event) => {
-                      setCopySystem(event.target.value);
+                      markNewRecordChanged();
+                      setCopySystem(event);
                       setCopyEnvironment('');
                     }}
                   >
                     {snapshot.systems.map((item) => (
-                      <option key={item.id} value={item.id}>
+                      <Select.Option data-value={String(item.id)} key={item.id} value={item.id}>
                         {item.name}
-                      </option>
+                      </Select.Option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
               )}
               <label>
                 目标环境
-                <select
+                <Select
                   aria-label="副本目标环境"
                   value={copyEnvironment}
-                  onChange={(event) => setCopyEnvironment(event.target.value)}
+                  onChange={(event) => {
+                    markNewRecordChanged();
+                    return setCopyEnvironment(event);
+                  }}
                 >
-                  {resource.kind === 'server' && <option value="">系统通用</option>}
+                  {resource.kind === 'server' && (
+                    <Select.Option data-value={String('')} value="">
+                      系统通用
+                    </Select.Option>
+                  )}
                   {snapshot.environments
                     .filter((item) => item.systemId === copySystem)
                     .map((item) => (
-                      <option value={item.id} key={item.id}>
+                      <Select.Option data-value={String(item.id)} value={item.id} key={item.id}>
                         {item.name}
-                      </option>
+                      </Select.Option>
                     ))}
-                </select>
+                </Select>
               </label>
             </>
           ) : (
             <p>删除“{resource.name}”？有关联账号或资料的资源需要先处理引用。</p>
           )}
           {modal === 'copy' && secretCount > 0 && (
-            <label className="secret-show">
-              <input
-                type="checkbox"
-                aria-label="同时复制资源账号和秘密"
-                checked={includeSecrets}
-                onChange={(event) => setIncludeSecrets(event.target.checked)}
-              />
+            <Checkbox
+              className="secret-show"
+              aria-label="同时复制资源账号和秘密"
+              checked={includeSecrets}
+              onChange={(event) => setIncludeSecrets(event.target.checked)}
+            >
               同时复制账号及 {secretCount} 项秘密（需要解锁）
-            </label>
+            </Checkbox>
           )}
           <div className="modal-actions">
-            <button disabled={busy} onClick={() => setModal(null)}>
+            <Button htmlType="submit" type="text" disabled={busy} onClick={() => setModal(null)}>
               取消
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
               className="primary-button"
               disabled={busy || (modal === 'copy' && !copyName.trim())}
               onClick={() => void confirm()}
             >
               {busy ? '处理中…' : modal === 'copy' ? '创建副本' : '确认删除'}
-            </button>
+            </Button>
           </div>
         </Dialog>
       )}

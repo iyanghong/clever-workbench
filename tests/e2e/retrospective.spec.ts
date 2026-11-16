@@ -1,3 +1,4 @@
+import { fillDate, selectChoice } from './antd-controls';
 import { electron } from './launch';
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
@@ -56,28 +57,28 @@ test('月度回顾和系统全貌可定位跨月与同日任务，重开后完�
         current: `${year}-${String(month + 1).padStart(2, '0')}`,
       };
     });
-    await page.getByRole('button', { name: '工作回顾', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作回顾', exact: true }).click();
     const stat = (label: string) =>
       page
-        .locator('.review-stats > div')
+        .locator('.review-metrics .ant-card')
         .filter({ has: page.getByText(label, { exact: true }) })
-        .locator('strong');
-    await expect(stat('本月涉及任务')).toHaveText('03');
-    await expect(stat('本月完成任务')).toHaveText('02');
-    await page.getByLabel('回顾月份').fill(fixture.previous);
-    await expect(stat('本月涉及任务')).toHaveText('02');
-    await expect(stat('本月完成任务')).toHaveText('00');
-    await page.getByRole('button', { name: '系统回顾', exact: true }).click();
-    await page.getByLabel('回顾系统').selectOption(fixture.projectId);
+        .locator('.ant-statistic-content-value');
+    await expect(stat('本月涉及任务')).toHaveText('3');
+    await expect(stat('本月完成任务')).toHaveText('2');
+    await fillDate(page.getByLabel('回顾月份'), fixture.previous);
+    await expect(stat('本月涉及任务')).toHaveText('2');
+    await expect(stat('本月完成任务')).toHaveText('0');
+    await page.getByRole('radio', { name: '系统回顾', exact: true }).locator('..').click();
+    await selectChoice(page.getByLabel('回顾系统'), fixture.projectId);
     await expect(page.locator('.timeline-row')).toHaveCount(3);
     await page.locator('.timeline-row').filter({ hasText: '同日处理' }).click();
     await expect(page.getByLabel('任务标题', { exact: true })).toHaveValue('同日处理');
     await page.getByRole('button', { name: '重新打开', exact: true }).click();
-    await page.getByLabel('关闭详情').click();
-    await page.getByRole('button', { name: '工作回顾', exact: true }).click();
-    await page.getByRole('button', { name: '月度回顾', exact: true }).click();
-    await page.getByLabel('回顾月份').fill(fixture.current);
-    await expect(stat('本月完成任务')).toHaveText('01');
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作回顾', exact: true }).click();
+    await page.getByRole('radio', { name: '月度回顾', exact: true }).locator('..').click();
+    await fillDate(page.getByLabel('回顾月份'), fixture.current);
+    await expect(stat('本月完成任务')).toHaveText('1');
     await expect(page.getByText('跨度用于回顾，不代表实际工时')).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('retrospective.png') });
   } finally {

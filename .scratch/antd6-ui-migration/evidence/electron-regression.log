@@ -1,0 +1,210 @@
+
+> clever-workbench@0.1.23 pretest:e2e
+> npm run tools:generate
+
+
+> clever-workbench@0.1.23 tools:generate
+> node scripts/generate-tools.mjs
+
+
+> clever-workbench@0.1.23 test:e2e
+> playwright test tests/e2e/antd-workbench.spec.ts tests/e2e/appearance.spec.ts tests/e2e/unified-appearance.spec.ts tests/e2e/home.spec.ts tests/e2e/task-planning.spec.ts tests/e2e/documents.spec.ts tests/e2e/productivity-tools.spec.ts tests/e2e/tools.spec.ts tests/e2e/ledger-layout.spec.ts tests/e2e/ledger-details.spec.ts tests/e2e/ledger-copy.spec.ts tests/e2e/backup.spec.ts --max-failures=5
+
+
+Running 36 tests using 1 worker
+
+(node:15226) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/e2e/antd-workbench.spec.ts:7:1 › Ant 控件接入后仍保留创建保护、模态焦点和真实本地保存 (4.9s)
+  ✘   2 tests/e2e/appearance.spec.ts:7:1 › 主题跟随与手动覆盖，透明度／对比／动态偏好可保存，键盘操作与弹层焦点有效 (30.8s)
+(node:15426) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   3 tests/e2e/appearance.spec.ts:84:1 › 系统减少动态效果生效，原生可访问性变化更新全局材质 (771ms)
+  ✓   4 tests/e2e/backup.spec.ts:6:1 › 设置中首次导出要求独立备份密码，锁定导出可用，备份密码预检不修改当前资料 (3.9s)
+  ✓   5 tests/e2e/backup.spec.ts:73:1 › 恢复成功重建当前页面并锁定秘密，恢复前未返回的图片选择不能写入新资料 (3.7s)
+  ✓   6 tests/e2e/documents.spec.ts:9:1 › 从资源写方案并回到台账，系统换项目后保留旧背景和文档恢复能力 (3.9s)
+  ✓   7 tests/e2e/documents.spec.ts:74:1 › 未命名文档粘贴图片后立即切换，重启后保留正文与图片 (3.3s)
+  ✓   8 tests/e2e/documents.spec.ts:114:1 › 居中稿纸可切换专注编辑，退出后保留标题、正文与文档列表 (2.6s)
+  ✓   9 tests/e2e/documents.spec.ts:153:1 › 多级大纲支持长标题、三种布局和重启后的展开状态记忆 (5.2s)
+  ✓  10 tests/e2e/home.spec.ts:7:1 › 默认工作台可固定账号、快速完成任务与写方案，入口顺序重启保留 (4.4s)
+  ✓  11 tests/e2e/home.spec.ts:75:1 › 统一新建沿用当前系统环境资源，另建任务保留之前的正文草稿 (4.3s)
+  ✘  12 tests/e2e/ledger-copy.spec.ts:9:1 › 台账资料单条、多选、附账号与编辑保存失败不覆盖剪贴板 (35.8s)
+(node:15914) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  13 tests/e2e/ledger-copy.spec.ts:266:1 › 访问入口快捷复制优先附带常用账号的密码 (2.5s)
+  ✓  14 tests/e2e/ledger-details.spec.ts:8:1 › 新建提交期间禁用编辑，延迟失败后保留原输入并允许继续填写 (2.0s)
+  ✓  15 tests/e2e/ledger-details.spec.ts:55:1 › 数据库新增可录多连接与账号，常用地址、配置、解除服务器引用可持续编辑 (4.5s)
+  ✓  16 tests/e2e/ledger-details.spec.ts:168:1 › 应用首节点与共用文档同屏保存，窄窗口可滚动，退出拦截未提交的运维资料 (3.1s)
+  ✓  17 tests/e2e/ledger-layout.spec.ts:8:1 › 打开台账后用摘要连续浏览，详情获得主要阅读宽度 (1.7s)
+  ✘  18 tests/e2e/ledger-layout.spec.ts:66:1 › 摘要搜索保留详情、范围筛选关闭详情，窄窗口返回恢复清单条件和位置 (2.4s)
+(node:16024) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  19 tests/e2e/ledger-layout.spec.ts:163:1 › 运维筛选在摘要与返回清单间保持有效，编辑后可沿步骤和分类进入文档 (9.7s)
+(node:16076) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  20 tests/e2e/ledger-layout.spec.ts:298:1 › 七类页签的行内复制与详情均使用无文字图标按钮 (30.7s)
+Testing stopped early after 5 maximum allowed failures.
+
+
+  1) tests/e2e/appearance.spec.ts:7:1 › 主题跟随与手动覆盖，透明度／对比／动态偏好可保存，键盘操作与弹层焦点有效 ───────────────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('radio', { name: '浅色', exact: true })
+        - locator resolved to <input type="radio" name="_r_p_" class="ant-segmented-item-input"/>
+      - attempting click action
+        2 × waiting for element to be visible, enabled and stable
+          - element is not visible
+        - retrying click action
+        - waiting 20ms
+        2 × waiting for element to be visible, enabled and stable
+          - element is not visible
+        - retrying click action
+          - waiting 100ms
+        56 × waiting for element to be visible, enabled and stable
+           - element is not visible
+         - retrying click action
+           - waiting 500ms
+
+
+      13 |     let page = await app.firstWindow();
+      14 |     await page.getByRole("menuitem", { name: '设置', exact: true }).click();
+    > 15 |     await page.getByRole("radio", { name: '浅色', exact: true }).click();
+         |                                                                ^
+      16 |     await expect(page.getByRole("radio", { name: '浅色', exact: true })).toBeChecked();
+      17 |     await page.emulateMedia({ colorScheme: 'dark' });
+      18 |     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+        at /Users/axelton/code/clever-workbench/tests/e2e/appearance.spec.ts:15:64
+
+    Error Context: test-results/appearance-主题跟随与手动覆盖，透明度／对比／动态偏好可保存，键盘操作与弹层焦点有效/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/appearance-主题跟随与手动覆盖，透明度／对比／动态偏好可保存，键盘操作与弹层焦点有效/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/appearance-主题跟随与手动覆盖，透明度／对比／动态偏好可保存，键盘操作与弹层焦点有效/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) tests/e2e/ledger-copy.spec.ts:9:1 › 台账资料单条、多选、附账号与编辑保存失败不覆盖剪贴板 ────────────────────────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for locator('.workspace-list tbody tr').first().locator('td').first().getByRole('button')
+
+
+      195 |       .first()
+      196 |       .getByRole('button')
+    > 197 |       .click();
+          |        ^
+      198 |     await page.getByRole('button', { name: '复制资料 生产节点', exact: true }).click();
+      199 |     await expect
+      200 |       .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
+        at /Users/axelton/code/clever-workbench/tests/e2e/ledger-copy.spec.ts:197:8
+
+    Error Context: test-results/ledger-copy-台账资料单条、多选、附账号与编辑保存失败不覆盖剪贴板/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/ledger-copy-台账资料单条、多选、附账号与编辑保存失败不覆盖剪贴板/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/ledger-copy-台账资料单条、多选、附账号与编辑保存失败不覆盖剪贴板/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) tests/e2e/ledger-layout.spec.ts:66:1 › 摘要搜索保留详情、范围筛选关闭详情，窄窗口返回恢复清单条件和位置 ───────────────────────
+
+    Error: expect(received).toBeLessThan(expected)
+
+    Expected: < 300
+    Received:   302.171875
+
+      117 |       .getByRole('listitem')
+      118 |       .filter({ hasText: '应用节点 20' });
+    > 119 |     expect((await selectedSummary.boundingBox())!.height).toBeLessThan(300);
+          |                                                           ^
+      120 |     await list.getByRole('button', { name: /应用节点 36.*生产/ }).scrollIntoViewIfNeeded();
+      121 |     await page.setViewportSize({ width: 960, height: 760 });
+      122 |     await expect(page.getByRole('region', { name: '台账清单' })).toBeHidden();
+        at /Users/axelton/code/clever-workbench/tests/e2e/ledger-layout.spec.ts:119:59
+
+    Error Context: test-results/ledger-layout-摘要搜索保留详情、范围筛选关闭详情，窄窗口返回恢复清单条件和位置/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/ledger-layout-摘要搜索保留详情、范围筛选关闭详情，窄窗口返回恢复清单条件和位置/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/ledger-layout-摘要搜索保留详情、范围筛选关闭详情，窄窗口返回恢复清单条件和位置/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) tests/e2e/ledger-layout.spec.ts:163:1 › 运维筛选在摘要与返回清单间保持有效，编辑后可沿步骤和分类进入文档 ──────────────────────
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByLabel('运维类型筛选')
+    Expected: "backup"
+    Received: ""
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByLabel('运维类型筛选') with timeout 5000ms
+      - waiting for getByLabel('运维类型筛选')
+        14 × locator resolved to <input readonly value="" id="_r_v_" type="text" role="combobox" aria-label="运维类型筛选" aria-expanded="false" aria-haspopup="listbox" class="ant-select-input" aria-autocomplete="list" autocomplete="new-password"/>
+           - unexpected value ""
+
+
+      253 |     await expectSelectValue(page.getByLabel('台账环境筛选'), ids.production);
+      254 |     await expectSelectValue(page.getByLabel('台账标签筛选'), '内网');
+    > 255 |     await expect(page.getByLabel('运维类型筛选')).toHaveValue('backup');
+          |                                             ^
+      256 |     await expect(page.getByLabel('运维状态筛选')).toHaveValue('active');
+      257 |     await selectChoice(page.getByLabel('台账标签筛选'), 'all');
+      258 |     await selectChoice(page.getByLabel('台账环境筛选'), ids.testing);
+        at /Users/axelton/code/clever-workbench/tests/e2e/ledger-layout.spec.ts:255:45
+
+    Error Context: test-results/ledger-layout-运维筛选在摘要与返回清单间保持有效，编辑后可沿步骤和分类进入文档/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/ledger-layout-运维筛选在摘要与返回清单间保持有效，编辑后可沿步骤和分类进入文档/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/ledger-layout-运维筛选在摘要与返回清单间保持有效，编辑后可沿步骤和分类进入文档/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) tests/e2e/ledger-layout.spec.ts:298:1 › 七类页签的行内复制与详情均使用无文字图标按钮 ────────────────────────────────
+
+    TimeoutError: locator.click: Timeout 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('navigation', { name: '系统资料类型' }).getByRole('button', { name: '访问入口', exact: true })
+
+
+      373 |         .getByRole('navigation', { name: '系统资料类型' })
+      374 |         .getByRole('button', { name: label, exact: true })
+    > 375 |         .click();
+          |          ^
+      376 |       if (label !== '文档') {
+      377 |         const copy = page
+      378 |           .getByRole('button', { name: label === '账号' ? /复制整行 / : /复制资料 / })
+        at /Users/axelton/code/clever-workbench/tests/e2e/ledger-layout.spec.ts:375:10
+
+    Error Context: test-results/ledger-layout-七类页签的行内复制与详情均使用无文字图标按钮/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/ledger-layout-七类页签的行内复制与详情均使用无文字图标按钮/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/ledger-layout-七类页签的行内复制与详情均使用无文字图标按钮/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5 failed
+    tests/e2e/appearance.spec.ts:7:1 › 主题跟随与手动覆盖，透明度／对比／动态偏好可保存，键盘操作与弹层焦点有效 ────────────────────────
+    tests/e2e/ledger-copy.spec.ts:9:1 › 台账资料单条、多选、附账号与编辑保存失败不覆盖剪贴板 ─────────────────────────────────
+    tests/e2e/ledger-layout.spec.ts:66:1 › 摘要搜索保留详情、范围筛选关闭详情，窄窗口返回恢复清单条件和位置 ────────────────────────
+    tests/e2e/ledger-layout.spec.ts:163:1 › 运维筛选在摘要与返回清单间保持有效，编辑后可沿步骤和分类进入文档 ───────────────────────
+    tests/e2e/ledger-layout.spec.ts:298:1 › 七类页签的行内复制与详情均使用无文字图标按钮 ─────────────────────────────────
+  16 did not run
+  15 passed (2.7m)
+  1 error was not a part of any test, see above for details

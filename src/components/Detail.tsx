@@ -1,3 +1,6 @@
+import { Button, DatePicker, Input, Collapse } from 'antd';
+import dayjs from 'dayjs';
+import { openDialogSelector } from '../shared/modal-state';
 import type { CreationContext } from '../app/actions';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -124,7 +127,7 @@ export function Detail({
   }
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
-      if (document.querySelector('dialog[open], [role="alertdialog"]')) return;
+      if (document.querySelector(openDialogSelector)) return;
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !e.isComposing && !task) {
         e.preventDefault();
         void create();
@@ -146,19 +149,27 @@ export function Detail({
       <header className="detail-toolbar">
         <span className="eyebrow">{task ? '任务详情' : '新建记录'}</span>
         <div className="spacer" />
-        <button
+        <Button
+          htmlType="submit"
+          type="text"
           className="icon-button"
           aria-label={expanded ? '退出放大' : '放大编辑'}
           onClick={() => setExpanded(!expanded)}
         >
           {expanded ? <ArrowsInSimpleIcon size={17} /> : <ArrowsOutSimpleIcon size={17} />}
-        </button>
-        <button className="icon-button" aria-label="关闭详情" onClick={onClose}>
+        </Button>
+        <Button
+          htmlType="submit"
+          type="text"
+          className="icon-button"
+          aria-label="关闭详情"
+          onClick={onClose}
+        >
           <XIcon size={18} />
-        </button>
+        </Button>
       </header>
       <div className="detail-content">
-        <textarea
+        <Input.TextArea
           disabled={deleted}
           className="detail-title"
           aria-label="任务标题"
@@ -177,17 +188,37 @@ export function Detail({
             onChange={(context) => change({ ...value, ...context })}
           />
           {task?.history && (
-            <details className="compact-details">
-              <summary>任务历史说明</summary>
-              <p>{task.history}</p>
-            </details>
+            <Collapse
+              className="compact-details"
+              ghost
+              defaultActiveKey={false ? ['details'] : []}
+              items={[
+                {
+                  key: 'details',
+                  label: <>任务历史说明</>,
+                  forceRender: true,
+                  children: (
+                    <>
+                      <p>{task.history}</p>
+                    </>
+                  ),
+                },
+              ]}
+            />
           )}
           {value.systemId && (
-            <button className="text-button" onClick={() => void onOpenContext(value.systemId!)}>
+            <Button
+              htmlType="submit"
+              type="text"
+              className="text-button"
+              onClick={() => void onOpenContext(value.systemId!)}
+            >
               回到关联的系统台账
-            </button>
+            </Button>
           )}
-          <button
+          <Button
+            htmlType="submit"
+            type="text"
             disabled={deleted}
             className="date-summary"
             aria-label="修改开始时间"
@@ -199,26 +230,30 @@ export function Detail({
               {task?.completedAt ? ` — ${dateLabel(task.completedAt)}` : '开始'}
             </span>
             <CaretDownIcon size={12} className={dates ? 'rotate' : ''} />
-          </button>
+          </Button>
           {dates && (
             <div className="date-fields">
               <label>
                 开始时间
-                <input
-                  type="datetime-local"
+                <DatePicker
+                  showTime={{ format: 'HH:mm' }}
+                  format="YYYY-MM-DD HH:mm"
+                  needConfirm={false}
                   aria-label="开始时间"
-                  value={start}
-                  onChange={(e) => setStart(e.target.value)}
+                  value={start ? dayjs(start) : null}
+                  onChange={(value) => setStart(value?.format('YYYY-MM-DDTHH:mm') ?? '')}
                 />
               </label>
               {task?.completedAt !== null && task && (
                 <label>
                   完成时间
-                  <input
-                    type="datetime-local"
+                  <DatePicker
+                    showTime={{ format: 'HH:mm' }}
+                    format="YYYY-MM-DD HH:mm"
+                    needConfirm={false}
                     aria-label="完成时间"
-                    value={end}
-                    onChange={(e) => setEnd(e.target.value)}
+                    value={end ? dayjs(end) : null}
+                    onChange={(value) => setEnd(value?.format('YYYY-MM-DDTHH:mm') ?? '')}
                   />
                 </label>
               )}
@@ -226,7 +261,9 @@ export function Detail({
                 <small>
                   {task ? `录入于 ${dateLabel(task.createdAt, true)}` : '留空使用当前时间'}
                 </small>
-                <button
+                <Button
+                  htmlType="submit"
+                  type="default"
                   className="small-button"
                   onClick={async () => {
                     try {
@@ -252,58 +289,78 @@ export function Detail({
                   }}
                 >
                   应用时间
-                </button>
+                </Button>
               </div>
             </div>
           )}
-          <details className="task-properties">
-            <summary>
-              <span>计划与标签</span>
-              {value.dueAt && (
-                <span className="muted">
-                  {value.dueAt.kind === 'date' ? value.dueAt.value : dateLabel(value.dueAt.value)}{' '}
-                  完成
-                </span>
-              )}
-              <TaskTagChips tags={snapshot.taskTags} ids={value.tagIds} />
-            </summary>
-            <TaskTimeField
-              label="预计完成"
-              value={value.dueAt}
-              disabled={deleted}
-              onChange={(dueAt) =>
-                change({
-                  ...latest.current,
-                  dueAt,
-                  urgentAt: dueAt ? latest.current.urgentAt : null,
-                })
-              }
-            />
-            {value.dueAt && (
-              <>
-                <TaskTimeField
-                  label="临期开始"
-                  value={value.urgentAt}
-                  disabled={deleted}
-                  onChange={(urgentAt) => change({ ...latest.current, urgentAt })}
-                />
-                <p className="muted">未设置临期开始时间时，默认在预计完成前 24 小时突出显示。</p>
-                {value.urgentAt &&
-                  taskTimeBoundary(value.urgentAt) > taskTimeBoundary(value.dueAt, true) && (
-                    <p className="error-text" role="status">
-                      当前时区下，临期开始晚于预计完成时间。已保留原计划，请调整日期。
-                    </p>
-                  )}
-              </>
-            )}
-            <TaskTagPicker
-              snapshot={snapshot}
-              ids={value.tagIds}
-              disabled={deleted}
-              onChange={(tagIds) => change({ ...latest.current, tagIds })}
-              onSnapshot={onSnapshot}
-            />
-          </details>
+          <Collapse
+            className="task-properties"
+            ghost
+            defaultActiveKey={false ? ['details'] : []}
+            items={[
+              {
+                key: 'details',
+                label: (
+                  <>
+                    <span>计划与标签</span>
+                    {value.dueAt && (
+                      <span className="muted">
+                        {value.dueAt.kind === 'date'
+                          ? value.dueAt.value
+                          : dateLabel(value.dueAt.value)}{' '}
+                        完成
+                      </span>
+                    )}
+                    <TaskTagChips tags={snapshot.taskTags} ids={value.tagIds} />
+                  </>
+                ),
+                forceRender: true,
+                children: (
+                  <>
+                    <TaskTimeField
+                      label="预计完成"
+                      value={value.dueAt}
+                      disabled={deleted}
+                      onChange={(dueAt) =>
+                        change({
+                          ...latest.current,
+                          dueAt,
+                          urgentAt: dueAt ? latest.current.urgentAt : null,
+                        })
+                      }
+                    />
+                    {value.dueAt && (
+                      <>
+                        <TaskTimeField
+                          label="临期开始"
+                          value={value.urgentAt}
+                          disabled={deleted}
+                          onChange={(urgentAt) => change({ ...latest.current, urgentAt })}
+                        />
+                        <p className="muted">
+                          未设置临期开始时间时，默认在预计完成前 24 小时突出显示。
+                        </p>
+                        {value.urgentAt &&
+                          taskTimeBoundary(value.urgentAt) >
+                            taskTimeBoundary(value.dueAt, true) && (
+                            <p className="error-text" role="status">
+                              当前时区下，临期开始晚于预计完成时间。已保留原计划，请调整日期。
+                            </p>
+                          )}
+                      </>
+                    )}
+                    <TaskTagPicker
+                      snapshot={snapshot}
+                      ids={value.tagIds}
+                      disabled={deleted}
+                      onChange={(tagIds) => change({ ...latest.current, tagIds })}
+                      onSnapshot={onSnapshot}
+                    />
+                  </>
+                ),
+              },
+            ]}
+          />
         </div>
         <Editor
           flushRef={editorFlush}
@@ -315,32 +372,41 @@ export function Detail({
         />
       </div>
       <footer className="detail-footer">
-        <button
+        <Button
+          htmlType="submit"
+          type="text"
           className={`save-indicator ${status.startsWith('保存失败') ? 'error-text' : ''}`}
           onClick={() => void save().catch((e) => onError(e.message))}
         >
           <span className={`status-dot ${status === '已保存' ? 'saved' : ''}`} />
           {!task && status === '已保存' ? '草稿已保存' : status}
-        </button>
+        </Button>
         <div className="spacer" />
         {task && deleted ? (
           <>
-            <button
+            <Button
+              htmlType="submit"
+              type="default"
               className="secondary-button"
               onClick={() => void onCommand({ type: 'task.purge', id: task.id })}
             >
               彻底删除
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
               className="primary-button"
               onClick={() => void onCommand({ type: 'task.restore', id: task.id })}
             >
               恢复任务
-            </button>
+            </Button>
           </>
         ) : task ? (
           <>
-            <button
+            <Button
+              htmlType="submit"
+              type="text"
+              danger
               className="icon-button danger-hover"
               aria-label="删除任务"
               onClick={async () => {
@@ -349,8 +415,10 @@ export function Detail({
               }}
             >
               <TrashIcon size={17} />
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
               className={task.completedAt === null ? 'primary-button' : 'secondary-button'}
               onClick={async () => {
                 await save();
@@ -367,14 +435,16 @@ export function Detail({
                 <ArrowCounterClockwiseIcon size={16} />
               )}
               {task.completedAt === null ? '标记完成' : '重新打开'}
-            </button>
+            </Button>
           </>
         ) : (
           <>
-            <button className="text-button" onClick={onDiscard}>
+            <Button htmlType="submit" type="text" className="text-button" onClick={onDiscard}>
               丢弃
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
               className="primary-button"
               disabled={!value.title.trim() || busy}
               onClick={create}
@@ -383,7 +453,7 @@ export function Detail({
               <span className="keyhint">
                 {window.desktop.platform === 'darwin' ? '⌘' : 'Ctrl'} ↵
               </span>
-            </button>
+            </Button>
           </>
         )}
       </footer>

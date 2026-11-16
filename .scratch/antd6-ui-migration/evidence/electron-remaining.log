@@ -1,0 +1,70 @@
+
+> clever-workbench@0.1.23 pretest:e2e
+> npm run tools:generate
+
+
+> clever-workbench@0.1.23 tools:generate
+> node scripts/generate-tools.mjs
+
+
+> clever-workbench@0.1.23 test:e2e
+> playwright test tests/e2e/antd-workbench.spec.ts tests/e2e/unified-appearance.spec.ts tests/e2e/ledger-bulk-entry.spec.ts tests/e2e/ledger-guidance.spec.ts tests/e2e/operations-guidance.spec.ts tests/e2e/project-filter.spec.ts tests/e2e/system-ledger.spec.ts tests/e2e/system-protection.spec.ts tests/e2e/update.spec.ts tests/e2e/vault.spec.ts tests/e2e/vault-rotation.spec.ts tests/e2e/zip-guidance.spec.ts --max-failures=6 --output=.scratch/antd6-ui-migration/results-final
+
+
+Running 50 tests using 1 worker
+
+(node:77943) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/e2e/antd-workbench.spec.ts:7:1 › Ant 控件接入后仍保留创建保护、模态焦点和真实本地保存 (5.1s)
+  ✓   2 tests/e2e/ledger-bulk-entry.spec.ts:72:1 › 手填与追加粘贴共用编辑表格，校验、秘密、键盘和窄窗口均保留 (4.9s)
+  ✓   3 tests/e2e/ledger-bulk-entry.spec.ts:146:1 › 全部十类可直接录入，账号按所属对象查重，服务与节点保存环境 (24.0s)
+  ✓   4 tests/e2e/ledger-bulk-entry.spec.ts:216:1 › 失败整批回滚，原生关闭保护草稿，全局保存等待解锁与提交 (5.0s)
+  ✓   5 tests/e2e/ledger-bulk-entry.spec.ts:286:1 › 密码映射不能写入普通字段，追加超过上限后可选择二百条统一保存 (5.4s)
+  ✓   6 tests/e2e/ledger-guidance.spec.ts:85:1 › 空台账可读指引，七类清单共享就近入口，阅读与取消保留当前对象 (8.1s)
+  ✓   7 tests/e2e/ledger-guidance.spec.ts:127:1 › 从旧台账分类阅读指引后前往对应分类，不选中过期对象 (4.8s)
+  ✓   8 tests/e2e/ledger-guidance.spec.ts:184:1 › 系统菜单指引返回焦点，系统环境编辑与项目沿革按说明保留归属 (5.3s)
+  ✓   9 tests/e2e/ledger-guidance.spec.ts:227:1 › 项目档案附近指引保留未提交名称，归档恢复不会自动恢复当前项目 (2.8s)
+  ✓  10 tests/e2e/ledger-guidance.spec.ts:290:1 › 访问入口指引支持地址编辑、范围筛选和资料复制，保存失败时导航保持输入 (8.8s)
+  ✓  11 tests/e2e/ledger-guidance.spec.ts:372:1 › 入口副本指引区分秘密选项，取消复制与删除保留原入口 (4.5s)
+  ✓  12 tests/e2e/ledger-guidance.spec.ts:441:1 › 账号指引不触发解锁或新建，按步骤保存秘密、收藏和调整同系统归属 (8.8s)
+  ✓  13 tests/e2e/operations-guidance.spec.ts:100:1 › 系统导出菜单附近有操作指引，关闭后保留当前系统及焦点 (2.7s)
+  ✓  14 tests/e2e/operations-guidance.spec.ts:123:1 › 批量录入入口旁可查阅指引，不会打开批量录入或新增记录 (2.5s)
+  ✓  15 tests/e2e/operations-guidance.spec.ts:142:1 › 资源指引对应服务器配置、其他类型、独立复制与引用删除保护 (8.5s)
+  ✓  16 tests/e2e/operations-guidance.spec.ts:267:1 › 部署和运维指引对应节点地址回退、状态筛选、引用限制及相关任务 (12.7s)
+  ✓  17 tests/e2e/operations-guidance.spec.ts:358:1 › 批量录入指引对应手填、粘贴追加、逐行取消和未提交放弃 (6.3s)
+  ✓  18 tests/e2e/operations-guidance.spec.ts:432:1 › 导出指引对应编辑保存、取消解锁和明文文件结果 (5.1s)
+  ✓  19 tests/e2e/project-filter.spec.ts:8:1 › 任务页系统范围可在具体系统、未关联系统和全部之间切换 (4.7s)
+  ✓  20 tests/e2e/system-ledger.spec.ts:11:5 › access 在 all 范围修改后编辑账号不丢输入 (4.9s)
+  ✓  21 tests/e2e/system-ledger.spec.ts:11:5 › access 在 common 范围修改后编辑账号不丢输入 (4.9s)
+  ✓  22 tests/e2e/system-ledger.spec.ts:11:5 › server 在 all 范围修改后编辑账号不丢输入 (4.9s)
+  ✓  23 tests/e2e/system-ledger.spec.ts:11:5 › server 在 common 范围修改后编辑账号不丢输入 (5.0s)
+  ✓  24 tests/e2e/system-ledger.spec.ts:78:1 › 系统通用入口同屏录入地址与密码，服务器可一次保存端口、账号和密码 (5.0s)
+  ✓  25 tests/e2e/system-ledger.spec.ts:195:1 › 快速新建服务器在深浅主题及窄窗口中可填写连接信息，仍支持只填名称 (1.5s)
+  ✓  26 tests/e2e/system-ledger.spec.ts:264:1 › 多地址与常用账号可从首页及搜索使用，跨系统复制取消解锁不创建副本，删除地址保留账号 (7.3s)
+  ✓  27 tests/e2e/system-protection.spec.ts:7:1 › 打开或取消备份密码配置不访问钥匙串，确认保存后才申请系统保护 (2.3s)
+  ✓  28 tests/e2e/system-protection.spec.ts:52:1 › 启动、浏览、主密码解锁与重启不访问系统钥匙串 (3.6s)
+  ✓  29 tests/e2e/system-protection.spec.ts:107:1 › 真实系统加密支持无主密码凭据、独立备份密码与重启读取 (7.0s)
+  ✓  30 tests/e2e/system-protection.spec.ts:212:1 › 准备保存期间取消密码配置不会在取消后开启保护或生成备份材料 (931ms)
+  ✓  31 tests/e2e/unified-appearance.spec.ts:7:1 › 全站共享外观在深浅主题和最小窗口可操作，长内容与浮层保持可达 (14.2s)
+  ✓  32 tests/e2e/update.spec.ts:9:1 › 安装位置受限时提前提供正式安装入口，已下载更新也不再承诺重启安装 (2.7s)
+  ✓  33 tests/e2e/update.spec.ts:156:1 › 安装失败只显示可操作的原因，不泄露 IPC 错误包装 (3.4s)
+  ✓  34 tests/e2e/update.spec.ts:217:1 › 更新弹窗支持鼠标关闭，重新打开后仍能按 Esc 关闭 (1.0s)
+  ✓  35 tests/e2e/update.spec.ts:299:1 › 手动检查仅在设置中，新版按钮显示在品牌旁并保留下载与安装入口 (2.8s)
+  ✓  36 tests/e2e/update.spec.ts:477:1 › 下载校验后主动询问重启，稍后不打断工作且再次打开无需滚动 (1.8s)
+  ✓  37 tests/e2e/update.spec.ts:582:1 › development application exposes version details and disables online installation (1.8s)
+  -  38 tests/e2e/update.spec.ts:602:1 › 安装版从隔离路径夹具启动时，通过真实 IPC 在下载前报告位置限制
+  -  39 tests/e2e/update.spec.ts:649:1 › installed application exposes its packaged version and update checks
+  -  40 tests/e2e/update.spec.ts:674:1 › installed updated application confirms a private pending transaction only after its window and IPC work
+  ✓  41 tests/e2e/update.spec.ts:736:1 › damaged updater history leaves the local workspace available (1.8s)
+  ✓  42 tests/e2e/vault-rotation.spec.ts:6:1 › 设置更改主密码验证旧密码与新密码确认，取消不变更，成功锁定且重启用新密码 (6.7s)
+  ✓  43 tests/e2e/vault.spec.ts:8:1 › 可选启用主密码后保存秘密，手动锁定及重启后按需解锁，普通元数据仍可查 (6.8s)
+  ✓  44 tests/e2e/vault.spec.ts:87:1 › 秘密在可信侧复制，30 秒清理及锁屏事件撤销访问，取消解锁不改剪贴板 (32.5s)
+  ✓  45 tests/e2e/vault.spec.ts:148:1 › 账号和资源的秘密复制必须明确勾选，取消解锁不创建副本 (3.7s)
+  ✓  46 tests/e2e/zip-guidance.spec.ts:13:1 › 工具目录可以打开 ZIP 文本归档的使用指引 (1.7s)
+  ✓  47 tests/e2e/zip-guidance.spec.ts:29:1 › 四种模式的就近帮助随选项切换，离线可阅读并安全关闭 (3.4s)
+  ✓  48 tests/e2e/zip-guidance.spec.ts:75:1 › 首页收藏工具旁可以直接查阅 ZIP 指引 (1.9s)
+  ✓  49 tests/e2e/zip-guidance.spec.ts:95:1 › 从指引前往 ZIP 功能会打开工具本身 (1.8s)
+  ✓  50 tests/e2e/zip-guidance.spec.ts:128:1 › 取消选取来源仍保留原路径与未开始状态 (2.5s)
+
+  3 skipped
+  47 passed (4.5m)

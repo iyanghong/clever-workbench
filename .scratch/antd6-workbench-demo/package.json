@@ -1,0 +1,27 @@
+{
+  "name": "clever-workbench-antd6-demo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5186 --strictPort",
+    "build": "tsc --noEmit && vite build && node package-demo.mjs",
+    "verify": "node verify.mjs",
+    "preview": "vite preview --host 127.0.0.1 --port 5186 --strictPort"
+  },
+  "dependencies": {
+    "antd": "6.7.0",
+    "@phosphor-icons/react": "2.1.10",
+    "dayjs": "1.11.19",
+    "marked": "17.0.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "typescript": "7.0.2",
+    "vite": "8.3.4"
+  }
+}

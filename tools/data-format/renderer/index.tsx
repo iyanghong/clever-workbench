@@ -1,3 +1,5 @@
+import { markNewRecordChanged } from '../../../src/shared/new-record';
+import { Button, Input, Select, Card } from 'antd';
 import { useState } from 'react';
 import { CopyValue } from '../../../src/shared/CopyValue';
 import { PageHeading } from '../../../src/shared/WorkspaceUI';
@@ -38,26 +40,27 @@ export default function DataFormatPage() {
       <div className="utility-toolbar">
         <label>
           操作
-          <select
+          <Select
             aria-label="JSON 操作"
             value={operation}
             onChange={(event) => {
-              setOperation(event.target.value as JsonOperation);
+              markNewRecordChanged();
+              setOperation(event as JsonOperation);
               setOutput('');
               setError('');
             }}
           >
             {Object.entries(labels).map(([value, label]) => (
-              <option key={value} value={value}>
+              <Select.Option data-value={String(value)} key={value} value={value}>
                 {label}
-              </option>
+              </Select.Option>
             ))}
-          </select>
+          </Select>
         </label>
         {operation === 'query' && (
           <label className="utility-grow">
             JSON 路径
-            <input
+            <Input
               aria-label="JSON 路径"
               value={path}
               onChange={(event) => setPath(event.target.value)}
@@ -67,24 +70,31 @@ export default function DataFormatPage() {
         {!['minify', 'escape', 'unescape'].includes(operation) && (
           <label>
             缩进
-            <select
+            <Select
               aria-label="JSON 缩进"
               value={indent}
-              onChange={(event) => setIndent(Number(event.target.value))}
+              onChange={(event) => {
+                markNewRecordChanged();
+                return setIndent(Number(event));
+              }}
             >
-              <option value={2}>2 个空格</option>
-              <option value={4}>4 个空格</option>
-            </select>
+              <Select.Option data-value={String(2)} value={2}>
+                2 个空格
+              </Select.Option>
+              <Select.Option data-value={String(4)} value={4}>
+                4 个空格
+              </Select.Option>
+            </Select>
           </label>
         )}
-        <button type="button" onClick={process}>
+        <Button type="text" htmlType="button" onClick={process}>
           处理数据
-        </button>
+        </Button>
       </div>
       <div className="utility-grid">
-        <label className="utility-panel">
+        <Card className="utility-panel">
           <span>输入</span>
-          <textarea
+          <Input.TextArea
             aria-label="JSON 输入"
             value={input}
             onChange={(event) => {
@@ -95,20 +105,20 @@ export default function DataFormatPage() {
             spellCheck={false}
             placeholder='例如：{"service":{"nodes":[{"address":"127.0.0.1"}]}}'
           />
-        </label>
-        <section className="utility-panel">
+        </Card>
+        <Card className="utility-panel">
           <div className="utility-panel-heading">
             <span>处理结果</span>
             <CopyValue value={output} label="处理结果" onError={setError} />
           </div>
-          <textarea
+          <Input.TextArea
             aria-label="JSON 输出"
             value={output}
             readOnly
             spellCheck={false}
             placeholder="处理结果显示在这里"
           />
-        </section>
+        </Card>
       </div>
       {error && (
         <p className="tool-error" role="alert">

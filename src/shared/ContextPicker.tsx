@@ -1,3 +1,5 @@
+import { markNewRecordChanged } from './new-record';
+import { Select } from 'antd';
 import type { Snapshot } from '../types';
 import type { ObjectContext } from '../ledger-types';
 
@@ -35,59 +37,70 @@ export function ContextPicker({
       {mode !== 'details' && (
         <label>
           系统
-          <select
+          <Select
             aria-label="关联系统"
             disabled={disabled}
             value={context.systemId ?? ''}
-            onChange={(event) =>
-              onChange({
-                systemId: event.target.value || null,
+            onChange={(event) => {
+              markNewRecordChanged();
+              return onChange({
+                systemId: event || null,
                 environmentId: null,
                 resourceId: null,
-              })
-            }
+              });
+            }}
           >
-            <option value="">{unassignedSystemLabel}</option>
+            <Select.Option data-value={String('')} value="">
+              {unassignedSystemLabel}
+            </Select.Option>
             {snapshot.systems.map((item) => (
-              <option key={item.id} value={item.id}>
+              <Select.Option data-value={String(item.id)} key={item.id} value={item.id}>
                 {item.name}
-              </option>
+              </Select.Option>
             ))}
-          </select>
+          </Select>
         </label>
       )}
       {mode !== 'system' && context.systemId && (
         <label>
           环境
-          <select
+          <Select
             aria-label="关联环境"
             disabled={disabled}
             value={context.environmentId ?? ''}
-            onChange={(event) =>
-              onChange({ ...context, environmentId: event.target.value || null, resourceId: null })
-            }
+            onChange={(event) => {
+              markNewRecordChanged();
+              return onChange({ ...context, environmentId: event || null, resourceId: null });
+            }}
           >
-            <option value="">整个系统</option>
+            <Select.Option data-value={String('')} value="">
+              整个系统
+            </Select.Option>
             {snapshot.environments
               .filter((item) => item.systemId === context.systemId)
               .map((item) => (
-                <option key={item.id} value={item.id}>
+                <Select.Option data-value={String(item.id)} key={item.id} value={item.id}>
                   {item.name}
-                </option>
+                </Select.Option>
               ))}
-          </select>
+          </Select>
         </label>
       )}
       {mode !== 'system' && context.systemId && (
         <label>
           资源
-          <select
+          <Select
             aria-label="关联资源"
             disabled={disabled}
             value={context.resourceId ?? ''}
-            onChange={(event) => onChange({ ...context, resourceId: event.target.value || null })}
+            onChange={(event) => {
+              markNewRecordChanged();
+              return onChange({ ...context, resourceId: event || null });
+            }}
           >
-            <option value="">{context.environmentId ? '整个环境' : '整个系统'}</option>
+            <Select.Option data-value={String('')} value="">
+              {context.environmentId ? '整个环境' : '整个系统'}
+            </Select.Option>
             {snapshot.resources
               .filter(
                 (item) =>
@@ -95,11 +108,11 @@ export function ContextPicker({
                   item.environmentId === context.environmentId,
               )
               .map((item) => (
-                <option key={item.id} value={item.id}>
+                <Select.Option data-value={String(item.id)} key={item.id} value={item.id}>
                   {item.name}
-                </option>
+                </Select.Option>
               ))}
-          </select>
+          </Select>
         </label>
       )}
     </div>

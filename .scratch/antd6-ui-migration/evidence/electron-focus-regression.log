@@ -1,0 +1,147 @@
+
+> clever-workbench@0.1.23 pretest:e2e
+> npm run tools:generate
+
+
+> clever-workbench@0.1.23 tools:generate
+> node scripts/generate-tools.mjs
+
+
+> clever-workbench@0.1.23 test:e2e
+> playwright test tests/e2e/antd-workbench.spec.ts tests/e2e/daily-guidance.spec.ts tests/e2e/dialog-polish.spec.ts tests/e2e/guidance.spec.ts tests/e2e/ledger-system-actions.spec.ts --max-failures=5
+
+
+Running 14 tests using 1 worker
+
+(node:26601) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/e2e/antd-workbench.spec.ts:7:1 › Ant 控件接入后仍保留创建保护、模态焦点和真实本地保存 (5.2s)
+  ✘   2 tests/e2e/daily-guidance.spec.ts:66:1 › 首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具 (7.0s)
+(node:26673) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   3 tests/e2e/daily-guidance.spec.ts:120:1 › 搜索新建旁指引只导航，九项选择可取消且键盘搜索可打开任务 (2.9s)
+  ✓   4 tests/e2e/daily-guidance.spec.ts:169:1 › 任务指引关闭保留详情，计划、标签与批量归属可按说明操作 (4.5s)
+  ✓   5 tests/e2e/daily-guidance.spec.ts:222:1 › 阅读任务指引期间创建快捷键不会提交底层草稿 (2.0s)
+  ✓   6 tests/e2e/daily-guidance.spec.ts:248:1 › 文档附近和设置可查看共用编辑指引，源码与本地图片保存后仍可阅读 (3.2s)
+  ✓   7 tests/e2e/daily-guidance.spec.ts:328:1 › 工作回顾指引与月份、系统全貌入口一致，打开任务后可返回 (3.4s)
+  ✓   8 tests/e2e/dialog-polish.spec.ts:8:1 › 台账弹窗有固定关闭入口，表单统一且退出保留保存与粘贴保护 (4.2s)
+  ✘   9 tests/e2e/guidance.spec.ts:13:1 › 离线从设置和更新旁阅读同一指引，步骤、关闭与安全前往功能可用 (7.5s)
+(node:26855) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  10 tests/e2e/guidance.spec.ts:97:1 › 从更新弹窗切换到指引后可关闭，导航不会遗留更新弹窗 (2.0s)
+  ✓  11 tests/e2e/guidance.spec.ts:143:1 › 指引导航保存失败保留输入，恢复保存后可以重试 (3.4s)
+  ✓  12 tests/e2e/guidance.spec.ts:204:1 › 原生文件选择期间不打开指引，结束后允许重新查看 (2.0s)
+  ✓  13 tests/e2e/guidance.spec.ts:257:1 › 前往功能等待期间关闭指引，不执行迟到导航 (1.0s)
+  ✘  14 tests/e2e/ledger-system-actions.spec.ts:7:1 › 系统动作收纳后支持键盘、保存及弹窗关闭焦点链 (6.7s)
+
+
+  1) tests/e2e/daily-guidance.spec.ts:66:1 › 首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具 ────────────────────────
+
+    Error: expect(locator).toBeInViewport() failed
+
+    Locator:  getByRole('dialog', { name: '窗口、菜单与保存反馈', exact: true }).getByRole('button', { name: '前往功能', exact: true })
+    Expected: in viewport
+    Received: viewport ratio 0
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeInViewport" getByRole('dialog', { name: '窗口、菜单与保存反馈', exact: true }).getByRole('button', { name: '前往功能', exact: true }) with timeout 5000ms
+      - waiting for getByRole('dialog', { name: '窗口、菜单与保存反馈', exact: true }).getByRole('button', { name: '前往功能', exact: true })
+        14 × locator resolved to <button type="submit" class="ant-btn css-i19pbt css-var-_r_0_ ant-btn-primary ant-btn-color-primary ant-btn-variant-solid primary-button">…</button>
+           - unexpected value "viewport ratio 0"
+
+
+      110 |       await expect(
+      111 |         narrow.dialog.getByRole('button', { name: '前往功能', exact: true }),
+    > 112 |       ).toBeInViewport();
+          |         ^
+      113 |     await page.screenshot({ path: info.outputPath('daily-guide-narrow.png') });
+      114 |   } finally {
+      115 |     await app.close();
+        at /Users/axelton/code/clever-workbench/tests/e2e/daily-guidance.spec.ts:112:9
+
+    Error Context: test-results/daily-guidance-首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/daily-guidance-首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/daily-guidance-首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) tests/e2e/guidance.spec.ts:13:1 › 离线从设置和更新旁阅读同一指引，步骤、关闭与安全前往功能可用 ──────────────────────────────
+
+    Error: expect(locator).toBeInViewport() failed
+
+    Locator:  getByRole('dialog', { name: '检查与安装应用更新', exact: true }).getByRole('button', { name: '前往功能', exact: true })
+    Expected: in viewport
+    Received: viewport ratio 0
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeInViewport" getByRole('dialog', { name: '检查与安装应用更新', exact: true }).getByRole('button', { name: '前往功能', exact: true }) with timeout 5000ms
+      - waiting for getByRole('dialog', { name: '检查与安装应用更新', exact: true }).getByRole('button', { name: '前往功能', exact: true })
+        14 × locator resolved to <button type="submit" class="ant-btn css-i19pbt css-var-_r_0_ ant-btn-primary ant-btn-color-primary ant-btn-variant-solid primary-button">…</button>
+           - unexpected value "viewport ratio 0"
+
+
+      78 |       guide.getByRole('button', { name: `关闭${expected.title}`, exact: true }),
+      79 |     ).toBeInViewport();
+    > 80 |     await expect(guide.getByRole('button', { name: '前往功能', exact: true })).toBeInViewport();
+         |                                                                            ^
+      81 |     expect(await guide.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+      82 |     await page.screenshot({ path: info.outputPath('guidance-dark-narrow.png') });
+      83 |     if (!guidanceTarget(expected.entry.target)) {
+        at /Users/axelton/code/clever-workbench/tests/e2e/guidance.spec.ts:80:76
+
+    Error Context: test-results/guidance-离线从设置和更新旁阅读同一指引，步骤、关闭与安全前往功能可用/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/guidance-离线从设置和更新旁阅读同一指引，步骤、关闭与安全前往功能可用/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/guidance-离线从设置和更新旁阅读同一指引，步骤、关闭与安全前往功能可用/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) tests/e2e/ledger-system-actions.spec.ts:7:1 › 系统动作收纳后支持键盘、保存及弹窗关闭焦点链 ──────────────────────────
+
+    Error: expect(locator).toBeFocused() failed
+
+    Locator:  getByRole('menu', { name: '当前系统操作', exact: true }).getByRole('menuitem', { name: '系统与环境使用指引', exact: true })
+    Expected: focused
+    Received: inactive
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeFocused" getByRole('menu', { name: '当前系统操作', exact: true }).getByRole('menuitem', { name: '系统与环境使用指引', exact: true }) with timeout 5000ms
+      - waiting for getByRole('menu', { name: '当前系统操作', exact: true }).getByRole('menuitem', { name: '系统与环境使用指引', exact: true })
+        14 × locator resolved to <li tabindex="-1" role="menuitem" class="ant-dropdown-menu-item" data-menu-id="rc-menu-uuid-_r_10_-guidance">…</li>
+           - unexpected value "inactive"
+
+
+      37 |     await expect(
+      38 |       menu.getByRole('menuitem', { name: '系统与环境使用指引', exact: true }),
+    > 39 |     ).toBeFocused();
+         |       ^
+      40 |     await page.keyboard.press('Home');
+      41 |     await expect(menu.getByRole('menuitem', { name: '系统信息', exact: true })).toBeFocused();
+      42 |     await page.keyboard.press('Tab');
+        at /Users/axelton/code/clever-workbench/tests/e2e/ledger-system-actions.spec.ts:39:7
+
+    Error Context: test-results/ledger-system-actions-系统动作收纳后支持键盘、保存及弹窗关闭焦点链/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/ledger-system-actions-系统动作收纳后支持键盘、保存及弹窗关闭焦点链/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/ledger-system-actions-系统动作收纳后支持键盘、保存及弹窗关闭焦点链/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    tests/e2e/daily-guidance.spec.ts:66:1 › 首页指引可离线查阅并安全返回，照着指引录入待办与整理常用工具 ─────────────────────────
+    tests/e2e/guidance.spec.ts:13:1 › 离线从设置和更新旁阅读同一指引，步骤、关闭与安全前往功能可用 ───────────────────────────────
+    tests/e2e/ledger-system-actions.spec.ts:7:1 › 系统动作收纳后支持键盘、保存及弹窗关闭焦点链 ───────────────────────────
+  11 passed (56.2s)

@@ -1,3 +1,4 @@
+import { Button, Checkbox, Input } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import {
   EyeIcon,
@@ -126,7 +127,7 @@ export function Secrets({
               {visible[kind] === undefined ? (
                 <span className="secret-mask">••••••••</span>
               ) : (
-                <textarea
+                <Input.TextArea
                   readOnly
                   aria-label={`已显示的${secretLabels[kind]}`}
                   value={visible[kind]}
@@ -134,40 +135,48 @@ export function Secrets({
                   rows={kind === 'privateKey' ? 5 : 1}
                 />
               )}
-              <button
+              <Button
+                htmlType="submit"
+                type="text"
                 className="icon-button"
                 aria-label={`${visible[kind] === undefined ? '查看' : '隐藏'}${secretLabels[kind]}`}
                 onClick={() => void reveal(kind)}
               >
                 {visible[kind] === undefined ? <EyeIcon size={16} /> : <EyeSlashIcon size={16} />}
-              </button>
-              <button
+              </Button>
+              <Button
+                htmlType="submit"
+                type="text"
                 className="icon-button"
                 aria-label={`复制${secretLabels[kind]}`}
                 title={copied === kind ? '已复制 · 30 秒后清理' : '复制秘密'}
                 onClick={() => void copy(kind)}
               >
                 {copied === kind ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
-              </button>
-              <button
+              </Button>
+              <Button
+                htmlType="submit"
+                type="text"
                 className="icon-button"
                 aria-label={`修改${secretLabels[kind]}`}
                 onClick={() => void edit(kind)}
               >
                 <PencilSimpleIcon size={15} />
-              </button>
+              </Button>
             </>
           ) : (
             <>
               <span className="secret-empty">未保存</span>
-              <button
+              <Button
+                htmlType="submit"
+                type="text"
                 className="text-button"
                 aria-label={`添加${secretLabels[kind]}`}
                 onClick={() => void edit(kind)}
               >
                 <PlusIcon size={14} />
                 添加
-              </button>
+              </Button>
             </>
           )}
         </div>
@@ -187,7 +196,7 @@ export function Secrets({
           <label>
             秘密内容
             {editing === 'privateKey' ? (
-              <textarea
+              <Input.TextArea
                 aria-label="秘密内容"
                 className={`secret-input ${showInput ? '' : 'masked-secret'}`}
                 autoFocus
@@ -196,7 +205,7 @@ export function Secrets({
                 spellCheck={false}
               />
             ) : (
-              <input
+              <Input
                 type={showInput ? 'text' : 'password'}
                 aria-label="秘密内容"
                 autoFocus
@@ -206,35 +215,45 @@ export function Secrets({
               />
             )}
           </label>
-          <label className="secret-show">
-            <input
-              type="checkbox"
-              checked={showInput}
-              onChange={(event) => setShowInput(event.target.checked)}
-            />
+          <Checkbox
+            className="secret-show"
+            checked={showInput}
+            onChange={(event) => setShowInput(event.target.checked)}
+          >
             显示输入
-          </label>
+          </Checkbox>
           <div className="modal-actions">
             {account.secretKinds.includes(editing) && (
-              <button
+              <Button
+                htmlType="submit"
+                type="text"
+                danger
                 className="text-button danger-text"
                 disabled={busy}
                 onClick={() => void save(true)}
               >
                 移除秘密
-              </button>
+              </Button>
             )}
             <span className="spacer" />
-            <button className="secondary-button" disabled={busy} onClick={close}>
+            <Button
+              htmlType="submit"
+              type="default"
+              className="secondary-button"
+              disabled={busy}
+              onClick={close}
+            >
               取消
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
               className="primary-button"
               disabled={busy || !value}
               onClick={() => void save()}
             >
               保存秘密
-            </button>
+            </Button>
           </div>
         </Dialog>
       )}

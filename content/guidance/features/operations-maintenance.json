@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "feature",
   "id": "operations-maintenance",
-  "revision": 1,
+  "revision": 2,
   "title": "记录运行作业与备份策略",
   "platforms": ["darwin", "win32"],
   "placements": ["ledger-operations"],
@@ -56,7 +56,7 @@
       },
       {
         "question": "选择备份策略会自动生成备份吗？",
-        "answer": "不会。台账中的备份策略只记录运维资料；应用自身的完整加密备份在“设置 → 备份与迁移”管理。"
+        "answer": "不会。台账中的备份策略只记录运维资料；应用自身的完整加密备份在“设置 → 备份与恢复”管理。"
       }
     ],
     "notApplicableReason": ""

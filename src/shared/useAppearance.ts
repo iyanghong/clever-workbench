@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { Settings, SystemAppearance } from '../types';
 export function useAppearance() {
+  const [appearance, setAppearance] = useState({
+    dark: matchMedia('(prefers-color-scheme: dark)').matches,
+    highContrast: false,
+    reduceTransparency: false,
+    reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+  });
   const [settings, setSettings] = useState<Settings | null>(null);
   const [system, setSystem] = useState<SystemAppearance>({
     reduceTransparency: false,
@@ -47,10 +53,24 @@ export function useAppearance() {
           transparency.matches,
       );
       data.reduceMotion = String(settings.reduceMotion || motion.matches);
+      const next = {
+        dark: data.theme === 'dark',
+        highContrast,
+        reduceTransparency: data.reduceTransparency === 'true',
+        reduceMotion: data.reduceMotion === 'true',
+      };
+      setAppearance((previous) =>
+        Object.keys(next).every(
+          (key) => previous[key as keyof typeof next] === next[key as keyof typeof next],
+        )
+          ? previous
+          : next,
+      );
     };
     apply();
     const queries = [dark, motion, transparency, contrast];
     queries.forEach((query) => query.addEventListener('change', apply));
     return () => queries.forEach((query) => query.removeEventListener('change', apply));
   }, [settings, system]);
+  return appearance;
 }

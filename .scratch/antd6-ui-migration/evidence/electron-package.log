@@ -1,0 +1,43 @@
+
+> clever-workbench@0.1.23 pretest:e2e
+> npm run tools:generate
+
+
+> clever-workbench@0.1.23 tools:generate
+> node scripts/generate-tools.mjs
+
+
+> clever-workbench@0.1.23 test:e2e
+> playwright test tests/e2e/antd-workbench.spec.ts tests/e2e/unified-appearance.spec.ts tests/e2e/productivity-tools.spec.ts tests/e2e/tools.spec.ts tests/e2e/update.spec.ts --max-failures=1 --output=.scratch/antd6-ui-migration/results-package
+
+
+Running 22 tests using 1 worker
+
+(node:96458) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/e2e/antd-workbench.spec.ts:7:1 › Ant 控件接入后仍保留创建保护、模态焦点和真实本地保存 (7.8s)
+  ✓   2 tests/e2e/productivity-tools.spec.ts:35:1 › 配置对比自动出现在目录并报告 JSON 修改 (3.1s)
+  ✓   3 tests/e2e/productivity-tools.spec.ts:44:1 › 数据格式助手按路径提取本地 JSON (2.7s)
+  ✓   4 tests/e2e/productivity-tools.spec.ts:53:1 › 时间与 Cron 转换时间并预测五次执行 (2.0s)
+  ✓   5 tests/e2e/productivity-tools.spec.ts:66:1 › 批量文本处理按行去重并统计结果 (2.8s)
+  ✓   6 tests/e2e/productivity-tools.spec.ts:75:1 › 表格数据在 CSV 与 JSON 之间双向转换 (3.0s)
+  ✓   7 tests/e2e/productivity-tools.spec.ts:89:1 › 新增工具布局支持深浅主题与窄窗口 (2.2s)
+  ✓   8 tests/e2e/tools.spec.ts:23:1 › 10 个分片乱序收集，重复项自动跳过并保留原片，收齐后可直接还原 (9.6s)
+  ✓   9 tests/e2e/tools.spec.ts:166:1 › 粘贴快捷键保留路径、密码、搜索及其他页面的普通文本粘贴 (2.0s)
+  ✓  10 tests/e2e/tools.spec.ts:210:1 › 工具收藏、后台运行与退出保护、目录及剪贴板还原 (11.5s)
+
+  ✓  11 tests/e2e/tools.spec.ts:334:1 › Git 提交筛选预览并打包当前磁盘文件 (4.5s)
+  ✓  12 tests/e2e/unified-appearance.spec.ts:7:1 › 全站共享外观在深浅主题和最小窗口可操作，长内容与浮层保持可达 (15.5s)
+  ✓  13 tests/e2e/update.spec.ts:9:1 › 安装位置受限时提前提供正式安装入口，已下载更新也不再承诺重启安装 (4.6s)
+  ✓  14 tests/e2e/update.spec.ts:156:1 › 安装失败只显示可操作的原因，不泄露 IPC 错误包装 (6.7s)
+  ✓  15 tests/e2e/update.spec.ts:217:1 › 更新弹窗支持鼠标关闭，重新打开后仍能按 Esc 关闭 (5.4s)
+  ✓  16 tests/e2e/update.spec.ts:299:1 › 手动检查仅在设置中，新版按钮显示在品牌旁并保留下载与安装入口 (4.8s)
+  ✓  17 tests/e2e/update.spec.ts:477:1 › 下载校验后主动询问重启，稍后不打断工作且再次打开无需滚动 (3.6s)
+  -  18 tests/e2e/update.spec.ts:582:1 › development application exposes version details and disables online installation
+  ✓  19 tests/e2e/update.spec.ts:602:1 › 安装版从隔离路径夹具启动时，通过真实 IPC 在下载前报告位置限制 (2.8s)
+  ✓  20 tests/e2e/update.spec.ts:649:1 › installed application exposes its packaged version and update checks (1.8s)
+  ✓  21 tests/e2e/update.spec.ts:674:1 › installed updated application confirms a private pending transaction only after its window and IPC work (2.7s)
+  ✓  22 tests/e2e/update.spec.ts:736:1 › damaged updater history leaves the local workspace available (1.8s)
+
+  1 skipped
+  21 passed (1.7m)

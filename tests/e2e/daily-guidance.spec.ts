@@ -1,3 +1,4 @@
+import { selectChoice } from './antd-controls';
 import { test, expect, type Page, type ElectronApplication } from '@playwright/test';
 import { electron } from './launch';
 import {
@@ -42,12 +43,10 @@ async function openGuide(app: ElectronApplication, page: Page, nearby: string, t
     ).toHaveCount(0);
     if (!(await library.locator('.guidance-list button').count()))
       await expect(library.getByRole('status')).toContainText('当前暂无可用指引');
-    test
-      .info()
-      .annotations.push({
-        type: 'guidance-content-warning',
-        description: `${guides[title]} 缺失或未配置当前位置：已验证列表降级，本次未验证其正文和正常跳转。`,
-      });
+    test.info().annotations.push({
+      type: 'guidance-content-warning',
+      description: `${guides[title]} 缺失或未配置当前位置：已验证列表降级，本次未验证其正文和正常跳转。`,
+    });
     return { dialog: library, feature: undefined };
   }
   await library.getByRole('button', { name: feature.title, exact: true }).click();
@@ -78,7 +77,7 @@ test('首页指引可离线查阅并安全返回，照着指引录入待办与�
         guide.dialog.getByRole('heading', { name: guide.feature.steps[0].title, exact: true }),
       ).toBeVisible();
     await navigateOrClose(page, guide);
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.getByLabel('快速新增任务').fill('指引示例：核对周计划');
     await page.getByLabel('快速新增任务').press('Enter');
@@ -127,7 +126,7 @@ test('搜索新建旁指引只导航，九项选择可取消且键盘搜索可�
     const page = await app.firstWindow();
     const guide = await openGuide(app, page, '搜索与新建使用指引', '从统一入口新建资料');
     await navigateOrClose(page, guide);
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     expect((await page.evaluate(() => window.desktop.snapshot())).tasks).toHaveLength(0);
     await page.getByRole('button', { name: '快速新建', exact: true }).click();
@@ -174,10 +173,10 @@ test('任务指引关闭保留详情，计划、标签与批量归属可按说�
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
     const capture = await openGuide(app, page, '工作任务使用指引', '记录任务与管理草稿');
     await navigateOrClose(page, capture);
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
     await page.getByRole('button', { name: '新增任务', exact: true }).click();
     await page.getByLabel('任务标题').fill('指引任务详情示例');
     await page.getByRole('button', { name: /^创建任务/ }).click();
@@ -202,7 +201,7 @@ test('任务指引关闭保留详情，计划、标签与批量归属可按说�
     await page.keyboard.press('Escape');
     await page.getByText('标签筛选', { exact: true }).click();
     await page.getByLabel('筛选标签 指引示例分类', { exact: true }).check();
-    await page.getByLabel('标签匹配方式').selectOption('all');
+    await selectChoice(page.getByLabel('标签匹配方式'), 'all');
     await expect(page.locator('.task-open')).toHaveCount(1);
     await page.getByRole('button', { name: '批量关联系统', exact: true }).click();
     await page.getByLabel('选择当前结果', { exact: true }).check();
@@ -211,8 +210,8 @@ test('任务指引关闭保留详情，计划、标签与批量归属可按说�
       'aria-pressed',
       'false',
     );
-    await page.getByRole('button', { name: '紧凑', exact: true }).click();
-    await page.getByLabel('时间归类').selectOption('due');
+    await page.getByRole('radio', { name: '紧凑', exact: true }).locator('..').click();
+    await selectChoice(page.getByLabel('时间归类'), 'due');
     await expect(page.locator('.task-open')).toContainText('指引任务详情示例');
   } finally {
     await app.close();
@@ -227,7 +226,7 @@ test('阅读任务指引期间创建快捷键不会提交底层草稿', async ()
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
     await page.getByRole('button', { name: '新增任务', exact: true }).click();
     await page.getByLabel('任务标题').fill('只阅读不创建的草稿');
     const guide = await openGuide(app, page, '工作任务使用指引', '记录任务与管理草稿');
@@ -253,10 +252,10 @@ test('文档附近和设置可查看共用编辑指引，源码与本地图片�
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await page.getByRole('button', { name: '文档', exact: true }).click();
+    await page.getByRole('menuitem', { name: '文档', exact: true }).click();
     const guide = await openGuide(app, page, '文档使用指引', '创建、查找和关联文档');
     await navigateOrClose(page, guide);
-    await page.getByRole('button', { name: '文档', exact: true }).click();
+    await page.getByRole('menuitem', { name: '文档', exact: true }).click();
     await page.getByRole('button', { name: '新建文档', exact: true }).click();
     await page.getByLabel('文档标题').fill('指引文档示例');
     await page.getByRole('button', { name: 'Markdown 源码', exact: true }).click();
@@ -290,7 +289,8 @@ test('文档附近和设置可查看共用编辑指引，源码与本地图片�
     await picture.click();
     await expect(page.getByAltText('图片原图')).toBeVisible();
     await page.keyboard.press('Escape');
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '使用指引', exact: true }).click();
     await page.getByRole('button', { name: '查看全部使用指引', exact: true }).click();
     await expect(page.getByRole('dialog', { name: '使用指引', exact: true })).toBeVisible();
     const editorGuide = await expectedFeatureGuide(app, 'editor-formatting');
@@ -305,12 +305,10 @@ test('文档附近和设置可查看共用编辑指引，源码与本地图片�
       ).toBeVisible();
       await page.screenshot({ path: info.outputPath('editor-guide-dark.png') });
     } else {
-      test
-        .info()
-        .annotations.push({
-          type: 'guidance-content-warning',
-          description: '编辑器指引缺失：集中入口仍可打开，未验证正文。',
-        });
+      test.info().annotations.push({
+        type: 'guidance-content-warning',
+        description: '编辑器指引缺失：集中入口仍可打开，未验证正文。',
+      });
       await expect(
         page
           .getByRole('dialog', { name: '使用指引', exact: true })
@@ -318,7 +316,7 @@ test('文档附近和设置可查看共用编辑指引，源码与本地图片�
       ).toHaveCount(0);
     }
     await page.keyboard.press('Escape');
-    await page.getByRole('button', { name: '文档', exact: true }).click();
+    await page.getByRole('menuitem', { name: '文档', exact: true }).click();
     await page.getByRole('button', { name: '文档 指引文档示例', exact: true }).click();
     await expect(picture).toHaveCount(1);
   } finally {
@@ -336,17 +334,17 @@ test('工作回顾指引与月份、系统全貌入口一致，打开任务后�
     const page = await app.firstWindow();
     await page.getByLabel('快速新增任务').fill('指引回顾任务');
     await page.getByLabel('快速新增任务').press('Enter');
-    await page.getByRole('button', { name: '工作回顾', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作回顾', exact: true }).click();
     const guide = await openGuide(app, page, '工作回顾使用指引', '按月份与系统回顾工作');
     await navigateOrClose(page, guide);
-    await page.getByRole('button', { name: '工作回顾', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作回顾', exact: true }).click();
     await page.getByRole('button', { name: '上个月', exact: true }).click();
     await page.getByRole('button', { name: '本月', exact: true }).click();
-    await page.getByRole('button', { name: '系统回顾', exact: true }).click();
+    await page.getByRole('radio', { name: '系统回顾', exact: true }).locator('..').click();
     await expect(page.getByLabel('回顾月份')).toBeDisabled();
-    await page.getByLabel('系统时间范围').selectOption('month');
+    await selectChoice(page.getByLabel('系统时间范围'), 'month');
     await expect(page.getByLabel('回顾月份')).toBeEnabled();
-    await page.getByLabel('回顾系统').selectOption('none');
+    await selectChoice(page.getByLabel('回顾系统'), 'none');
     await page.locator('.timeline-row').filter({ hasText: '指引回顾任务' }).click();
     await expect(page.getByLabel('任务标题')).toHaveValue('指引回顾任务');
     await page.getByRole('button', { name: '关闭详情', exact: true }).click();

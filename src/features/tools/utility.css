@@ -1,3 +1,4 @@
+@layer legacy {
 .utility-tool {
   width: 100%;
   max-width: 1440px;
@@ -164,4 +165,5 @@
   .utility-panel > textarea {
     min-height: 220px;
   }
+}
 }

@@ -1,0 +1,57 @@
+
+> clever-workbench@0.1.23 pretest:e2e
+> npm run tools:generate
+
+
+> clever-workbench@0.1.23 tools:generate
+> node scripts/generate-tools.mjs
+
+
+> clever-workbench@0.1.23 test:e2e
+> playwright test tests/e2e/ledger-system-actions.spec.ts
+
+
+Running 1 test using 1 worker
+
+(node:28736) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 tests/e2e/ledger-system-actions.spec.ts:7:1 › 系统动作收纳后支持键盘、保存及弹窗关闭焦点链 (7.3s)
+
+
+  1) tests/e2e/ledger-system-actions.spec.ts:7:1 › 系统动作收纳后支持键盘、保存及弹窗关闭焦点链 ──────────────────────────
+
+    Error: expect(locator).toBeFocused() failed
+
+    Locator:  getByRole('dialog', { name: '切换系统', exact: true }).getByLabel('搜索系统')
+    Expected: focused
+    Received: inactive
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeFocused" getByRole('dialog', { name: '切换系统', exact: true }).getByLabel('搜索系统') with timeout 5000ms
+      - waiting for getByRole('dialog', { name: '切换系统', exact: true }).getByLabel('搜索系统')
+        14 × locator resolved to <input value="" type="text" aria-label="搜索系统" placeholder="搜索系统…" class="ant-input css-i19pbt ant-input-outlined css-var-_r_0_ ant-input-css-var"/>
+           - unexpected value "inactive"
+
+
+      76 |     const picker = page.getByRole('dialog', { name: '切换系统', exact: true });
+      77 |     await expect(switcher).toHaveAttribute('aria-expanded', 'true');
+    > 78 |     await expect(picker.getByLabel('搜索系统')).toBeFocused();
+         |                                             ^
+      79 |     await page.keyboard.press('Escape');
+      80 |     await expect(switcher).toBeFocused();
+      81 |     await switcher.click();
+        at /Users/axelton/code/clever-workbench/tests/e2e/ledger-system-actions.spec.ts:78:45
+
+    Error Context: test-results/ledger-system-actions-系统动作收纳后支持键盘、保存及弹窗关闭焦点链/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/ledger-system-actions-系统动作收纳后支持键盘、保存及弹窗关闭焦点链/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/ledger-system-actions-系统动作收纳后支持键盘、保存及弹窗关闭焦点链/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests/e2e/ledger-system-actions.spec.ts:7:1 › 系统动作收纳后支持键盘、保存及弹窗关闭焦点链 ───────────────────────────

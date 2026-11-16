@@ -21,7 +21,8 @@ test('打开或取消备份密码配置不访问钥匙串，确认保存后才�
       }
     });
     const calls = () => app.evaluate(() => (globalThis as any).backupKeychainCalls);
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '备份与恢复', exact: true }).click();
     await page.getByRole('button', { name: '设置备份密码', exact: true }).click();
     const setup = page.getByRole('dialog', { name: '设置备份密码', exact: true });
     await expect(setup).toBeVisible();
@@ -81,10 +82,11 @@ require(${JSON.stringify(path.resolve('dist-electron/main.cjs'))});
       });
       expect(await app.evaluate(() => (globalThis as any).keychainCalls)).toEqual([]);
       for (const name of ['台账', '工作任务', '文档', '设置'])
-        await page.getByRole('button', { name, exact: true }).click();
+        await page.getByRole('menuitem', { name, exact: true }).click();
       if (restart) {
         await page.evaluate(() => window.desktop.unlockVault('fixture-no-keychain-master'));
       } else {
+        await page.getByRole('tab', { name: '凭据保护', exact: true }).click();
         await page.getByRole('button', { name: '启用主密码', exact: true }).click();
         await page.getByLabel('主密码', { exact: true }).fill('fixture-no-keychain-master');
         await page.getByLabel('确认主密码', { exact: true }).fill('fixture-no-keychain-master');
@@ -131,7 +133,8 @@ test('真实系统加密支持无主密码凭据、独立备份密码与重启�
     await app.evaluate(({ dialog }, target) => {
       dialog.showSaveDialog = async () => ({ canceled: false, filePath: target });
     }, filename);
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '备份与恢复', exact: true }).click();
     await page.getByRole('button', { name: '导出完整备份', exact: true }).click();
     const setup = page.getByRole('dialog', { name: '设置备份密码', exact: true });
     await expect(setup).toBeVisible();
@@ -156,6 +159,7 @@ test('真实系统加密支持无主密码凭据、独立备份密码与重启�
     await expect
       .poll(() => page.evaluate(() => window.desktop.vaultStatus()))
       .toMatchObject({ mode: 'system', initialized: false, backupConfigured: true });
+    await page.getByRole('tab', { name: '凭据保护', exact: true }).click();
     await page.getByRole('button', { name: '启用主密码', exact: true }).click();
     await page.getByLabel('主密码', { exact: true }).fill('fixture-optional-master');
     await page.getByLabel('确认主密码', { exact: true }).fill('fixture-optional-master');
@@ -188,7 +192,8 @@ test('真实系统加密支持无主密码凭据、独立备份密码与重启�
       };
       dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [filePath] });
     }, filename);
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '备份与恢复', exact: true }).click();
     await page.getByRole('button', { name: '从备份恢复', exact: true }).click();
     await page.getByLabel('备份密码', { exact: true }).fill('fixture-native-backup-password');
     await page.getByRole('button', { name: '校验备份', exact: true }).click();

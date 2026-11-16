@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "feature",
   "id": "full-backup",
-  "revision": 1,
+  "revision": 2,
   "title": "导出完整加密备份",
   "platforms": ["darwin", "win32"],
   "placements": ["settings-backup"],
@@ -14,12 +14,12 @@
     ],
     "notApplicableReason": ""
   },
-  "entry": { "label": "设置 → 备份与迁移 → 导出完整备份", "target": "settings-backup" },
+  "entry": { "label": "设置 → 备份与恢复 → 导出完整备份", "target": "settings-backup" },
   "steps": [
     {
       "id": "start",
       "title": "从设置开始完整导出",
-      "action": "打开“设置 → 备份与迁移”，点击“导出完整备份”。如果是首次备份，按提示设置至少 6 个字符的独立备份密码。",
+      "action": "打开“设置 → 备份与恢复”，点击“导出完整备份”。如果是首次备份，按提示设置至少 6 个字符的独立备份密码。",
       "expectedResult": "密码配置成功后继续选择保存位置；点击取消会停止本次导出，资料不受影响。"
     },
     {

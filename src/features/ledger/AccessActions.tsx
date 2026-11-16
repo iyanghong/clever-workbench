@@ -1,3 +1,5 @@
+import { markNewRecordChanged } from '../../shared/new-record';
+import { Button, Select } from 'antd';
 import { useState } from 'react';
 import { ArrowUpRightIcon } from '@phosphor-icons/react';
 import type { AccessEntry } from '../../ledger-types';
@@ -30,19 +32,24 @@ export function AccessActions({
       {address ? (
         <div className="access-shortcut-line">
           {entry.addresses.length > 1 && (
-            <select
+            <Select
               aria-label={`${entry.name} 快捷地址`}
               value={address.id}
-              onChange={(event) => setAddressId(event.target.value)}
+              onChange={(event) => {
+                markNewRecordChanged();
+                return setAddressId(event);
+              }}
             >
               {entry.addresses.map((a) => (
-                <option key={a.id} value={a.id}>
+                <Select.Option data-value={String(a.id)} key={a.id} value={a.id}>
                   {a.label}
-                </option>
+                </Select.Option>
               ))}
-            </select>
+            </Select>
           )}
-          <button
+          <Button
+            htmlType="submit"
+            type="text"
             className="text-button"
             aria-label={`打开 ${entry.name} ${address.label}`}
             title={address.url}
@@ -52,7 +59,7 @@ export function AccessActions({
           >
             <ArrowUpRightIcon size={16} />
             {address.label}
-          </button>
+          </Button>
           <CopyValue
             value={address.url}
             label={`地址 ${entry.name} ${address.label}`}
@@ -65,17 +72,20 @@ export function AccessActions({
       {account && (
         <div className="access-shortcut-line">
           {accounts.length > 1 ? (
-            <select
+            <Select
               aria-label={`${entry.name} 快捷账号`}
               value={account.id}
-              onChange={(event) => setAccountId(event.target.value)}
+              onChange={(event) => {
+                markNewRecordChanged();
+                return setAccountId(event);
+              }}
             >
               {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
+                <Select.Option data-value={String(a.id)} key={a.id} value={a.id}>
                   {a.name} · {a.username || '无用户名'}
-                </option>
+                </Select.Option>
               ))}
-            </select>
+            </Select>
           ) : (
             <span>
               {account.name} · {account.username || '无用户名'}

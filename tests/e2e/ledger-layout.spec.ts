@@ -1,3 +1,4 @@
+import { selectChoice, expectSelectValue } from './antd-controls';
 import { test, expect } from '@playwright/test';
 import { electron } from './launch';
 import fs from 'node:fs/promises';
@@ -12,7 +13,7 @@ test('打开台账后用摘要连续浏览，详情获得主要阅读宽度', as
   try {
     const page = await app.firstWindow();
     await page.setViewportSize({ width: 1440, height: 960 });
-    await page.getByRole('button', { name: '台账', exact: true }).waitFor();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).waitFor();
     await page.evaluate(async () => {
       const api = window.desktop;
       const systemId = (await api.mutate({ type: 'system.save', name: '布局验证系统' })).createdId!;
@@ -28,8 +29,8 @@ test('打开台账后用摘要连续浏览，详情获得主要阅读宽度', as
         });
       }
     });
-    await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('button', { name: '服务器', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
+    await page.getByRole('tab', { name: '服务器', exact: true }).click();
     await expect(page.getByRole('columnheader', { name: '说明', exact: true })).toBeVisible();
     await page.getByRole('button', { name: /应用节点 01.*系统通用/ }).click();
     const detail = page.getByRole('complementary', { name: '台账详情' });
@@ -70,7 +71,7 @@ test('摘要搜索保留详情、范围筛选关闭详情，窄窗口返回恢�
   try {
     const page = await app.firstWindow();
     await page.setViewportSize({ width: 1440, height: 760 });
-    await page.getByRole('button', { name: '台账', exact: true }).waitFor();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).waitFor();
     const production = await page.evaluate(async () => {
       const api = window.desktop;
       const systemId = (await api.mutate({ type: 'system.save', name: '连续浏览系统' })).createdId!;
@@ -98,10 +99,10 @@ test('摘要搜索保留详情、范围筛选关闭详情，窄窗口返回恢�
       }
       return environmentId;
     });
-    await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('button', { name: '服务器', exact: true }).click();
-    await page.getByLabel('台账环境筛选').selectOption(production);
-    await page.getByLabel('台账标签筛选').selectOption('内网');
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
+    await page.getByRole('tab', { name: '服务器', exact: true }).click();
+    await selectChoice(page.getByLabel('台账环境筛选'), production);
+    await selectChoice(page.getByLabel('台账标签筛选'), '内网');
     await page.getByLabel('搜索台账清单').fill('应用节点');
     const list = page.locator('.workspace-list');
     const target = list.getByRole('button', { name: /应用节点 20.*生产/ });
@@ -129,8 +130,8 @@ test('摘要搜索保留详情、范围筛选关闭详情，窄窗口返回恢�
     });
     await detail.getByRole('button', { name: '返回清单', exact: true }).click();
     await expect(page.getByLabel('搜索台账清单')).toHaveValue('应用节点');
-    await expect(page.getByLabel('台账环境筛选')).toHaveValue(production);
-    await expect(page.getByLabel('台账标签筛选')).toHaveValue('内网');
+    await expectSelectValue(page.getByLabel('台账环境筛选'), production);
+    await expectSelectValue(page.getByLabel('台账标签筛选'), '内网');
     await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBe(position);
     await page.setViewportSize({ width: 1440, height: 760 });
     await target.click();
@@ -150,7 +151,7 @@ test('摘要搜索保留详情、范围筛选关闭详情，窄窗口返回恢�
       path: info.outputPath('ledger-narrow-dark.png'),
     });
     await page.setViewportSize({ width: 1440, height: 760 });
-    await page.getByLabel('台账环境筛选').selectOption('common');
+    await selectChoice(page.getByLabel('台账环境筛选'), 'common');
     await expect(detail).toHaveCount(0);
     await expect(page.getByText('这里还没有符合条件的记录', { exact: true })).toBeVisible();
   } finally {
@@ -167,7 +168,7 @@ test('运维筛选在摘要与返回清单间保持有效，编辑后可沿步�
   try {
     const page = await app.firstWindow();
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.getByRole('button', { name: '台账', exact: true }).waitFor();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).waitFor();
     const ids = await page.evaluate(async () => {
       const api = window.desktop;
       const systemId = (await api.mutate({ type: 'system.save', name: '运维验收系统' })).createdId!;
@@ -218,17 +219,17 @@ test('运维筛选在摘要与返回清单间保持有效，编辑后可沿步�
       }
       return { systemId, production, testing };
     });
-    await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('button', { name: '运行维护', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
+    await page.getByRole('tab', { name: '运行维护', exact: true }).click();
     const list = page.getByRole('region', { name: '台账清单' });
     const detail = page.getByRole('complementary', { name: '台账详情' });
     await expect(list.getByRole('row')).toHaveCount(5);
-    await page.getByLabel('台账环境筛选').selectOption(ids.production);
+    await selectChoice(page.getByLabel('台账环境筛选'), ids.production);
     await expect(list.getByRole('row')).toHaveCount(4);
     await expect(list).toContainText('系统通用清理');
-    await page.getByLabel('台账标签筛选').selectOption('内网');
-    await page.getByLabel('运维类型筛选').selectOption('backup');
-    await page.getByLabel('运维状态筛选').selectOption('active');
+    await selectChoice(page.getByLabel('台账标签筛选'), '内网');
+    await selectChoice(page.getByLabel('运维类型筛选'), 'backup');
+    await selectChoice(page.getByLabel('运维状态筛选'), 'active');
     await expect(list.getByRole('row')).toHaveCount(2);
     await list.getByRole('button', { name: /每日数据库备份.*生产/ }).click();
     await expect(list.getByRole('listitem')).toHaveCount(1);
@@ -237,52 +238,52 @@ test('运维筛选在摘要与返回清单间保持有效，编辑后可沿步�
     ).toBeVisible();
     await detail.getByRole('button', { name: '编辑', exact: true }).click();
     await detail.getByLabel('频率', { exact: true }).fill('每日 03:30');
-    await page.getByLabel('运维状态筛选').selectOption('inactive');
+    await selectChoice(page.getByLabel('运维状态筛选'), 'inactive');
     await expect(detail).toHaveCount(0);
     await expect(list.getByRole('row')).toHaveCount(2);
     await expect(list).toContainText('旧数据库备份');
     await expect(list).not.toContainText('每日数据库备份');
-    await page.getByLabel('运维状态筛选').selectOption('active');
+    await selectChoice(page.getByLabel('运维状态筛选'), 'active');
     await list.getByRole('button', { name: /每日数据库备份.*生产/ }).click();
     await expect(detail).toContainText('每日 03:30');
     await page.screenshot({ animations: 'disabled', path: info.outputPath('operations-wide.png') });
     await page.setViewportSize({ width: 960, height: 760 });
     await expect(list).toBeHidden();
     await detail.getByRole('button', { name: '返回清单', exact: true }).click();
-    await expect(page.getByLabel('台账环境筛选')).toHaveValue(ids.production);
-    await expect(page.getByLabel('台账标签筛选')).toHaveValue('内网');
-    await expect(page.getByLabel('运维类型筛选')).toHaveValue('backup');
-    await expect(page.getByLabel('运维状态筛选')).toHaveValue('active');
-    await page.getByLabel('台账标签筛选').selectOption('all');
-    await page.getByLabel('台账环境筛选').selectOption(ids.testing);
-    await page.getByLabel('运维类型筛选').selectOption('job');
-    await page.getByLabel('运维状态筛选').selectOption('unverified');
+    await expectSelectValue(page.getByLabel('台账环境筛选'), ids.production);
+    await expectSelectValue(page.getByLabel('台账标签筛选'), '内网');
+    await expectSelectValue(page.getByLabel('运维类型筛选'), 'backup');
+    await expectSelectValue(page.getByLabel('运维状态筛选'), 'active');
+    await selectChoice(page.getByLabel('台账标签筛选'), 'all');
+    await selectChoice(page.getByLabel('台账环境筛选'), ids.testing);
+    await selectChoice(page.getByLabel('运维类型筛选'), 'job');
+    await selectChoice(page.getByLabel('运维状态筛选'), 'unverified');
     await expect(list.getByRole('row')).toHaveCount(2);
     await expect(list).toContainText('测试数据同步');
     await expect(list).not.toContainText('系统通用清理');
-    await page.getByLabel('运维状态筛选').selectOption('inactive');
+    await selectChoice(page.getByLabel('运维状态筛选'), 'inactive');
     await expect(page.getByText('这里还没有符合条件的记录', { exact: true })).toBeVisible();
-    await page.getByLabel('台账环境筛选').selectOption(ids.production);
-    await page.getByLabel('运维类型筛选').selectOption('backup');
-    await page.getByLabel('运维状态筛选').selectOption('active');
+    await selectChoice(page.getByLabel('台账环境筛选'), ids.production);
+    await selectChoice(page.getByLabel('运维类型筛选'), 'backup');
+    await selectChoice(page.getByLabel('运维状态筛选'), 'active');
     await list.getByRole('button', { name: /每日数据库备份.*生产/ }).click();
     await detail.getByRole('button', { name: '阅读步骤文档', exact: true }).click();
     await expect(page.getByLabel('文档标题')).toHaveValue('生产备份步骤');
     await page.getByRole('textbox', { name: '工作内容' }).fill('补充备份恢复校验并保留结果。');
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await page
       .getByRole('navigation', { name: '系统资料类型' })
-      .getByRole('button', { name: '文档', exact: true })
+      .getByRole('tab', { name: '文档', exact: true })
       .click();
     await list.getByRole('button', { name: /生产备份步骤.*生产/ }).click();
     await expect(page.getByLabel('文档标题')).toHaveValue('生产备份步骤');
     await expect(page.getByRole('textbox', { name: '工作内容' })).toContainText('补充备份恢复校验');
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await page.getByRole('button', { name: '新增文档', exact: true }).click();
     await expect(page.getByLabel('文档标题')).toHaveValue('');
-    await expect(page.getByLabel('关联系统', { exact: true })).toHaveValue(ids.systemId);
+    await expectSelectValue(page.getByLabel('关联系统', { exact: true }), ids.systemId);
     await page.getByLabel('文档标题').fill('新增生产运维记录');
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await expect(list.getByRole('button', { name: /新增生产运维记录.*生产/ })).toBeVisible();
     await page.screenshot({
       animations: 'disabled',
@@ -302,7 +303,7 @@ test('七类页签的行内复制与详情均使用无文字图标按钮', async
   try {
     const page = await app.firstWindow();
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.getByRole('button', { name: '台账', exact: true }).waitFor();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).waitFor();
     await page.evaluate(async () => {
       const api = window.desktop;
       const systemId = (await api.mutate({ type: 'system.save', name: '图标布局系统' })).createdId!;
@@ -358,7 +359,7 @@ test('七类页签的行内复制与详情均使用无文字图标按钮', async
       });
       await api.mutate({ type: 'document.create', context: { systemId, environmentId } });
     });
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     for (const label of [
       '访问入口',
       '账号',
@@ -370,7 +371,7 @@ test('七类页签的行内复制与详情均使用无文字图标按钮', async
     ]) {
       await page
         .getByRole('navigation', { name: '系统资料类型' })
-        .getByRole('button', { name: label, exact: true })
+        .getByRole('tab', { name: label, exact: true })
         .click();
       if (label !== '文档') {
         const copy = page

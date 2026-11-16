@@ -1,3 +1,4 @@
+import { Button, Input, Card } from 'antd';
 import { useState } from 'react';
 import { PageHeading } from '../../../src/shared/WorkspaceUI';
 import { describeCron, formatDateInput, nextCronRuns } from '../logic';
@@ -37,11 +38,11 @@ export default function TimeCronPage() {
         description="时间戳自动识别秒或毫秒；Cron 使用本机时区，支持 *、列表、范围和步长。"
       />
       <div className="utility-grid utility-grid-tools">
-        <section className="utility-panel utility-form-panel">
+        <Card className="utility-panel utility-form-panel">
           <h2>时间转换</h2>
           <label className="utility-field">
             <span>时间戳或日期时间</span>
-            <input
+            <Input
               aria-label="时间戳或日期时间"
               value={dateInput}
               onChange={(event) => {
@@ -52,11 +53,12 @@ export default function TimeCronPage() {
             />
           </label>
           <div className="utility-actions">
-            <button type="button" onClick={convertDate}>
+            <Button type="text" htmlType="button" onClick={convertDate}>
               转换时间
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              type="default"
+              htmlType="button"
               className="secondary-button"
               onClick={() => {
                 setDateInput(String(Date.now()));
@@ -64,7 +66,7 @@ export default function TimeCronPage() {
               }}
             >
               使用当前时间
-            </button>
+            </Button>
           </div>
           {dateResult && (
             <dl className="utility-definition">
@@ -90,12 +92,12 @@ export default function TimeCronPage() {
               </div>
             </dl>
           )}
-        </section>
-        <section className="utility-panel utility-form-panel">
+        </Card>
+        <Card className="utility-panel utility-form-panel">
           <h2>Cron 执行时间</h2>
           <label className="utility-field">
             <span>五段 Cron 表达式</span>
-            <input
+            <Input
               aria-label="Cron 表达式"
               value={cron}
               onChange={(event) => {
@@ -108,9 +110,9 @@ export default function TimeCronPage() {
             />
           </label>
           <div className="utility-actions">
-            <button type="button" onClick={calculateCron}>
+            <Button type="text" htmlType="button" onClick={calculateCron}>
               解释并预测
-            </button>
+            </Button>
           </div>
           {cronDescription && (
             <p className="utility-note" role="status">
@@ -128,7 +130,7 @@ export default function TimeCronPage() {
               ))}
             </ol>
           )}
-        </section>
+        </Card>
       </div>
       {error && (
         <p className="tool-error" role="alert">

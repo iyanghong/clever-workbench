@@ -1,3 +1,4 @@
+import { Button } from 'antd';
 import { useState } from 'react';
 import { CopyIcon, CheckIcon } from '@phosphor-icons/react';
 
@@ -14,8 +15,9 @@ export function CopyValue({
 }) {
   const [copied, setCopied] = useState(false);
   return (
-    <button
-      type="button"
+    <Button
+      type="text"
+      htmlType="button"
       className="icon-button"
       aria-label={`复制${label}`}
       title={copied ? '已复制' : `复制${label}`}
@@ -31,6 +33,6 @@ export function CopyValue({
       }}
     >
       {copied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
-    </button>
+    </Button>
   );
 }

@@ -1,3 +1,4 @@
+import { Button, Input } from 'antd';
 import { useState } from 'react';
 import type { CreationProps } from '../../app/actions';
 import { ContextPicker } from '../../shared/ContextPicker';
@@ -28,7 +29,7 @@ export function QuickTask({ snapshot, context, busy, execute, cancel }: Creation
     >
       <label className="field-label">
         任务标题
-        <input
+        <Input
           autoFocus
           aria-label="快速新建任务标题"
           value={title}
@@ -47,12 +48,23 @@ export function QuickTask({ snapshot, context, busy, execute, cancel }: Creation
         />
       </div>
       <div className="modal-actions">
-        <button type="button" className="secondary-button" disabled={busy} onClick={cancel}>
+        <Button
+          type="default"
+          htmlType="button"
+          className="secondary-button"
+          disabled={busy}
+          onClick={cancel}
+        >
           取消
-        </button>
-        <button className="primary-button" disabled={busy || !title.trim()}>
+        </Button>
+        <Button
+          htmlType="submit"
+          type="primary"
+          className="primary-button"
+          disabled={busy || !title.trim()}
+        >
           创建任务
-        </button>
+        </Button>
       </div>
     </form>
   );

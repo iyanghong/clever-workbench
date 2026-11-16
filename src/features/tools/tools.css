@@ -1,3 +1,4 @@
+@layer legacy {
 .tools-page {
   min-width: 0;
 }
@@ -404,4 +405,5 @@
   .tool-tabs button {
     padding: var(--space-3);
   }
+}
 }

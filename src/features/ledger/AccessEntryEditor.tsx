@@ -1,3 +1,5 @@
+import { markNewRecordChanged } from '../../shared/new-record';
+import { Button, Checkbox, Input, Select, Collapse } from 'antd';
 import { useEffect, useState } from 'react';
 import {
   ArrowUpRightIcon,
@@ -123,17 +125,19 @@ export function AccessEntryEditor({
           onSnapshot={host.onSnapshot}
           onError={host.onError}
         />
-        <button
+        <Button
+          htmlType="submit"
+          type="text"
           className="save-indicator"
           onClick={() => void form.flush().catch((cause) => host.onError(String(cause)))}
         >
           {form.status}
-        </button>
+        </Button>
       </div>
       <div className="record-fields">
         <label>
           名称
-          <input
+          <Input
             aria-label="入口名称"
             value={form.value.name}
             onChange={(event) => form.change({ ...form.value, name: event.target.value })}
@@ -142,28 +146,33 @@ export function AccessEntryEditor({
         {!scopeManaged && (
           <label>
             环境
-            <select
+            <Select
               aria-label="入口所属环境"
               value={form.value.environmentId ?? ''}
-              onChange={(event) =>
-                form.change({ ...form.value, environmentId: event.target.value || null })
-              }
+              onChange={(event) => {
+                markNewRecordChanged();
+                return form.change({ ...form.value, environmentId: event || null });
+              }}
             >
-              <option value="">系统通用</option>
+              <Select.Option data-value={String('')} value="">
+                系统通用
+              </Select.Option>
               {snapshot.environments
                 .filter((e) => e.systemId === entry.systemId)
                 .map((e) => (
-                  <option key={e.id} value={e.id}>
+                  <Select.Option data-value={String(e.id)} key={e.id} value={e.id}>
                     {e.name}
-                  </option>
+                  </Select.Option>
                 ))}
-            </select>
+            </Select>
           </label>
         )}
       </div>
       <div className="section-heading access-address-heading">
         <h3>登录地址</h3>
-        <button
+        <Button
+          htmlType="submit"
+          type="text"
           className="text-button"
           onClick={() =>
             updateAddresses([
@@ -180,14 +189,14 @@ export function AccessEntryEditor({
         >
           <PlusIcon size={15} />
           添加地址
-        </button>
+        </Button>
       </div>
       <div className="access-addresses">
         {form.value.addresses.map((address, index) => (
           <div className="access-address-row" key={address.id}>
             <label>
               名称
-              <input
+              <Input
                 aria-label={`地址名称 ${index + 1}`}
                 value={address.label}
                 onChange={(event) =>
@@ -201,7 +210,7 @@ export function AccessEntryEditor({
             </label>
             <label>
               网址
-              <input
+              <Input
                 aria-label={`登录地址 ${index + 1}`}
                 placeholder="https://…"
                 value={address.url}
@@ -215,7 +224,9 @@ export function AccessEntryEditor({
               />
             </label>
             <div className="address-actions">
-              <button
+              <Button
+                htmlType="submit"
+                type="text"
                 className="icon-button"
                 aria-label={`设为常用地址 ${address.label}`}
                 aria-pressed={form.value.preferredAddressId === address.id}
@@ -226,7 +237,7 @@ export function AccessEntryEditor({
                   weight={form.value.preferredAddressId === address.id ? 'fill' : 'regular'}
                   size={16}
                 />
-              </button>
+              </Button>
               <CopyValue
                 resolveValue={async () => {
                   await flushAll();
@@ -236,7 +247,9 @@ export function AccessEntryEditor({
                 label={`地址 ${address.label}`}
                 onError={host.onError}
               />
-              <button
+              <Button
+                htmlType="submit"
+                type="text"
                 className="icon-button"
                 aria-label={`打开 ${entry.name} ${address.label}`}
                 disabled={!/^https?:\/\//i.test(address.url)}
@@ -247,9 +260,11 @@ export function AccessEntryEditor({
                 }
               >
                 <ArrowUpRightIcon size={16} />
-              </button>
+              </Button>
               {([-1, 1] as const).map((direction) => (
-                <button
+                <Button
+                  htmlType="submit"
+                  type="text"
                   key={direction}
                   className="icon-button"
                   aria-label={`${direction < 0 ? '上移' : '下移'}地址 ${address.label}`}
@@ -261,9 +276,12 @@ export function AccessEntryEditor({
                   }}
                 >
                   {direction < 0 ? <ArrowUpIcon size={14} /> : <ArrowDownIcon size={14} />}
-                </button>
+                </Button>
               ))}
-              <button
+              <Button
+                htmlType="submit"
+                type="text"
+                danger
                 className="icon-button subtle-danger"
                 aria-label={`删除地址 ${address.label}`}
                 onClick={() =>
@@ -271,7 +289,7 @@ export function AccessEntryEditor({
                 }
               >
                 <TrashIcon size={15} />
-              </button>
+              </Button>
             </div>
           </div>
         ))}
@@ -282,11 +300,12 @@ export function AccessEntryEditor({
       {accounts.length > 0 && (
         <label className="preferred-account">
           常用账号
-          <select
+          <Select
             aria-label="入口常用账号"
             value={entry.preferredAccountId ?? accounts[0].id}
             onChange={(event) => {
-              const id = event.target.value;
+              markNewRecordChanged();
+              const id = event;
               void (async () => {
                 try {
                   await flushAll();
@@ -306,31 +325,50 @@ export function AccessEntryEditor({
             }}
           >
             {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
+              <Select.Option data-value={String(a.id)} key={a.id} value={a.id}>
                 {a.name} · {a.username || '无用户名'}
-              </option>
+              </Select.Option>
             ))}
-          </select>
+          </Select>
         </label>
       )}
-      <details className="compact-details">
-        <summary>入口说明</summary>
-        <textarea
-          aria-label="入口说明"
-          value={form.value.notes}
-          placeholder="普通说明，密码请放在账号秘密中"
-          onChange={(event) => form.change({ ...form.value, notes: event.target.value })}
-        />
-      </details>
+      <Collapse
+        className="compact-details"
+        ghost
+        defaultActiveKey={false ? ['details'] : []}
+        items={[
+          {
+            key: 'details',
+            label: <>入口说明</>,
+            forceRender: true,
+            children: (
+              <>
+                <Input.TextArea
+                  aria-label="入口说明"
+                  value={form.value.notes}
+                  placeholder="普通说明，密码请放在账号秘密中"
+                  onChange={(event) => form.change({ ...form.value, notes: event.target.value })}
+                />
+              </>
+            ),
+          },
+        ]}
+      />
       <div className="record-actions">
-        <button onClick={() => open('copy')}>
+        <Button htmlType="submit" type="text" onClick={() => open('copy')}>
           <CopyIcon size={15} />
           复制访问入口
-        </button>
-        <button className="subtle-danger" onClick={() => open('delete')}>
+        </Button>
+        <Button
+          htmlType="submit"
+          type="text"
+          danger
+          className="subtle-danger"
+          onClick={() => open('delete')}
+        >
           <TrashIcon size={15} />
           删除访问入口
-        </button>
+        </Button>
       </div>
       {modal && (
         <Dialog
@@ -343,7 +381,7 @@ export function AccessEntryEditor({
               <p>地址和账号元数据复制为独立记录，秘密需明确选择。</p>
               <label>
                 副本名称
-                <input
+                <Input
                   aria-label="入口副本名称"
                   value={copyName}
                   onChange={(event) => setCopyName(event.target.value)}
@@ -351,48 +389,53 @@ export function AccessEntryEditor({
               </label>
               <label>
                 目标系统
-                <select
+                <Select
                   aria-label="入口副本系统"
                   value={copySystem}
                   onChange={(event) => {
-                    setCopySystem(event.target.value);
+                    markNewRecordChanged();
+                    setCopySystem(event);
                     setCopyEnvironment('');
                   }}
                 >
                   {snapshot.systems.map((s) => (
-                    <option key={s.id} value={s.id}>
+                    <Select.Option data-value={String(s.id)} key={s.id} value={s.id}>
                       {s.name}
-                    </option>
+                    </Select.Option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label>
                 目标环境
-                <select
+                <Select
                   aria-label="入口副本环境"
                   value={copyEnvironment}
-                  onChange={(event) => setCopyEnvironment(event.target.value)}
+                  onChange={(event) => {
+                    markNewRecordChanged();
+                    return setCopyEnvironment(event);
+                  }}
                 >
-                  <option value="">系统通用</option>
+                  <Select.Option data-value={String('')} value="">
+                    系统通用
+                  </Select.Option>
                   {snapshot.environments
                     .filter((e) => e.systemId === copySystem)
                     .map((e) => (
-                      <option key={e.id} value={e.id}>
+                      <Select.Option data-value={String(e.id)} key={e.id} value={e.id}>
                         {e.name}
-                      </option>
+                      </Select.Option>
                     ))}
-                </select>
+                </Select>
               </label>
               {secretCount > 0 && (
-                <label className="secret-show">
-                  <input
-                    type="checkbox"
-                    aria-label="同时复制入口秘密"
-                    checked={includeSecrets}
-                    onChange={(event) => setIncludeSecrets(event.target.checked)}
-                  />
+                <Checkbox
+                  className="secret-show"
+                  aria-label="同时复制入口秘密"
+                  checked={includeSecrets}
+                  onChange={(event) => setIncludeSecrets(event.target.checked)}
+                >
                   同时复制 {secretCount} 项秘密（需要解锁）
-                </label>
+                </Checkbox>
               )}
             </>
           ) : (
@@ -402,16 +445,25 @@ export function AccessEntryEditor({
             </p>
           )}
           <div className="modal-actions">
-            <button className="secondary-button" disabled={busy} onClick={() => setModal(null)}>
+            <Button
+              htmlType="submit"
+              type="default"
+              className="secondary-button"
+              disabled={busy}
+              onClick={() => setModal(null)}
+            >
               取消
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
+              danger
               className={modal === 'delete' ? 'danger-button' : 'primary-button'}
               disabled={busy || (modal === 'copy' && !copyName.trim())}
               onClick={() => void confirm()}
             >
               {modal === 'copy' ? '创建副本' : '确认删除'}
-            </button>
+            </Button>
           </div>
         </Dialog>
       )}

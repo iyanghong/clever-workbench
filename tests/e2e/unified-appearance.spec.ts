@@ -94,12 +94,14 @@ test('全站共享外观在深浅主题和最小窗口可操作，长内容与�
         ['回收站', '.task-page'],
         ['设置', '.settings-page'],
       ]) {
-        const navigation = page.locator('.sidebar').getByRole('button', { name, exact: true });
+        const navigation = page.locator('.sidebar').getByRole('menuitem', { name, exact: true });
         await expect(navigation).toBeInViewport({ ratio: 1 });
         await navigation.click();
         await expect(page.locator(selector)).toBeVisible();
-        if (name === '设置')
+        if (name === '设置') {
+          await page.getByRole('tab', { name: '备份与恢复', exact: true }).click();
           await expect(page.getByRole('switch', { name: '自动备份', exact: true })).toBeVisible();
+        }
         if (name === '文档') await expect(page.locator('.document-list-row')).toHaveCount(1);
         if (name === '工作台') await expect(page.locator('.home-task')).toHaveCount(3);
         if (name === '台账')
@@ -111,6 +113,16 @@ test('全站共享外观在深浅主题和最小窗口可操作，长内容与�
           await expect(page.getByLabel('文档标题', { exact: true })).toHaveValue(
             '生产环境发布检查与回滚步骤',
           );
+          const editor = page.getByRole('textbox', { name: '工作内容', exact: true });
+          const textColor = await page
+            .getByLabel('文档标题', { exact: true })
+            .evaluate((element) => getComputedStyle(element).color);
+          await expect(editor).toHaveCSS('color', textColor);
+          if (theme === 'dark')
+            await expect(page.locator('.vditor-ir')).not.toHaveCSS(
+              'background-color',
+              'rgb(255, 255, 255)',
+            );
         }
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
           true,
@@ -120,17 +132,17 @@ test('全站共享外观在深浅主题和最小窗口可操作，长内容与�
           animations: 'disabled',
         });
       }
-      await page.getByRole('button', { name: '工作任务', exact: true }).click();
+      await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
       await page.locator('.task-open').first().click();
-      await page.locator('.task-properties > summary').click();
+      await page.locator('.task-properties .ant-collapse-header').click();
       await expect(page.getByLabel('预计完成日期', { exact: true })).toBeVisible();
-      await page.locator('.task-properties > summary').click();
+      await page.locator('.task-properties .ant-collapse-header').click();
       await page.screenshot({
         path: testInfo.outputPath(`${theme}-${width}-任务详情.png`),
         animations: 'disabled',
       });
-      await page.getByLabel('关闭详情').click();
-      await page.getByRole('button', { name: '台账', exact: true }).click();
+      await page.getByRole('button', { name: '关闭详情', exact: true }).click();
+      await page.getByRole('menuitem', { name: '台账', exact: true }).click();
       await page.getByRole('button', { name: '新增访问入口', exact: true }).click();
       await expect(
         page.getByRole('button', { name: '关闭新增访问入口', exact: true }),
@@ -145,7 +157,7 @@ test('全站共享外观在深浅主题和最小窗口可操作，长内容与�
       await expect(discard).toBeVisible();
       await discard.getByRole('button', { name: '放弃录入', exact: true }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
-      await page.getByRole('button', { name: '工具', exact: true }).click();
+      await page.getByRole('menuitem', { name: '工具', exact: true }).click();
       await page
         .getByRole('article')
         .filter({ has: page.getByRole('heading', { name: 'ZIP 文本归档', exact: true }) })
@@ -165,10 +177,10 @@ test('全站共享外观在深浅主题和最小窗口可操作，长内容与�
       });
       await page.keyboard.press('Escape');
     }
-    await page.getByRole('button', { name: '设置', exact: true }).click();
-    await page.getByRole('button', { name: '浅色', exact: true }).focus();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('radio', { name: '浅色', exact: true }).focus();
     await page.keyboard.press('ArrowRight');
-    await expect(page.getByRole('button', { name: '深色', exact: true })).toBeFocused();
+    await expect(page.getByRole('radio', { name: '深色', exact: true })).toBeFocused();
     await page.getByRole('switch', { name: '增强对比', exact: true }).check();
     await page.getByRole('switch', { name: '减少动态效果', exact: true }).check();
     await expect(page.locator('.sidebar')).toHaveCSS('backdrop-filter', 'none');

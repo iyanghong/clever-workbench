@@ -23,7 +23,8 @@ test('设置更改主密码验证旧密码与新密码确认，取消不变更�
       await window.desktop.saveSecret(accountId, 'password', 'fictional-secret');
       return accountId;
     });
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '凭据保护', exact: true }).click();
     await page.getByRole('button', { name: '更改主密码', exact: true }).click();
     await page.getByLabel('当前主密码', { exact: true }).fill('fictional-previous-password');
     await page.getByLabel('新主密码', { exact: true }).fill('next12');

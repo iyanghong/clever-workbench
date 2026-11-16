@@ -1,3 +1,4 @@
+import { selectChoice } from './antd-controls';
 import { test, expect } from '@playwright/test';
 import { electron } from './launch';
 import { openSystemAction } from './ledger-actions';
@@ -14,7 +15,7 @@ test('台账资料单条、多选、附账号与编辑保存失败不覆盖剪�
     const page = await app.firstWindow();
     // This case exercises list and inspector together; narrow navigation is tested separately.
     await page.setViewportSize({ width: 1380, height: 850 });
-    await page.getByRole('button', { name: '台账', exact: true }).waitFor();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).waitFor();
     const ids = await page.evaluate(async () => {
       const a = window.desktop;
       const systemId = (await a.mutate({ type: 'system.save', name: '协作平台' })).createdId!;
@@ -81,8 +82,8 @@ test('台账资料单条、多选、附账号与编辑保存失败不覆盖剪�
       await a.lockVault();
       return { prod, server };
     });
-    await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('button', { name: '服务器', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
+    await page.getByRole('tab', { name: '服务器', exact: true }).click();
     await expect(page.getByLabel('选择当前资料结果', { exact: true })).toBeVisible();
     await expect(page.getByText('已选 0 项', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '复制所选资料', exact: true })).toHaveCount(0);
@@ -116,7 +117,7 @@ test('台账资料单条、多选、附账号与编辑保存失败不覆盖剪�
       .toContain('应用节点 02');
     await expect(page.getByText('已选 2 项', { exact: true })).toBeVisible();
     await page
-      .locator('.workspace-list tbody tr')
+      .locator('.workspace-list tbody tr:not(.ant-table-measure-row)')
       .filter({ hasText: '应用节点 01' })
       .locator('td')
       .first()
@@ -177,8 +178,8 @@ test('台账资料单条、多选、附账号与编辑保存失败不覆盖剪�
       .toContain('密码：fixture-copy-password');
     await page.evaluate(() => window.desktop.lockVault());
     await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toBe('');
-    await page.getByRole('button', { name: '应用部署', exact: true }).click();
-    await page.getByLabel('台账环境筛选').selectOption(ids.prod);
+    await page.getByRole('tab', { name: '应用部署', exact: true }).click();
+    await selectChoice(page.getByLabel('台账环境筛选'), ids.prod);
     await page.getByRole('button', { name: '复制资料 订单 API', exact: true }).click();
     const serviceUnlock = page.getByRole('dialog', { name: '解锁秘密', exact: true });
     await serviceUnlock.getByLabel('主密码', { exact: true }).fill('fixture-master');
@@ -188,7 +189,7 @@ test('台账资料单条、多选、附账号与编辑保存失败不覆盖剪�
       .toContain('部署节点：生产节点');
     expect(await app.evaluate(({ clipboard }) => clipboard.readText())).not.toContain('测试节点');
     await page
-      .locator('.workspace-list tbody tr')
+      .locator('.workspace-list tbody tr:not(.ant-table-measure-row)')
       .first()
       .locator('td')
       .first()
@@ -199,9 +200,9 @@ test('台账资料单条、多选、附账号与编辑保存失败不覆盖剪�
       .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
       .toContain('地址来源：服务器 应用节点 01');
     await page.getByRole('button', { name: '返回清单', exact: true }).click();
-    await page.getByRole('button', { name: '服务器', exact: true }).click();
+    await page.getByRole('tab', { name: '服务器', exact: true }).click();
     await page
-      .locator('.workspace-list tbody tr')
+      .locator('.workspace-list tbody tr:not(.ant-table-measure-row)')
       .filter({ hasText: '应用节点 01' })
       .locator('td')
       .first()
@@ -269,7 +270,7 @@ test('访问入口快捷复制优先附带常用账号的密码', async () => {
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await page.getByRole('button', { name: '台账', exact: true }).waitFor();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).waitFor();
     await page.evaluate(async () => {
       const api = window.desktop;
       const systemId = (await api.mutate({ type: 'system.save', name: '费控系统' })).createdId!;
@@ -308,8 +309,8 @@ test('访问入口快捷复制优先附带常用账号的密码', async () => {
       await api.saveSecret(preferred, 'password', 'preferred-password');
       await api.lockVault();
     });
-    await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('button', { name: '访问入口', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
+    await page.getByRole('tab', { name: '访问入口', exact: true }).click();
     await page.getByRole('button', { name: '复制资料 生产入口', exact: true }).click();
     const unlock = page.getByRole('dialog', { name: '解锁秘密', exact: true });
     await unlock.getByLabel('主密码', { exact: true }).fill('preferred-master');

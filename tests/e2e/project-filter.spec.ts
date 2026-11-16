@@ -1,3 +1,4 @@
+import { selectChoice, expectSelectValue } from './antd-controls';
 import { test, expect } from '@playwright/test';
 import { electron } from './launch';
 import fs from 'node:fs/promises';
@@ -32,7 +33,7 @@ test('任务页系统范围可在具体系统、未关联系统和全部之间�
         });
       return { a, b };
     });
-    await page.getByRole('button', { name: '工作任务', exact: true }).click({ timeout: 3000 });
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click({ timeout: 3000 });
     const scope = page.getByLabel('系统范围', { exact: true });
     await expect(page.getByText('A 系统专属任务', { exact: true })).toBeVisible();
     await expect(page.getByText('B 系统专属任务', { exact: true })).toBeVisible();
@@ -47,19 +48,19 @@ test('任务页系统范围可在具体系统、未关联系统和全部之间�
       return false;
     });
     expect(draggable, '系统选择控件必须接收原生鼠标点击，不能成为窗口拖动区域').toBe(false);
-    await scope.selectOption(projects.a);
-    await expect(scope).toHaveValue(projects.a, { timeout: 1500 });
+    await selectChoice(scope, projects.a);
+    await expectSelectValue(scope, projects.a);
     await expect(page.getByText('A 系统专属任务', { exact: true })).toBeVisible();
     await expect(page.getByText('B 系统专属任务', { exact: true })).toHaveCount(0);
-    await scope.selectOption(projects.b);
-    await expect(scope).toHaveValue(projects.b);
+    await selectChoice(scope, projects.b);
+    await expectSelectValue(scope, projects.b);
     await expect(page.getByText('B 系统专属任务', { exact: true })).toBeVisible();
     await expect(page.getByText('A 系统专属任务', { exact: true })).toHaveCount(0);
-    await scope.selectOption('none');
-    await expect(scope).toHaveValue('none');
+    await selectChoice(scope, 'none');
+    await expectSelectValue(scope, 'none');
     await expect(page.getByText('未关联系统任务', { exact: true })).toBeVisible();
     await expect(page.getByText('B 系统专属任务', { exact: true })).toHaveCount(0);
-    await scope.selectOption('all');
+    await selectChoice(scope, 'all');
     await expect(page.getByText('A 系统专属任务', { exact: true })).toBeVisible();
     await expect(page.getByText('B 系统专属任务', { exact: true })).toBeVisible();
   } finally {

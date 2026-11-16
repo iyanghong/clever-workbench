@@ -1,3 +1,4 @@
+import { Avatar, Button, Checkbox, Input, Card, Col, Row, Statistic, Typography } from 'antd';
 import { PageHeading } from '../../shared/WorkspaceUI';
 import { GuidanceButton } from '../guidance/Guidance';
 import { scopeFor } from '../../ledger-workspace-types';
@@ -179,10 +180,15 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
         </div>
         <div className="spacer" />
         <GuidanceButton placement="home" accessibleLabel="工作台使用指引" />
-        <button className="toolbar-new" onClick={() => void createDocument()}>
+        <Button
+          htmlType="submit"
+          type="primary"
+          className="toolbar-new"
+          onClick={() => void createDocument()}
+        >
           <NotePencilIcon size={16} />
           写一份方案
-        </button>
+        </Button>
       </header>
       <div className="home-content">
         <PageHeading
@@ -194,73 +200,128 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
             weekday: 'long',
           }).format(new Date())}
         />
+        <Row gutter={[18, 18]} className="home-overview">
+          <Col xs={24} md={8}>
+            <Card>
+              <Statistic title="待办任务" value={pending.length} suffix="项" />
+              <Typography.Text type="secondary">
+                {
+                  pending.filter((item) => ['overdue', 'near'].includes(taskUrgency(item, now)))
+                    .length
+                }{' '}
+                项需要优先关注
+              </Typography.Text>
+            </Card>
+          </Col>
+          <Col xs={24} md={8}>
+            <Card>
+              <Statistic title="管理系统" value={snapshot?.systems.length ?? 0} suffix="个" />
+              <Typography.Text type="secondary">
+                {(snapshot?.resources.length ?? 0) +
+                  (snapshot?.accessEntries.length ?? 0) +
+                  (snapshot?.accounts.length ?? 0)}{' '}
+                条技术资料
+              </Typography.Text>
+            </Card>
+          </Col>
+          <Col xs={24} md={8}>
+            <Card>
+              <Statistic
+                title="技术文档"
+                value={
+                  snapshot?.documents.filter((document) => document.deletedAt === null).length ?? 0
+                }
+                suffix="篇"
+              />
+              <Typography.Text type="secondary">记录经验，让解决方案可复用</Typography.Text>
+            </Card>
+          </Col>
+        </Row>
         <div className="home-grid">
           <section className="home-work">
-            <div className="section-heading">
-              <h2>
-                待办工作 <small>{pending.length}</small>
-              </h2>
-              <button className="text-button" onClick={() => void navigate({ module: 'tasks' })}>
-                全部任务
-              </button>
-            </div>
-            {snapshot && (
-              <HomeCapture
-                key={composer}
-                draft={snapshot.draft}
-                registerFlush={saves.register}
-                onError={setError}
-                onCreated={(next) => {
-                  setSnapshot(next);
-                  setComposer((value) => value + 1);
-                }}
-              />
-            )}
-            <div className="home-task-list">
-              {pending.slice(0, 8).map((item) => (
-                <div className="home-task" key={item.id} data-urgency={taskUrgency(item, now)}>
-                  <button
-                    className="home-complete"
-                    aria-label={`完成 ${item.title}`}
-                    onClick={() => void complete(item.id, true)}
-                  >
-                    <CheckIcon size={13} />
-                  </button>
-                  <button
-                    className="home-task-open"
-                    onClick={() => void navigate({ module: 'tasks', objectId: item.id })}
-                  >
-                    <strong>{item.title}</strong>
-                    <span>
-                      {snapshot?.systems.find((system) => system.id === item.systemId)?.name ??
-                        '未关联系统'}
-                    </span>
-                    <TaskTiming task={item} now={now} />
-                    <TaskTagChips ids={item.tagIds} tags={snapshot?.taskTags} />
-                  </button>
-                </div>
-              ))}
-              {!pending.length && (
-                <p className="home-empty">暂时没有待办。随手记下一件事，回车即可保存。</p>
-              )}
-            </div>
-            {undo && (
-              <div className="home-undo" role="status">
-                已完成<button onClick={() => void complete(undo, false)}>撤销</button>
+            <Card className="home-todo-panel">
+              <div className="section-heading">
+                <h2>
+                  待办工作 <small>{pending.length}</small>
+                </h2>
+                <Button
+                  htmlType="submit"
+                  type="text"
+                  className="text-button"
+                  onClick={() => void navigate({ module: 'tasks' })}
+                >
+                  全部任务
+                </Button>
               </div>
-            )}
-            <section className="home-documents">
+              {snapshot && (
+                <HomeCapture
+                  key={composer}
+                  draft={snapshot.draft}
+                  registerFlush={saves.register}
+                  onError={setError}
+                  onCreated={(next) => {
+                    setSnapshot(next);
+                    setComposer((value) => value + 1);
+                  }}
+                />
+              )}
+              <div className="home-task-list">
+                {pending.slice(0, 8).map((item) => (
+                  <div className="home-task" key={item.id} data-urgency={taskUrgency(item, now)}>
+                    <Button
+                      htmlType="submit"
+                      type="text"
+                      className="home-complete"
+                      aria-label={`完成 ${item.title}`}
+                      onClick={() => void complete(item.id, true)}
+                    >
+                      <CheckIcon size={13} />
+                    </Button>
+                    <Button
+                      htmlType="submit"
+                      type="text"
+                      className="home-task-open"
+                      onClick={() => void navigate({ module: 'tasks', objectId: item.id })}
+                    >
+                      <strong>{item.title}</strong>
+                      <span>
+                        {snapshot?.systems.find((system) => system.id === item.systemId)?.name ??
+                          '未关联系统'}
+                      </span>
+                      <TaskTiming task={item} now={now} />
+                      <TaskTagChips ids={item.tagIds} tags={snapshot?.taskTags} />
+                    </Button>
+                  </div>
+                ))}
+                {!pending.length && (
+                  <p className="home-empty">暂时没有待办。随手记下一件事，回车即可保存。</p>
+                )}
+              </div>
+              {undo && (
+                <div className="home-undo" role="status">
+                  已完成
+                  <Button htmlType="submit" type="text" onClick={() => void complete(undo, false)}>
+                    撤销
+                  </Button>
+                </div>
+              )}
+            </Card>
+            <Card className="home-documents">
               <div className="section-heading">
                 <h2>最近文档</h2>
-                <button
+                <Button
+                  htmlType="submit"
+                  type="text"
                   className="text-button"
                   onClick={() => void navigate({ module: 'documents' })}
                 >
                   全部文档
-                </button>
+                </Button>
               </div>
               {recent.map((item) => (
-                <button
+                <Button
+                  htmlType="submit"
+                  type="text"
                   className="home-document"
                   key={item.id}
                   aria-label={`打开文档 ${item.title || '未命名文档'}`}
@@ -272,139 +333,180 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
                     <small>{contextLabel(snapshot!, item) || '未分类'}</small>
                   </span>
                   <time>{dateLabel(item.updatedAt)}</time>
-                </button>
+                </Button>
               ))}
               {!recent.length && (
                 <p className="home-empty">
                   遇到的问题和解决过程，都可以先写下来。
-                  <button onClick={() => void createDocument()}>新建文档</button>
+                  <Button htmlType="submit" type="text" onClick={() => void createDocument()}>
+                    新建文档
+                  </Button>
                 </p>
               )}
-            </section>
+            </Card>
           </section>
-          <section className="home-favorites">
-            <div className="section-heading">
-              <h2>常用入口</h2>
-              <button
-                className="text-button"
-                onClick={() => {
-                  setChoosing(true);
-                  setQuery('');
-                }}
-              >
-                选择
-              </button>
-            </div>
-            {snapshot?.favorites.map((item, index) => {
-              const info = favoriteInfo(item);
-              if (!info) return null;
-              const ToolIcon = item.kind === 'tool' ? findTool(item.id)?.Icon : undefined;
-              return (
-                <div className="favorite-row" key={`${item.kind}:${item.id}`}>
-                  <button
-                    className="favorite-open"
-                    aria-label={`打开常用${item.kind === 'tool' ? '工具' : item.kind === 'system' ? '系统' : item.kind === 'access' ? '访问入口' : '账号'} ${info.title}`}
-                    onClick={() =>
-                      void navigate(
-                        item.kind === 'tool'
-                          ? { module: 'tools', objectId: item.id }
-                          : routeForHit({ kind: item.kind, id: item.id }),
-                      )
-                    }
-                  >
-                    {ToolIcon ? (
-                      <ToolIcon size={22} weight="duotone" />
-                    ) : item.kind === 'system' ? (
-                      <StackIcon size={22} weight="duotone" />
-                    ) : item.kind === 'access' ? (
-                      <GlobeIcon size={22} />
-                    ) : (
-                      <UserCircleIcon size={22} weight="duotone" />
-                    )}
-                    <span>
-                      <strong>{info.title}</strong>
-                      <small>{info.context}</small>
-                    </span>
-                  </button>
-                  {info.access && (
-                    <AccessActions entry={info.access} snapshot={snapshot} onError={setError} />
-                  )}
-                  {info.account && (
-                    <div className="favorite-account-actions">
-                      <span>{info.account.username || '无用户名'}</span>
-                      <CopyValue
-                        value={info.account.username}
-                        label={`用户名 ${info.title}`}
-                        onError={setError}
-                      />
-                      {info.account.secretKinds.map((kind) => (
-                        <SecretCopyButton
-                          key={kind}
-                          accountId={item.id}
-                          kind={kind}
-                          name={info.title}
-                          onError={setError}
-                        />
-                      ))}
-                    </div>
-                  )}
-                  {item.kind === 'tool' && item.id === 'zip-text' && (
-                    <GuidanceButton
-                      placement="zip-text-archive"
-                      accessibleLabel="ZIP 文本归档使用指引"
-                    />
-                  )}
-                  <div className="favorite-order">
-                    <button
-                      aria-label={`上移常用 ${info.title}`}
-                      disabled={index === 0}
-                      onClick={() =>
-                        void window.desktop
-                          .mutate({ type: 'favorite.move', ...item, direction: -1 })
-                          .then((result) => setSnapshot(result.snapshot))
-                          .catch((cause) => setError(String(cause)))
-                      }
-                    >
-                      <ArrowUpIcon size={13} />
-                    </button>
-                    <button
-                      aria-label={`下移常用 ${info.title}`}
-                      disabled={index === snapshot.favorites.length - 1}
-                      onClick={() =>
-                        void window.desktop
-                          .mutate({ type: 'favorite.move', ...item, direction: 1 })
-                          .then((result) => setSnapshot(result.snapshot))
-                          .catch((cause) => setError(String(cause)))
-                      }
-                    >
-                      <ArrowDownIcon size={13} />
-                    </button>
-                    <button
-                      aria-label={`移出常用 ${info.title}`}
-                      onClick={() => void favorite(item, false)}
-                    >
-                      <XIcon size={13} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            {!snapshot?.favorites.length && (
-              <div className="home-favorites-empty">
-                <StackIcon size={33} weight="duotone" />
-                <p>把常用系统、访问入口、账号和工具放在这里。</p>
-                <button
-                  className="secondary-button"
+          <div className="home-shortcuts">
+            <Card className="home-favorites">
+              <div className="section-heading">
+                <h2>常用入口</h2>
+                <Button
+                  htmlType="submit"
+                  type="text"
+                  className="text-button"
                   onClick={() => {
                     setChoosing(true);
                     setQuery('');
                   }}
                 >
-                  选择常用对象
-                </button>
+                  选择
+                </Button>
               </div>
-            )}
-          </section>
+              {snapshot?.favorites.map((item, index) => {
+                const info = favoriteInfo(item);
+                if (!info) return null;
+                const ToolIcon = item.kind === 'tool' ? findTool(item.id)?.Icon : undefined;
+                return (
+                  <div className="favorite-row" key={`${item.kind}:${item.id}`}>
+                    <Button
+                      htmlType="submit"
+                      type="text"
+                      className="favorite-open"
+                      aria-label={`打开常用${item.kind === 'tool' ? '工具' : item.kind === 'system' ? '系统' : item.kind === 'access' ? '访问入口' : '账号'} ${info.title}`}
+                      onClick={() =>
+                        void navigate(
+                          item.kind === 'tool'
+                            ? { module: 'tools', objectId: item.id }
+                            : routeForHit({ kind: item.kind, id: item.id }),
+                        )
+                      }
+                    >
+                      {ToolIcon ? (
+                        <ToolIcon size={22} weight="duotone" />
+                      ) : item.kind === 'system' ? (
+                        <StackIcon size={22} weight="duotone" />
+                      ) : item.kind === 'access' ? (
+                        <GlobeIcon size={22} />
+                      ) : (
+                        <UserCircleIcon size={22} weight="duotone" />
+                      )}
+                      <span>
+                        <strong>{info.title}</strong>
+                        <small>{info.context}</small>
+                      </span>
+                    </Button>
+                    {info.access && (
+                      <AccessActions entry={info.access} snapshot={snapshot} onError={setError} />
+                    )}
+                    {info.account && (
+                      <div className="favorite-account-actions">
+                        <span>{info.account.username || '无用户名'}</span>
+                        <CopyValue
+                          value={info.account.username}
+                          label={`用户名 ${info.title}`}
+                          onError={setError}
+                        />
+                        {info.account.secretKinds.map((kind) => (
+                          <SecretCopyButton
+                            key={kind}
+                            accountId={item.id}
+                            kind={kind}
+                            name={info.title}
+                            onError={setError}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {item.kind === 'tool' && item.id === 'zip-text' && (
+                      <GuidanceButton
+                        placement="zip-text-archive"
+                        accessibleLabel="ZIP 文本归档使用指引"
+                      />
+                    )}
+                    <div className="favorite-order">
+                      <Button
+                        htmlType="submit"
+                        type="text"
+                        aria-label={`上移常用 ${info.title}`}
+                        disabled={index === 0}
+                        onClick={() =>
+                          void window.desktop
+                            .mutate({ type: 'favorite.move', ...item, direction: -1 })
+                            .then((result) => setSnapshot(result.snapshot))
+                            .catch((cause) => setError(String(cause)))
+                        }
+                      >
+                        <ArrowUpIcon size={13} />
+                      </Button>
+                      <Button
+                        htmlType="submit"
+                        type="text"
+                        aria-label={`下移常用 ${info.title}`}
+                        disabled={index === snapshot.favorites.length - 1}
+                        onClick={() =>
+                          void window.desktop
+                            .mutate({ type: 'favorite.move', ...item, direction: 1 })
+                            .then((result) => setSnapshot(result.snapshot))
+                            .catch((cause) => setError(String(cause)))
+                        }
+                      >
+                        <ArrowDownIcon size={13} />
+                      </Button>
+                      <Button
+                        htmlType="submit"
+                        type="text"
+                        aria-label={`移出常用 ${info.title}`}
+                        onClick={() => void favorite(item, false)}
+                      >
+                        <XIcon size={13} />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+              {!snapshot?.favorites.length && (
+                <div className="home-favorites-empty">
+                  <StackIcon size={33} weight="duotone" />
+                  <p>把常用系统、访问入口、账号和工具放在这里。</p>
+                  <Button
+                    htmlType="submit"
+                    type="default"
+                    className="secondary-button"
+                    onClick={() => {
+                      setChoosing(true);
+                      setQuery('');
+                    }}
+                  >
+                    选择常用对象
+                  </Button>
+                </div>
+              )}
+            </Card>
+            <Card className="home-systems" title="我的系统">
+              {snapshot?.systems.map((system) => (
+                <Button
+                  key={system.id}
+                  type="text"
+                  htmlType="button"
+                  className="home-system-open"
+                  onClick={() => void navigate({ module: 'ledger', system: system.id })}
+                >
+                  <Avatar
+                    shape="square"
+                    style={{ background: 'var(--selected)', color: 'var(--accent)' }}
+                  >
+                    {system.name.slice(0, 1)}
+                  </Avatar>
+                  <span>
+                    <strong>{system.name}</strong>
+                    <Typography.Text type="secondary">
+                      {snapshot.projects.find((project) => project.id === system.currentProjectId)
+                        ?.name ?? '未关联项目'}
+                    </Typography.Text>
+                  </span>
+                </Button>
+              ))}
+            </Card>
+          </div>
         </div>
       </div>
       {choosing && snapshot && (
@@ -416,7 +518,7 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
         >
           <label className="field-label">
             查找
-            <input
+            <Input
               autoFocus
               aria-label="筛选常用对象"
               placeholder="系统、环境、账号或工具"
@@ -436,24 +538,23 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
               .map((item) => {
                 const info = favoriteInfo(item)!;
                 return (
-                  <label key={`${item.kind}:${item.id}`}>
-                    <input
-                      type="checkbox"
-                      aria-label={`常用 ${info.context} ${info.title}`}
-                      checked={
-                        favoritePending[`${item.kind}:${item.id}`] ??
-                        snapshot.favorites.some(
-                          (value) => value.kind === item.kind && value.id === item.id,
-                        )
-                      }
-                      disabled={Object.hasOwn(favoritePending, `${item.kind}:${item.id}`)}
-                      onChange={(event) => void favorite(item, event.target.checked)}
-                    />
+                  <Checkbox
+                    key={`${item.kind}:${item.id}`}
+                    aria-label={`常用 ${info.context} ${info.title}`}
+                    checked={
+                      favoritePending[`${item.kind}:${item.id}`] ??
+                      snapshot.favorites.some(
+                        (value) => value.kind === item.kind && value.id === item.id,
+                      )
+                    }
+                    disabled={Object.hasOwn(favoritePending, `${item.kind}:${item.id}`)}
+                    onChange={(event) => void favorite(item, event.target.checked)}
+                  >
                     <span>
                       <strong>{info.title}</strong>
                       <small>{info.context}</small>
                     </span>
-                  </label>
+                  </Checkbox>
                 );
               })}
             {!candidates.length && (
@@ -461,18 +562,23 @@ export function HomePage({ navigate, registerFlush, setContext }: ModuleProps) {
             )}
           </div>
           <div className="modal-actions">
-            <button className="primary-button" onClick={() => setChoosing(false)}>
+            <Button
+              htmlType="submit"
+              type="primary"
+              className="primary-button"
+              onClick={() => setChoosing(false)}
+            >
               完成选择
-            </button>
+            </Button>
           </div>
         </Dialog>
       )}
       {error && !choosing && (
         <div className="error-banner" role="alert">
           <span>{error}</span>
-          <button aria-label="关闭提示" onClick={() => setError('')}>
+          <Button htmlType="submit" type="text" aria-label="关闭提示" onClick={() => setError('')}>
             <XIcon />
-          </button>
+          </Button>
         </div>
       )}
     </main>
@@ -519,7 +625,7 @@ function HomeCapture({
         }}
       >
         <PlusIcon size={18} />
-        <input
+        <Input
           aria-label="快速新增任务"
           placeholder="记下一件事，回车保存…"
           disabled={busy}
@@ -533,12 +639,13 @@ function HomeCapture({
       </form>
       {form.value.title && (
         <p className="home-capture-hint" role="status">
-          <button
-            type="button"
+          <Button
+            type="text"
+            htmlType="button"
             onClick={() => void form.flush().catch((cause) => onError(String(cause)))}
           >
             {form.status}
-          </button>{' '}
+          </Button>{' '}
           · 回车创建任务{form.value.markdown ? ' · 保留上次草稿正文' : ''}
         </p>
       )}

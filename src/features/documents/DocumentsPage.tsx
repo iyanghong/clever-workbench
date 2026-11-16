@@ -1,3 +1,5 @@
+import { markNewRecordChanged } from '../../shared/new-record';
+import { Button, Card, Empty, Input, Select, Collapse } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import {
   NotePencilIcon,
@@ -169,49 +171,68 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
         ) : (
           <GuidanceButton placement="documents" accessibleLabel="文档使用指引" />
         )}
-        <button className="toolbar-new" onClick={() => void create()}>
+        <Button
+          htmlType="submit"
+          type="primary"
+          className="toolbar-new"
+          onClick={() => void create()}
+        >
           <PlusIcon size={17} />
           新建文档
-        </button>
+        </Button>
       </header>
       <div className={`documents-layout ${focusMode ? 'focused' : ''}`}>
-        <aside className="documents-index">
+        <Card className="documents-index">
           <div className="ledger-index-title">
             <h2>文档</h2>
             <span>{rows.length}</span>
           </div>
           <div className="document-scopes">
-            <button aria-pressed={!trash} onClick={() => void changeTrash(false)}>
+            <Button
+              htmlType="submit"
+              type="text"
+              aria-pressed={!trash}
+              onClick={() => void changeTrash(false)}
+            >
               全部文档
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="text"
               aria-label="文档回收站"
               aria-pressed={trash}
               onClick={() => void changeTrash(true)}
             >
               <TrashIcon size={14} />
               回收站
-            </button>
+            </Button>
           </div>
           <label className="document-scope-filter">
             归属
-            <select
+            <Select
               aria-label="文档范围"
               value={visibleScope}
-              onChange={(event) => void changeScope(event.target.value)}
+              onChange={(event) => {
+                markNewRecordChanged();
+                return void changeScope(event);
+              }}
             >
-              <option value="all">全部文档</option>
-              <option value="common">通用文档</option>
+              <Select.Option data-value={String('all')} value="all">
+                全部文档
+              </Select.Option>
+              <Select.Option data-value={String('common')} value="common">
+                通用文档
+              </Select.Option>
               {snapshot?.systems.map((system) => (
-                <option key={system.id} value={system.id}>
+                <Select.Option data-value={String(system.id)} key={system.id} value={system.id}>
                   {system.name}
-                </option>
+                </Select.Option>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="document-search">
             <MagnifyingGlassIcon size={16} />
-            <input
+            <Input
               aria-label="搜索文档"
               placeholder="搜索标题与正文"
               value={query}
@@ -220,7 +241,9 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
           </label>
           <nav aria-label="文档列表">
             {rows.map((item) => (
-              <button
+              <Button
+                htmlType="submit"
+                type="text"
                 key={item.id}
                 aria-label={`文档 ${item.title || '未命名文档'}`}
                 className={`document-list-row ${document?.id === item.id ? 'selected' : ''}`}
@@ -233,7 +256,7 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
                   {snapshot?.projects.find((project) => project.id === item.projectId)?.name ??
                     '无项目'}
                 </small>
-              </button>
+              </Button>
             ))}
           </nav>
           {!rows.length && (
@@ -245,7 +268,7 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
                   : '先写下来，标题与归属稍后整理。'}
             </p>
           )}
-        </aside>
+        </Card>
         {snapshot && document ? (
           <DocumentEditor
             key={`${document.id}:${document.deletedAt}`}
@@ -262,23 +285,35 @@ export function DocumentsPage({ route, navigate, registerFlush, setContext }: Mo
           />
         ) : (
           <section className="ledger-empty">
-            <NotePencilIcon size={43} weight="duotone" />
-            <h2>{trash ? '可恢复的记录' : '把问题和方案留在这里'}</h2>
-            <p>{trash ? '选择文档后可恢复或彻底删除。' : '直接开始写，自动保存到本机。'}</p>
-            {!trash && (
-              <button className="primary-button" onClick={() => void create()}>
-                开始一份文档
-              </button>
-            )}
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={
+                <>
+                  <h2>{trash ? '可恢复的记录' : '把问题和方案留在这里'}</h2>
+                  <p>{trash ? '选择文档后可恢复或彻底删除。' : '直接开始写，自动保存到本机。'}</p>
+                </>
+              }
+            >
+              {!trash && (
+                <Button
+                  htmlType="submit"
+                  type="primary"
+                  className="primary-button"
+                  onClick={() => void create()}
+                >
+                  开始一份文档
+                </Button>
+              )}
+            </Empty>
           </section>
         )}
       </div>
       {error && (
         <div className="error-banner" role="alert">
           <span>{error}</span>
-          <button aria-label="关闭提示" onClick={() => setError('')}>
+          <Button htmlType="submit" type="text" aria-label="关闭提示" onClick={() => setError('')}>
             <XIcon />
-          </button>
+          </Button>
         </div>
       )}
     </main>
@@ -373,14 +408,18 @@ function DocumentEditor({
       <div className="record-subheading">
         <span>{deleted ? '回收站中的文档' : `创建于 ${dateLabel(document.createdAt)}`}</span>
         <div className="document-header-actions">
-          <button
+          <Button
+            htmlType="submit"
+            type="text"
             className="save-indicator"
             onClick={() => void form.flush().catch((cause) => onError(String(cause)))}
           >
             {form.status}
-          </button>
+          </Button>
           {focused && (
-            <button
+            <Button
+              htmlType="submit"
+              type="text"
               className="text-button document-outline-toggle"
               aria-expanded={outline.open}
               aria-controls="document-focus-outline"
@@ -388,19 +427,21 @@ function DocumentEditor({
             >
               <ListBulletsIcon size={15} />
               大纲
-            </button>
+            </Button>
           )}
-          <button
+          <Button
+            htmlType="submit"
+            type="text"
             className="text-button document-focus-toggle"
             aria-pressed={focused}
             onClick={onToggleFocus}
           >
             {focused ? <ArrowsInSimpleIcon size={15} /> : <ArrowsOutSimpleIcon size={15} />}
             {focused ? '退出专注' : '专注编辑'}
-          </button>
+          </Button>
         </div>
       </div>
-      <input
+      <Input
         className="document-title"
         aria-label="文档标题"
         placeholder="未命名文档"
@@ -420,25 +461,30 @@ function DocumentEditor({
           />
           <label>
             项目（可选）
-            <select
+            <Select
               aria-label="文档所属项目"
               value={form.value.projectId ?? ''}
               disabled={deleted}
-              onChange={(event) =>
-                form.change({ ...form.value, projectId: event.target.value || null })
-              }
+              onChange={(event) => {
+                markNewRecordChanged();
+                return form.change({ ...form.value, projectId: event || null });
+              }}
             >
-              <option value="">未分类</option>
+              <Select.Option data-value={String('')} value="">
+                未分类
+              </Select.Option>
               {snapshot.projects.map((project) => (
-                <option key={project.id} value={project.id}>
+                <Select.Option data-value={String(project.id)} key={project.id} value={project.id}>
                   {project.name}
                   {project.archivedAt ? ' · 已归档' : ''}
-                </option>
+                </Select.Option>
               ))}
-            </select>
+            </Select>
           </label>
           {form.value.systemId && (
-            <button
+            <Button
+              htmlType="submit"
+              type="text"
               className="text-button"
               aria-label="回到关联对象"
               onClick={() =>
@@ -451,19 +497,32 @@ function DocumentEditor({
             >
               {contextLabel(snapshot, form.value)}
               <ArrowUpRightIcon size={14} />
-            </button>
+            </Button>
           )}
         </div>
-        <details className="compact-details">
-          <summary>关联背景</summary>
-          <ContextPicker
-            mode="details"
-            snapshot={snapshot}
-            value={form.value}
-            disabled={deleted}
-            onChange={(context) => form.change({ ...form.value, ...context })}
-          />
-        </details>
+        <Collapse
+          className="compact-details"
+          ghost
+          defaultActiveKey={false ? ['details'] : []}
+          items={[
+            {
+              key: 'details',
+              label: <>关联背景</>,
+              forceRender: true,
+              children: (
+                <>
+                  <ContextPicker
+                    mode="details"
+                    snapshot={snapshot}
+                    value={form.value}
+                    disabled={deleted}
+                    onChange={(context) => form.change({ ...form.value, ...context })}
+                  />
+                </>
+              ),
+            },
+          ]}
+        />
       </div>
       <Editor
         markdown={form.value.markdown}
@@ -482,27 +541,37 @@ function DocumentEditor({
         <div className="spacer" />
         {deleted ? (
           <>
-            <button className="text-button" disabled={busy} onClick={() => setPurge(true)}>
+            <Button
+              htmlType="submit"
+              type="text"
+              className="text-button"
+              disabled={busy}
+              onClick={() => setPurge(true)}
+            >
               彻底删除
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
               className="primary-button"
               disabled={busy}
               onClick={() => void action('document.restore')}
             >
               <ArrowCounterClockwiseIcon size={15} />
               恢复文档
-            </button>
+            </Button>
           </>
         ) : (
-          <button
+          <Button
+            htmlType="submit"
+            type="text"
             className="text-button"
             disabled={busy}
             onClick={() => void action('document.delete')}
           >
             <TrashIcon size={15} />
             删除文档
-          </button>
+          </Button>
         )}
       </div>
       {focused && outline.open && (
@@ -519,16 +588,25 @@ function DocumentEditor({
         <Dialog title="彻底删除文档" onClose={() => !busy && setPurge(false)} error={dialogError}>
           <p>“{document.title || '未命名文档'}”将无法从回收站恢复。</p>
           <div className="modal-actions">
-            <button className="secondary-button" disabled={busy} onClick={() => setPurge(false)}>
+            <Button
+              htmlType="submit"
+              type="default"
+              className="secondary-button"
+              disabled={busy}
+              onClick={() => setPurge(false)}
+            >
               取消
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="primary"
+              danger
               className="danger-button"
               disabled={busy}
               onClick={() => void action('document.purge')}
             >
               彻底删除
-            </button>
+            </Button>
           </div>
         </Dialog>
       )}

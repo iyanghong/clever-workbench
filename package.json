@@ -6,6 +6,8 @@
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {
+    "demo:antd": "npm --prefix .scratch/antd6-workbench-demo run dev",
+    "demo:antd:build": "npm --prefix .scratch/antd6-workbench-demo run build",
     "dev": "node scripts/dev.mjs",
     "tools:generate": "node scripts/generate-tools.mjs",
     "prebuild": "npm run tools:generate",
@@ -68,6 +70,8 @@
     "@tiptap/extension-task-list": "^3.32.0",
     "@tiptap/markdown": "^3.32.0",
     "@tiptap/starter-kit": "^3.32.0",
+    "antd": "6.7.0",
+    "dayjs": "1.11.19",
     "docx": "^9.12.0",
     "entities": "^8.1.0",
     "lowlight": "^3.3.0",

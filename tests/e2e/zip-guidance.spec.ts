@@ -17,7 +17,7 @@ test('工具目录可以打开 ZIP 文本归档的使用指引', async () => {
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await page.getByRole('button', { name: '工具', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工具', exact: true }).click();
     await page.getByRole('button', { name: 'ZIP 文本归档使用指引', exact: true }).click();
     await expect(page.getByRole('dialog', { name: '使用指引', exact: true })).toBeVisible();
   } finally {
@@ -34,7 +34,7 @@ test('四种模式的就近帮助随选项切换，离线可阅读并安全关�
   try {
     const page = await app.firstWindow();
     await page.context().setOffline(true);
-    await page.getByRole('button', { name: '工具', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工具', exact: true }).click();
     await zipCard(page).getByRole('button', { name: '打开工具', exact: true }).click();
     for (const [mode, id] of [
       ['归档文件', 'zip-archive-files'],
@@ -79,9 +79,9 @@ test('首页收藏工具旁可以直接查阅 ZIP 指引', async ({}, info) => {
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await page.getByRole('button', { name: '工具', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工具', exact: true }).click();
     await zipCard(page).getByRole('button', { name: '设为常用工具', exact: true }).click();
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     await expect(page.getByRole('button', { name: '打开常用工具 ZIP 文本归档' })).toBeVisible();
     await page.screenshot({ path: info.outputPath('zip-favorite-help.png') });
     await page.getByRole('button', { name: 'ZIP 文本归档使用指引', exact: true }).click();
@@ -99,7 +99,7 @@ test('从指引前往 ZIP 功能会打开工具本身', async () => {
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await page.getByRole('button', { name: '工具', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工具', exact: true }).click();
     await page.getByRole('button', { name: 'ZIP 文本归档使用指引', exact: true }).click();
     const feature = await expectedFeatureGuide(app, 'zip-archive-files');
     const library = page.getByRole('dialog', { name: '使用指引', exact: true });
@@ -134,11 +134,14 @@ test('取消选取来源仍保留原路径与未开始状态', async () => {
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await page.getByRole('button', { name: '工具', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工具', exact: true }).click();
     await zipCard(page).getByRole('button', { name: '打开工具', exact: true }).click();
     await page.getByLabel('待归档文件或目录', { exact: true }).fill(source);
     await app.evaluate(({ dialog }) => {
-      dialog.showOpenDialog = (async () => ({ canceled: true, filePaths: [] })) as typeof dialog.showOpenDialog;
+      dialog.showOpenDialog = (async () => ({
+        canceled: true,
+        filePaths: [],
+      })) as typeof dialog.showOpenDialog;
     });
     await page.getByRole('button', { name: '选文件', exact: true }).click();
     await expect(page.getByLabel('待归档文件或目录', { exact: true })).toHaveValue(source);

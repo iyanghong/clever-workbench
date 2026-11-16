@@ -13,7 +13,7 @@ test('安装位置受限时提前提供正式安装入口，已下载更新也�
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await expect(page.getByRole('button', { name: '工作台', exact: true })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: '工作台', exact: true })).toBeVisible();
     await expect
       .poll(async () => (await page.evaluate(() => window.desktop.updateSnapshot())).status)
       .not.toBe('checking');
@@ -74,14 +74,15 @@ test('安装位置受限时提前提供正式安装入口，已下载更新也�
     ]);
     await page.keyboard.press('Escape');
     await expect(badge).toBeFocused();
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '关于与更新', exact: true }).click();
     await expect(
       page.getByText(`Clever Workbench v${currentVersion}`, { exact: true }),
     ).toBeVisible();
     await show('available');
     await expect(page.getByRole('button', { name: '打开正式版本页', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeEnabled();
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     await show('ready');
     const prompt = page.getByRole('dialog', { name: '需要手动安装更新', exact: true });
     await expect(prompt).toBeVisible();
@@ -171,7 +172,8 @@ test('安装失败只显示可操作的原因，不泄露 IPC 错误包装', asy
       }
     });
     await page.evaluate(() => window.desktop.initializeVault('fixture-update-master'));
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '关于与更新', exact: true }).click();
     const { currentVersion } = await page.evaluate(() => window.desktop.updateSnapshot());
     await expect(
       page.getByText(`Clever Workbench v${currentVersion}`, { exact: true }),
@@ -204,7 +206,7 @@ test('安装失败只显示可操作的原因，不泄露 IPC 错误包装', asy
     await backup.getByLabel('确认备份密码', { exact: true }).fill('fixture-update-backup');
     await backup.getByRole('button', { name: '保存并继续', exact: true }).click();
     await expect(page.getByRole('alert')).toHaveText(message);
-    await expect(page.getByRole('button', { name: '工作台', exact: true })).toBeEnabled();
+    await expect(page.getByRole('menuitem', { name: '工作台', exact: true })).toBeEnabled();
     expect(await app.evaluate(() => (globalThis as any).updateKeychainCalls)).toEqual([]);
   } finally {
     await app.close();
@@ -219,7 +221,7 @@ test('更新弹窗支持鼠标关闭，重新打开后仍能按 Esc 关闭', asy
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await expect(page.getByRole('button', { name: '工作台', exact: true })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: '工作台', exact: true })).toBeVisible();
     await app.evaluate(({ BrowserWindow }) => {
       BrowserWindow.getAllWindows()[0].setContentSize(1000, 620);
     });
@@ -316,7 +318,8 @@ test('手动检查仅在设置中，新版按钮显示在品牌旁并保留下�
         timeout: 30000,
       })
       .not.toBe('checking');
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '关于与更新', exact: true }).click();
     await expect(
       page.getByText(`Clever Workbench v${currentVersion}`, { exact: true }),
     ).toBeVisible();
@@ -358,7 +361,7 @@ test('手动检查仅在设置中，新版按钮显示在品牌旁并保留下�
     expect(
       Math.abs(updateButton!.y + updateButton!.height / 2 - caption!.y - caption!.height / 2),
     ).toBeLessThan(2);
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     await expect(page.getByRole('button', { name: '检查更新', exact: true })).toHaveCount(0);
     await page.locator('.brand').screenshot({ path: info.outputPath('update-entry-light.png') });
     await badge.click();
@@ -399,9 +402,9 @@ test('手动检查仅在设置中，新版按钮显示在品牌旁并保留下�
     await expect(dialog.getByText('50%', { exact: true })).toBeVisible();
     await expect(dialog.getByText('下载尝试 2 / 3')).toBeVisible();
     await expect(dialog.getByRole('button', { name: '取消下载', exact: true })).toBeVisible();
-    await expect(dialog.getByRole('progressbar', { name: '更新下载进度' })).toHaveJSProperty(
-      'value',
-      64000000,
+    await expect(dialog.getByRole('progressbar', { name: '更新下载进度' })).toHaveAttribute(
+      'aria-valuenow',
+      '50',
     );
     await expect(badge).toBeVisible();
     await page.keyboard.press('Escape');
@@ -433,7 +436,9 @@ test('手动检查仅在设置中，新版按钮显示在品牌旁并保留下�
     expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
     await expect(badge).toBeVisible();
     await show({
-      status: 'error', currentVersion, release,
+      status: 'error',
+      currentVersion,
+      release,
       message: '更新暂存文件读写失败，请检查磁盘空间与目录权限。',
       downloadErrorCode: 'STAGING_IO',
     });
@@ -445,7 +450,8 @@ test('手动检查仅在设置中，新版按钮显示在品牌旁并保留下�
     await expect(dialog.getByText('尚无更新记录。')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(dialog).toHaveCount(0);
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '关于与更新', exact: true }).click();
     await expect(settings.getByRole('button', { name: '检查更新', exact: true })).toBeVisible();
     await show({ status: 'available', currentVersion, release });
     await expect(badge).toBeVisible();
@@ -475,7 +481,7 @@ test('下载校验后主动询问重启，稍后不打断工作且再次打开�
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await expect(page.getByRole('button', { name: '工作台', exact: true })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: '工作台', exact: true })).toBeVisible();
     await expect
       .poll(async () => (await page.evaluate(() => window.desktop.updateSnapshot())).status, {
         timeout: 30000,
@@ -530,7 +536,7 @@ test('下载校验后主动询问重启，稍后不打断工作且再次打开�
     await prompt.getByRole('button', { name: '稍后重启', exact: true }).click();
     await expect(prompt).toHaveCount(0);
     expect(await requests()).toBe(0);
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     await show('ready');
     await expect(prompt).toHaveCount(0);
     await page.evaluate(() =>
@@ -582,7 +588,8 @@ test('development application exposes version details and disables online instal
   try {
     const page = await app.firstWindow();
     await expect(page.getByRole('button', { name: '查看可用更新' })).toHaveCount(0);
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '关于与更新', exact: true }).click();
     await expect(page.getByText('开发版本不支持在线更新。')).toBeVisible();
     await expect(page.getByRole('button', { name: '检查更新', exact: true })).toBeDisabled();
     await expect(page.getByRole('button', { name: '历史版本', exact: true })).toBeVisible();
@@ -615,7 +622,7 @@ test('安装版从隔离路径夹具启动时，通过真实 IPC 在下载前报
       env,
     });
     const page = await app.firstWindow();
-    await expect(page.getByRole('button', { name: '工作台', exact: true })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: '工作台', exact: true })).toBeVisible();
     expect(await app.evaluate(({ app }) => app.getPath('exe'))).toContain(
       '/AppTranslocation/fixture/',
     );
@@ -652,7 +659,8 @@ test('installed application exposes its packaged version and update checks', asy
     const page = await app.firstWindow();
     const state = await page.evaluate(() => window.desktop.updateSnapshot());
     expect(state.status).not.toBe('unsupported');
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '关于与更新', exact: true }).click();
     await expect(
       page.getByText(`Clever Workbench v${state.currentVersion}`, { exact: true }),
     ).toBeVisible();
@@ -700,7 +708,8 @@ test('installed updated application confirms a private pending transaction only 
             .outcome,
       )
       .toBe('success');
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '关于与更新', exact: true }).click();
     await expect(page.getByText('上次更新：新版本、资料库、窗口与通信检查通过。')).toBeVisible();
     await page.getByText('更新历史（最近 30 次）', { exact: true }).click();
     await expect(page.getByRole('button', { name: '定位旧应用', exact: true })).toBeVisible();
@@ -733,7 +742,8 @@ test('damaged updater history leaves the local workspace available', async () =>
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '关于与更新', exact: true }).click();
     await expect(
       page.getByText('更新记录无法读取，在线更新暂不可用；本地工作空间仍可使用。'),
     ).toBeVisible();

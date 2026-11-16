@@ -1,3 +1,5 @@
+import { expectSelectValue } from './antd-controls';
+import { selectChoice, fillDate } from './antd-controls';
 import { openSystemAction } from './ledger-actions';
 import { test, expect } from '@playwright/test';
 import { electron } from './launch';
@@ -18,7 +20,7 @@ test('台账只读工作区、共享范围、部署与任务布局和开始时�
     // Match a small CI desktop, where task details cover the list controls.
     await page.setViewportSize({ width: 1024, height: 768 });
     page.on('pageerror', (e) => errors.push(e.message));
-    await page.getByRole('button', { name: '台账', exact: true }).waitFor();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).waitFor();
     const seed = await page.evaluate(async () => {
       const api = window.desktop,
         systemId = (await api.mutate({ type: 'system.save', name: '协作平台' })).createdId!;
@@ -74,17 +76,17 @@ test('台账只读工作区、共享范围、部署与任务布局和开始时�
       ).createdId!;
       return { systemId, prod, testing, server, task };
     });
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await openSystemAction(page, '系统信息');
     const info = page.getByRole('dialog', { name: '系统信息' });
-    await info.getByRole('button', { name: '环境管理', exact: true }).click();
+    await info.getByRole('tab', { name: '环境管理', exact: true }).click();
     await info.getByLabel('环境名称 生产', { exact: true }).fill('测试');
     await info.getByRole('button', { name: '完成', exact: true }).click();
     await expect(info).toBeVisible();
     await expect(info.getByRole('alert')).toContainText('同名');
     await info.getByLabel('环境名称 生产', { exact: true }).fill('生产');
     await info.getByRole('button', { name: '完成', exact: true }).click();
-    await page.getByRole('button', { name: '服务器', exact: true }).click();
+    await page.getByRole('tab', { name: '服务器', exact: true }).click();
     await page.getByRole('button', { name: /应用节点 01.*系统通用/ }).click();
     const detail = page.getByRole('complementary', { name: '台账详情' });
     await expect(detail.getByText('deploy', { exact: true })).toBeVisible();
@@ -105,25 +107,25 @@ test('台账只读工作区、共享范围、部署与任务布局和开始时�
       )
       .toBe(2);
     await detail.getByRole('button', { name: '返回清单', exact: true }).click();
-    await page.getByLabel('台账环境筛选').selectOption(seed.testing);
+    await selectChoice(page.getByLabel('台账环境筛选'), seed.testing);
     await expect(
       page.locator('.workspace-list td:first-child').getByRole('button', { name: /应用节点 01/ }),
     ).toBeVisible();
-    await page.getByRole('button', { name: '应用部署', exact: true }).click();
+    await page.getByRole('tab', { name: '应用部署', exact: true }).click();
     await page.getByRole('button', { name: /协作 API.*系统通用/ }).click();
     await page.getByRole('button', { name: '新增节点', exact: true }).click();
-    await expect(page.getByLabel('部署环境', { exact: true })).toHaveValue(seed.testing);
+    await expectSelectValue(page.getByLabel('部署环境', { exact: true }), seed.testing);
     await page.getByLabel('节点名称', { exact: true }).fill('测试节点');
     await page.getByRole('button', { name: '保存节点', exact: true }).click();
     await detail.getByRole('button', { name: '返回清单', exact: true }).click();
-    await page.getByLabel('台账环境筛选').selectOption('all');
+    await selectChoice(page.getByLabel('台账环境筛选'), 'all');
     await page.getByRole('button', { name: /协作 API.*系统通用/ }).click();
     await expect(page.getByText('地址来自服务器', { exact: true })).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('ledger-workspace.png') });
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
     await expect(page.getByLabel('所属项目')).toHaveCount(0);
-    await page.getByLabel('系统范围').selectOption(seed.systemId);
-    await page.getByRole('button', { name: '紧凑', exact: true }).click();
+    await selectChoice(page.getByLabel('系统范围'), seed.systemId);
+    await page.getByRole('radio', { name: '紧凑', exact: true }).locator('..').click();
     await expect(page.locator('.task-list')).toHaveClass(/compact-tasks/);
     await expect
       .poll(() =>
@@ -140,24 +142,24 @@ test('台账只读工作区、共享范围、部署与任务布局和开始时�
     const local = new Date(start.getTime() - start.getTimezoneOffset() * 60000)
       .toISOString()
       .slice(0, 16);
-    await page.getByLabel('开始时间', { exact: true }).fill(local);
+    await fillDate(page.getByLabel('开始时间', { exact: true }), local);
     await page.getByRole('button', { name: '应用时间', exact: true }).click();
     const updated = await page.evaluate(async (id) => window.desktop.task(id), seed.task);
     expect(updated.startedAt).toBe(new Date(local).getTime());
     expect(updated.createdAt).toBeGreaterThan(updated.startedAt);
-    await page.getByLabel('关闭详情').click();
-    await page.getByRole('button', { name: '正常', exact: true }).click();
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
+    await page.getByRole('radio', { name: '正常', exact: true }).locator('..').click();
     await expect(page.locator('.task-list')).not.toHaveClass(/compact-tasks/);
     // Keep details closed when using the list's batch actions on a small desktop.
     await page.getByRole('button', { name: '批量关联系统', exact: true }).click();
     await page.getByLabel('选择任务 检查新台账界面', { exact: true }).check();
-    await page.getByLabel('批量关联系统', { exact: true }).selectOption('');
+    await selectChoice(page.getByLabel('批量关联系统', { exact: true }), '');
     await page.getByRole('button', { name: '应用到所选任务', exact: true }).click();
     await expect(page.locator('.task-row')).toHaveCount(0);
-    await page.getByLabel('系统范围').selectOption('none');
+    await selectChoice(page.getByLabel('系统范围'), 'none');
     await expect(page.locator('.task-row')).toContainText('检查新台账界面');
-    await page.getByRole('button', { name: '工作回顾', exact: true }).click();
-    await page.getByRole('button', { name: '系统回顾', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作回顾', exact: true }).click();
+    await page.getByRole('radio', { name: '系统回顾', exact: true }).locator('..').click();
     await expect(page.getByLabel('回顾系统')).toBeVisible();
     expect(errors).toEqual([]);
   } finally {
@@ -176,14 +178,14 @@ test('表格粘贴映射预览后建立服务器，密码不进入普通字段',
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await page.getByRole('button', { name: '台账', exact: true }).waitFor();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).waitFor();
     await page.evaluate(async () =>
       window.desktop.mutate({ type: 'system.save', name: '粘贴系统' }),
     );
     await page.evaluate(() => window.desktop.initializeVault('fictional-paste-master-password'));
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await page.getByRole('button', { name: '批量录入', exact: true }).click();
-    await page.getByLabel('批量条目类型').selectOption('server');
+    await selectChoice(page.getByLabel('批量条目类型'), 'server');
     await page.getByLabel('粘贴表格', { exact: true }).evaluate((element) => {
       const clipboard = new DataTransfer();
       clipboard.setData(

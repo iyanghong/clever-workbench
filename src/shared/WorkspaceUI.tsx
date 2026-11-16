@@ -1,3 +1,4 @@
+import { Segmented, Tag, Typography } from 'antd';
 import type { ReactNode } from 'react';
 
 export function PageHeading({
@@ -17,10 +18,10 @@ export function PageHeading({
     <header className="page-heading">
       <div>
         {eyebrow && <span className="eyebrow">{eyebrow}</span>}
-        <h1>
+        <Typography.Title level={1}>
           {title}
-          {count !== undefined && <span className="heading-count">{count}</span>}
-        </h1>
+          {count !== undefined && <Tag className="heading-count">{count}</Tag>}
+        </Typography.Title>
         {description && <p className="page-description">{description}</p>}
       </div>
       {actions}
@@ -42,37 +43,20 @@ export function SegmentedControl<T extends string>({
   disabled?: boolean;
 }) {
   return (
-    <div
+    <Segmented<T>
       className="segmented"
-      role="group"
       aria-label={label}
+      value={value}
+      disabled={disabled}
+      options={options.map((option) => ({ ...option }))}
+      onChange={onChange}
       onKeyDown={(event) => {
-        if (disabled || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        if (disabled || !['Home', 'End'].includes(event.key)) return;
         event.preventDefault();
-        const buttons = Array.from(event.currentTarget.querySelectorAll('button'));
-        const current = buttons.indexOf(event.target as HTMLButtonElement);
-        const next =
-          event.key === 'Home'
-            ? 0
-            : event.key === 'End'
-              ? options.length - 1
-              : (current + (event.key === 'ArrowRight' ? 1 : -1) + options.length) % options.length;
+        const next = event.key === 'Home' ? 0 : options.length - 1;
         onChange(options[next].value);
-        buttons[next]?.focus();
+        event.currentTarget.querySelectorAll<HTMLInputElement>('input')[next]?.focus();
       }}
-    >
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          disabled={disabled}
-          aria-pressed={option.value === value}
-          className={option.value === value ? 'active' : ''}
-          onClick={() => onChange(option.value)}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
+    />
   );
 }

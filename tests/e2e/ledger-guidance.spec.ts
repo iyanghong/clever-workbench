@@ -1,3 +1,4 @@
+import { selectChoice } from './antd-controls';
 import { test, expect, type Page, type ElectronApplication } from '@playwright/test';
 import { electron } from './launch';
 import {
@@ -85,7 +86,7 @@ test('空台账可读指引，七类清单共享就近入口，阅读与取消�
   const { app, page, close } = await launch();
   try {
     await page.context().setOffline(true);
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     const opened = await nearby(app, page, 'ledger-browsing', 'ledger');
     if (opened && !(await verifyUnavailableOrNoTarget(page, opened.feature))) {
       await opened.dialog.getByRole('button', { name: '前往功能', exact: true }).click();
@@ -94,8 +95,8 @@ test('空台账可读指引，七类清单共享就近入口，阅读与取消�
     await expect(page.getByRole('heading', { name: '从一个系统开始', exact: true })).toBeVisible();
     expect((await page.evaluate(() => window.desktop.snapshot())).systems).toHaveLength(0);
     await page.evaluate(() => window.desktop.mutate({ type: 'system.save', name: '指引示例系统' }));
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     for (const [category, placement] of [
       ['访问入口', 'ledger-access'],
       ['账号', 'ledger-accounts'],
@@ -107,15 +108,15 @@ test('空台账可读指引，七类清单共享就近入口，阅读与取消�
     ]) {
       await page
         .getByRole('navigation', { name: '系统资料类型' })
-        .getByRole('button', { name: category, exact: true })
+        .getByRole('tab', { name: category, exact: true })
         .click();
       const guide = await nearby(app, page, 'ledger-browsing', placement);
       await closeGuide(page, guide);
       await expect(
         page
           .getByRole('navigation', { name: '系统资料类型' })
-          .getByRole('button', { name: category, exact: true }),
-      ).toHaveAttribute('aria-pressed', 'true');
+          .getByRole('tab', { name: category, exact: true }),
+      ).toHaveAttribute('aria-selected', 'true');
       await expect(page.getByRole('button', { name: '台账使用指引', exact: true })).toBeFocused();
     }
   } finally {
@@ -138,12 +139,13 @@ test('从旧台账分类阅读指引后前往对应分类，不选中过期对�
       ['operations-maintenance', '运行维护'],
     ] as const;
     for (const [id, category] of cases) {
-      await page.getByRole('button', { name: '台账', exact: true }).click();
+      await page.getByRole('menuitem', { name: '台账', exact: true }).click();
       await page
         .getByRole('navigation', { name: '系统资料类型' })
-        .getByRole('button', { name: '账号', exact: true })
+        .getByRole('tab', { name: '账号', exact: true })
         .click();
-      await page.getByRole('button', { name: '设置', exact: true }).click();
+      await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+      await page.getByRole('tab', { name: '使用指引', exact: true }).click();
       await page.getByRole('button', { name: '查看全部使用指引', exact: true }).click();
       const feature = await expectedFeatureGuide(app, id);
       if (!feature) {
@@ -170,8 +172,8 @@ test('从旧台账分类阅读指引后前往对应分类，不选中过期对�
       await expect(
         page
           .getByRole('navigation', { name: '系统资料类型' })
-          .getByRole('button', { name: category, exact: true }),
-      ).toHaveAttribute('aria-pressed', 'true');
+          .getByRole('tab', { name: category, exact: true }),
+      ).toHaveAttribute('aria-selected', 'true');
       await expect(page.getByRole('complementary', { name: '台账详情' })).toHaveCount(0);
     }
   } finally {
@@ -183,7 +185,7 @@ test('系统菜单指引返回焦点，系统环境编辑与项目沿革按说�
   const { app, page, close } = await launch();
   try {
     await page.evaluate(() => window.desktop.mutate({ type: 'system.save', name: '示例订单系统' }));
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     const more = page.getByRole('button', { name: '当前系统更多操作', exact: true });
     await more.click();
     await page
@@ -196,15 +198,15 @@ test('系统菜单指引返回焦点，系统环境编辑与项目沿革按说�
     const info = page.getByRole('dialog', { name: '系统信息', exact: true });
     await page.getByLabel('系统名称', { exact: true }).fill('示例订单系统 · 已保存');
     await page.getByLabel('系统登录地址').fill('https://order.example.invalid');
-    await info.getByRole('button', { name: '环境管理', exact: true }).click();
+    await info.getByRole('tab', { name: '环境管理', exact: true }).click();
     await page.getByLabel('新环境名称').fill('预发布');
     await info.getByRole('button', { name: '新增环境', exact: true }).click();
     await page.getByLabel('环境名称 预发布', { exact: true }).fill('测试');
-    await info.getByRole('button', { name: '项目档案', exact: true }).click();
+    await info.getByRole('tab', { name: '项目档案', exact: true }).click();
     await page.getByLabel('项目名称', { exact: true }).fill('一期实施');
     await info.getByRole('button', { name: '新增项目', exact: true }).click();
-    await info.getByRole('button', { name: '基本信息', exact: true }).click();
-    await page.getByLabel('当前项目', { exact: true }).selectOption({ label: '一期实施' });
+    await info.getByRole('tab', { name: '基本信息', exact: true }).click();
+    await selectChoice(page.getByLabel('当前项目', { exact: true }), { label: '一期实施' });
     await info.getByRole('button', { name: '完成', exact: true }).click();
     await expect(info).toHaveCount(0);
     await expect(page.getByRole('button', { name: '切换系统', exact: true })).toContainText(
@@ -212,7 +214,7 @@ test('系统菜单指引返回焦点，系统环境编辑与项目沿革按说�
     );
     await openSystemAction(page, '系统信息');
     await expect(info).toContainText('一期实施 · 当前');
-    await info.getByRole('button', { name: '环境管理', exact: true }).click();
+    await info.getByRole('tab', { name: '环境管理', exact: true }).click();
     await expect(page.getByLabel('环境名称 测试', { exact: true })).toHaveValue('测试');
     await info.getByRole('button', { name: '删除', exact: true }).click();
     await expect(page.getByLabel('环境名称 测试', { exact: true })).toHaveCount(0);
@@ -225,7 +227,7 @@ test('系统菜单指引返回焦点，系统环境编辑与项目沿革按说�
 test('项目档案附近指引保留未提交名称，归档恢复不会自动恢复当前项目', async () => {
   const { app, page, close } = await launch();
   try {
-    await page.getByRole('button', { name: '项目档案', exact: true }).click();
+    await page.getByRole('menuitem', { name: '项目档案', exact: true }).click();
     await page.getByLabel('项目名称', { exact: true }).fill('尚未提交的阶段');
     const guide = await nearby(app, page, 'projects-history', 'projects', '项目档案使用指引');
     await closeGuide(page, guide);
@@ -242,7 +244,9 @@ test('项目档案附近指引保留未提交名称，归档恢复不会自动�
       return { system: createdId!, project: project.id };
     });
     await page.getByRole('button', { name: '归档', exact: true }).click();
-    await expect(page.getByText('尚未提交的阶段 · 已归档', { exact: true })).toBeVisible();
+    await expect(
+      page.locator('.project-manager .ant-table-row').filter({ hasText: '尚未提交的阶段' }),
+    ).toContainText('已归档');
     await page.getByRole('button', { name: '恢复', exact: true }).click();
     const snapshot = await page.evaluate(() => window.desktop.snapshot());
     expect(snapshot.systems.find((s) => s.id === ids.system)?.currentProjectId).toBeNull();
@@ -256,14 +260,14 @@ test('项目档案附近指引保留未提交名称，归档恢复不会自动�
     await page.getByLabel('项目名称', { exact: true }).fill('空项目');
     await page.getByRole('button', { name: '新增项目', exact: true }).click();
     await page
-      .locator('.workspace-management-row')
-      .filter({ has: page.locator('span').filter({ hasText: /^空项目$/ }) })
+      .locator('.project-manager .ant-table-row')
+      .filter({ has: page.getByRole('cell', { name: '空项目', exact: true }) })
       .getByRole('button', { name: '删除空项目', exact: true })
       .click();
     await expect(
       page
-        .locator('.workspace-management-row')
-        .filter({ has: page.locator('span').filter({ hasText: /^空项目$/ }) }),
+        .locator('.project-manager .ant-table-row')
+        .filter({ has: page.getByRole('cell', { name: '空项目', exact: true }) }),
     ).toHaveCount(0);
   } finally {
     await close();
@@ -287,7 +291,7 @@ test('访问入口指引支持地址编辑、范围筛选和资料复制，保�
   const { app, page, close } = await launch();
   try {
     const ids = await fixture(page);
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await closeGuide(page, await nearby(app, page, 'access-entries', 'ledger-access'));
     await page.getByRole('button', { name: '新增访问入口', exact: true }).click();
     await page.getByLabel('入口名称', { exact: true }).fill('示例发布入口');
@@ -313,11 +317,15 @@ test('访问入口指引支持地址编辑、范围筛选和资料复制，保�
     await page.getByLabel('地点与网络标签').fill('内网，广州');
     await page.getByRole('button', { name: '完成编辑', exact: true }).click();
     await page.getByRole('button', { name: '返回清单', exact: true }).click();
-    await page.getByLabel('台账环境筛选').selectOption(ids.prod);
-    await page.getByLabel('台账标签筛选').selectOption('广州');
-    await expect(page.locator('.workspace-list tbody tr')).toHaveCount(1);
-    await page.getByLabel('台账环境筛选').selectOption(ids.stage);
-    await expect(page.locator('.workspace-list tbody tr')).toHaveCount(1);
+    await selectChoice(page.getByLabel('台账环境筛选'), ids.prod);
+    await selectChoice(page.getByLabel('台账标签筛选'), '广州');
+    await expect(page.locator('.workspace-list tbody tr:not(.ant-table-measure-row)')).toHaveCount(
+      1,
+    );
+    await selectChoice(page.getByLabel('台账环境筛选'), ids.stage);
+    await expect(page.locator('.workspace-list tbody tr:not(.ant-table-measure-row)')).toHaveCount(
+      1,
+    );
     await closeGuide(page, await nearby(app, page, 'ledger-copy', 'ledger-access'));
     await page.getByRole('button', { name: '复制资料 示例发布入口', exact: true }).click();
     await expect
@@ -390,7 +398,7 @@ test('入口副本指引区分秘密选项，取消复制与删除保留原入�
       await api.lockVault();
       return access;
     }, ids);
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await closeGuide(page, await nearby(app, page, 'access-copy-delete', 'ledger-access'));
     await openLedgerRecord(page, '访问入口', '示例入口', true);
     await page.getByRole('button', { name: '复制访问入口', exact: true }).click();
@@ -405,7 +413,7 @@ test('入口副本指引区分秘密选项，取消复制与删除保留原入�
     expect((await page.evaluate(() => window.desktop.snapshot())).accessEntries).toHaveLength(1);
     await copy.getByRole('button', { name: '取消', exact: true }).click();
     await page.getByRole('button', { name: '复制访问入口', exact: true }).click();
-    await copy.getByLabel('入口副本系统').selectOption(ids.other);
+    await selectChoice(copy.getByLabel('入口副本系统'), ids.other);
     await copy.getByRole('button', { name: '创建副本', exact: true }).click();
     const copied = await page.evaluate(() => window.desktop.snapshot());
     expect(copied.accessEntries).toHaveLength(2);
@@ -435,15 +443,15 @@ test('账号指引不触发解锁或新建，按步骤保存秘密、收藏和�
   try {
     const ids = await fixture(page);
     await page.evaluate(() => window.desktop.initializeVault('guide-fixture-master'));
-    await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('button', { name: '账号', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
+    await page.getByRole('tab', { name: '账号', exact: true }).click();
     await closeGuide(page, await nearby(app, page, 'accounts-secrets', 'ledger-accounts'));
     await expect(page.getByRole('dialog')).toHaveCount(0);
     expect((await page.evaluate(() => window.desktop.snapshot())).accounts).toHaveLength(0);
     await page.getByRole('button', { name: '新增账号', exact: true }).click();
     await page.getByLabel('快速新建账号名称').fill('示例运维');
     await expect(page.getByRole('button', { name: '创建账号', exact: true })).toBeDisabled();
-    await page.getByLabel('新记录所属环境').selectOption(ids.prod);
+    await selectChoice(page.getByLabel('新记录所属环境'), ids.prod);
     await page.getByRole('button', { name: '创建账号', exact: true }).click();
     const detail = page.getByRole('complementary', { name: '台账详情' });
     await detail.getByRole('button', { name: '编辑', exact: true }).click();
@@ -462,13 +470,13 @@ test('账号指引不触发解锁或新建，按步骤保存秘密、收藏和�
     await closeGuide(page, await nearby(app, page, 'accounts-ownership', 'ledger-accounts'));
     await page.getByRole('button', { name: '调整归属', exact: true }).click();
     const move = page.getByRole('dialog', { name: '调整账号归属' });
-    await page.getByLabel('账号目标环境').selectOption(ids.stage);
+    await selectChoice(page.getByLabel('账号目标环境'), ids.stage);
     await move.getByRole('button', { name: '取消', exact: true }).click();
     expect((await page.evaluate(() => window.desktop.snapshot())).accounts[0].environmentId).toBe(
       ids.prod,
     );
     await page.getByRole('button', { name: '调整归属', exact: true }).click();
-    await page.getByLabel('账号目标环境').selectOption(ids.stage);
+    await selectChoice(page.getByLabel('账号目标环境'), ids.stage);
     await move.getByRole('button', { name: '保存归属', exact: true }).click();
     expect((await page.evaluate(() => window.desktop.snapshot())).accounts[0].environmentId).toBe(
       ids.stage,

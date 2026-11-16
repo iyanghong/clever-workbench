@@ -1,3 +1,4 @@
+import { Button, Collapse } from 'antd';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { BookOpenIcon, ArrowRightIcon, ClockCounterClockwiseIcon } from '@phosphor-icons/react';
 import { Dialog } from '../../shared/Dialog';
@@ -51,7 +52,6 @@ export function GuidanceProvider({
   const close = () => {
     request.current++;
     setSelection(null);
-    if (origin.current?.isConnected) origin.current.focus({ preventScroll: true });
   };
   const open = (next: NonNullable<typeof selection>) => {
     const token = ++request.current;
@@ -91,7 +91,9 @@ export function GuidanceProvider({
       {notice && (
         <div className="toast guidance-notice" role="status">
           <span>{notice}</span>
-          <button onClick={() => setNotice('')}>关闭</button>
+          <Button htmlType="submit" type="text" onClick={() => setNotice('')}>
+            关闭
+          </Button>
         </div>
       )}
       {selection &&
@@ -100,6 +102,7 @@ export function GuidanceProvider({
           <GuideDialog
             key={guide.id}
             guide={guide}
+            returnFocus={origin.current}
             onClose={close}
             navigate={async (target) => {
               const token = request.current;
@@ -114,7 +117,13 @@ export function GuidanceProvider({
             onNavigated={close}
           />
         ) : (
-          <Dialog title="使用指引" className="modal guidance-dialog" onClose={close} exclusive>
+          <Dialog
+            title="使用指引"
+            className="modal guidance-dialog"
+            onClose={close}
+            exclusive
+            returnFocus={origin.current}
+          >
             <div className="guidance-body">
               <p className="guidance-intro">
                 随应用提供，离线也能查阅。选择功能，按步骤了解操作和结果。
@@ -147,14 +156,19 @@ export function GuideList({
     <ul className="guidance-list">
       {guides.map((guide) => (
         <li key={guide.id}>
-          <button onClick={() => onSelect(guide.id)} aria-label={guide.title}>
+          <Button
+            htmlType="submit"
+            type="text"
+            onClick={() => onSelect(guide.id)}
+            aria-label={guide.title}
+          >
             <BookOpenIcon size={20} aria-hidden="true" />
             <span>
               <strong>{guide.title}</strong>
               <small>{guide.purpose}</small>
             </span>
             <ArrowRightIcon size={16} aria-hidden="true" />
-          </button>
+          </Button>
         </li>
       ))}
     </ul>
@@ -175,8 +189,9 @@ export function GuidanceButton({
 }) {
   const { openGuide, openLibrary } = useGuidance();
   return (
-    <button
-      type="button"
+    <Button
+      type="text"
+      htmlType="button"
       className="guidance-button"
       aria-label={accessibleLabel ?? label}
       onClick={() => {
@@ -186,7 +201,7 @@ export function GuidanceButton({
     >
       <BookOpenIcon size={16} aria-hidden="true" />
       {label}
-    </button>
+    </Button>
   );
 }
 export function SettingsGuidance() {
@@ -203,10 +218,10 @@ export function SettingsGuidance() {
       </div>
       <div className="settings-guidance-actions">
         <GuidanceButton label="查看全部使用指引" />
-        <button className="guidance-button" onClick={openVersions}>
+        <Button htmlType="submit" type="text" className="guidance-button" onClick={openVersions}>
           <ClockCounterClockwiseIcon size={16} aria-hidden="true" />
           查看版本操作说明
-        </button>
+        </Button>
       </div>
     </section>
   );
@@ -216,11 +231,13 @@ export function GuideDialog({
   navigate,
   onClose,
   onNavigated,
+  returnFocus,
 }: {
   guide: FeatureGuide;
   navigate: (target: string, stillCurrent?: () => boolean) => Promise<GuidanceNavigationResult>;
   onClose: () => void;
   onNavigated: () => void;
+  returnFocus?: HTMLElement | null;
 }) {
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -236,6 +253,7 @@ export function GuideDialog({
   return (
     <Dialog
       title={guide.title}
+      returnFocus={returnFocus}
       className="modal guidance-dialog"
       description="功能使用指引 · 离线可用"
       onClose={onClose}
@@ -246,22 +264,35 @@ export function GuideDialog({
       </p>
       <div className="guidance-body" ref={body}>
         <p className="guidance-intro">{guide.purpose}</p>
-        <details className="guidance-preparation" open={index === 0 ? true : undefined}>
-          <summary>准备条件与功能入口</summary>
-          {guide.prerequisites.items.length ? (
-            <ul>
-              {guide.prerequisites.items.map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>{guide.prerequisites.notApplicableReason}</p>
-          )}
-          <p>
-            <strong>功能入口：</strong>
-            {guide.entry.label}
-          </p>
-        </details>
+        <Collapse
+          className="guidance-preparation"
+          ghost
+          defaultActiveKey={index === 0 ? ['details'] : []}
+          items={[
+            {
+              key: 'details',
+              label: <>准备条件与功能入口</>,
+              forceRender: true,
+              children: (
+                <>
+                  {guide.prerequisites.items.length ? (
+                    <ul>
+                      {guide.prerequisites.items.map((item, i) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>{guide.prerequisites.notApplicableReason}</p>
+                  )}
+                  <p>
+                    <strong>功能入口：</strong>
+                    {guide.entry.label}
+                  </p>
+                </>
+              ),
+            },
+          ]}
+        />
         <article className="guidance-step" aria-labelledby="guidance-step-heading">
           <h3 id="guidance-step-heading">{step.title}</h3>
           <p>{step.action}</p>
@@ -290,19 +321,32 @@ export function GuideDialog({
             <p>{guide.completion}</p>
           </section>
         )}
-        <details className="guidance-faq">
-          <summary>常见问题</summary>
-          {guide.faq.items.length ? (
-            guide.faq.items.map((item, i) => (
-              <section key={i}>
-                <h4>{item.question}</h4>
-                <p>{item.answer}</p>
-              </section>
-            ))
-          ) : (
-            <p>{guide.faq.notApplicableReason}</p>
-          )}
-        </details>
+        <Collapse
+          className="guidance-faq"
+          ghost
+          defaultActiveKey={false ? ['details'] : []}
+          items={[
+            {
+              key: 'details',
+              label: <>常见问题</>,
+              forceRender: true,
+              children: (
+                <>
+                  {guide.faq.items.length ? (
+                    guide.faq.items.map((item, i) => (
+                      <section key={i}>
+                        <h4>{item.question}</h4>
+                        <p>{item.answer}</p>
+                      </section>
+                    ))
+                  ) : (
+                    <p>{guide.faq.notApplicableReason}</p>
+                  )}
+                </>
+              ),
+            },
+          ]}
+        />
         {!target && <p role="status">此功能入口已移除或暂不可用，可以继续阅读说明。</p>}
         {error && (
           <p role="alert" className="error-text">
@@ -312,22 +356,28 @@ export function GuideDialog({
       </div>
       <footer className="guidance-actions">
         <div>
-          <button
+          <Button
+            htmlType="submit"
+            type="default"
             className="secondary-button"
             disabled={index === 0}
             onClick={() => setIndex(index - 1)}
           >
             上一步
-          </button>
-          <button
+          </Button>
+          <Button
+            htmlType="submit"
+            type="default"
             className="secondary-button"
             disabled={index === guide.steps.length - 1}
             onClick={() => setIndex(index + 1)}
           >
             下一步
-          </button>
+          </Button>
         </div>
-        <button
+        <Button
+          htmlType="submit"
+          type="primary"
           className="primary-button"
           disabled={!target || busy}
           onClick={() => {
@@ -345,7 +395,7 @@ export function GuideDialog({
           }}
         >
           {busy ? '正在保存…' : '前往功能'}
-        </button>
+        </Button>
       </footer>
     </Dialog>
   );

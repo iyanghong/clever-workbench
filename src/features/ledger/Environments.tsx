@@ -1,3 +1,5 @@
+import { markNewRecordChanged } from '../../shared/new-record';
+import { Button, Input, Select, Collapse } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { PlusIcon, GitBranchIcon, GlobeIcon } from '@phosphor-icons/react';
 import type { Snapshot } from '../../types';
@@ -123,21 +125,26 @@ export function Environments({
       <div className="entity-toolbar">
         <label className="context-select">
           <GlobeIcon size={17} />
-          <select
+          <Select
             aria-label="查看环境"
             value={environment?.id ?? ''}
             onChange={(event) => {
-              const id = event.target.value;
+              markNewRecordChanged();
+              const id = event;
               void select(() => setEnvironmentId(id));
             }}
           >
-            {!environments.length && <option value="">添加一个环境</option>}
+            {!environments.length && (
+              <Select.Option data-value={String('')} value="">
+                添加一个环境
+              </Select.Option>
+            )}
             {environments.map((item) => (
-              <option key={item.id} value={item.id}>
+              <Select.Option data-value={String(item.id)} key={item.id} value={item.id}>
                 {item.name}
-              </option>
+              </Select.Option>
             ))}
-          </select>
+          </Select>
         </label>
         <form
           className="inline-create"
@@ -147,7 +154,7 @@ export function Environments({
           }}
         >
           <PlusIcon size={15} />
-          <input
+          <Input
             aria-label="新增环境名称"
             list={`environment-names-${systemId}`}
             placeholder="新增环境…"
@@ -167,27 +174,33 @@ export function Environments({
         <EnvironmentEditor key={environment.id} environment={environment} {...host} />
       )}
       <div className="entity-tabs" role="tablist" aria-label="台账内容">
-        <button
+        <Button
+          htmlType="submit"
+          type="text"
           role="tab"
           aria-selected={tab === 'resources'}
           onClick={() => void select(() => setTab('resources'))}
         >
           资源
-        </button>
-        <button
+        </Button>
+        <Button
+          htmlType="submit"
+          type="text"
           role="tab"
           aria-selected={tab === 'accounts'}
           onClick={() => void select(() => setTab('accounts'))}
         >
           账号
-        </button>
-        <button
+        </Button>
+        <Button
+          htmlType="submit"
+          type="text"
           role="tab"
           aria-selected={tab === 'services'}
           onClick={() => void select(() => setTab('services'))}
         >
           服务
-        </button>
+        </Button>
       </div>
       {tab === 'resources' &&
         (environment ? (
@@ -224,21 +237,26 @@ export function Environments({
           <div className="entity-toolbar">
             <label className="context-select">
               <GitBranchIcon size={17} />
-              <select
+              <Select
                 aria-label="查看服务"
                 value={service?.id ?? ''}
                 onChange={(event) => {
-                  const id = event.target.value;
+                  markNewRecordChanged();
+                  const id = event;
                   void select(() => setServiceId(id));
                 }}
               >
-                {!services.length && <option value="">添加一个服务</option>}
+                {!services.length && (
+                  <Select.Option data-value={String('')} value="">
+                    添加一个服务
+                  </Select.Option>
+                )}
                 {services.map((item) => (
-                  <option key={item.id} value={item.id}>
+                  <Select.Option data-value={String(item.id)} key={item.id} value={item.id}>
                     {item.name}
-                  </option>
+                  </Select.Option>
                 ))}
-              </select>
+              </Select>
             </label>
             <form
               className="inline-create"
@@ -248,7 +266,7 @@ export function Environments({
               }}
             >
               <PlusIcon size={15} />
-              <input
+              <Input
                 aria-label="新增服务名称"
                 placeholder="新增服务…"
                 value={serviceName}
@@ -310,30 +328,45 @@ function EnvironmentEditor({
   );
   useEffect(() => host.registerFlush(form.flush), [host.registerFlush, form.flush]);
   return (
-    <details className="compact-details">
-      <summary>
-        环境设置<span>{form.status}</span>
-      </summary>
-      <div className="record-fields">
-        <label>
-          环境名称
-          <input
-            aria-label="环境名称"
-            value={form.value.name}
-            onChange={(event) => form.change({ ...form.value, name: event.target.value })}
-          />
-        </label>
-        <label>
-          环境说明
-          <input
-            aria-label="环境说明"
-            value={form.value.notes}
-            placeholder="可选"
-            onChange={(event) => form.change({ ...form.value, notes: event.target.value })}
-          />
-        </label>
-      </div>
-    </details>
+    <Collapse
+      className="compact-details"
+      ghost
+      defaultActiveKey={false ? ['details'] : []}
+      items={[
+        {
+          key: 'details',
+          label: (
+            <>
+              环境设置<span>{form.status}</span>
+            </>
+          ),
+          forceRender: true,
+          children: (
+            <>
+              <div className="record-fields">
+                <label>
+                  环境名称
+                  <Input
+                    aria-label="环境名称"
+                    value={form.value.name}
+                    onChange={(event) => form.change({ ...form.value, name: event.target.value })}
+                  />
+                </label>
+                <label>
+                  环境说明
+                  <Input
+                    aria-label="环境说明"
+                    value={form.value.notes}
+                    placeholder="可选"
+                    onChange={(event) => form.change({ ...form.value, notes: event.target.value })}
+                  />
+                </label>
+              </div>
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }
 
@@ -358,17 +391,19 @@ function ServiceEditor({ service, ...host }: EditorHost & { service: ServiceReco
     <div className="service-common">
       <div className="record-subheading">
         <span>服务公共信息</span>
-        <button
+        <Button
+          htmlType="submit"
+          type="text"
           className="save-indicator"
           onClick={() => void form.flush().catch((cause) => host.onError(String(cause)))}
         >
           {form.status}
-        </button>
+        </Button>
       </div>
       <div className="record-fields">
         <label>
           服务名称
-          <input
+          <Input
             aria-label="服务名称"
             value={form.value.name}
             onChange={(event) => form.change({ ...form.value, name: event.target.value })}
@@ -376,7 +411,7 @@ function ServiceEditor({ service, ...host }: EditorHost & { service: ServiceReco
         </label>
         <label>
           代码仓库
-          <input
+          <Input
             aria-label="服务仓库"
             placeholder="HTTPS 或 Git SSH 地址（可选）"
             value={form.value.repository}
@@ -384,15 +419,28 @@ function ServiceEditor({ service, ...host }: EditorHost & { service: ServiceReco
           />
         </label>
       </div>
-      <details className="compact-details">
-        <summary>服务说明</summary>
-        <textarea
-          aria-label="服务说明"
-          value={form.value.notes}
-          placeholder="用途、依赖或其他需要记住的信息…"
-          onChange={(event) => form.change({ ...form.value, notes: event.target.value })}
-        />
-      </details>
+      <Collapse
+        className="compact-details"
+        ghost
+        defaultActiveKey={false ? ['details'] : []}
+        items={[
+          {
+            key: 'details',
+            label: <>服务说明</>,
+            forceRender: true,
+            children: (
+              <>
+                <Input.TextArea
+                  aria-label="服务说明"
+                  value={form.value.notes}
+                  placeholder="用途、依赖或其他需要记住的信息…"
+                  onChange={(event) => form.change({ ...form.value, notes: event.target.value })}
+                />
+              </>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }
@@ -434,17 +482,19 @@ function DeploymentEditor({
           <span className="environment-dot" />
           {environment.name}部署
         </strong>
-        <button
+        <Button
+          htmlType="submit"
+          type="text"
           className="save-indicator"
           onClick={() => void form.flush().catch((cause) => host.onError(String(cause)))}
         >
           {form.status}
-        </button>
+        </Button>
       </div>
       <div className="record-fields deployment-fields">
         <label>
           部署地址
-          <input
+          <Input
             aria-label="部署地址"
             value={form.value.address}
             placeholder="主机、IP 或访问地址（可选）"
@@ -453,7 +503,7 @@ function DeploymentEditor({
         </label>
         <label>
           端口
-          <input
+          <Input
             aria-label="部署端口"
             inputMode="numeric"
             value={form.value.port}
@@ -462,15 +512,28 @@ function DeploymentEditor({
           />
         </label>
       </div>
-      <details className="compact-details">
-        <summary>部署备注</summary>
-        <textarea
-          aria-label="部署备注"
-          value={form.value.notes}
-          placeholder="只记录这个环境下的部署信息…"
-          onChange={(event) => form.change({ ...form.value, notes: event.target.value })}
-        />
-      </details>
+      <Collapse
+        className="compact-details"
+        ghost
+        defaultActiveKey={false ? ['details'] : []}
+        items={[
+          {
+            key: 'details',
+            label: <>部署备注</>,
+            forceRender: true,
+            children: (
+              <>
+                <Input.TextArea
+                  aria-label="部署备注"
+                  value={form.value.notes}
+                  placeholder="只记录这个环境下的部署信息…"
+                  onChange={(event) => form.change({ ...form.value, notes: event.target.value })}
+                />
+              </>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

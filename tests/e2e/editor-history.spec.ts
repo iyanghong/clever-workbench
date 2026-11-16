@@ -147,7 +147,7 @@ test('本地图片可立即撤销重做，导入中导航等待原记录保存',
     await expect(editor.locator('img')).toHaveCount(0);
     await expect(editor).toContainText('保留正文补充');
     await page.keyboard.press('ControlOrMeta+Shift+z');
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     await page.getByRole('button', { name: '打开文档 图片撤销', exact: true }).click();
     await expect(editor).toContainText('保留正文');
     await expect
@@ -168,7 +168,7 @@ test('本地图片可立即撤销重做，导入中导航等待原记录保存',
       }) as typeof dialog.showOpenDialog;
     }, filename);
     await page.getByRole('button', { name: '插入图片', exact: true }).click();
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
     await page.getByRole('button', { name: '打开文档 图片撤销', exact: true }).click();
     await expect(editor.locator('img')).toHaveCount(2);
   } finally {
@@ -200,21 +200,21 @@ test('只打开或移动光标不改写原文，回收站正文和勾选项保�
         ).createdId!,
       raw,
     );
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
     await page.locator('.task-open').filter({ hasText: '不改原文' }).click();
     const editor = page.getByRole('textbox', { name: '工作内容' });
     await editor.click();
     await page.keyboard.press('ArrowLeft');
-    await page.getByLabel('关闭详情').click();
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
     expect((await page.evaluate((id) => window.desktop.task(id), id)).markdown).toBe(raw);
     await page.locator('.task-open').filter({ hasText: '不改原文' }).click();
     await page.getByRole('button', { name: '删除任务', exact: true }).click();
-    await page.getByRole('button', { name: '回收站', exact: true }).click();
+    await page.getByRole('menuitem', { name: '回收站', exact: true }).click();
     await page.locator('.task-open').filter({ hasText: '不改原文' }).click();
     await expect(editor).not.toBeEditable();
     await expect(editor.getByRole('checkbox')).toBeDisabled();
     await expect(editor.getByRole('checkbox')).not.toBeChecked();
-    await page.getByLabel('关闭详情').click();
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
     expect((await page.evaluate((id) => window.desktop.task(id), id)).markdown).toBe(raw);
   } finally {
     await app.close();

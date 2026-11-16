@@ -1,3 +1,5 @@
+import { markNewRecordChanged } from '../../shared/new-record';
+import { Button, Checkbox, Input, Select, ConfigProvider } from 'antd';
 import { useState, type CSSProperties } from 'react';
 import type { Snapshot } from '../../types';
 import { taskTagColors, type TaskTag, type TaskTagColor } from '../../task-tags';
@@ -86,7 +88,7 @@ export function TaskTagManager({
       >
         <label>
           标签名称
-          <input
+          <Input
             aria-label="标签名称"
             value={name}
             disabled={busy}
@@ -95,26 +97,40 @@ export function TaskTagManager({
         </label>
         <label>
           标签颜色
-          <select
+          <Select
             aria-label="标签颜色"
             value={color}
             disabled={busy}
-            onChange={(event) => setColor(event.target.value as TaskTagColor)}
+            onChange={(event) => {
+              markNewRecordChanged();
+              return setColor(event as TaskTagColor);
+            }}
           >
             {Object.entries(taskTagColors).map(([value, label]) => (
-              <option key={value} value={value}>
+              <Select.Option data-value={String(value)} key={value} value={value}>
                 {label}
-              </option>
+              </Select.Option>
             ))}
-          </select>
+          </Select>
         </label>
-        <button className="primary-button" disabled={busy || !name.trim()}>
+        <Button
+          htmlType="submit"
+          type="primary"
+          className="primary-button"
+          disabled={busy || !name.trim()}
+        >
           {editing ? '保存标签' : '创建标签'}
-        </button>
+        </Button>
         {editing && (
-          <button type="button" className="text-button" onClick={reset} disabled={busy}>
+          <Button
+            type="text"
+            htmlType="button"
+            className="text-button"
+            onClick={reset}
+            disabled={busy}
+          >
             取消编辑
-          </button>
+          </Button>
         )}
       </form>
       <div className="task-tag-management">
@@ -124,7 +140,9 @@ export function TaskTagManager({
             <span className="muted">
               {snapshot.tasks.filter((task) => task.tagIds?.includes(tag.id)).length} 项任务
             </span>
-            <button
+            <Button
+              htmlType="submit"
+              type="text"
               className="text-button"
               aria-label={`编辑标签 ${tag.name}`}
               disabled={busy}
@@ -135,15 +153,18 @@ export function TaskTagManager({
               }}
             >
               编辑
-            </button>
-            <button
+            </Button>
+            <Button
+              htmlType="submit"
+              type="text"
+              danger
               className="text-button danger-hover"
               aria-label={`删除标签 ${tag.name}`}
               disabled={busy}
               onClick={() => setDeleting(tag)}
             >
               删除
-            </button>
+            </Button>
           </div>
         ))}
         {!tags.length && <p className="muted">还没有任务标签，创建后即可在任务中选用。</p>}
@@ -155,12 +176,25 @@ export function TaskTagManager({
             {snapshot.tasks.filter((task) => task.tagIds?.includes(deleting.id)).length}{' '}
             项任务移除标记，任务本身保留。
           </p>
-          <button className="secondary-button" disabled={busy} onClick={() => setDeleting(null)}>
+          <Button
+            htmlType="submit"
+            type="default"
+            className="secondary-button"
+            disabled={busy}
+            onClick={() => setDeleting(null)}
+          >
             取消
-          </button>
-          <button className="danger-button" disabled={busy} onClick={() => void remove()}>
+          </Button>
+          <Button
+            htmlType="submit"
+            type="primary"
+            danger
+            className="danger-button"
+            disabled={busy}
+            onClick={() => void remove()}
+          >
             确认删除标签
-          </button>
+          </Button>
         </div>
       )}
     </Dialog>
@@ -183,13 +217,13 @@ export function TaskTagPicker({
   const [manage, setManage] = useState(false);
   return (
     <>
-      <fieldset className="task-tag-picker" disabled={disabled}>
-        <legend>颜色标签（可选）</legend>
-        <div className="task-tag-options">
-          {(snapshot.taskTags ?? []).map((tag) => (
-            <label key={tag.id}>
-              <input
-                type="checkbox"
+      <ConfigProvider componentDisabled={disabled}>
+        <fieldset className="task-tag-picker" disabled={disabled}>
+          <legend>颜色标签（可选）</legend>
+          <div className="task-tag-options">
+            {(snapshot.taskTags ?? []).map((tag) => (
+              <Checkbox
+                key={tag.id}
                 aria-label={`标签 ${tag.name}`}
                 checked={ids.includes(tag.id)}
                 onChange={(event) =>
@@ -197,15 +231,21 @@ export function TaskTagPicker({
                     event.target.checked ? [...ids, tag.id] : ids.filter((id) => id !== tag.id),
                   )
                 }
-              />
-              <TaskTagChips tags={[tag]} ids={[tag.id]} />
-            </label>
-          ))}
-        </div>
-        <button type="button" className="text-button" onClick={() => setManage(true)}>
-          管理任务标签
-        </button>
-      </fieldset>
+              >
+                <TaskTagChips tags={[tag]} ids={[tag.id]} />
+              </Checkbox>
+            ))}
+          </div>
+          <Button
+            type="text"
+            htmlType="button"
+            className="text-button"
+            onClick={() => setManage(true)}
+          >
+            管理任务标签
+          </Button>
+        </fieldset>
+      </ConfigProvider>
       {manage && (
         <TaskTagManager
           snapshot={snapshot}

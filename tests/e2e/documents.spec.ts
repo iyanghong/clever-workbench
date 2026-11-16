@@ -1,3 +1,4 @@
+import { expectSelectValue, selectChoice } from './antd-controls';
 import { openLedgerRecord, openSystemAction } from './ledger-actions';
 import { electron } from './launch';
 import { test, expect } from '@playwright/test';
@@ -35,18 +36,18 @@ test('从资源写方案并回到台账，系统换项目后保留旧背景和�
       ).createdId!;
       return { a, b, system, environment, resource };
     });
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await openLedgerRecord(page, '数据库／中间件', '订单缓存');
     await page
       .getByRole('button', { name: '为当前对象写文档', exact: true })
       .click({ timeout: 3000 });
     await page.getByLabel('文档标题').fill('生产缓存排障');
     await page.getByRole('textbox', { name: '工作内容' }).fill('连接池耗尽，调整超时和容量。');
-    await expect(page.getByLabel('文档所属项目')).toHaveValue(ids.a);
+    await expectSelectValue(page.getByLabel('文档所属项目'), ids.a);
     await page.getByRole('button', { name: '回到关联对象', exact: true }).click();
     await expect(page.getByRole('heading', { name: '订单缓存', exact: true })).toBeVisible();
     await openSystemAction(page, '系统信息');
-    await page.getByLabel('当前项目', { exact: true }).selectOption(ids.b);
+    await selectChoice(page.getByLabel('当前项目', { exact: true }), ids.b);
     await page
       .getByRole('dialog', { name: '系统信息' })
       .getByRole('button', { name: '完成', exact: true })
@@ -54,7 +55,7 @@ test('从资源写方案并回到台账，系统换项目后保留旧背景和�
     await page.getByLabel('文档', { exact: true }).click();
     await page.getByLabel('搜索文档').fill('连接池');
     await page.getByRole('button', { name: /文档 生产缓存排障/ }).click();
-    await expect(page.getByLabel('文档所属项目')).toHaveValue(ids.a);
+    await expectSelectValue(page.getByLabel('文档所属项目'), ids.a);
     await expect(page.getByRole('textbox', { name: '工作内容' })).toContainText('调整超时');
     await page.getByRole('button', { name: '删除文档', exact: true }).click();
     await page.getByRole('button', { name: '文档回收站', exact: true }).click();
@@ -94,7 +95,7 @@ test('未命名文档粘贴图片后立即切换，重启后保留正文与图�
         new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
       );
     });
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
     await app.close();
     app = await electron.launch({ args: ['.'], env });
     page = await app.firstWindow();
@@ -103,7 +104,7 @@ test('未命名文档粘贴图片后立即切换，重启后保留正文与图�
     await expect(page.getByLabel('文档标题')).toHaveValue('');
     await expect(page.getByRole('textbox', { name: '工作内容' })).toContainText('先保留现场');
     await expect(page.getByRole('textbox', { name: '工作内容' }).locator('img')).toBeVisible();
-    await expect(page.getByLabel('文档所属项目')).toHaveValue('');
+    await expectSelectValue(page.getByLabel('文档所属项目'), '');
   } finally {
     await app.close();
     await fs.rm(directory, { recursive: true, force: true });

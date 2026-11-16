@@ -1,3 +1,4 @@
+import { selectChoice, expectSelectValue } from './antd-controls';
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -100,7 +101,7 @@ test('系统导出菜单附近有操作指引，关闭后保留当前系统及�
   const { app, page, close } = await launch();
   try {
     await page.evaluate(() => window.desktop.mutate({ type: 'system.save', name: '导出示例系统' }));
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     const more = page.getByRole('button', { name: '当前系统更多操作', exact: true });
     await more.click();
     await page.getByRole('menuitem', { name: '导出资料使用指引', exact: true }).click();
@@ -123,7 +124,7 @@ test('批量录入入口旁可查阅指引，不会打开批量录入或新增�
   const { app, page, close } = await launch();
   try {
     await page.evaluate(() => window.desktop.mutate({ type: 'system.save', name: '批量示例系统' }));
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     const trigger = page.getByRole('button', { name: '批量录入使用指引', exact: true });
     await trigger.click({ timeout: 4000 });
     const opened = await read(app, page, 'ledger-paste', 'ledger-import');
@@ -151,10 +152,10 @@ test('资源指引对应服务器配置、其他类型、独立复制与引用�
       ).createdId!;
       return { system, other, environment };
     });
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await page
       .getByRole('navigation', { name: '系统资料类型' })
-      .getByRole('button', { name: '服务器', exact: true })
+      .getByRole('tab', { name: '服务器', exact: true })
       .click();
     for (const id of ['resource-server', 'resource-datastores', 'resource-copy-delete'])
       await closeGuide(page, await nearby(app, page, id, 'ledger-resources'));
@@ -191,8 +192,8 @@ test('资源指引对应服务器配置、其他类型、独立复制与引用�
       await window.desktop.lockVault();
       return resource.id;
     });
-    await page.getByRole('button', { name: '工作台', exact: true }).click();
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await openLedgerRecord(page, '服务器', '示例节点', true);
     await page.getByRole('button', { name: '复制资源', exact: true }).click();
     const copy = page.getByRole('dialog', { name: '复制资源', exact: true });
@@ -205,7 +206,7 @@ test('资源指引对应服务器配置、其他类型、独立复制与引用�
       .click();
     expect((await page.evaluate(() => window.desktop.snapshot())).resources).toHaveLength(1);
     await copy.getByLabel('同时复制资源账号和秘密').uncheck();
-    await copy.getByLabel('副本目标系统').selectOption(ids.other);
+    await selectChoice(copy.getByLabel('副本目标系统'), ids.other);
     await copy.getByRole('button', { name: '创建副本', exact: true }).click();
     const snapshot = await page.evaluate(() => window.desktop.snapshot());
     expect(snapshot.resources).toHaveLength(2);
@@ -244,10 +245,10 @@ test('资源指引对应服务器配置、其他类型、独立复制与引用�
     await expect(deletion.getByRole('alert')).toContainText('仍被部署节点或运维记录引用');
     await deletion.getByRole('button', { name: '取消', exact: true }).click();
     expect((await page.evaluate(() => window.desktop.snapshot())).resources).toHaveLength(2);
-    await page.getByRole('button', { name: '数据库／中间件', exact: true }).click();
+    await page.getByRole('tab', { name: '数据库／中间件', exact: true }).click();
     await page.getByRole('button', { name: '新增数据库／中间件', exact: true }).click();
     await page.getByLabel('快速新建资源名称').fill('订单数据库');
-    await page.getByLabel('新资源类型').selectOption('database');
+    await selectChoice(page.getByLabel('新资源类型'), 'database');
     await page.getByRole('button', { name: '创建资源', exact: true }).click();
     await detail.getByRole('button', { name: '编辑', exact: true }).click();
     await page.getByLabel('数据库类型', { exact: true }).fill('PostgreSQL');
@@ -284,8 +285,8 @@ test('部署和运维指引对应节点地址回退、状态筛选、引用限�
       ).createdId!;
       return { system, environment, server };
     });
-    await page.getByRole('button', { name: '台账', exact: true }).click();
-    await page.getByRole('button', { name: '应用部署', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
+    await page.getByRole('tab', { name: '应用部署', exact: true }).click();
     await closeGuide(page, await nearby(app, page, 'services-deployments', 'ledger-deployments'));
     await closeGuide(page, await nearby(app, page, 'ledger-related-work', 'ledger-deployments'));
     await page.getByRole('button', { name: '新增应用部署', exact: true }).click();
@@ -298,15 +299,15 @@ test('部署和运维指引对应节点地址回退、状态筛选、引用限�
     await detail.getByRole('button', { name: '新增节点', exact: true }).click();
     const node = page.getByRole('dialog', { name: '新增部署节点', exact: true });
     await node.getByLabel('节点名称', { exact: true }).fill('前台实例');
-    await node.getByLabel('部署环境', { exact: true }).selectOption(ids.environment);
-    await node.getByRole('combobox').nth(2).selectOption(ids.server);
-    await expect(node.getByRole('combobox').nth(1)).toHaveValue('fixed');
+    await selectChoice(node.getByLabel('部署环境', { exact: true }), ids.environment);
+    await selectChoice(node.getByRole('combobox').nth(2), ids.server);
+    await expectSelectValue(node.getByRole('combobox').nth(1), 'fixed');
     await node.getByRole('button', { name: '保存节点', exact: true }).click();
     await expect(detail.getByText('地址来自服务器')).toBeVisible();
     await expect(detail).toContainText('192.0.2.40');
     await detail.getByRole('button', { name: '编辑节点', exact: true }).click();
     const editNode = page.getByRole('dialog', { name: '编辑部署节点', exact: true });
-    await editNode.getByRole('combobox').nth(1).selectOption('scheduled');
+    await selectChoice(editNode.getByRole('combobox').nth(1), 'scheduled');
     await editNode.getByRole('textbox').nth(3).fill('3');
     await editNode.getByRole('button', { name: '完成', exact: true }).click();
     await expect(detail).toContainText('按需调度 3');
@@ -316,7 +317,7 @@ test('部署和运维指引对应节点地址回退、状态筛选、引用限�
     await expect(deletion.getByRole('alert')).toContainText('服务仍有部署节点或运维记录');
     await deletion.getByRole('button', { name: '取消', exact: true }).click();
     const serviceId = (await page.evaluate(() => window.desktop.snapshot())).services[0].id;
-    await page.getByRole('button', { name: '运行维护', exact: true }).click();
+    await page.getByRole('tab', { name: '运行维护', exact: true }).click();
     await closeGuide(page, await nearby(app, page, 'operations-maintenance', 'ledger-operations'));
     await closeGuide(page, await nearby(app, page, 'ledger-related-work', 'ledger-operations'));
     await page.getByRole('button', { name: '新增运行维护', exact: true }).click();
@@ -325,17 +326,21 @@ test('部署和运维指引对应节点地址回退、状态筛选、引用限�
     await create.getByRole('button', { name: '创建运维记录', exact: true }).click();
     await detail.getByRole('button', { name: '编辑', exact: true }).click();
     const fields = detail.locator('.workspace-fields');
-    await fields.getByRole('combobox').nth(0).selectOption('backup');
+    await selectChoice(fields.getByRole('combobox').nth(0), 'backup');
     await fields.getByRole('textbox').nth(1).fill('每日 02:00');
-    await fields.getByRole('combobox').nth(1).selectOption('inactive');
-    await fields.getByRole('combobox').nth(2).selectOption(ids.environment);
-    await fields.getByRole('combobox').nth(3).selectOption(`service:${serviceId}`);
+    await selectChoice(fields.getByRole('combobox').nth(1), 'inactive');
+    await selectChoice(fields.getByRole('combobox').nth(2), ids.environment);
+    await selectChoice(fields.getByRole('combobox').nth(3), `service:${serviceId}`);
     await page.getByRole('button', { name: '完成编辑', exact: true }).click();
     await page.getByRole('button', { name: '返回清单', exact: true }).click();
-    await page.getByLabel('运维类型筛选').selectOption('backup');
-    await page.getByLabel('运维状态筛选').selectOption('inactive');
-    await expect(page.locator('.workspace-list tbody tr')).toHaveCount(1);
-    await expect(page.locator('.workspace-list tbody tr')).toContainText('每日备份核对');
+    await selectChoice(page.getByLabel('运维类型筛选'), 'backup');
+    await selectChoice(page.getByLabel('运维状态筛选'), 'inactive');
+    await expect(page.locator('.workspace-list tbody tr:not(.ant-table-measure-row)')).toHaveCount(
+      1,
+    );
+    await expect(
+      page.locator('.workspace-list tbody tr:not(.ant-table-measure-row)'),
+    ).toContainText('每日备份核对');
     await page.getByRole('button', { name: '相关工作', exact: true }).click();
     const related = page.getByRole('dialog', { name: '系统相关工作', exact: true });
     await related.getByLabel('为当前系统新增任务').fill('核对备份结果');
@@ -354,14 +359,22 @@ test('批量录入指引对应手填、粘贴追加、逐行取消和未提交�
   const { app, page, close } = await launch();
   try {
     await page.evaluate(() => window.desktop.mutate({ type: 'system.save', name: '批量核对系统' }));
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await closeGuide(
       page,
       await nearby(app, page, 'ledger-paste', 'ledger-import', '批量录入使用指引'),
     );
     await page.getByRole('button', { name: '批量录入', exact: true }).click();
     const paste = page.getByRole('dialog', { name: '批量录入 · 校对后新增', exact: true });
-    await expect(paste.getByLabel('批量条目类型').locator('option')).toHaveText([
+    const typeSelector = paste.getByLabel('批量条目类型');
+    await typeSelector.focus();
+    await typeSelector.press('ArrowDown');
+    await expect(
+      page
+        .locator('.ant-select-dropdown')
+        .filter({ visible: true })
+        .locator('.ant-select-item-option-content'),
+    ).toHaveText([
       '访问入口',
       '服务器',
       '数据库',
@@ -373,15 +386,17 @@ test('批量录入指引对应手填、粘贴追加、逐行取消和未提交�
       '账号',
       '部署节点',
     ]);
-    await paste.getByLabel('批量条目类型').selectOption('redis');
+    await typeSelector.press('Escape');
+    await expect(page.locator('.ant-select-dropdown').filter({ visible: true })).toHaveCount(0);
+    await selectChoice(paste.getByLabel('批量条目类型'), 'redis');
     await paste.getByLabel('第 1 行名称', { exact: true }).fill('手填缓存');
     await paste
       .getByRole('textbox', { name: '粘贴表格', exact: true })
       .fill('名称\t地址\t端口\n订单缓存\t192.0.2.21\t6379\n订单缓存\t192.0.2.22\t6379');
     await paste.getByRole('button', { name: '读取文本', exact: true }).click();
-    await expect(paste.getByLabel('映射第 1 列')).toHaveValue('name');
-    await expect(paste.getByLabel('映射第 2 列')).toHaveValue('address');
-    await expect(paste.getByLabel('映射第 3 列')).toHaveValue('port');
+    await expectSelectValue(paste.getByLabel('映射第 1 列'), 'name');
+    await expectSelectValue(paste.getByLabel('映射第 2 列'), 'address');
+    await expectSelectValue(paste.getByLabel('映射第 3 列'), 'port');
     await expect(paste.getByRole('button', { name: '确认新增', exact: true })).toBeDisabled();
     await paste.getByRole('button', { name: '追加到录入表格（2 行）', exact: true }).click();
     await expect(paste.getByLabel('第 2 行名称', { exact: true })).toHaveValue('订单缓存');
@@ -402,7 +417,7 @@ test('批量录入指引对应手填、粘贴追加、逐行取消和未提交�
       .getByRole('textbox', { name: '粘贴表格', exact: true })
       .fill('名称\t另一个缓存\n地址\t192.0.2.23');
     await paste.getByRole('button', { name: '读取文本', exact: true }).click();
-    await paste.getByLabel('表格预览方式').selectOption('card');
+    await selectChoice(paste.getByLabel('表格预览方式'), 'card');
     await paste.getByRole('button', { name: '追加到录入表格（1 行）', exact: true }).click();
     await expect(paste.getByLabel('第 1 行名称')).toHaveValue('另一个缓存');
     await paste.getByRole('button', { name: '取消', exact: true }).click();
@@ -444,7 +459,7 @@ test('导出指引对应编辑保存、取消解锁和明文文件结果', async
         filePath,
       })) as typeof dialog.showSaveDialog;
     }, output);
-    await page.getByRole('button', { name: '台账', exact: true }).click();
+    await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await page.getByRole('button', { name: '当前系统更多操作', exact: true }).click();
     await page.getByRole('menuitem', { name: '导出资料使用指引', exact: true }).click();
     await closeGuide(page, await read(app, page, 'system-export', 'system-export'));

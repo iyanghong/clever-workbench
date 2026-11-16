@@ -30,7 +30,7 @@ const release = (
 });
 async function versions(app: ElectronApplication, releases: ReleaseGuide[], version?: string) {
   const page = await app.firstWindow();
-  await page.getByRole('button', { name: '工作台', exact: true }).waitFor();
+  await page.getByRole('menuitem', { name: '工作台', exact: true }).waitFor();
   await app.evaluate(
     ({ app, ipcMain }, value) => {
       if (value.version) app.getVersion = () => value.version!;
@@ -67,7 +67,8 @@ test('首次只显示当前绑定版本，成功展示后关闭和重启不重�
     await app.close();
     app = await electron.launch({ args: ['.'], env });
     page = await versions(app, records);
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '使用指引', exact: true }).click();
     await page.getByRole('button', { name: '查看版本操作说明', exact: true }).click();
     const history = page.getByRole('dialog', { name: '版本操作说明', exact: true });
     await history.getByRole('button', { name: `查看 v${current} 操作说明`, exact: true }).click();
@@ -76,7 +77,7 @@ test('首次只显示当前绑定版本，成功展示后关闭和重启不重�
     );
     await page.keyboard.press('Escape');
     await page.waitForTimeout(2000);
-    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.locator('[data-workbench-dialog]')).toHaveCount(0);
   } finally {
     await app.close();
     await fs.rm(directory, { recursive: true, force: true });
@@ -136,10 +137,10 @@ test('跨版本按功能合并不同变化，目标无新增操作仍提示，�
     await page.keyboard.press('Escape');
     await versions(app, [release('0.1.11', '降级也不重复')], '0.1.11');
     await page.waitForTimeout(1500);
-    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.locator('[data-workbench-dialog]')).toHaveCount(0);
     await versions(app, [release('0.1.14', '再次升级也不重复')], '0.1.14');
     await page.waitForTimeout(1500);
-    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.locator('[data-workbench-dialog]')).toHaveCount(0);
   } finally {
     await app.close();
     await fs.rm(directory, { recursive: true, force: true });
@@ -160,7 +161,7 @@ test('持续输入与中文组合期间不抢焦点，结束并保存后再提�
     for (let i = 0; i < 12; i++) {
       await input.press('a');
       await page.waitForTimeout(150);
-      await expect(page.locator('dialog[open]')).toHaveCount(0);
+      await expect(page.locator('[data-workbench-dialog]')).toHaveCount(0);
     }
     await input.dispatchEvent('compositionend');
     await expect(page.getByRole('dialog', { name: '版本操作指引', exact: true })).toBeVisible({
@@ -182,7 +183,7 @@ test('等待版本说明期间新建资料时不主动弹出放弃确认', async
   const app = await electron.launch({ args: ['.'], env });
   try {
     const page = await app.firstWindow();
-    await page.getByRole('button', { name: '工作台', exact: true }).waitFor();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).waitFor();
     const current = await app.evaluate(({ app }) => app.getVersion());
     await app.evaluate(
       ({ app, ipcMain }, record) => {
@@ -251,7 +252,7 @@ test('主界面资料尚未就绪时不显示，等载入完成才开始提示',
   const app = await electron.launch({ args: ['.'], env });
   try {
     let page = await app.firstWindow();
-    await page.getByRole('button', { name: '工作台', exact: true }).waitFor();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).waitFor();
     const snapshot = await page.evaluate(() => window.desktop.snapshot());
     await app.evaluate(({ ipcMain }, snapshot) => {
       const waiting: (() => void)[] = [];
@@ -269,7 +270,7 @@ test('主界面资料尚未就绪时不显示，等载入完成才开始提示',
     const current = await app.evaluate(({ app }) => app.getVersion());
     page = await versions(app, [release(current, '资料加载完成后再看说明', 'pending')]);
     await page.waitForTimeout(1800);
-    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.locator('[data-workbench-dialog]')).toHaveCount(0);
     await app.evaluate(() => (globalThis as any).finishGuidanceSnapshot());
     await expect(page.getByRole('dialog', { name: '版本操作指引', exact: true })).toBeVisible({
       timeout: 4000,
@@ -289,7 +290,7 @@ test('后台操作繁忙时不反复检查可用性，操作结束后仍显示�
   try {
     const current = await app.evaluate(({ app }) => app.getVersion());
     const initial = await app.firstWindow();
-    await initial.getByRole('button', { name: '工作台', exact: true }).waitFor();
+    await initial.getByRole('menuitem', { name: '工作台', exact: true }).waitFor();
     await app.evaluate(({ ipcMain }) => {
       (globalThis as any).guidanceBusyChecks = 0;
       (globalThis as any).guidanceBusy = true;
@@ -301,7 +302,7 @@ test('后台操作繁忙时不反复检查可用性，操作结束后仍显示�
     });
     const page = await versions(app, [release(current, '繁忙结束后显示操作变化', 'pending')]);
     await page.waitForTimeout(2300);
-    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.locator('[data-workbench-dialog]')).toHaveCount(0);
     expect(await app.evaluate(() => (globalThis as any).guidanceBusyChecks)).toBeLessThanOrEqual(2);
     await app.evaluate(({ BrowserWindow }) => {
       (globalThis as any).guidanceBusy = false;
@@ -348,7 +349,8 @@ test('更新重启提示等待当前指引关闭，版本提示也避让更新�
         timeout: 30000,
       })
       .not.toBe('checking');
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '关于与更新', exact: true }).click();
     await page.getByRole('button', { name: '应用更新使用指引', exact: true }).click();
     const guide = page.getByRole('dialog', { name: expected?.title ?? '使用指引', exact: true });
     await expect(guide).toBeVisible();
@@ -371,7 +373,7 @@ test('更新重启提示等待当前指引关闭，版本提示也避让更新�
       { installedVersion, targetVersion },
     );
     await page.waitForTimeout(400);
-    await expect(page.locator('dialog[open]')).toHaveCount(1);
+    await expect(page.locator('[data-workbench-dialog]')).toHaveCount(1);
     await expect(guide).toBeVisible();
     await page.keyboard.press('Escape');
     const restart = page.getByRole('dialog', { name: '更新已准备好', exact: true });
@@ -405,7 +407,7 @@ test('更新重启提示等待当前指引关闭，版本提示也避让更新�
     );
     await expect(restart).toBeVisible();
     await page.waitForTimeout(1600);
-    await expect(page.locator('dialog[open]')).toHaveCount(1);
+    await expect(page.locator('[data-workbench-dialog]')).toHaveCount(1);
     await restart.getByRole('button', { name: '稍后重启', exact: true }).click();
     await expect(page.getByRole('dialog', { name: '版本操作指引', exact: true })).toBeVisible({
       timeout: 5000,
@@ -424,7 +426,7 @@ test('真实恢复旧业务备份不回退设备提示记录，另一设备恢�
   let app = await electron.launch({ args: ['.'], env });
   try {
     let page = await app.firstWindow();
-    await page.getByRole('button', { name: '工作台', exact: true }).waitFor();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).waitFor();
     const current = await app.evaluate(({ app }) => app.getVersion());
     const filename = path.join(directory, 'before-guidance.cwb');
     await app.evaluate(({ dialog }, filename) => {
@@ -450,7 +452,8 @@ test('真实恢复旧业务备份不回退设备提示记录，另一设备恢�
           filePaths: [filename],
         })) as typeof dialog.showOpenDialog;
       }, filename);
-      await page.getByRole('button', { name: '设置', exact: true }).click();
+      await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+      await page.getByRole('tab', { name: '备份与恢复', exact: true }).click();
       await page.getByRole('button', { name: '从备份恢复', exact: true }).click();
       await page.getByLabel('备份密码', { exact: true }).fill('fictional-guidance-backup-password');
       await page.getByRole('button', { name: '校验备份', exact: true }).click();
@@ -464,7 +467,7 @@ test('真实恢复旧业务备份不回退设备提示记录，另一设备恢�
     });
     await page.reload();
     await page.waitForTimeout(1700);
-    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.locator('[data-workbench-dialog]')).toHaveCount(0);
     await app.close();
     app = await electron.launch({ args: ['.'], env: { ...env, CLEVER_WORKBENCH_DATA_DIR: other } });
     page = await app.firstWindow();
@@ -513,7 +516,7 @@ for (const failure of ['corrupt', 'unwritable'] as const)
       await page.keyboard.press('Escape');
       await page.reload();
       await page.waitForTimeout(1600);
-      await expect(page.locator('dialog[open]')).toHaveCount(0);
+      await expect(page.locator('[data-workbench-dialog]')).toHaveCount(0);
       await app.close();
       app = await electron.launch({ args: ['.'], env });
       page = await versions(app, records);
@@ -524,7 +527,7 @@ for (const failure of ['corrupt', 'unwritable'] as const)
         );
       else {
         await page.waitForTimeout(1600);
-        await expect(page.locator('dialog[open]')).toHaveCount(0);
+        await expect(page.locator('[data-workbench-dialog]')).toHaveCount(0);
       }
     } finally {
       await app.close();
@@ -542,15 +545,13 @@ test('未实际显示的提示不被消费，等待期间退出后下一次仍�
     const records = [release(current, '实际显示后才记为已提示', 'pending')];
     let page = await versions(app, records);
     await page.evaluate(() => {
-      const original = HTMLDialogElement.prototype.showModal;
-      HTMLDialogElement.prototype.showModal = function () {
-        if (this.getAttribute('aria-label') === '版本操作指引')
-          throw new DOMException('验收：系统暂时拒绝显示');
-        original.call(this);
-      };
+      const blocker = document.createElement('dialog');
+      blocker.setAttribute('aria-label', '正在处理的原生弹窗');
+      document.body.append(blocker);
+      blocker.showModal();
     });
     await page.waitForTimeout(1500);
-    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.locator('[data-workbench-dialog]')).toHaveCount(0);
     expect(await page.evaluate(() => window.desktop.guidanceState())).toMatchObject({
       shownThrough: null,
     });
@@ -575,7 +576,7 @@ test('自动提示等待保存失败修复，保留输入且不反复抢焦点',
   let database: InstanceType<typeof DatabaseSync> | undefined;
   try {
     const page = await app.firstWindow();
-    await page.getByRole('button', { name: '工作台', exact: true }).waitFor();
+    await page.getByRole('menuitem', { name: '工作台', exact: true }).waitFor();
     const generation = (await fs.readFile(path.join(directory, 'data', 'CURRENT'), 'utf8')).trim();
     database = new DatabaseSync(
       path.join(directory, 'data', 'vaults', generation, 'database.sqlite'),
@@ -585,12 +586,12 @@ test('自动提示等待保存失败修复，保留输入且不反复抢焦点',
     );
     const current = await app.evaluate(({ app }) => app.getVersion());
     await versions(app, [release(current, '保存成功后再显示', 'pending')]);
-    await page.getByRole('button', { name: '工作任务', exact: true }).click();
+    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
     const input = page.getByLabel('快速新增任务');
     await input.fill('仍需保留的任务草稿');
     await expect(page.getByRole('alert')).toContainText('版本指引验收保存失败');
     await page.waitForTimeout(1600);
-    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.locator('[data-workbench-dialog]')).toHaveCount(0);
     await expect(input).toHaveValue('仍需保留的任务草稿');
     database.exec('DROP TRIGGER version_draft_failure');
     await input.fill('修复后仍需保留的任务草稿');
@@ -680,10 +681,11 @@ test('原生文件选择期间自动与手动版本窗口均避让，取消后�
     await expect
       .poll(() => app.evaluate(() => typeof (globalThis as any).finishVersionFileChoice))
       .toBe('function');
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '使用指引', exact: true }).click();
     await page.getByRole('button', { name: '查看版本操作说明', exact: true }).click();
     await page.waitForTimeout(1600);
-    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.locator('[data-workbench-dialog]')).toHaveCount(0);
     await expect(
       page.getByRole('status').filter({ hasText: '请等待当前保存、文件选择' }),
     ).toBeVisible();
@@ -720,8 +722,9 @@ test('明确无变化时安静启动，缺失当前说明和移除功能在手�
       },
     ]);
     await page.waitForTimeout(1600);
-    await expect(page.locator('dialog[open]')).toHaveCount(0);
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await expect(page.locator('[data-workbench-dialog]')).toHaveCount(0);
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '使用指引', exact: true }).click();
     await page.getByRole('button', { name: '查看版本操作说明', exact: true }).click();
     await page.getByRole('button', { name: `查看 v${current} 操作说明`, exact: true }).click();
     await expect(page.getByRole('dialog', { name: '版本操作指引', exact: true })).toContainText(
@@ -734,8 +737,9 @@ test('明确无变化时安静启动，缺失当前说明和移除功能在手�
     ];
     await versions(app, [history, release('0.1.1', '草稿或失败版本不应进入历史', 'pending')]);
     await page.waitForTimeout(1600);
-    await expect(page.locator('dialog[open]')).toHaveCount(0);
-    await page.getByRole('button', { name: '设置', exact: true }).click();
+    await expect(page.locator('[data-workbench-dialog]')).toHaveCount(0);
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '使用指引', exact: true }).click();
     await page.getByRole('button', { name: '查看版本操作说明', exact: true }).click();
     const list = page.getByRole('dialog', { name: '版本操作说明', exact: true });
     await expect(list).toContainText('当前版本暂未提供完整操作说明');

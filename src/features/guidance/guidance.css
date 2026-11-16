@@ -1,3 +1,4 @@
+@layer legacy {
 .guidance-button {
   display: inline-flex;
   align-items: center;
@@ -205,4 +206,5 @@
   .guidance-actions {
     padding: 14px 16px;
   }
+}
 }
