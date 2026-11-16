@@ -1,0 +1,245 @@
+{
+  "schemaVersion": 1,
+  "kind": "release",
+  "operationChange": "changed",
+  "summary": "全站统一界面与控件，台账采用分类页签，设置按外观、凭据保护、备份与恢复、关于与更新和使用指引分组。",
+  "changes": [
+    {
+      "id": "workbench-unified-ui",
+      "summary": "工作台、任务、文档、回顾与六个工具使用一致的导航、表格、表单和弹窗。顶部侧栏按钮可收起或展开导航，浅色、深色及辅助外观保持一致。",
+      "guideIds": [
+        "appearance",
+        "workspace-basics"
+      ]
+    },
+    {
+      "id": "ledger-tabs-and-controls",
+      "summary": "台账按七类页签浏览，环境与标签筛选、清单与详情切换保持原有上下文；系统信息按基本信息、环境管理和项目档案分组，批量录入仍先校对再提交。",
+      "guideIds": [
+        "ledger-browsing",
+        "systems-environments",
+        "ledger-paste"
+      ]
+    },
+    {
+      "id": "settings-sections",
+      "summary": "设置分为外观、凭据保护、备份与恢复、关于与更新、使用指引五个页签。完整备份和恢复在备份与恢复，主密码在凭据保护，手动检查更新在关于与更新。",
+      "guideIds": [
+        "appearance",
+        "secret-protection",
+        "backup-password",
+        "full-backup",
+        "automatic-backup",
+        "restore-and-migrate",
+        "application-update",
+        "using-guidance"
+      ]
+    }
+  ],
+  "review": {
+    "status": "completed-with-gaps",
+    "reviewer": "Codex（代理核对，非维护者人工验收）",
+    "checkedAt": "2026-11-16T23:40:16+08:00",
+    "source": "8ec36aef2587530f44bc071b09f9cbde49dd10c9",
+    "environment": "macOS arm64；隔离资料；开发 Electron 全量回归 145 项通过、3 项跳过；临时签名 .app 回归 21 项通过、1 项跳过。秘密回归使用模拟钥匙串。正式新版本的 GitHub Actions 构建与发布结果另行记录。",
+    "checks": [
+      {
+        "guideId": "appearance",
+        "stepIds": [
+          "theme",
+          "transparency",
+          "contrast",
+          "motion"
+        ],
+        "result": "passed",
+        "evidence": ".scratch/antd6-ui-migration/evidence/electron-development-complete.log：appearance 与 unified-appearance 用例验证深浅主题、偏好保存、对比与动态效果，切换动态效果不再重建编辑页面；系统通知使用测试适配器。"
+      },
+      {
+        "guideId": "workspace-basics",
+        "stepIds": [
+          "modules",
+          "capture",
+          "open",
+          "complete",
+          "recent",
+          "write"
+        ],
+        "result": "passed",
+        "evidence": ".scratch/antd6-ui-migration/evidence/electron-development-complete.log：home、daily-guidance、desktop 用例验证九项导航、首页录入、任务完成、最近文档和写方案入口；真实页面另有 27 张主题和窗口截图。"
+      },
+      {
+        "guideId": "ledger-browsing",
+        "stepIds": [
+          "system",
+          "category",
+          "filter",
+          "detail",
+          "edit",
+          "return",
+          "empty"
+        ],
+        "result": "passed",
+        "evidence": ".scratch/antd6-ui-migration/evidence/electron-development-complete.log：ledger-layout、ledger-guidance、ledger-details 验证七类台账、筛选、详情、编辑、返回清单与空状态，保存失败保留输入。"
+      },
+      {
+        "guideId": "systems-environments",
+        "stepIds": [
+          "create",
+          "basic",
+          "project",
+          "add-environment",
+          "rename-environment",
+          "finish"
+        ],
+        "result": "passed",
+        "evidence": ".scratch/antd6-ui-migration/evidence/electron-development-complete.log：antd-workbench、ledger、ledger-guidance、ledger-system-actions 验证系统创建、字段保存、项目沿革、环境维护及关闭焦点；取消新建仍保留放弃保护。"
+      },
+      {
+        "guideId": "ledger-paste",
+        "stepIds": [
+          "kind-owner",
+          "direct-rows",
+          "paste-source",
+          "layout-header",
+          "map-columns",
+          "append-source",
+          "review-rows",
+          "submit",
+          "leave"
+        ],
+        "result": "passed",
+        "evidence": ".scratch/antd6-ui-migration/evidence/electron-development-complete.log：ledger-bulk-entry 与 operations-guidance 验证十类直接录入、表格映射、追加、逐行选择、回滚、秘密字段和关闭保护；校对截图已重截并查看。"
+      },
+      {
+        "guideId": "secret-protection",
+        "stepIds": [
+          "enable",
+          "unlock",
+          "hide-copy",
+          "lock"
+        ],
+        "result": "passed",
+        "evidence": ".scratch/antd6-ui-migration/evidence/electron-development-complete.log：vault、vault-rotation 与 system-protection 在隔离资料和模拟钥匙串中验证解锁、复制、会话锁定与重启；不代表真实系统钥匙串授权通过。"
+      },
+      {
+        "guideId": "backup-password",
+        "stepIds": [
+          "open",
+          "enter",
+          "cancel",
+          "change"
+        ],
+        "result": "passed",
+        "evidence": ".scratch/antd6-ui-migration/evidence/electron-development-complete.log：backup-guidance、backup、system-protection 验证独立备份密码设置、取消、更改和错误密码反馈；使用隔离资料与测试钥匙串。"
+      },
+      {
+        "guideId": "full-backup",
+        "stepIds": [
+          "start",
+          "choose-file",
+          "keep",
+          "verify-scope"
+        ],
+        "result": "passed",
+        "evidence": ".scratch/antd6-ui-migration/evidence/electron-development-complete.log：backup、backup-guidance、desktop 验证实际加密备份、预检和图片恢复，输出只写入临时测试目录。"
+      },
+      {
+        "guideId": "automatic-backup",
+        "stepIds": [
+          "enable",
+          "directory",
+          "result",
+          "retention"
+        ],
+        "result": "passed",
+        "evidence": ".scratch/antd6-ui-migration/evidence/electron-development-complete.log：automatic-backup 与 backup-guidance 验证策略持久化、跨日备份、失败重试与目录反馈；保留策略另有单元测试覆盖。"
+      },
+      {
+        "guideId": "restore-and-migrate",
+        "stepIds": [
+          "choose",
+          "password",
+          "preview",
+          "confirm",
+          "verify"
+        ],
+        "result": "passed",
+        "evidence": ".scratch/antd6-ui-migration/evidence/electron-development-complete.log：backup 与 backup-guidance 验证错误密码、取消、预检、整份恢复、代次切换与恢复后解锁；未覆盖 Windows 实机。"
+      },
+      {
+        "guideId": "application-update",
+        "stepIds": [
+          "check",
+          "retry",
+          "restart-choice"
+        ],
+        "result": "passed",
+        "evidence": ".scratch/antd6-ui-migration/evidence/electron-package.log：打包应用验证关于与更新入口、安装位置限制、重启选择、取消与返回焦点；下载和安装状态使用 IPC 测试夹具，不表示真实远程更新通过。"
+      },
+      {
+        "guideId": "using-guidance",
+        "stepIds": [
+          "open",
+          "read",
+          "versions",
+          "navigate"
+        ],
+        "result": "passed",
+        "evidence": ".scratch/antd6-ui-migration/evidence/electron-development-complete.log：guidance、guidance-versions 与 daily-guidance 验证离线阅读、关闭、保存失败阻止导航及版本提示生命周期；原生鼠标未验收。"
+      },
+      {
+        "guideId": "appearance",
+        "stepIds": [
+          "system-preferences"
+        ],
+        "result": "not-verified",
+        "evidence": "本轮未单独完成这些步骤的真实操作系统或维护者人工验收；自动化与模拟适配器结果不替代该项核对。"
+      },
+      {
+        "guideId": "workspace-basics",
+        "stepIds": [
+          "undo"
+        ],
+        "result": "not-verified",
+        "evidence": "本轮未单独完成这些步骤的真实操作系统或维护者人工验收；自动化与模拟适配器结果不替代该项核对。"
+      },
+      {
+        "guideId": "systems-environments",
+        "stepIds": [
+          "delete-environment"
+        ],
+        "result": "not-verified",
+        "evidence": "本轮未单独完成这些步骤的真实操作系统或维护者人工验收；自动化与模拟适配器结果不替代该项核对。"
+      },
+      {
+        "guideId": "secret-protection",
+        "stepIds": [
+          "system"
+        ],
+        "result": "not-verified",
+        "evidence": "本轮未单独完成这些步骤的真实操作系统或维护者人工验收；自动化与模拟适配器结果不替代该项核对。"
+      },
+      {
+        "guideId": "application-update",
+        "stepIds": [
+          "download",
+          "prepare",
+          "verify"
+        ],
+        "result": "not-verified",
+        "evidence": "本轮未单独完成这些步骤的真实操作系统或维护者人工验收；自动化与模拟适配器结果不替代该项核对。"
+      }
+    ],
+    "knownGaps": [
+      "未完成维护者人工验收；代理核对不等同人工签收。",
+      "当前进程缺少辅助功能权限，原生鼠标与拖拽区域未验收；Playwright 点击不作为替代。",
+      "未执行 Windows 实机验证或真实系统钥匙串授权。",
+      "未执行真实远程更新下载安装；更新状态夹具与健康记录夹具不代表自动升级成功。",
+      "上述本地验证完成于新版本绑定之前；正式版本由 GitHub Actions 重新构建、测试及核验资产。"
+    ]
+  },
+  "version": "0.1.24",
+  "tag": "v0.1.24",
+  "sourceSha": "5931db3015c3733bb903d2f591b37edd436941b6",
+  "publication": "pending"
+}
