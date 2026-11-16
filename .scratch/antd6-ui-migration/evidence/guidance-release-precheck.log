@@ -1,0 +1,136 @@
+
+> clever-workbench@0.1.23 preguidance:check
+> npm run tools:generate
+
+
+> clever-workbench@0.1.23 tools:generate
+> node scripts/generate-tools.mjs
+
+
+> clever-workbench@0.1.23 guidance:check
+> node scripts/check-operation-guidance.mjs
+
+操作指引检查（仅警告，不阻止发布）
+操作说明：全站统一界面与控件，台账采用分类页签，设置按外观、凭据保护、备份与恢复、关于与更新和使用指引分组。
+  工作台、任务、文档、回顾与六个工具使用一致的导航、表格、表单和弹窗。顶部侧栏按钮可收起或展开导航，浅色、深色及辅助外观保持一致。（指引：appearance、workspace-basics）
+  台账按七类页签浏览，环境与标签筛选、清单与详情切换保持原有上下文；系统信息按基本信息、环境管理和项目档案分组，批量录入仍先校对再提交。（指引：ledger-browsing、systems-environments、ledger-paste）
+  设置分为外观、凭据保护、备份与恢复、关于与更新、使用指引五个页签。完整备份和恢复在备份与恢复，主密码在凭据保护，手动检查更新在关于与更新。（指引：appearance、secret-protection、backup-password、full-backup、automatic-backup、restore-and-migrate、application-update、using-guidance）
+人工核对：completed-with-gaps；已知缺项 5 项
+  已知缺项：未完成维护者人工验收；代理核对不等同人工签收。
+  已知缺项：当前进程缺少辅助功能权限，原生鼠标与拖拽区域未验收；Playwright 点击不作为替代。
+  已知缺项：未执行 Windows 实机验证或真实系统钥匙串授权。
+  已知缺项：未执行真实远程更新下载安装；更新状态夹具与健康记录夹具不代表自动升级成功。
+  已知缺项：上述本地验证完成于新版本绑定之前；正式版本由 GitHub Actions 重新构建、测试及核验资产。
+可用功能指引 48 项，版本记录 5 项，警告 56 项。
+警告 [missing-review] content/guidance/releases/0.1.17.json#review：未提供完整的人工核对记录。
+  修正建议：据实记录核对人、源码、环境、对应步骤、结果和缺项；这项警告不阻断发布。
+警告 [missing-review] content/guidance/releases/0.1.18.json#review：未提供完整的人工核对记录。
+  修正建议：据实记录核对人、源码、环境、对应步骤、结果和缺项；这项警告不阻断发布。
+警告 [review-gap] content/guidance/pending.json#review.checks.12.result：核对尚未通过：appearance（not-verified）。
+  修正建议：保留并处理核对证据：本轮未单独完成这些步骤的真实操作系统或维护者人工验收；自动化与模拟适配器结果不替代该项核对。
+警告 [review-gap] content/guidance/pending.json#review.checks.13.result：核对尚未通过：workspace-basics（not-verified）。
+  修正建议：保留并处理核对证据：本轮未单独完成这些步骤的真实操作系统或维护者人工验收；自动化与模拟适配器结果不替代该项核对。
+警告 [review-gap] content/guidance/pending.json#review.checks.14.result：核对尚未通过：systems-environments（not-verified）。
+  修正建议：保留并处理核对证据：本轮未单独完成这些步骤的真实操作系统或维护者人工验收；自动化与模拟适配器结果不替代该项核对。
+警告 [review-gap] content/guidance/pending.json#review.checks.15.result：核对尚未通过：secret-protection（not-verified）。
+  修正建议：保留并处理核对证据：本轮未单独完成这些步骤的真实操作系统或维护者人工验收；自动化与模拟适配器结果不替代该项核对。
+警告 [review-gap] content/guidance/pending.json#review.checks.16.result：核对尚未通过：application-update（not-verified）。
+  修正建议：保留并处理核对证据：本轮未单独完成这些步骤的真实操作系统或维护者人工验收；自动化与模拟适配器结果不替代该项核对。
+警告 [unreviewed-step] content/guidance/releases/0.1.17.json#review.checks：操作变化关联步骤尚无核对记录：using-guidance/open
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.17.json#review.checks：操作变化关联步骤尚无核对记录：using-guidance/read
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.17.json#review.checks：操作变化关联步骤尚无核对记录：using-guidance/versions
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.17.json#review.checks：操作变化关联步骤尚无核对记录：using-guidance/navigate
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.17.json#review.checks：操作变化关联步骤尚无核对记录：application-update/check
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.17.json#review.checks：操作变化关联步骤尚无核对记录：application-update/download
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.17.json#review.checks：操作变化关联步骤尚无核对记录：application-update/retry
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.17.json#review.checks：操作变化关联步骤尚无核对记录：application-update/restart-choice
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.17.json#review.checks：操作变化关联步骤尚无核对记录：application-update/prepare
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.17.json#review.checks：操作变化关联步骤尚无核对记录：application-update/verify
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.18.json#review.checks：操作变化关联步骤尚无核对记录：application-update/check
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.18.json#review.checks：操作变化关联步骤尚无核对记录：application-update/download
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.18.json#review.checks：操作变化关联步骤尚无核对记录：application-update/retry
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.18.json#review.checks：操作变化关联步骤尚无核对记录：application-update/restart-choice
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.18.json#review.checks：操作变化关联步骤尚无核对记录：application-update/prepare
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.18.json#review.checks：操作变化关联步骤尚无核对记录：application-update/verify
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.18.json#review.checks：操作变化关联步骤尚无核对记录：update-history-and-recovery/open-history
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.18.json#review.checks：操作变化关联步骤尚无核对记录：update-history-and-recovery/interpret-health
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.18.json#review.checks：操作变化关联步骤尚无核对记录：update-history-and-recovery/locate-materials
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.18.json#review.checks：操作变化关联步骤尚无核对记录：update-history-and-recovery/isolation
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.18.json#review.checks：操作变化关联步骤尚无核对记录：update-history-and-recovery/recover
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.18.json#review.checks：操作变化关联步骤尚无核对记录：update-history-and-recovery/cleanup
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.20.json#review.checks：操作变化关联步骤尚无核对记录：documents-and-editor/create
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.20.json#review.checks：操作变化关联步骤尚无核对记录：documents-and-editor/scope
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.20.json#review.checks：操作变化关联步骤尚无核对记录：documents-and-editor/search
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.20.json#review.checks：操作变化关联步骤尚无核对记录：documents-and-editor/system
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.20.json#review.checks：操作变化关联步骤尚无核对记录：documents-and-editor/context
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.20.json#review.checks：操作变化关联步骤尚无核对记录：documents-and-editor/return
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.20.json#review.checks：操作变化关联步骤尚无核对记录：documents-and-editor/retry
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.20.json#review.checks：操作变化关联步骤尚无核对记录：tasks-edit/system
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.20.json#review.checks：操作变化关联步骤尚无核对记录：tasks-edit/ledger
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.20.json#review.checks：操作变化关联步骤尚无核对记录：tasks-edit/dates
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.20.json#review.checks：操作变化关联步骤尚无核对记录：tasks-edit/complete
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.20.json#review.checks：操作变化关联步骤尚无核对记录：tasks-edit/reopen
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.20.json#review.checks：操作变化关联步骤尚无核对记录：tasks-edit/delete
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.21.json#review.checks：操作变化关联步骤尚无核对记录：ledger-browsing/system
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.21.json#review.checks：操作变化关联步骤尚无核对记录：ledger-browsing/filter
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.21.json#review.checks：操作变化关联步骤尚无核对记录：ledger-browsing/edit
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.21.json#review.checks：操作变化关联步骤尚无核对记录：ledger-browsing/empty
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.21.json#review.checks：操作变化关联步骤尚无核对记录：ledger-copy/field
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.21.json#review.checks：操作变化关联步骤尚无核对记录：ledger-copy/selection
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.21.json#review.checks：操作变化关联步骤尚无核对记录：ledger-copy/many
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.21.json#review.checks：操作变化关联步骤尚无核对记录：ledger-copy/accounts
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.23.json#review.checks：操作变化关联步骤尚无核对记录：workspace-favorites/choose
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.23.json#review.checks：操作变化关联步骤尚无核对记录：workspace-favorites/finish
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.23.json#review.checks：操作变化关联步骤尚无核对记录：workspace-favorites/order
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.23.json#review.checks：操作变化关联步骤尚无核对记录：workspace-favorites/access
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.23.json#review.checks：操作变化关联步骤尚无核对记录：workspace-favorites/account
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
+警告 [unreviewed-step] content/guidance/releases/0.1.23.json#review.checks：操作变化关联步骤尚无核对记录：workspace-favorites/remove
+  修正建议：为实际核对的步骤记录结果、环境和证据；未验证时明确记录未验证。
