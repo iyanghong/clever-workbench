@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "kind": "release",
+  "operationChange": "changed",
+  "summary": "技术台账新增“文件导入”。在本机使用 Ollama 分析 Word、Excel 或 CSV，逐行校对后一次保存。",
+  "changes": [
+    {
+      "id": "local-ledger-file-import",
+      "summary": "在技术台账选择系统，打开“文件导入”，启动 Ollama 并准备本地模型，选择文件和分析范围。",
+      "guideIds": [
+        "ledger-file-import"
+      ]
+    },
+    {
+      "id": "review-ledger-file-changes",
+      "summary": "核对每行来源、环境、疑似重复项和字段差异，选择新增、跳过或更新。新增未匹配环境时默认为系统通用，更新保留原环境。",
+      "guideIds": [
+        "ledger-file-import"
+      ]
+    }
+  ],
+  "review": {
+    "status": "completed-with-gaps",
+    "reviewer": "Codex（代理验证）",
+    "checkedAt": "2026-11-19T01:40:59+08:00",
+    "source": "a3e4ffc7a8b8b318928df6da38eb85f52751b023",
+    "environment": "macOS Apple Silicon，24 GB 内存。本机试用构建、真实 Ollama 与隔离测试资料库。",
+    "checks": [
+      {
+        "guideId": "ledger-file-import",
+        "stepIds": [
+          "prepare-model",
+          "choose-file",
+          "analyze",
+          "review-source",
+          "map-environments",
+          "review-details",
+          "commit"
+        ],
+        "result": "passed",
+        "evidence": "真实本地模型与桌面校对验证覆盖文件选择后的解析、多表预览、重复比较、原环境保留和选择字段保存。合成样例覆盖坏行回滚与密码专用接口。"
+      },
+      {
+        "guideId": "ledger-file-import",
+        "stepIds": [
+          "discard"
+        ],
+        "result": "not-verified",
+        "evidence": "已核对关闭提示、取消任务和过期结果处理；完整放弃交互仍待维护者人工核对。"
+      }
+    ],
+    "knownGaps": [
+      "Windows 实机和真实系统钥匙串人工授权尚未核对。",
+      "模型可能遗漏或误判字段，保存前需要核对来源和更新目标。"
+    ]
+  },
+  "version": "0.1.28",
+  "tag": "v0.1.28",
+  "sourceSha": "1b7decf671fa098221104dbe580e5276474a9410",
+  "publication": "pending"
+}

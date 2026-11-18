@@ -241,5 +241,10 @@
   "version": "0.1.24",
   "tag": "v0.1.24",
   "sourceSha": "5931db3015c3733bb903d2f591b37edd436941b6",
-  "publication": "pending"
+  "publication": "published",
+  "publicationEvidence": {
+    "releaseId": 447281173,
+    "publishedAt": "2026-11-16T16:15:51Z",
+    "releaseSha": "358053229e4ac3b1fff94abfb64cfd5d140fe7a7"
+  }
 }
