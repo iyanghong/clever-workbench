@@ -105,3 +105,5 @@ Q15 要求首批覆盖全部现有功能。下面按 26 组用户流程组织，
 指引功能本身由 `using-guidance/open`、`read`、`versions`、`navigate` 覆盖，设置集中入口和升级后一次提示参见[任务 01](implementation-01.md)与[任务 02](implementation-02.md)。共享编辑步骤在 12／13 复用，不另算一篇。配置中不存在为完成组数而放置的空标题：每篇均含用途、准备条件、入口、动作、可观察结果、完成结果和常见问题；这一结论由[内容检查](evidence/11/guidance-report-summary.json)和实际包内逐步显示共同支持。
 
 截至此表编写时，47 篇指引及三张本地图片可离线阅读。发布核对记录仍有人工签认警告；实际 GitHub Release、真实网络更新、生产系统钥匙串授权、Windows／Intel 安装均不在此本地验收结果内。安装版原生鼠标、最终异常内容链路和正式交付结论以[任务 11 实施记录](implementation-11.md)为准。
+
+台账也可从“技术台账 → 选择系统 → 文件导入”进入[本地模型导入指引](../../content/guidance/features/ledger-file-import.json)，查看模型准备、候选复核、环境映射和逐字段保存的操作。
