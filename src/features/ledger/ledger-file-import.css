@@ -1,0 +1,154 @@
+.local-ledger-import-dialog {
+  --dialog-width: min(1120px, calc(100vw - 40px));
+}
+.local-ledger-import-dialog .ant-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.local-import-setup {
+  padding: 0;
+}
+.local-import-runtime,
+.local-import-actions,
+.local-import-job,
+.local-import-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.local-import-runtime,
+.local-import-footer {
+  justify-content: space-between;
+}
+.local-import-runtime h3,
+.local-import-section h4 {
+  margin: 0 0 6px;
+}
+.local-import-runtime p,
+.local-import-footer p {
+  margin: 0;
+}
+.local-import-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 10px 0;
+}
+.local-import-form-grid label,
+.local-import-password label,
+.local-import-entry > label,
+.local-import-extra label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.local-import-form-grid .ant-select {
+  width: 100%;
+}
+.local-import-wide {
+  grid-column: 1 / -1;
+}
+.local-import-review {
+  display: grid;
+  grid-template-columns: minmax(270px, 0.85fr) minmax(340px, 1.25fr);
+  gap: 18px;
+  min-height: 260px;
+}
+.local-import-list,
+.local-import-detail {
+  min-width: 0;
+  max-height: 50vh;
+  overflow: auto;
+}
+.local-import-detail {
+  border-left: 1px solid var(--line);
+  padding-left: 18px;
+}
+.local-import-detail fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.local-import-name {
+  height: auto;
+  padding: 0;
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.local-import-section {
+  margin: 16px 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.local-import-entry {
+  border-bottom: 1px solid var(--line);
+  padding: 4px 0 12px;
+  margin-bottom: 12px;
+}
+.local-import-password {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+}
+.local-import-sources {
+  padding-left: 20px;
+}
+.local-import-sources pre {
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--bg);
+  padding: 8px;
+  border-radius: 6px;
+}
+.local-import-extra {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 10px;
+}
+.local-import-extra label {
+  flex: 1;
+}
+.local-import-problems {
+  color: var(--secondary);
+  padding-left: 20px;
+}
+.local-import-checks {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+.local-import-job {
+  overflow-wrap: anywhere;
+}
+.local-import-footer {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+@media (max-width: 900px) {
+  .local-import-review {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .local-import-list {
+    max-height: 22vh;
+  }
+  .local-import-detail {
+    max-height: none;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding: 12px 0 0;
+  }
+  .local-import-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .local-import-runtime,
+  .local-import-footer {
+    align-items: flex-start;
+  }
+}

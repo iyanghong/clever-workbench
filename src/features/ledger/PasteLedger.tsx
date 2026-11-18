@@ -13,6 +13,7 @@ import type { LedgerBatch } from '../../ledger-workspace-types';
 import { parseClipboardTable, parseTsv, type PastedTable } from '../../shared/paste-table';
 import { Dialog } from '../../shared/Dialog';
 import { useVault } from '../vault/VaultProvider';
+import { ledgerColumnAliases as aliases } from '../../ledger-columns';
 const baseFields = [
   ['name', '名称／用途'],
   ['address', '地址／IP'],
@@ -27,38 +28,6 @@ const baseFields = [
   ['count', '节点数量'],
   ['mode', '运行方式'],
 ] as const;
-const aliases: Record<string, string> = {
-  名称: 'name',
-  服务器名称: 'name',
-  服务名称: 'name',
-  应用名称: 'name',
-  任务名称: 'name',
-  角色: 'name',
-  用途: 'field:用途',
-  ip: 'address',
-  地址: 'address',
-  登录地址: 'address',
-  端口: 'port',
-  用户名: 'username',
-  账号: 'username',
-  密码: 'password',
-  口令: 'password',
-  备注: 'notes',
-  说明: 'notes',
-  仓库: 'repository',
-  频率: 'frequency',
-  周期: 'frequency',
-  状态: 'status',
-  cpu: 'field:CPU',
-  内存: 'field:内存',
-  硬盘: 'field:硬盘',
-  操作系统: 'field:操作系统',
-  类型: 'field:类型',
-  版本: 'field:版本',
-  实例: 'field:实例',
-  库名: 'field:库名',
-  主备: 'field:主备',
-};
 const kinds: Record<LedgerBatch['kind'], string> = {
   access: '访问入口',
   server: '服务器',

@@ -6,6 +6,11 @@ import type { Store } from './store';
 import type { LedgerCapture } from '../src/ledger-types';
 import type { LedgerBatch } from '../src/ledger-workspace-types';
 import { WorkspaceLedger } from './ledger-workspace';
+import {
+  saveLedgerImport,
+  validateLedgerImport,
+  type PreparedLedgerImport,
+} from './ledger-import-save';
 import type {
   SecretKind,
   VaultStatus,
@@ -828,6 +833,22 @@ export class Vault {
         .run(input.token, created[0], now);
       return created[0];
     });
+  }
+  captureImport(input: PreparedLedgerImport) {
+    validateLedgerImport(input);
+    this.store.ledger.system(input.systemId);
+    const completed = this.store.db
+      .prepare('SELECT createdId FROM ledger_batches WHERE token=?')
+      .get(`import:${input.id}`);
+    if (completed)
+      return { createdId: String(completed.createdId), snapshot: this.store.snapshot() };
+    const key = Object.values(input.passwords).some(Boolean) ? this.requireKey() : null;
+    return this.copyTransaction(() =>
+      saveLedgerImport(this.store, input, (id, password) => {
+        if (!key) throw new Error('请先解锁凭据保护。');
+        this.writeSecret(id, 'password', password, key);
+      }),
+    );
   }
   accountText(accountId: string): { value: string; sensitive: boolean } {
     const account = this.store.ledger.account(accountId);

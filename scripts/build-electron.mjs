@@ -20,6 +20,15 @@ async function copyGuidance(relative = '') {
   }
 }
 await copyGuidance();
+await build({
+  entryPoints: ['electron/ledger-import-worker.ts'],
+  outfile: 'dist-electron/ledger-import-worker.cjs',
+  bundle: true,
+  platform: 'node',
+  format: 'cjs',
+  target: 'node24',
+  sourcemap: true,
+});
 const { generateToolRegistries } = await import('./generate-tools.mjs');
 const tools = await generateToolRegistries();
 await rm(path.join('dist-electron', 'tools'), { recursive: true, force: true });

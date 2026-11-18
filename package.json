@@ -1,6 +1,6 @@
 {
   "name": "clever-workbench",
-  "version": "0.1.24",
+  "version": "0.1.27",
   "private": true,
   "description": "个人技术台账、工作任务与方案工作台",
   "type": "module",
@@ -74,6 +74,8 @@
     "dayjs": "1.11.19",
     "docx": "^9.12.0",
     "entities": "^8.1.0",
+    "exceljs": "4.4.0",
+    "fast-xml-parser": "5.12.1",
     "lowlight": "^3.3.0",
     "marked": "^17.0.6",
     "react": "^19.3.1",
@@ -97,6 +99,11 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "vitest": "^4.1.12"
+  },
+  "overrides": {
+    "exceljs": {
+      "uuid": "11.1.1"
+    }
   },
   "author": "Axelton",
   "engines": {

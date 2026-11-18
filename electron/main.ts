@@ -34,6 +34,7 @@ import { launchUpdateHelper, resolveUpdateTarget } from './update-launcher';
 import { UpdateJournal, UpdateHealth } from './update-recovery';
 import { exportScheme, renderExportDocument } from './export-native';
 import { GuidanceDevice, readBundledGuidance } from './guidance';
+import { LocalLedgerImports } from './ledger-import';
 
 protocol.registerSchemesAsPrivileged([
   { scheme: exportScheme, privileges: { standard: true, secure: true } },
@@ -57,6 +58,7 @@ let window: BrowserWindow | null = null,
   closePending = false,
   quitting = false;
 let updates: UpdateCoordinator;
+let localImports: LocalLedgerImports | undefined;
 let updateJournal: UpdateJournal | undefined, updateHealth: UpdateHealth | undefined;
 let updaterAvailable = true;
 function disableUpdates() {
@@ -69,6 +71,7 @@ let guidanceDevice: GuidanceDevice | undefined;
 let updateFrozen = false;
 const activeOperations = new Set<Promise<unknown>>();
 const updateReadChannels = new Set([
+  'local-ledger-state',
   'guidance-availability',
   'guidance-versions',
   'update-history',
@@ -278,6 +281,8 @@ function createWindow() {
     void (async () => {
       try {
         if (tools.busy) throw new Error('工具任务尚未完成，请等待完成后再退出。');
+        if (localImports?.busy)
+          throw new Error('本地模型任务尚未完成，请等待或在“文件导入”中取消后再退出。');
         if (restoring || rotatingProtection)
           throw new Error('资料保护操作正在进行，请完成后再关闭窗口。');
         await backups.whenIdle();
@@ -285,9 +290,12 @@ function createWindow() {
         if (restoring || rotatingProtection)
           throw new Error('资料保护操作正在进行，请完成后再关闭窗口。');
         await backups.whenIdle();
+        if (localImports?.pending)
+          throw new Error('文件导入尚未确认，请在台账的“文件导入”中完成或放弃本次内容。');
         vault?.lock();
         await systemExports.whenIdle();
         if (tools.busy) throw new Error('工具任务尚未完成，请等待完成后再退出。');
+        localImports?.dispose();
         await tools.dispose();
         await guidanceDevice?.whenIdle();
         allowClose = true;
@@ -436,6 +444,8 @@ app
         if (restoring || rotatingProtection || closePending)
           throw Error('请等待资料保护或关闭操作完成后再更新。');
         if (tools.busy) throw Error('工具任务尚未完成，请等待完成后再更新。');
+        if (localImports?.busy || localImports?.pending)
+          throw Error('请先完成或取消本地文件导入，再安装更新。');
         if (!backupProtection(store.db))
           throw Error('请先设置独立备份密码，以便更新前创建完整加密备份。');
       },
@@ -547,6 +557,7 @@ app
       store,
       (status) => {
         if (!status.unlocked) void secretClipboard?.clearOwned();
+        if (!status.unlocked) localImports?.onVaultLocked();
         window?.webContents.send('vault-status', status);
       },
       {
@@ -557,6 +568,66 @@ app
     );
     secretClipboard = new SecretClipboard(vault, clipboard);
     systemExports = new SystemExports(store, vault, renderExportDocument);
+    localImports = new LocalLedgerImports(
+      store,
+      vault,
+      path.join(__dirname, 'ledger-import-worker.cjs'),
+      path.join(app.getPath('userData'), 'local-models'),
+      () => window?.webContents.send('local-ledger-import-changed'),
+    );
+    void localImports.runtime.detect();
+    const importWrite = () => {
+      writable();
+      if (closePending) throw new Error('窗口正在关闭，请稍后重试。');
+    };
+    secureHandler('local-ledger-state', () => localImports!.snapshot());
+    secureHandler('local-ledger-sources', (id, ids) => localImports!.sources(id, ids));
+    secureHandler('local-ollama-start', async () => {
+      importWrite();
+      if (localImports!.busy) throw new Error('请等待当前本地模型任务完成或取消。');
+      const generation = store.generation;
+      await localImports!.runtime.start();
+      writable(generation);
+      return localImports!.snapshot();
+    });
+    secureHandler('local-ollama-download', (model) => {
+      importWrite();
+      if (localImports!.busy) throw new Error('请先等待当前任务完成或取消。');
+      localImports!.runtime.download(model);
+      return localImports!.snapshot();
+    });
+    secureHandler('local-ollama-cancel', () => {
+      importWrite();
+      localImports!.runtime.cancelDownload();
+      return localImports!.snapshot();
+    });
+    secureHandler('local-ledger-choose', async (input) => {
+      importWrite();
+      const generation = store.generation;
+      const result = await dialog.showOpenDialog(window!, {
+        title: '选择要分析的台账资料',
+        properties: ['openFile'],
+        filters: [{ name: 'Excel、Word 或 CSV', extensions: ['xlsx', 'docx', 'csv'] }],
+      });
+      writable(generation);
+      return result.canceled ? null : localImports!.choose(result.filePaths[0], input);
+    });
+    secureHandler('local-ledger-analyze', (input) => {
+      importWrite();
+      return localImports!.analyze(input);
+    });
+    secureHandler('local-ledger-cancel', (id) => {
+      importWrite();
+      return localImports!.cancel(id);
+    });
+    secureHandler('local-ledger-discard', (id) => {
+      importWrite();
+      localImports!.discard(id);
+    });
+    secureHandler('local-ledger-commit', (input) => {
+      importWrite();
+      return localImports!.commit(input);
+    });
     powerMonitor.on('lock-screen', () => vault.lock());
     powerMonitor.on('suspend', () => vault.lock());
     setInterval(() => vault.checkIdle(), 10_000).unref();
@@ -760,6 +831,8 @@ app
     });
     secureHandler('restore-backup', async (token) => {
       if (tools.busy) throw new Error('请先等待工具任务完成，再恢复工作台备份。');
+      if (localImports?.busy || localImports?.pending)
+        throw new Error('请先完成或取消本地文件导入，再恢复工作台备份。');
       text(token);
       await flushRenderer();
       writable();
@@ -767,6 +840,7 @@ app
       restoring = true;
       try {
         const result = await backups.restore(token);
+        localImports?.clear();
         await tools.dispose();
         window?.webContents.send('data-restored', store.generation);
         return result;
@@ -904,6 +978,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 app.on('will-quit', () => {
+  localImports?.dispose();
   updates?.stop();
   vault?.lock();
   store?.close();

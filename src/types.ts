@@ -159,6 +159,7 @@ export type BackupInfo = {
   secrets: number;
 };
 export interface DesktopAPI {
+  localLedgerImport: import('./ledger-import-types').LocalLedgerImportAPI;
   guidanceAvailability(): Promise<import('./guidance/types').GuidanceAvailability>;
   onGuidanceAvailabilityChanged(handler: () => void): () => void;
   guidanceVersions(): Promise<import('./guidance/types').GuidanceVersions>;

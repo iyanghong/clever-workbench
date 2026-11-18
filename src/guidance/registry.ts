@@ -28,6 +28,7 @@ const coreGuidanceTargets: Record<string, GuidanceTarget> = {
   'ledger-deployments': { module: 'ledger', ledgerCategory: 'services', label: '台账 → 应用部署' },
   'ledger-operations': { module: 'ledger', ledgerCategory: 'operations', label: '台账 → 运行维护' },
   'ledger-import': { module: 'ledger', label: '台账 → 粘贴表格' },
+  'ledger-file-import': { module: 'ledger', label: '台账 → 文件导入' },
   'system-export': { module: 'ledger', label: '台账 → 系统资料导出' },
   tasks: { module: 'tasks', label: '工作任务' },
   documents: { module: 'documents', label: '文档' },

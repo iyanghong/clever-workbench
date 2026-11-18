@@ -16,6 +16,7 @@ import type { LedgerCopyRef } from '../../ledger-copy-types';
 import { QuickTask } from '../tasks/QuickTask';
 import { RelatedWork } from './RelatedWork';
 import { PasteLedger } from './PasteLedger';
+import { LedgerFileImport } from './LedgerFileImport';
 import { useEffect, useRef, useState } from 'react';
 import {
   PlusIcon,
@@ -798,6 +799,12 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
               />
             </nav>
             <div className="workspace-category-actions">
+              <Button
+                htmlType="button"
+                onClick={() => void transition(() => setCapture('file-import'))}
+              >
+                文件导入
+              </Button>
               <GuidanceButton
                 placement="ledger-import"
                 label="录入指引"
@@ -1888,6 +1895,15 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
               setEditing(false);
             }
           }}
+        />
+      )}
+      {capture === 'file-import' && system && (
+        <LedgerFileImport
+          snapshot={snapshot}
+          systemId={systemId}
+          registerFlush={saves.register}
+          onClose={() => setCapture(null)}
+          onSaved={setSnapshot}
         />
       )}
       {node && service && (

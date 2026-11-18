@@ -34,6 +34,23 @@ const call = async (channel: string, ...args: unknown[]) => {
   return ipcRenderer.invoke(channel, await expected, ...args);
 };
 const api: DesktopAPI = {
+  localLedgerImport: {
+    state: () => call('local-ledger-state'),
+    sources: (id, sourceIds) => call('local-ledger-sources', id, sourceIds),
+    startOllama: () => call('local-ollama-start'),
+    downloadModel: (model) => call('local-ollama-download', model),
+    cancelDownload: () => call('local-ollama-cancel'),
+    chooseFile: (input) => call('local-ledger-choose', input),
+    analyze: (input) => call('local-ledger-analyze', input),
+    cancel: (id) => call('local-ledger-cancel', id),
+    discard: (id) => call('local-ledger-discard', id),
+    commit: (input) => call('local-ledger-commit', input),
+    onChanged(handler) {
+      const listener = () => handler();
+      ipcRenderer.on('local-ledger-import-changed', listener);
+      return () => ipcRenderer.removeListener('local-ledger-import-changed', listener);
+    },
+  },
   guidanceAvailability: () => call('guidance-availability'),
   onGuidanceAvailabilityChanged(handler) {
     const listener = () => handler();
