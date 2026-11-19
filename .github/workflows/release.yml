@@ -8,6 +8,10 @@ on:
         description: '重试尚未公开的正式版本 tag（vX.Y.Z）'
         required: true
         type: string
+      install_ollama:
+        description: '在 macOS 验证机安装真实 Ollama CLI，不下载模型'
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -58,6 +62,9 @@ jobs:
           ditto -x -k "$CWB_UPDATE_ZIP" release/installed
           codesign --verify --deep --strict 'release/installed/Clever Workbench.app'
           echo "CWB_TEST_EXECUTABLE=$GITHUB_WORKSPACE/release/installed/Clever Workbench.app/Contents/MacOS/Clever Workbench" >> "$GITHUB_ENV"
+      - name: Prepare installed Ollama runtime for desktop checks
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.install_ollama }}
+        run: brew install ollama && command -v ollama
       - name: Test installed application
         run: npm run test:e2e
       - name: Create draft, upload complete assets, then publish

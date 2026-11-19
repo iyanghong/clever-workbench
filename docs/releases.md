@@ -73,6 +73,8 @@ CWB_UPDATE_ZIP="$PWD/release/Clever-Workbench-0.2.0-arm64.zip" npx vitest run te
 
 推送正式版本 tag 会启动 `Publish stable macOS Release`。工作流先校验 tag 与应用版本，运行单元测试、打包、原生包校验及已安装应用桌面测试。全部通过后创建 Draft，上传 ZIP、DMG、SHA256SUMS，通过 Release 数字 ID 读取草稿，核对远程资产名称、大小和上传状态，最后发布为 latest。中途失败保留 Draft，客户端无法发现半成品。私有仓库发布后仍仅对有权限的用户可读。
 
+对于尚未公开且原桌面用例依赖已安装 Ollama 的标签，可从 `master` 手动触发同一工作流，填写原标签并勾选安装 Ollama CLI。安装只发生在验证机上，安装包内容与全部测试仍取自指定标签。
+
 目标版本在 Draft 阶段不会成为客户端固定仓库的正式 `latest`，因此不能在公开前宣称完成该目标版本的无替身 GitHub 网络升级验收。下载可靠性修复按 [ADR 0015](adr/0015-recover-release-downloads-with-verified-resume.md) 在公开前验证固定包、断流恢复和安全边界；按 [ADR 0016](adr/0016-verify-real-github-updates-after-publication.md) 在公开后立即用隔离旧安装版完成真实私有 GitHub 下载、备份、替换和健康或人工处理验收。发布说明分别标明两阶段结果。若公开后发现可复现的严重资料或安装风险，暂停问题版作为自动更新目标并公告，再使用新版本号修复；不改写已发布标签或资产。
 
 可先运行 `node scripts/verify-electron-update-github.mjs X.Y.Z`，其中版本必须是当前已发布的正式 latest；此命令从当前源码调用真实 Electron 网络和本机 Git 凭据，在独立临时目录完成私有资产下载、完整散列及原生包验证，不安装应用。它能预检新版下载器的真实网络路径，但不能冒充尚未公开目标版本的资产验收；新版本公开后再对其重跑。

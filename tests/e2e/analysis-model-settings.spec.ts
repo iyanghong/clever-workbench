@@ -105,7 +105,12 @@ test('明确允许的文件可经兼容服务提取，已有台账、识别的�
     await expect(setup.getByText('已在本机解析', { exact: true })).toBeVisible();
     await expect(setup.getByLabel('允许本文件交给指定第三方提取')).toHaveCount(0);
     await expect(setup.getByRole('button', { name: '开始本地分析' })).toHaveCount(0);
-    await expect(setup.getByRole('button', { name: '启动 Ollama' })).toBeEnabled();
+    const runtime = await page.evaluate(() => window.desktop.localLedgerImport.detectOllama());
+    const localAction = setup.getByRole('button', {
+      name: runtime.phase === 'missing' ? '前往安装 Ollama' : '启动 Ollama',
+      exact: true,
+    });
+    await expect(localAction).toBeEnabled();
     await setup.screenshot({
       path: info.outputPath('setup-selected.png'),
       animations: 'disabled',
@@ -124,9 +129,8 @@ test('明确允许的文件可经兼容服务提取，已有台账、识别的�
         (nameBox.x + nameBox.width <= resetBox.x + 1 ||
           nameBox.y + nameBox.height <= resetBox.y + 1),
     ).toBe(true);
-    const startOllama = setup.getByRole('button', { name: '启动 Ollama' });
-    await startOllama.scrollIntoViewIfNeeded();
-    await expect(startOllama).toBeInViewport();
+    await localAction.scrollIntoViewIfNeeded();
+    await expect(localAction).toBeInViewport();
     await page.screenshot({ path: info.outputPath('setup-narrow-dark.png') });
     await page.setViewportSize(before ?? { width: 1280, height: 800 });
     await page.emulateMedia({
