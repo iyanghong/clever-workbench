@@ -1,0 +1,69 @@
+
+> clever-workbench@0.1.25 prebuild
+> npm run tools:generate
+
+
+> clever-workbench@0.1.25 tools:generate
+> node scripts/generate-tools.mjs
+
+
+> clever-workbench@0.1.25 build
+> tsc --noEmit && vite build && node scripts/build-electron.mjs
+
+vite v8.3.4 building client environment for production...
+transforming...
+<script src="./editor-vendor/dist/js/icons/ant.js"> in "/index.html" can't be bundled without type="module" attribute
+✓ 6448 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                            2.07 kB │ gzip:   0.73 kB
+dist/assets/application-update-about-antd6-D_QMGya-.png   33.40 kB
+dist/assets/system-export-options-antd6-CqtxEPVv.png      39.65 kB
+dist/assets/system-export-options-CjI7BM93.png            49.58 kB
+dist/assets/application-update-about-yg7eIdrd.png         70.19 kB
+dist/assets/ledger-paste-review-antd6-ND2PHXWO.png        72.77 kB
+dist/assets/ledger-paste-review-B8wsP0Ki.png             477.87 kB
+dist/assets/Guidance-Bc0m42B1.css                          3.39 kB │ gzip:   1.06 kB
+dist/assets/ToolsPage-DtgSc7Ah.css                         9.77 kB │ gzip:   2.14 kB
+dist/assets/LedgerWorkspace-B2OUVXBw.css                  11.11 kB │ gzip:   2.55 kB
+dist/assets/index-5MYcQP0v.css                           150.52 kB │ gzip:  26.92 kB
+dist/assets/rolldown-runtime-WkwZ5CU-.js                   0.59 kB │ gzip:   0.36 kB
+dist/assets/IconBase.es-B7RRHq1q.js                        0.65 kB │ gzip:   0.43 kB
+dist/assets/RightOutlined-X36e4j62.js                      0.97 kB │ gzip:   0.66 kB
+dist/assets/Check.es-Dpo791yD.js                           1.62 kB │ gzip:   0.61 kB
+dist/assets/useBreakpoint-C5Cy2Lqv.js                      2.26 kB │ gzip:   1.05 kB
+dist/assets/ToolsPage-J8D-j3hs.js                          2.29 kB │ gzip:   1.12 kB
+dist/assets/Archive.es-BgtFEGti.js                         2.39 kB │ gzip:   0.77 kB
+dist/assets/WarningCircle.es-Cg_Ti0Tm.js                   3.22 kB │ gzip:   0.99 kB
+dist/assets/renderer-DxprEp_U.js                           3.86 kB │ gzip:   1.84 kB
+dist/assets/renderer-fcNJXiNl.js                           4.82 kB │ gzip:   2.22 kB
+dist/assets/renderer-BwMKXqwg.js                           4.83 kB │ gzip:   2.18 kB
+dist/assets/FavoriteButton-DCOqg6bs.js                     5.39 kB │ gzip:   2.16 kB
+dist/assets/renderer-X9kOAlqD.js                           5.47 kB │ gzip:   2.13 kB
+dist/assets/renderer-C_bWpkHa.js                           5.62 kB │ gzip:   2.41 kB
+dist/assets/checkbox-Bu-ys9HF.js                           7.79 kB │ gzip:   3.22 kB
+dist/assets/new-record-DwGiUNer.js                         8.45 kB │ gzip:   3.60 kB
+dist/assets/progress-u19sdN28.js                          14.82 kB │ gzip:   5.71 kB
+dist/assets/DocumentsPage-nc8kGqbz.js                     19.30 kB │ gzip:   6.21 kB
+dist/assets/input-Wj8qQEXd.js                             20.41 kB │ gzip:   8.18 kB
+dist/assets/SettingsPage-D32Ex--H.js                      26.91 kB │ gzip:   8.37 kB
+dist/assets/TaskWorkspace-DsZm_Urb.js                     37.72 kB │ gzip:  12.06 kB
+dist/assets/renderer-Dl_KrvTG.js                          46.95 kB │ gzip:  16.16 kB
+dist/assets/tabs-YyoASRKM.js                              58.53 kB │ gzip:  18.59 kB
+dist/assets/select-Bhi2Ppc5.js                            75.70 kB │ gzip:  26.06 kB
+dist/assets/date-picker-BuxoTLLb.js                      101.44 kB │ gzip:  32.81 kB
+dist/assets/LedgerWorkspace-dlJtgxA4.js                  165.23 kB │ gzip:  44.30 kB
+dist/assets/code-highlighting-0C5uRMU9.js                182.69 kB │ gzip:  59.25 kB
+dist/assets/table-Fh1pCRQX.js                            229.41 kB │ gzip:  69.66 kB
+dist/assets/editor-model-BhdfYWu4.js                     251.81 kB │ gzip:  77.27 kB
+dist/assets/Guidance-DVIgy6G0.js                         302.93 kB │ gzip:  85.59 kB
+dist/assets/index-Clz0OSds.js                            307.28 kB │ gzip:  86.51 kB
+dist/assets/Editor-BTv886b6.js                           493.99 kB │ gzip: 141.98 kB
+dist/assets/jsx-runtime-DmZazoV3.js                      504.38 kB │ gzip: 164.44 kB
+
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 2.09s

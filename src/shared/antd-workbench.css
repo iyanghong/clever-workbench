@@ -284,6 +284,9 @@
   gap: 0;
   text-align: left;
 }
+.task-list.compact-tasks .task-open.ant-btn {
+  padding-block: 2px;
+}
 .task-row .task-title {
   width: 100%;
 }

@@ -1,0 +1,69 @@
+
+> clever-workbench@0.1.25 pretest:e2e
+> npm run tools:generate
+
+
+> clever-workbench@0.1.25 tools:generate
+> node scripts/generate-tools.mjs
+
+
+> clever-workbench@0.1.25 test:e2e
+> playwright test tests/e2e/task-layout.spec.ts --output=.scratch/task-title-clipping/results-before
+
+
+Running 1 test using 1 worker
+
+(node:65714) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 tests/e2e/task-layout.spec.ts:7:1 › 任务标题在紧凑与正常列表中保持完整行高 (5.0s)
+
+
+  1) tests/e2e/task-layout.spec.ts:7:1 › 任务标题在紧凑与正常列表中保持完整行高 ───────────────────────────────────────
+
+    Error: dark / 1380px / compact：标题文字不能被纵向裁切
+
+    dark / 1380px / compact：标题文字不能被纵向裁切
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 12
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "text": "费用核对与接口联调",
+    +     "textHeight": 15,
+    +     "titleHeight": 7.234375,
+    +   },
+    +   Object {
+    +     "text": "【配置检查】【配置检查】【配置检查】【配置检查】【配置检查】【配置检查】【配置检查】【配置检查】【配置检查】【配置检查】【配置检查】【配置检查】发布及回滚计划",
+    +     "textHeight": 15,
+    +     "titleHeight": 7.234375,
+    +   },
+    + ]
+
+    Call Log:
+    - Timeout 2000ms exceeded while waiting on the predicate
+
+      68 |               },
+      69 |             )
+    > 70 |             .toEqual([]);
+         |              ^
+      71 |           await expect
+      72 |             .poll(() =>
+      73 |               page
+        at /Users/axelton/code/clever-workbench/tests/e2e/task-layout.spec.ts:70:14
+
+    Error Context: .scratch/task-title-clipping/results-before/task-layout-任务标题在紧凑与正常列表中保持完整行高/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    .scratch/task-title-clipping/results-before/task-layout-任务标题在紧凑与正常列表中保持完整行高/trace.zip
+    Usage:
+
+        npx playwright show-trace .scratch/task-title-clipping/results-before/task-layout-任务标题在紧凑与正常列表中保持完整行高/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests/e2e/task-layout.spec.ts:7:1 › 任务标题在紧凑与正常列表中保持完整行高 ────────────────────────────────────────

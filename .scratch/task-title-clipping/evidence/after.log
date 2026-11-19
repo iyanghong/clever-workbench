@@ -1,0 +1,27 @@
+
+> clever-workbench@0.1.26 pretest:e2e
+> npm run tools:generate
+
+
+> clever-workbench@0.1.26 tools:generate
+> node scripts/generate-tools.mjs
+
+
+> clever-workbench@0.1.26 test:e2e
+> playwright test tests/e2e/task-layout.spec.ts tests/e2e/task-planning.spec.ts tests/e2e/workspace-redesign.spec.ts --output=.scratch/task-title-clipping/results-after
+
+
+Running 8 tests using 1 worker
+
+(node:82228) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/e2e/task-layout.spec.ts:7:1 › 任务标题在紧凑与正常列表中保持完整行高 (6.1s)
+  ✓  2 tests/e2e/task-planning.spec.ts:8:1 › 任务可选保存预计完成日期，按创建月份归类，编辑正文不丢失日期 (4.9s)
+  ✓  3 tests/e2e/task-planning.spec.ts:49:1 › 逾期和临期跨组置顶，切换到期口径及完成重开不产生重复任务 (5.7s)
+  ✓  4 tests/e2e/task-planning.spec.ts:114:1 › 自定义临期在指定时刻生效，清除后恢复默认规则 (4.1s)
+  ✓  5 tests/e2e/task-planning.spec.ts:151:1 › 管理共用标签并组合筛选，优先区不能绕过标签条件 (8.8s)
+  ✓  6 tests/e2e/task-planning.spec.ts:237:1 › 首页和实际台账入口共用紧迫排序及标签，完成后入口同步更新 (8.6s)
+  ✓  7 tests/e2e/workspace-redesign.spec.ts:9:1 › 台账只读工作区、共享范围、部署与任务布局和开始时间 (13.5s)
+  ✓  8 tests/e2e/workspace-redesign.spec.ts:171:1 › 表格粘贴映射预览后建立服务器，密码不进入普通字段 (6.9s)
+
+  8 passed (1.0m)
