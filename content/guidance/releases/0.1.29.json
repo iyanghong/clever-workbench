@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "kind": "release",
+  "operationChange": "changed",
+  "summary": "台账导入支持整行查看候选，系统环境名称在窄窗中也能完整阅读。工具目录支持整卡打开，工作任务修复了紧凑列表的标题裁切。",
+  "changes": [
+    {
+      "id": "ledger-review-row",
+      "summary": "在文件导入清单中点击候选行即可查看详情。左侧复选框单独控制是否导入。",
+      "guideIds": [
+        "ledger-file-import"
+      ]
+    },
+    {
+      "id": "environment-edit-layout",
+      "summary": "在系统信息的环境管理中直接查看和编辑环境名称。窄窗口会把名称和说明分行显示。",
+      "guideIds": [
+        "systems-environments"
+      ]
+    },
+    {
+      "id": "open-tool-card",
+      "summary": "在工具目录点击卡片或用键盘打开工具，卡片内的收藏和使用指引仍可单独操作。",
+      "guideIds": [
+        "local-productivity-tools"
+      ]
+    },
+    {
+      "id": "compact-task-titles",
+      "summary": "在工作任务切换到紧凑列表即可查看完整行高的任务标题。",
+      "guideIds": [
+        "tasks-filter"
+      ]
+    }
+  ],
+  "review": {
+    "status": "completed-with-gaps",
+    "reviewer": "Codex（本机回归验证）",
+    "checkedAt": "2026-11-19T09:52:46+08:00",
+    "source": "854a9f3f5be9636585aaa3480c4668f8f12bb3d6",
+    "environment": "macOS Apple Silicon，Electron，隔离测试资料与本地 Ollama。",
+    "checks": [
+      {
+        "guideId": "ledger-file-import",
+        "stepIds": [
+          "review-source"
+        ],
+        "result": "passed",
+        "evidence": "真实 Ollama 导入测试已验证行状态和空白处可查看详情，复选框独立，键盘可切换候选。"
+      },
+      {
+        "guideId": "systems-environments",
+        "stepIds": [
+          "rename-environment"
+        ],
+        "result": "passed",
+        "evidence": "已验证宽窗和窄窗可完整阅读示例环境名，并检查环境改名后的保存结果。"
+      },
+      {
+        "guideId": "local-productivity-tools",
+        "stepIds": [
+          "open"
+        ],
+        "result": "passed",
+        "evidence": "已验证整张工具卡片、键盘打开、收藏独立操作和减少动态效果。"
+      },
+      {
+        "guideId": "tasks-filter",
+        "stepIds": [
+          "layout"
+        ],
+        "result": "passed",
+        "evidence": "已实测紧凑与正常布局的任务标题行高。"
+      }
+    ],
+    "knownGaps": [
+      "本轮操作核对在 macOS 上完成。Windows 桌面未在本机验收。"
+    ]
+  },
+  "version": "0.1.29",
+  "tag": "v0.1.29",
+  "sourceSha": "c74b13d83fb485ac47df6a43c450b45d0904eb2c",
+  "publication": "pending"
+}
