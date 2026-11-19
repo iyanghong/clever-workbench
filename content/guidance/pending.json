@@ -2,79 +2,85 @@
   "schemaVersion": 1,
   "kind": "release-draft",
   "operationChange": "changed",
-  "summary": "台账导入支持整行查看候选，系统环境名称在窄窗中也能完整阅读。工具目录支持整卡打开，工作任务修复了紧凑列表的标题裁切。",
+  "summary": "台账文件导入分为选文件与分析、校对候选、确认保存三步。可管理本机 Ollama 或逐文件授权兼容服务提取，已有台账始终在本机查重。",
   "changes": [
     {
-      "id": "ledger-review-row",
-      "summary": "在文件导入清单中点击候选行即可查看详情。左侧复选框单独控制是否导入。",
+      "id": "model-management",
+      "summary": "在“分析模型”中安装或启动 Ollama、下载并选用模型。使用 OpenAI 兼容服务时，先测试连接与提取，再为本次文件单独授权。",
       "guideIds": [
         "ledger-file-import"
       ]
     },
     {
-      "id": "environment-edit-layout",
-      "summary": "在系统信息的环境管理中直接查看和编辑环境名称。窄窗口会把名称和说明分行显示。",
+      "id": "review-and-save",
+      "summary": "按原文顺序预览全部候选，点击疑似重复项可看对方名称、来源和匹配依据。逐条选择新增、跳过或更新指定字段，最后统一确认保存。",
       "guideIds": [
-        "systems-environments"
+        "ledger-file-import"
       ]
     },
     {
-      "id": "open-tool-card",
-      "summary": "在工具目录点击卡片或用键盘打开工具，卡片内的收藏和使用指引仍可单独操作。",
+      "id": "environment-matching",
+      "summary": "可手动修改适用环境，也可批量映射来源环境。两条记录至少有一个共同环境才参与查重；系统通用与每个环境比对。",
       "guideIds": [
-        "local-productivity-tools"
+        "ledger-file-import"
       ]
     },
     {
-      "id": "compact-task-titles",
-      "summary": "在工作任务切换到紧凑列表即可查看完整行高的任务标题。",
+      "id": "web-addresses",
+      "summary": "访问入口自动为缺少协议的地址补上 http://。在“访问地址”右侧增加地址，使用对应行的按钮移除。",
       "guideIds": [
-        "tasks-filter"
+        "ledger-file-import"
+      ]
+    },
+    {
+      "id": "empty-editor-caret",
+      "summary": "在空文档中直接输入，光标与首行文字对齐。清空正文后也能在原位置继续输入。",
+      "guideIds": [
+        "documents-and-editor"
       ]
     }
   ],
   "review": {
     "status": "completed-with-gaps",
     "reviewer": "Codex（本机回归验证）",
-    "checkedAt": "2026-11-19T09:52:46+08:00",
-    "source": "854a9f3f5be9636585aaa3480c4668f8f12bb3d6",
-    "environment": "macOS Apple Silicon，Electron，隔离测试资料与本地 Ollama。",
+    "checkedAt": "2026-11-19T21:34:22+08:00",
+    "source": "0ca2fc84e90acddb1b7ce5297f7f1e785c0d89e8",
+    "environment": "macOS Apple Silicon 安装版，隔离资料目录，本机 Ollama 与回环兼容服务。",
     "checks": [
       {
         "guideId": "ledger-file-import",
         "stepIds": [
-          "review-source"
+          "prepare-model",
+          "choose-file",
+          "analyze"
         ],
         "result": "passed",
-        "evidence": "真实 Ollama 导入测试已验证行状态和空白处可查看详情，复选框独立，键盘可切换候选。"
+        "evidence": "已验证本机模型运行、选用和文件分析，以及逐文件授权后经回环兼容服务提取；取消授权时不会发送文件。"
       },
       {
-        "guideId": "systems-environments",
+        "guideId": "ledger-file-import",
         "stepIds": [
-          "rename-environment"
+          "review-source",
+          "map-environments",
+          "review-details",
+          "commit",
+          "discard"
         ],
         "result": "passed",
-        "evidence": "已验证宽窗和窄窗可完整阅读示例环境名，并检查环境改名后的保存结果。"
+        "evidence": "已检查 19 条候选预览、变更环境后的查重、访问地址补全和退出确认，并以合成资料验证选择字段后保存及失败回滚。"
       },
       {
-        "guideId": "local-productivity-tools",
+        "guideId": "documents-and-editor",
         "stepIds": [
-          "open"
+          "write",
+          "focus"
         ],
         "result": "passed",
-        "evidence": "已验证整张工具卡片、键盘打开、收藏独立操作和减少动态效果。"
-      },
-      {
-        "guideId": "tasks-filter",
-        "stepIds": [
-          "layout"
-        ],
-        "result": "passed",
-        "evidence": "已实测紧凑与正常布局的任务标题行高。"
+        "evidence": "在普通和专注模式下比较了空文档光标与首字的位置，并测试清空后重输。"
       }
     ],
     "knownGaps": [
-      "本轮操作核对在 macOS 上完成。Windows 桌面未在本机验收。"
+      "本次发行提供 macOS Apple Silicon 安装包。兼容服务使用合成资料和回环接口验收。"
     ]
   }
 }
