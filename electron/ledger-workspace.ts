@@ -15,7 +15,7 @@ import type {
   ScopeKind,
   WorkspaceLedgerCommand,
 } from '../src/ledger-workspace-types';
-import { scopeFor } from '../src/ledger-workspace-types';
+import { environmentsOverlap, scopeFor } from '../src/ledger-workspace-types';
 
 const ownerTables = {
   resource: 'resources',
@@ -124,11 +124,7 @@ export class WorkspaceLedger {
       )
       .all(systemId, owner.name, ownerId)) {
       const scope = scopeFor(scopes, kind, String(other.id), other.environmentId as string | null);
-      if (
-        !scope.environmentIds.length ||
-        !environmentIds.length ||
-        environmentIds.some((e) => scope.environmentIds.includes(e))
-      )
+      if (environmentsOverlap(scope.environmentIds, environmentIds))
         throw new Error('适用范围内有同名记录，请补充区分名称。');
     }
     this.db

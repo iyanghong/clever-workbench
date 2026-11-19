@@ -108,7 +108,10 @@ export function updateFromCandidate(
     });
   } else if (t.kind === 'account') {
     if (t.ownerBound && envChanged) throw Error('附属账号跟随所属对象的环境。');
-    store.ledger.saveAccount({ type: 'account.save', id, name, ...scalar, environmentId }, now);
+    store.ledger.saveAccount(
+      { type: 'account.save', id, name, ...scalar, ...(t.ownerBound ? {} : { environmentId }) },
+      now,
+    );
   } else {
     const old = s.operations.find((x) => x.id === id)!;
     workspace.saveOperation({

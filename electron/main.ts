@@ -34,6 +34,9 @@ import { launchUpdateHelper, resolveUpdateTarget } from './update-launcher';
 import { UpdateJournal, UpdateHealth } from './update-recovery';
 import { exportScheme, renderExportDocument } from './export-native';
 import { GuidanceDevice, readBundledGuidance } from './guidance';
+import { AnalysisModelSettings, verifyAnalysisModel } from './analysis-model-settings';
+import { prepareOllamaInstaller } from './ollama-installer';
+import { validLocalModel } from '../src/ledger-import-types';
 import { LocalLedgerImports } from './ledger-import';
 
 protocol.registerSchemesAsPrivileged([
@@ -568,18 +571,80 @@ app
     );
     secretClipboard = new SecretClipboard(vault, clipboard);
     systemExports = new SystemExports(store, vault, renderExportDocument);
+    const modelSettings = new AnalysisModelSettings(
+      path.join(app.getPath('userData'), 'analysis-models.json'),
+      safeStorage,
+      (url, options) => net.fetch(url as string, options),
+    );
     localImports = new LocalLedgerImports(
       store,
       vault,
       path.join(__dirname, 'ledger-import-worker.cjs'),
       path.join(app.getPath('userData'), 'local-models'),
       () => window?.webContents.send('local-ledger-import-changed'),
+      modelSettings,
     );
     void localImports.runtime.detect();
+    let configuringModel = false;
     const importWrite = () => {
+      if (configuringModel) throw new Error('请等待当前模型配置操作完成。');
       writable();
       if (closePending) throw new Error('窗口正在关闭，请稍后重试。');
     };
+    async function configureModel<T>(operation: (guard: () => void) => Promise<T>) {
+      importWrite();
+      if (localImports!.busy) throw new Error('已有文件分析或模型下载正在进行。');
+      const generation = store.generation;
+      configuringModel = true;
+      try {
+        return await operation(() => writable(generation));
+      } finally {
+        configuringModel = false;
+      }
+    }
+    secureHandler('analysis-model-settings', () => modelSettings.state());
+    secureHandler('analysis-model-install', () =>
+      configureModel(async (guard) => {
+        try {
+          const filename = await prepareOllamaInstaller(
+            (url, options) => net.fetch(url as string, options),
+            app.getPath('temp'),
+            guard,
+            (progress) => localImports!.runtime.installerProgress(progress),
+          );
+          const error = await shell.openPath(filename);
+          if (error) throw new Error('无法打开已校验的官方安装包。');
+        } finally {
+          localImports!.runtime.installerProgress(undefined);
+        }
+      }),
+    );
+    secureHandler('analysis-model-detect', () => localImports!.runtime.detect());
+    secureHandler('analysis-model-select', (model) =>
+      configureModel(async (guard) => {
+        if (!validLocalModel(model)) throw new Error('本机模型标签无效。');
+        const runtime = localImports!.runtime;
+        await runtime.start('analysis');
+        const installed = runtime.snapshot().models.find((m) => m.name === model);
+        if (!installed?.digest) throw new Error('请先下载本机模型。');
+        await verifyAnalysisModel(runtime, model, AbortSignal.timeout(180000));
+        guard();
+        return modelSettings.select(model, installed.digest);
+      }),
+    );
+    secureHandler('analysis-service-test', (draft, stage) =>
+      configureModel((guard) => modelSettings.test(draft, stage, guard)),
+    );
+    secureHandler('analysis-service-save', (draft) =>
+      configureModel(async () => modelSettings.save(draft)),
+    );
+    secureHandler('analysis-service-remove', () =>
+      configureModel(async () => modelSettings.remove()),
+    );
+    secureHandler('analysis-remote-file', (permission) => {
+      importWrite();
+      return localImports!.analyzeRemote(permission);
+    });
     secureHandler('local-ledger-state', () => localImports!.snapshot());
     secureHandler('local-ledger-sources', (id, ids) => localImports!.sources(id, ids));
     secureHandler('local-ollama-start', async () => {

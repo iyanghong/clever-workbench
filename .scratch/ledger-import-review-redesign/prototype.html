@@ -1,0 +1,2658 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="connect-src 'none'; form-action 'none'; object-src 'none'"
+    />
+    <title>台账导入体验 · Clever Workbench</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      :root {
+        color-scheme: light dark;
+        --bg: #f4f6f9;
+        --paper: #fff;
+        --subtle: #f7f9fc;
+        --ink: #1d2940;
+        --muted: #54647b;
+        --faint: #63738b;
+        --line: #dbe1ea;
+        --primary: #235acb;
+        --blue-bg: #eaf1ff;
+        --blue-line: #a9c4f7;
+        --warm: #895120;
+        --warm-bg: #fcf6e9;
+        --warm-line: #e9d6aa;
+        --green: #287052;
+        --green-bg: #e8f5ed;
+        --shadow: 0 2px 8px #24395609;
+        --radius: 12px;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei',
+          sans-serif;
+        font-size: 14px;
+        color: var(--ink);
+        background: var(--bg);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #151a22;
+          --paper: #1e2531;
+          --subtle: #242d3b;
+          --ink: #e7edf8;
+          --muted: #b3c1d6;
+          --faint: #98aac1;
+          --line: #394559;
+          --primary: #8bb3ff;
+          --blue-bg: #233857;
+          --blue-line: #496da4;
+          --warm: #e7c28a;
+          --warm-bg: #352f26;
+          --warm-line: #5a4a31;
+          --green: #90d6b0;
+          --green-bg: #243c32;
+          --shadow: none;
+        }
+      }
+      body {
+        margin: 0;
+      }
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+        color: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:disabled {
+        cursor: default;
+        opacity: 0.48;
+      }
+      button:focus-visible,
+      input:focus-visible,
+      select:focus-visible,
+      textarea:focus-visible,
+      summary:focus-visible,
+      [tabindex='-1']:focus-visible {
+        outline: 3px solid var(--primary);
+        outline-offset: 2px;
+      }
+      button {
+        border: 0;
+        background: none;
+      }
+      button svg {
+        flex: none;
+      }
+      h1,
+      h2,
+      h3,
+      h4,
+      p {
+        margin: 0;
+      }
+      svg.i {
+        width: 18px;
+        height: 18px;
+        fill: currentColor;
+        flex: none;
+      }
+      small {
+        font-size: 12px;
+      }
+      strong {
+        font-weight: 650;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .tiny {
+        font-size: 12px;
+        color: var(--faint);
+      }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 0.92em;
+        overflow-wrap: anywhere;
+      }
+      .flex,
+      .actions,
+      .brand,
+      .crumb,
+      .meta,
+      .section-title,
+      .chip,
+      .btn,
+      .row-line,
+      .steps,
+      .top-actions,
+      .action-options,
+      .progress-note,
+      .match-info,
+      .footer-status,
+      .file-brief,
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+      }
+      .spread {
+        justify-content: space-between;
+      }
+      .actions,
+      .top-actions,
+      .meta,
+      .section-title,
+      .row-line,
+      .match-info,
+      .footer-status,
+      .file-brief {
+        gap: 8px;
+      }
+      #app {
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+      }
+      .bar {
+        background: var(--paper);
+        border-bottom: 1px solid var(--line);
+        height: 56px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 3%;
+        gap: 16px;
+      }
+      .brand {
+        gap: 10px;
+        font-size: 15px;
+        letter-spacing: -0.3px;
+        white-space: nowrap;
+      }
+      .brandmark {
+        width: 29px;
+        height: 29px;
+        display: grid;
+        grid-template-columns: repeat(2, 6px);
+        grid-template-rows: repeat(2, 6px);
+        gap: 3px;
+        place-content: center;
+        border-radius: 8px;
+        background: #285bc2;
+      }
+      .brandmark i {
+        background: #fff;
+        border-radius: 1.5px;
+      }
+      .brandmark i:last-child {
+        opacity: 0.55;
+      }
+      .breadcrumb {
+        gap: 14px;
+        min-width: 0;
+      }
+      .crumb {
+        border-left: 1px solid var(--line);
+        padding-left: 14px;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .crumb svg.i {
+        width: 12px;
+        height: 12px;
+      }
+      .demo-tag {
+        color: var(--muted);
+        font-size: 12px;
+        border: 1px dashed var(--line);
+        border-radius: 5px;
+        padding: 3px 7px;
+      }
+      .scene {
+        font-size: 12px;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      main {
+        width: min(1520px, 100%);
+        margin: 0 auto;
+        padding: 24px clamp(18px, 3.1vw, 55px) 22px;
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        flex-direction: column;
+      }
+      .mast {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 20px;
+      }
+      .mast h1 {
+        font-size: clamp(23px, 2vw, 32px);
+        line-height: 1.2;
+        letter-spacing: -0.7px;
+        font-weight: 700;
+      }
+      .mast .meta {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+      }
+      .mast .meta svg.i {
+        width: 15px;
+        height: 15px;
+      }
+      .steps {
+        gap: 9px;
+        font-size: 12px;
+        font-weight: 550;
+        white-space: nowrap;
+      }
+      .step {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 5px 0;
+        color: var(--faint);
+      }
+      .step:disabled {
+        opacity: 0.7;
+      }
+      .step.current {
+        color: var(--primary);
+        font-weight: 700;
+      }
+      .step i {
+        width: 23px;
+        height: 23px;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-style: normal;
+        background: var(--paper);
+        font-size: 11px;
+      }
+      .step.visited i {
+        background: var(--blue-bg);
+        color: var(--primary);
+        border-color: transparent;
+      }
+      .step.current i {
+        color: white;
+        background: #245bcb;
+        border-color: transparent;
+      }
+      .step svg.i {
+        width: 13px;
+        height: 13px;
+      }
+      .step-line {
+        width: 24px;
+        height: 1px;
+        background: var(--line);
+      }
+      .btn {
+        display: inline-flex;
+        justify-content: center;
+        gap: 7px;
+        background: var(--paper);
+        border: 1px solid var(--line);
+        padding: 8px 12px;
+        line-height: 18px;
+        border-radius: 7px;
+        font-weight: 550;
+        font-size: 13px;
+      }
+      .btn:hover:not(:disabled) {
+        border-color: var(--blue-line);
+        color: var(--primary);
+      }
+      .btn.main-btn {
+        color: white;
+        background: #245bcb;
+        border-color: #245bcb;
+      }
+      .btn.main-btn:hover:not(:disabled) {
+        background: #174bad;
+        color: white;
+      }
+      .btn.flat {
+        background: transparent;
+        border-color: transparent;
+      }
+      .link {
+        color: var(--primary);
+        font-size: 13px;
+        font-weight: 560;
+        padding: 3px;
+      }
+      .chip {
+        display: inline-flex;
+        gap: 4px;
+        line-height: 18px;
+        font-size: 11px;
+        white-space: nowrap;
+        font-weight: 600;
+        border-radius: 5px;
+        padding: 1px 6px;
+        color: var(--muted);
+        background: var(--subtle);
+      }
+      .chip.warn {
+        color: var(--warm);
+        background: var(--warm-bg);
+      }
+      .chip.ok {
+        color: var(--green);
+        background: var(--green-bg);
+      }
+      .chip.blue {
+        color: var(--primary);
+        background: var(--blue-bg);
+      }
+      .chip svg.i {
+        width: 12px;
+        height: 12px;
+      }
+      body.review #app {
+        height: 100dvh;
+        min-height: 0;
+      }
+      .board {
+        flex: 1;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: clamp(295px, 29%, 385px) minmax(0, 1fr);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        overflow: hidden;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+      .queue,
+      .detail {
+        min-width: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .queue {
+        border-right: 1px solid var(--line);
+        background: var(--paper);
+      }
+      .queue-head {
+        padding: 17px 16px 12px;
+        border-bottom: 1px solid var(--line);
+      }
+      h2 {
+        font-size: 18px;
+        letter-spacing: -0.3px;
+      }
+      h3 {
+        font-size: 15px;
+      }
+      .queue-head h2 {
+        font-size: 16px;
+      }
+      .num {
+        font:
+          600 12px ui-monospace,
+          monospace;
+        color: var(--muted);
+        background: var(--subtle);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 2px 5px;
+      }
+      .filters {
+        display: flex;
+        gap: 4px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+      .filter {
+        white-space: nowrap;
+        font-size: 12px;
+        border-radius: 6px;
+        padding: 5px 8px;
+        color: var(--muted);
+      }
+      .filter.on {
+        color: var(--primary);
+        background: var(--blue-bg);
+        font-weight: 650;
+      }
+      .rows,
+      .detail-content,
+      .drawer-body {
+        overflow: auto;
+        scrollbar-width: thin;
+      }
+      .rows {
+        flex: 1;
+        min-height: 0;
+      }
+      .qrow {
+        position: relative;
+        display: grid;
+        grid-template-columns: 23px minmax(0, 1fr);
+        gap: 6px;
+        width: 100%;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        padding: 12px 14px;
+        background: var(--paper);
+      }
+      .qrow:hover {
+        background: var(--subtle);
+      }
+      .qrow.active {
+        background: var(--blue-bg);
+        box-shadow: inset 3px 0 var(--primary);
+      }
+      .qrow .ix {
+        font:
+          11px/21px ui-monospace,
+          monospace;
+        color: var(--faint);
+      }
+      .qrow.active .ix {
+        color: var(--primary);
+      }
+      .qrow .row-line {
+        justify-content: space-between;
+        gap: 5px;
+      }
+      .qname {
+        font-size: 14px;
+        font-weight: 630;
+        overflow-wrap: anywhere;
+      }
+      .row-sub,
+      .row-match {
+        font-size: 11.5px;
+        line-height: 1.45;
+        margin-top: 4px;
+        color: var(--muted);
+        overflow-wrap: anywhere;
+      }
+      .row-match {
+        color: var(--warm);
+        display: flex;
+        gap: 4px;
+        align-items: flex-start;
+      }
+      .row-match svg {
+        width: 13px;
+        height: 14px;
+        margin-top: 1px;
+      }
+      .queue-foot {
+        border-top: 1px solid var(--line);
+        padding: 11px 16px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--muted);
+      }
+      progress {
+        appearance: none;
+        height: 5px;
+        border-radius: 4px;
+        overflow: hidden;
+        flex: 1;
+        width: 60px;
+        border: none;
+        background: var(--line);
+      }
+      progress::-webkit-progress-bar {
+        background: var(--line);
+      }
+      progress::-webkit-progress-value {
+        background: var(--primary);
+      }
+      .detail-content {
+        flex: 1;
+        min-height: 0;
+        padding: 20px clamp(15px, 2vw, 32px) 22px;
+        scroll-padding: 16px;
+      }
+      .object-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 17px;
+        min-width: 0;
+      }
+      .object-icon,
+      .file-icon {
+        display: grid;
+        place-items: center;
+        background: var(--blue-bg);
+        color: var(--primary);
+        border-radius: 10px;
+        flex: none;
+        width: 42px;
+        height: 42px;
+      }
+      .object-icon svg.i,
+      .file-icon svg.i {
+        width: 23px;
+        height: 23px;
+      }
+      .object-head h2 {
+        font-size: 23px;
+        line-height: 1.25;
+        margin-top: 4px;
+        overflow-wrap: anywhere;
+      }
+      .object-head .edit {
+        margin-left: auto;
+      }
+      .eyebrow {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .section-title {
+        justify-content: space-between;
+      }
+      .section-title h3,
+      .plain-title {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .section-title .i,
+      .plain-title .i {
+        width: 17px;
+        height: 17px;
+      }
+      .matches {
+        border: 1px solid var(--warm-line);
+        border-radius: 9px;
+        overflow: hidden;
+        margin: 0 0 15px;
+      }
+      .matches header {
+        padding: 10px 13px;
+        background: var(--warm-bg);
+        color: var(--warm);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .matches header h3 {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 14px;
+      }
+      .match {
+        padding: 12px 14px;
+        display: grid;
+        grid-template-columns: minmax(118px, 1fr) minmax(130px, 1.15fr);
+        gap: 4px 16px;
+        border-top: 1px solid var(--warm-line);
+        align-items: start;
+      }
+      .match-name {
+        font-size: 14px;
+        overflow-wrap: anywhere;
+      }
+      .match .tiny {
+        margin: 3px 0;
+        line-height: 1.5;
+      }
+      .match .why {
+        font-size: 12px;
+        color: var(--warm);
+        font-weight: 600;
+      }
+      .match .why,
+      .diff-pair {
+        margin-bottom: 3px;
+      }
+      .seen {
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--muted);
+        font-size: 13px;
+        padding: 11px;
+        margin-bottom: 14px;
+      }
+      .seen .i {
+        color: var(--green);
+      }
+      .weak {
+        font-size: 12px;
+        margin: 0 0 15px;
+        color: var(--muted);
+      }
+      summary {
+        cursor: pointer;
+      }
+      .weak p {
+        margin: 7px 12px;
+      }
+      .decision {
+        margin: 13px 0 15px;
+      }
+      .action-options {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 7px;
+        margin: 9px 0 10px;
+      }
+      .option {
+        text-align: left;
+        padding: 9px 8px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-size: 13px;
+        line-height: 19px;
+      }
+      .option:hover:not(:disabled) {
+        border-color: var(--blue-line);
+      }
+      .option.on {
+        color: var(--primary);
+        background: var(--blue-bg);
+        border-color: var(--primary);
+        font-weight: 650;
+      }
+      .option .i {
+        width: 16px;
+        height: 16px;
+      }
+      .fate {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .fields {
+        display: grid;
+        gap: 8px;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+      input:not([type='checkbox']),
+      select,
+      textarea {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 7px 9px;
+        min-width: 0;
+        max-width: 100%;
+        width: 100%;
+        color: var(--ink);
+        line-height: 18px;
+        font-size: 13px;
+      }
+      textarea {
+        resize: vertical;
+      }
+      .inline-field {
+        display: grid;
+        grid-template-columns: auto minmax(110px, 185px) 1fr;
+        align-items: center;
+        gap: 10px;
+        border-top: 1px solid var(--line);
+        padding-top: 12px;
+        font-size: 13px;
+        margin: 10px 0;
+      }
+      .fold {
+        border-top: 1px solid var(--line);
+        padding: 10px 0;
+        font-size: 13px;
+      }
+      .fold summary {
+        color: var(--muted);
+        font-weight: 550;
+      }
+      .fold .fields,
+      .fold p {
+        margin-top: 10px;
+      }
+      .fold p {
+        color: var(--muted);
+        line-height: 1.6;
+        white-space: pre-line;
+      }
+      .changes {
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        margin: 10px 0;
+        overflow: hidden;
+      }
+      .delta,
+      .delta-head {
+        display: grid;
+        align-items: center;
+        grid-template-columns: 19px minmax(50px, 0.55fr) minmax(0, 1fr) minmax(0, 1fr);
+        gap: 8px;
+        padding: 8px 10px;
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
+      .delta {
+        border-top: 1px solid var(--line);
+      }
+      .delta-head {
+        background: var(--subtle);
+        color: var(--muted);
+      }
+      .delta input {
+        accent-color: var(--primary);
+      }
+      .new {
+        color: var(--primary);
+      }
+      .detail-foot,
+      .page-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px clamp(14px, 2vw, 32px);
+        border-top: 1px solid var(--line);
+        background: var(--paper);
+      }
+      .footer-status {
+        min-width: 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .footer-status .i {
+        width: 15px;
+        height: 15px;
+      }
+      .footer-status.error,
+      .error-text {
+        color: var(--warm);
+      }
+      .card {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+      }
+      .setup {
+        max-width: 800px;
+        width: 100%;
+        margin: 8px auto;
+      }
+      .pad {
+        padding: clamp(16px, 3vw, 32px);
+      }
+      .file-box {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        background: var(--subtle);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        padding: 18px;
+        margin: 14px 0 18px;
+      }
+      .file-box .file-icon {
+        background: var(--paper);
+        border: 1px solid var(--line);
+      }
+      .file-box .field {
+        flex: 1;
+      }
+      .setup .fields {
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .model-line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 16px 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .model-line .i {
+        color: var(--green);
+      }
+      .page-foot {
+        border-radius: 0 0 var(--radius) var(--radius);
+      }
+      .rollup {
+        overflow: hidden;
+      }
+      .summary-stats {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+      }
+      .summary-stats strong {
+        font-size: 20px;
+        margin-right: 3px;
+      }
+      .summary-row {
+        display: grid;
+        grid-template-columns: 30px minmax(125px, 1fr) minmax(160px, 1.6fr) auto;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+      }
+      .summary-row p {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.55;
+        overflow-wrap: anywhere;
+      }
+      .summary-row .delta-line {
+        color: var(--primary);
+      }
+      .result {
+        display: grid;
+        justify-items: center;
+        text-align: center;
+        gap: 14px;
+        padding: 42px 24px;
+      }
+      .result .i {
+        width: 45px;
+        height: 45px;
+        color: var(--green);
+      }
+      .empty {
+        text-align: center;
+        padding: 26px 14px;
+        color: var(--muted);
+      }
+      dialog {
+        padding: 0;
+        background: var(--paper);
+        color: var(--ink);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        box-shadow: 0 15px 60px #13213a33;
+        width: min(540px, calc(100vw - 32px));
+        max-height: 88dvh;
+        overflow: auto;
+      }
+      dialog::backdrop {
+        background: #14213a57;
+      }
+      dialog .dialog-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+      dialog .dialog-body {
+        padding: 18px 20px;
+      }
+      dialog p {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.65;
+      }
+      .scene-item {
+        display: block;
+        width: 100%;
+        padding: 12px;
+        text-align: left;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        margin-top: 8px;
+      }
+      .scene-item:hover {
+        background: var(--blue-bg);
+        border-color: var(--blue-line);
+      }
+      .scene-item small {
+        display: block;
+        color: var(--muted);
+        margin-top: 5px;
+      }
+      .map-row {
+        padding: 13px 0;
+        display: grid;
+        grid-template-columns: minmax(90px, 0.8fr) minmax(120px, 1fr) auto;
+        gap: 9px;
+        align-items: center;
+        border-bottom: 1px solid var(--line);
+      }
+      .map-row:last-child {
+        border-bottom: 0;
+      }
+      .map-count {
+        color: var(--primary);
+        font-size: 12px;
+      }
+      .mobile-only {
+        display: none;
+      }
+      .toast {
+        position: fixed;
+        bottom: 18px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 5;
+        border-radius: 8px;
+        background: var(--ink);
+        color: var(--paper);
+        padding: 9px 15px;
+        box-shadow: var(--shadow);
+        font-size: 13px;
+        pointer-events: none;
+      }
+      .toast:empty {
+        display: none;
+      }
+      @media (max-width: 820px) {
+        .breadcrumb .crumb {
+          display: none;
+        }
+        .board {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .board.show-queue .detail,
+        .board.show-detail .queue {
+          display: none;
+        }
+        .queue {
+          border: 0;
+        }
+        .mobile-only {
+          display: inline-flex;
+        }
+        .object-head {
+          margin-top: 9px;
+        }
+        .mast {
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-bottom: 13px;
+        }
+        main {
+          padding: 15px 12px 12px;
+        }
+        .bar {
+          height: 47px;
+        }
+        .detail-foot .btn {
+          flex: none;
+        }
+        .step-line {
+          width: 15px;
+        }
+        .summary-row {
+          grid-template-columns: 20px minmax(100px, 1fr) auto;
+        }
+        .summary-row .result-text {
+          grid-column: 2/-1;
+          grid-row: auto;
+        }
+        .mast .meta {
+          margin-top: 4px;
+        }
+        .object-head h2 {
+          font-size: 21px;
+        }
+        .filters {
+          gap: 6px;
+        }
+      }
+      @media (max-width: 480px) {
+        .steps {
+          width: 100%;
+          gap: 6px;
+          justify-content: space-between;
+        }
+        .step-line {
+          flex: 1;
+        }
+        .demo-tag {
+          display: none;
+        }
+        .object-head .edit {
+          font-size: 12px;
+        }
+        .match {
+          grid-template-columns: 1fr;
+          gap: 2px;
+        }
+        .detail-content {
+          padding: 11px 13px;
+        }
+        .inline-field {
+          grid-template-columns: auto minmax(0, 1fr);
+        }
+        .inline-field .tiny {
+          grid-column: 1/-1;
+        }
+        .action-options {
+          gap: 4px;
+        }
+        .option {
+          padding: 8px 3px;
+          font-size: 12px;
+        }
+        .option svg {
+          display: none;
+        }
+        .detail-foot {
+          gap: 5px;
+          padding: 9px;
+        }
+        .detail-foot .btn {
+          font-size: 12px;
+          padding: 7px;
+        }
+        .setup .fields {
+          grid-template-columns: 1fr;
+        }
+        .file-box {
+          padding: 10px;
+        }
+        .map-row {
+          grid-template-columns: 1fr 1fr;
+        }
+        .summary-stats {
+          gap: 12px;
+        }
+        .footer-status {
+          font-size: 11px;
+        }
+        .bar {
+          padding: 0 12px;
+        }
+        .summary-row {
+          gap: 6px;
+          padding: 9px;
+        }
+      }
+      @media (prefers-contrast: more) {
+        :root {
+          --line: var(--muted);
+        }
+        .chip,
+        .option {
+          outline: 1px solid currentColor;
+        }
+      }
+      [hidden] {
+        display: none !important;
+      }
+
+      .mast .map-link {
+        font-size: 12px;
+        padding: 0;
+      }
+      .match-origin {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 5px;
+      }
+      .match-origin .i {
+        height: 14px;
+        width: 14px;
+      }
+      .match-origin span {
+        color: var(--faint);
+      }
+      .match-name {
+        font-size: 16px;
+      }
+      .match-evidence {
+        padding-top: 2px;
+      }
+      .match-url {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .match-tools {
+        grid-column: 1/-1;
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        justify-content: space-between;
+      }
+      .match-tools .weak {
+        margin: 4px 0 0;
+      }
+      .target-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        flex-shrink: 0;
+        font-size: 12px;
+      }
+      .target-link .i {
+        width: 13px;
+        height: 13px;
+      }
+      .queue-head {
+        padding-top: 18px;
+      }
+      .row-sub {
+        font-size: 12px;
+      }
+      .qname {
+        font-size: 15px;
+      }
+      .step {
+        font-size: 13px;
+      }
+      .section-title h3 {
+        font-size: 16px;
+      }
+      .meta button:hover,
+      .link:hover {
+        text-decoration: underline;
+      }
+      .option {
+        min-height: 38px;
+      }
+      .error-text {
+        font-weight: 600;
+      }
+      @media (max-width: 480px) {
+        .step {
+          font-size: 12px;
+        }
+        .match-tools {
+          flex-wrap: wrap;
+          gap: 4px;
+        }
+        .queue-foot {
+          gap: 12px;
+        }
+      }
+      .object-head .edit {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+      }
+      .object-head .edit svg.i {
+        width: 15px;
+        height: 15px;
+      }
+
+      .config-grid {
+        display: grid;
+        grid-template-columns: minmax(200px, 252px) minmax(0, 760px);
+        gap: 20px;
+        align-items: start;
+      }
+      .service-nav,
+      .service-form,
+      .service-panel {
+        display: grid;
+        gap: 12px;
+      }
+      .service-tab {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-align: left;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--paper);
+        padding: 15px 12px;
+      }
+      .service-tab span {
+        flex: 1;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      .service-tab small {
+        display: block;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .service-tab.on {
+        background: var(--blue-bg);
+        border-color: var(--blue-line);
+        color: var(--primary);
+      }
+      .service-panel {
+        padding: clamp(16px, 3vw, 30px);
+        gap: 15px;
+      }
+      .service-panel > .btn {
+        justify-self: start;
+      }
+      .service-title {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 16px;
+      }
+      .service-title p {
+        margin-top: 4px;
+      }
+      .service-panel p,
+      .setup .tiny {
+        line-height: 1.55;
+        color: var(--muted);
+      }
+      .service-block {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        background: var(--subtle);
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 13px;
+      }
+      .setup .service-block {
+        margin: 18px 0 12px;
+      }
+      .service-form {
+        grid-template-columns: 1fr 1fr;
+      }
+      .service-form .wide {
+        grid-column: 1/-1;
+      }
+      .service-msg {
+        font-size: 13px;
+        color: var(--primary);
+      }
+      .service-msg:empty {
+        display: none;
+      }
+      .consent {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+      }
+      .consent input {
+        accent-color: var(--primary);
+      }
+      .setup .consent {
+        margin: 11px 0;
+      }
+      .config-gap {
+        margin-top: 8px;
+      }
+      .config-actions {
+        flex-wrap: wrap;
+      }
+      @media (max-width: 740px) {
+        .config-grid {
+          grid-template-columns: 1fr;
+        }
+        .service-nav {
+          grid-template-columns: 1fr 1fr;
+        }
+        .service-tab {
+          padding: 9px;
+          gap: 5px;
+        }
+        .service-tab > .i:last-child {
+          display: none;
+        }
+      }
+      @media (max-width: 480px) {
+        .service-form {
+          grid-template-columns: 1fr;
+        }
+        .service-tab .i {
+          display: none;
+        }
+        .top-actions {
+          gap: 4px;
+        }
+        .top-actions .scene {
+          font-size: 11px;
+          padding: 3px;
+        }
+        .actions .btn {
+          white-space: normal;
+        }
+        .mast .meta {
+          row-gap: 2px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Standalone local interaction prototype. All records are fictional. Icons: Phosphor Icons.
+MIT License
+
+Copyright (c) 2020 Phosphor Icons
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+ -->
+    <svg xmlns="http://www.w3.org/2000/svg" style="display: none" aria-hidden="true">
+      <symbol id="i-Check" viewBox="0 0 256 256">
+        <path
+          d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"
+        ></path>
+      </symbol>
+      <symbol id="i-CaretRight" viewBox="0 0 256 256">
+        <path
+          d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"
+        ></path>
+      </symbol>
+      <symbol id="i-SlidersHorizontal" viewBox="0 0 256 256">
+        <path
+          d="M40,88H73a32,32,0,0,0,62,0h81a8,8,0,0,0,0-16H135a32,32,0,0,0-62,0H40a8,8,0,0,0,0,16Zm64-24A16,16,0,1,1,88,80,16,16,0,0,1,104,64ZM216,168H199a32,32,0,0,0-62,0H40a8,8,0,0,0,0,16h97a32,32,0,0,0,62,0h17a8,8,0,0,0,0-16Zm-48,24a16,16,0,1,1,16-16A16,16,0,0,1,168,192Z"
+        ></path>
+      </symbol>
+      <symbol id="i-FileText" viewBox="0 0 256 256">
+        <path
+          d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Zm-32-80a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,136Zm0,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,168Z"
+        ></path>
+      </symbol>
+      <symbol id="i-Stack" viewBox="0 0 256 256">
+        <path
+          d="M230.91,172A8,8,0,0,1,228,182.91l-96,56a8,8,0,0,1-8.06,0l-96-56A8,8,0,0,1,36,169.09l92,53.65,92-53.65A8,8,0,0,1,230.91,172ZM220,121.09l-92,53.65L36,121.09A8,8,0,0,0,28,134.91l96,56a8,8,0,0,0,8.06,0l96-56A8,8,0,1,0,220,121.09ZM24,80a8,8,0,0,1,4-6.91l96-56a8,8,0,0,1,8.06,0l96,56a8,8,0,0,1,0,13.82l-96,56a8,8,0,0,1-8.06,0l-96-56A8,8,0,0,1,24,80Zm23.88,0L128,126.74,208.12,80,128,33.26Z"
+        ></path>
+      </symbol>
+      <symbol id="i-Link" viewBox="0 0 256 256">
+        <path
+          d="M240,88.23a54.43,54.43,0,0,1-16,37L189.25,160a54.27,54.27,0,0,1-38.63,16h-.05A54.63,54.63,0,0,1,96,119.84a8,8,0,0,1,16,.45A38.62,38.62,0,0,0,150.58,160h0a38.39,38.39,0,0,0,27.31-11.31l34.75-34.75a38.63,38.63,0,0,0-54.63-54.63l-11,11A8,8,0,0,1,135.7,59l11-11A54.65,54.65,0,0,1,224,48,54.86,54.86,0,0,1,240,88.23ZM109,185.66l-11,11A38.41,38.41,0,0,1,70.6,208h0a38.63,38.63,0,0,1-27.29-65.94L78,107.31A38.63,38.63,0,0,1,144,135.71a8,8,0,0,0,16,.45A54.86,54.86,0,0,0,144,96a54.65,54.65,0,0,0-77.27,0L32,130.75A54.62,54.62,0,0,0,70.56,224h0a54.28,54.28,0,0,0,38.64-16l11-11A8,8,0,0,0,109,185.66Z"
+        ></path>
+      </symbol>
+      <symbol id="i-HardDrives" viewBox="0 0 256 256">
+        <path
+          d="M208,136H48a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V152A16,16,0,0,0,208,136Zm0,64H48V152H208v48Zm0-160H48A16,16,0,0,0,32,56v48a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V56A16,16,0,0,0,208,40Zm0,64H48V56H208v48ZM192,80a12,12,0,1,1-12-12A12,12,0,0,1,192,80Zm0,96a12,12,0,1,1-12-12A12,12,0,0,1,192,176Z"
+        ></path>
+      </symbol>
+      <symbol id="i-PencilSimple" viewBox="0 0 256 256">
+        <path
+          d="M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.68,147.31,64l24-24L216,84.68Z"
+        ></path>
+      </symbol>
+      <symbol id="i-Intersect" viewBox="0 0 256 256">
+        <path
+          d="M174.63,81.37a80,80,0,1,0-93.26,93.26,80,80,0,1,0,93.26-93.26ZM100.69,136,120,155.31A63.48,63.48,0,0,1,96,160,63.48,63.48,0,0,1,100.69,136Zm33.75,11.13-25.57-25.57a64.65,64.65,0,0,1,12.69-12.69l25.57,25.57A64.65,64.65,0,0,1,134.44,147.13ZM155.31,120,136,100.69A63.48,63.48,0,0,1,160,96,63.48,63.48,0,0,1,155.31,120ZM32,96a64,64,0,0,1,126-16A80.08,80.08,0,0,0,80.05,158,64.11,64.11,0,0,1,32,96ZM160,224A64.11,64.11,0,0,1,98,176,80.08,80.08,0,0,0,176,98,64,64,0,0,1,160,224Z"
+        ></path>
+      </symbol>
+      <symbol id="i-WarningCircle" viewBox="0 0 256 256">
+        <path
+          d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z"
+        ></path>
+      </symbol>
+      <symbol id="i-CheckCircle" viewBox="0 0 256 256">
+        <path
+          d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"
+        ></path>
+      </symbol>
+      <symbol id="i-ArrowLeft" viewBox="0 0 256 256">
+        <path
+          d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"
+        ></path>
+      </symbol>
+      <symbol id="i-ArrowRight" viewBox="0 0 256 256">
+        <path
+          d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"
+        ></path>
+      </symbol>
+      <symbol id="i-ShieldCheck" viewBox="0 0 256 256">
+        <path
+          d="M208,40H48A16,16,0,0,0,32,56v56c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.26,47,25.53a8,8,0,0,0,4.2,0c1-.27,23.91-6.67,47-25.53C198.48,196.67,224,164.72,224,112V56A16,16,0,0,0,208,40Zm0,72c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,223.62a128.25,128.25,0,0,1-38.92-21.81C61.82,179.51,48,149.3,48,112l0-56,160,0ZM82.34,141.66a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32l-56,56a8,8,0,0,1-11.32,0Z"
+        ></path>
+      </symbol>
+      <symbol id="i-Plus" viewBox="0 0 256 256">
+        <path
+          d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"
+        ></path>
+      </symbol>
+      <symbol id="i-ArrowsLeftRight" viewBox="0 0 256 256">
+        <path
+          d="M213.66,181.66l-32,32a8,8,0,0,1-11.32-11.32L188.69,184H48a8,8,0,0,1,0-16H188.69l-18.35-18.34a8,8,0,0,1,11.32-11.32l32,32A8,8,0,0,1,213.66,181.66Zm-139.32-64a8,8,0,0,0,11.32-11.32L67.31,88H208a8,8,0,0,0,0-16H67.31L85.66,53.66A8,8,0,0,0,74.34,42.34l-32,32a8,8,0,0,0,0,11.32Z"
+        ></path>
+      </symbol>
+      <symbol id="i-SkipForward" viewBox="0 0 256 256">
+        <path
+          d="M200,32a8,8,0,0,0-8,8v69.23L72.43,34.45A15.95,15.95,0,0,0,48,47.88V208.12a16,16,0,0,0,24.43,13.43L192,146.77V216a8,8,0,0,0,16,0V40A8,8,0,0,0,200,32ZM64,207.93V48.05l127.84,80Z"
+        ></path>
+      </symbol>
+      <symbol id="i-X" viewBox="0 0 256 256">
+        <path
+          d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"
+        ></path>
+      </symbol>
+      <symbol id="i-MagnifyingGlass" viewBox="0 0 256 256">
+        <path
+          d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"
+        ></path>
+      </symbol>
+      <symbol id="i-Cpu" viewBox="0 0 256 256">
+        <path
+          d="M152,96H104a8,8,0,0,0-8,8v48a8,8,0,0,0,8,8h48a8,8,0,0,0,8-8V104A8,8,0,0,0,152,96Zm-8,48H112V112h32Zm88,0H216V112h16a8,8,0,0,0,0-16H216V56a16,16,0,0,0-16-16H160V24a8,8,0,0,0-16,0V40H112V24a8,8,0,0,0-16,0V40H56A16,16,0,0,0,40,56V96H24a8,8,0,0,0,0,16H40v32H24a8,8,0,0,0,0,16H40v40a16,16,0,0,0,16,16H96v16a8,8,0,0,0,16,0V216h32v16a8,8,0,0,0,16,0V216h40a16,16,0,0,0,16-16V160h16a8,8,0,0,0,0-16Zm-32,56H56V56H200v95.87s0,.09,0,.13,0,.09,0,.13V200Z"
+        ></path>
+      </symbol>
+      <symbol id="i-ArrowCounterClockwise" viewBox="0 0 256 256">
+        <path
+          d="M224,128a96,96,0,0,1-94.71,96H128A95.38,95.38,0,0,1,62.1,197.8a8,8,0,0,1,11-11.63A80,80,0,1,0,71.43,71.39a3.07,3.07,0,0,1-.26.25L44.59,96H72a8,8,0,0,1,0,16H24a8,8,0,0,1-8-8V56a8,8,0,0,1,16,0V85.8L60.25,60A96,96,0,0,1,224,128Z"
+        ></path>
+      </symbol>
+    </svg>
+    <div id="app"></div>
+    <dialog id="modal" aria-labelledby="modal-label"></dialog>
+    <div id="feedback" class="toast" role="status"></div>
+    <script>
+      function createDemoModel() {
+        const envs = ['系统通用', '开发环境', '仿真环境', '生产环境'];
+        const common = envs[0];
+        const fields = { name: '名称', address: '地址', notes: '说明' };
+        const old = [
+          {
+            id: 'release',
+            kind: '访问入口',
+            name: '发布门户',
+            env: '生产环境',
+            address: 'https://release.example.invalid',
+            notes: '生产发布入口',
+          },
+          {
+            id: 'watch',
+            kind: '访问入口',
+            name: '监控控制台',
+            env: '生产环境',
+            address: 'https://old-watch.example.invalid',
+            notes: '值班监控入口',
+          },
+          {
+            id: 'assets',
+            kind: '其他资源',
+            name: '离线镜像库',
+            env: '仿真环境',
+            address: '192.0.2.80',
+            notes: '定期同步',
+          },
+          {
+            id: 'docs',
+            kind: '访问入口',
+            name: '集成文档使用说明',
+            env: common,
+            address: 'https://guide.example.invalid',
+            notes: '团队使用手册',
+          },
+        ];
+        const seeds = [
+          ['项目首页', 'home'],
+          ['构建节点', '192.0.2.11'],
+          ['发布平台', 'release'],
+          ['制品仓库', 'packages'],
+          ['测试看板', 'quality'],
+          ['构建缓存', '192.0.2.22'],
+          ['接口目录', 'api'],
+          ['集成文档', 'docs'],
+          ['流水线日志', 'logs'],
+          ['监控控制台', 'watch'],
+          ['离线镜像库', '192.0.2.80'],
+          ['发布平台', 'sim-release'],
+          ['镜像分发', 'images'],
+          ['验收入口', 'check'],
+          ['联调节点', '192.0.2.24'],
+          ['回归面板', 'quality'],
+          ['部署记录', 'history'],
+          ['归档存储', ''],
+          ['需求追踪', 'issues'],
+        ];
+        const files = {
+          docx: '星港系统交接手册.docx',
+          xlsx: '星港系统访问清单.xlsx',
+          csv: '星港系统台账.csv',
+        };
+        function newRows(scope = '全部类型') {
+          return seeds
+            .map(([name, addr], i) => {
+              const table = i < 9 ? 1 : i < 15 ? 2 : 3;
+              const group = ['研发区', '仿真区', '交付区'][table - 1];
+              const isResource = addr.startsWith('192.') || !addr;
+              const address = isResource ? addr : `https://${addr}.example.invalid`;
+              const notes =
+                i === 2 ? '通过流水线发布构建产物' : i === 9 ? '新监控入口，原地址已停用' : '';
+              const source = { name, address, notes };
+              const attachment = [3, 4].includes(i + 1)
+                ? {
+                    label: '管理入口',
+                    url: 'https://manage-' + addr + '.example.invalid',
+                    role: '运维只读',
+                  }
+                : null;
+              return {
+                id: i + 1,
+                table,
+                line: i - (table === 1 ? 0 : table === 2 ? 9 : 15) + 2,
+                group,
+                kind: isResource ? '其他资源' : '访问入口',
+                ...source,
+                source,
+                attachment,
+                env: i < 9 ? '开发环境' : common,
+                newEnv: i < 9 ? '开发环境' : common,
+                manualNew: false,
+                target: null,
+                picks: [],
+                action: 'new',
+                deliberate: false,
+                reviewed: false,
+              };
+            })
+            .filter((r) => scope === '全部类型' || r.kind === scope);
+        }
+        function position(r, ext) {
+          if (ext === 'csv') return `第 ${r.id + 1} 行`;
+          return ext === 'xlsx'
+            ? `工作表 ${r.table} · 第 ${r.line} 行`
+            : `表 ${r.table} · 第 ${r.line} 行`;
+        }
+        function matches(r, rows) {
+          const pairs = [
+            ...rows.filter((p) => p.id !== r.id).map((p) => ({ who: p, file: true })),
+            ...old.map((p) => ({ who: p, file: false })),
+          ];
+          const norm = (v) => v.trim().toLowerCase();
+          return pairs.flatMap((p) => {
+            const reasons = [],
+              a = norm(r.name),
+              b = norm(p.who.name);
+            if (a && a === b) reasons.push('完整同名');
+            const left = [r.address, r.attachment?.url].filter(Boolean).map((v) => v.trim());
+            const right = [p.who.address, p.who.attachment?.url]
+              .filter(Boolean)
+              .map((v) => v.trim());
+            const commonAddress = left.find((v) => v && right.includes(v));
+            if (commonAddress) reasons.push('地址相同');
+            if (r.semanticReview !== false && r.id === 5 && !p.file && p.who.id === 'watch')
+              reasons.push('模型建议核对');
+            const weak =
+              !reasons.length &&
+              Math.min(a.length, b.length) >= 3 &&
+              (a.includes(b) || b.includes(a));
+            return reasons.length || weak
+              ? [{ ...p, commonAddress, reasons: weak ? ['名称部分相似'] : reasons, weak }]
+              : [];
+          });
+        }
+        const strong = (r, rows) => matches(r, rows).filter((m) => !m.weak);
+        const target = (r) => old.find((t) => t.id === r.target);
+        const changes = (r) => {
+          const t = target(r);
+          return t ? Object.keys(fields).filter((k) => r[k].trim() !== '' && r[k] !== t[k]) : [];
+        };
+        function chooseTarget(r, id) {
+          const t = old.find((t) => t.id === id && t.kind === r.kind);
+          if (!t) return;
+          r.target = t.id;
+          r.env = t.env;
+          r.picks = [];
+          r.reviewed = false;
+        }
+        function decide(r, action, rows) {
+          if (action === 'update' && !old.some((t) => t.kind === r.kind)) return;
+          r.reviewed = false;
+          r.deliberate = true;
+          if (action === 'update' && r.action !== 'update') {
+            const match = matches(r, rows).find((m) => !m.file && m.who.kind === r.kind);
+            chooseTarget(r, match?.who.id || old.find((t) => t.kind === r.kind).id);
+          }
+          if (action !== 'update') {
+            r.target = null;
+            r.picks = [];
+            r.env = r.newEnv;
+          }
+          r.action = action;
+        }
+        function setEnv(r, v) {
+          if (!envs.includes(v)) return;
+          r.env = v;
+          r.reviewed = false;
+          if (r.action === 'new') {
+            r.newEnv = v;
+            r.manualNew = true;
+          }
+        }
+        const mappable = (r, group) =>
+          r.action === 'new' && !r.manualNew && !r.reviewed && r.group === group;
+        function applyMap(rows, map) {
+          let n = 0;
+          for (const r of rows) {
+            const v = map[r.group];
+            if (envs.includes(v) && mappable(r, r.group) && r.env !== v) {
+              r.env = v;
+              r.newEnv = v;
+              n++;
+            }
+          }
+          return n;
+        }
+        function problem(r, rows) {
+          if (strong(r, rows).length && !r.deliberate)
+            return ['decision', '先决定如何处理这条疑似重复记录。'];
+          if (r.action === 'skip') return null;
+          if (r.action === 'update') {
+            const t = target(r);
+            if (!t) return ['target', '请选择要更新的已有台账。'];
+            if (r.picks.length === 0 && r.env === t.env)
+              return ['delta', '至少勾选一个不同字段，或明确修改适用环境。'];
+            if (
+              rows.some(
+                (p) => p !== r && p.reviewed && p.action === 'update' && p.target === r.target,
+              )
+            )
+              return ['target', '本批已有另一条候选确认更新此对象，请更换目标或操作。'];
+          }
+          if ((r.action === 'new' || r.picks.includes('name')) && !r.name.trim())
+            return ['name', '请补充候选名称，再确认本条。'];
+          if (
+            (r.action === 'new' || r.picks.includes('address')) &&
+            (!r.address.trim() ||
+              (r.kind === '访问入口' && !/^https?:\/\/[^\s/]+(?:\/[^\s]*)?$/i.test(r.address)))
+          )
+            return ['address', '请补充有效的地址，再确认本条。'];
+          return null;
+        }
+        function edit(r, rows, values) {
+          const key = (p) =>
+            strong(p, rows)
+              .map((m) => [m.file, m.who.id, m.who.name, m.who.address, m.reasons])
+              .map((value) => JSON.stringify(value))
+              .join('|');
+          const before = new Map(rows.map((p) => [p.id, key(p)]));
+          Object.assign(r, values);
+          r.reviewed = false;
+          r.picks = r.picks.filter((k) => changes(r).includes(k));
+          for (const p of rows) {
+            if (before.get(p.id) !== key(p)) {
+              p.deliberate = false;
+              p.reviewed = false;
+            }
+          }
+        }
+        function sampleAtEnd(rows) {
+          for (const r of rows) {
+            if (r.id === 18) {
+              r.address = '192.0.2.90';
+            }
+            if (r.id === 10) {
+              decide(r, 'update', rows);
+              r.picks = ['address'];
+            } else if ([12, 16].includes(r.id)) decide(r, 'skip', rows);
+            else decide(r, 'new', rows);
+            r.reviewed = r !== rows.at(-1);
+          }
+        }
+        return {
+          envs,
+          common,
+          fields,
+          old,
+          files,
+          newRows,
+          position,
+          matches,
+          strong,
+          target,
+          changes,
+          chooseTarget,
+          decide,
+          setEnv,
+          mappable,
+          applyMap,
+          problem,
+          edit,
+          sampleAtEnd,
+        };
+      }
+      const model = createDemoModel();
+
+      function startPrototype() {
+        const $ = (s) => document.querySelector(s);
+        const app = $('#app'),
+          modal = $('#modal'),
+          live = $('#feedback');
+        const esc = (value) =>
+          String(value ?? '').replace(
+            /[&<>"']/g,
+            (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+          );
+        const icon = (name, cls = '') =>
+          `<svg class="i ${cls}" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
+        const btn = (id, label, glyph = '', cls = '', extra = '') =>
+          `<button class="btn ${cls}" data-do="${id}" ${extra}>${glyph ? icon(glyph) : ''}${esc(label)}</button>`;
+        const chip = (label, cls = '') => `<span class="chip ${cls}">${esc(label)}</span>`;
+        const options = (values, v) =>
+          values
+            .map(
+              ([key, title]) =>
+                `<option value="${esc(key)}"${v === key ? ' selected' : ''}>${esc(title)}</option>`,
+            )
+            .join('');
+        const simple = (values, v) =>
+          options(
+            values.map((x) => [x, x]),
+            v,
+          );
+        const actionText = { new: '新增', update: '更新', skip: '跳过' };
+        const groups = ['研发区', '仿真区', '交付区'];
+        let S,
+          doneTimer,
+          timer,
+          mapping = {},
+          dialogReturn = null;
+
+        let M, modelTimer;
+        function initModels(installed) {
+          clearTimeout(modelTimer);
+          M = {
+            installed,
+            tab: 'remote',
+            pkg: '',
+            download: null,
+            models: installed ? { 'qwen3:8b': 'verified' } : {},
+            active: installed ? 'qwen3:8b' : '',
+            selection: 'qwen3:8b',
+            custom: '',
+            connected: false,
+            tested: false,
+            saved: null,
+            draft: {
+              name: '单位模型网关',
+              endpoint: 'https://models.example.invalid/v1',
+              model: 'ledger-chat',
+              key: false,
+            },
+            message: '',
+          };
+        }
+        function localReady() {
+          return M.installed && M.models[M.active] === 'verified';
+        }
+        function pickTag() {
+          return (M.selection === 'custom' ? M.custom : M.selection).trim();
+        }
+        function clearPermission() {
+          S.allowRemote = false;
+          S.provider = 'local';
+        }
+        function canAnalyze() {
+          return S.provider === 'remote' ? !!(S.allowRemote && M.saved) : localReady();
+        }
+        function showSettings(tab = M.tab) {
+          if (S.working) return;
+          S.settings = true;
+          M.tab = tab;
+          M.message = '';
+          draw();
+          window.scrollTo(0, 0);
+        }
+        function refreshSettings() {
+          if (S.settings) draw();
+        }
+        function remoteValid() {
+          const v = M.draft;
+          try {
+            const u = new URL(v.endpoint);
+            return Boolean(
+              v.name.trim() &&
+              v.model.trim() &&
+              ['https:', 'http:'].includes(u.protocol) &&
+              !u.username &&
+              !u.password &&
+              !u.hash &&
+              !u.search,
+            );
+          } catch {
+            return false;
+          }
+        }
+        function readModelInput(el) {
+          if (el.id === 'custom-tag') {
+            M.custom = el.value;
+            return;
+          }
+          const k = el.dataset.config;
+          if (!k) return;
+          M.draft[k] = k === 'key' ? el.checked : el.value;
+          M.connected = false;
+          M.tested = false;
+          M.message = '';
+          const t = $('[data-do="schema-test"]'),
+            save = $('[data-do="store-service"]'),
+            msg = $('#config-status');
+          if (t) t.disabled = true;
+          if (save) save.disabled = true;
+          if (msg) msg.textContent = '配置已编辑，请重新测试。';
+        }
+        function settingsScreen() {
+          const local = M.tab === 'local';
+          const providerButton = (tab, title, desc, ic) =>
+            `<button class="service-tab ${M.tab === tab ? 'on' : ''}" data-do="service-tab" data-key="${tab}" aria-pressed="${M.tab === tab}">${icon(ic)}<span><strong>${title}</strong><small>${esc(desc)}</small></span>${icon('CaretRight')}</button>`;
+          return `<header class="bar"><div class="breadcrumb"><div class="brand"><span class="brandmark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><strong>Clever Workbench</strong></div><span class="crumb">设置 ${icon('CaretRight')} 分析模型</span></div><span class="demo-tag">虚构资料 · 交互原型</span></header>
+   <main><div class="mast"><div><h1>分析模型</h1><div class="meta">管理文件提取服务与本机分析模型</div></div>${btn('exit-settings', '返回文件导入', 'ArrowLeft')}</div>
+   <div class="config-grid"><nav class="service-nav" aria-label="选择模型服务">${providerButton('local', '本机 Ollama', !M.installed ? '尚未安装' : M.active || '待选择模型', 'Cpu')}${providerButton('remote', '第三方服务', M.saved ? M.saved.name : 'OpenAI 兼容接口', 'ArrowsLeftRight')}</nav>
+   <section class="card service-panel"><div class="service-title"><div class="object-icon">${icon(local ? 'Cpu' : 'ArrowsLeftRight')}</div><div><h2>${local ? '本机 Ollama' : '第三方模型服务'}</h2><p class="tiny">${local ? '文件提取与台账比对在本机进行' : 'OpenAI 兼容 · Chat Completions'}</p></div></div>${local ? localPanel() : remotePanel()}</section></div></main>`;
+        }
+        function localPanel() {
+          if (!M.installed)
+            return `<h3>安装 Ollama 运行时</h3><p>工作台下载并校验官方安装包。完成系统安装后，页面会自动检测并进入模型选择。</p>
+   <div class="service-block">${M.pkg === 'opening' ? '模拟安装包已校验，等待你完成官方安装。' : M.pkg === 'downloading' ? '正在模拟下载并校验安装包…' : '这台模拟设备尚未安装 Ollama。'}</div>
+   ${M.pkg === 'opening' ? btn('finish-install', '模拟完成官方安装', 'Check', 'main-btn') : btn('install', '安装 Ollama（模拟）', 'ArrowRight', 'main-btn', M.pkg ? 'disabled' : '')}`;
+          const tag = pickTag(),
+            state = Object.hasOwn(M.models, tag) ? M.models[tag] : null;
+          const canSelect = state === 'verified' && M.active !== tag;
+          const choices = [...new Set(['qwen3:8b', 'qwen3:4b', ...Object.keys(M.models)])].map(
+            (x) => [
+              x,
+              x + (M.models[x] === 'verified' ? ' · 已验证' : M.models[x] ? ' · 已下载' : ''),
+            ],
+          );
+          return `<div class="service-block">${chip('运行时已就绪', 'ok')} <span>当前选用　${esc(M.active || '尚未选择')}</span></div><label class="field">分析模型<select id="pick-tag" ${M.download ? 'disabled' : ''}>${options([...choices, ['custom', '输入自定义模型名…']], M.selection)}</select></label>
+   ${M.selection === 'custom' ? `<label class="field config-gap">本地模型名与标签<input id="custom-tag" placeholder="例如 qwen3:4b" value="${esc(M.custom)}" ${M.download ? 'disabled' : ''}></label>` : ''}
+   <p>下载后用虚构台账样例验证本机推理与结构化输出，通过后可选用。</p>
+   <div class="actions">${M.download ? btn('cancel-model', '取消下载') : M.selection === 'custom' ? btn('download-model', '准备此模型', 'ArrowRight', 'main-btn') : !state ? btn('download-model', '下载模型（模拟）', 'ArrowRight', 'main-btn') : state === 'downloaded' ? btn('verify-model', '用样例验证模型', 'Check', 'main-btn') : btn('select-model', canSelect ? '选用此模型' : '当前已选用', 'Check', 'main-btn', canSelect ? '' : 'disabled')}</div><div class="service-msg" role="status">${M.download ? '<progress aria-label="模拟下载进行中"></progress> ' : ''}${esc(M.message || '')}</div>`;
+        }
+        function remotePanel() {
+          const v = M.draft;
+          return `<div class="service-block">${chip(M.saved ? '已保存' : '待配置', M.saved ? 'ok' : '')}<span>${M.saved ? esc(M.saved.name + ' · ' + M.saved.model) : '仅对本次允许外发的文件提供提取'}</span></div>
+   <div class="service-form"><label class="field">服务名称<input data-config="name" value="${esc(v.name)}"></label><label class="field">模型名<input data-config="model" value="${esc(v.model)}"></label>
+   <label class="field wide">接口地址（Base URL）<input data-config="endpoint" value="${esc(v.endpoint)}" spellcheck="false"></label></div>
+   <label class="consent"><input type="checkbox" data-config="key" ${v.key ? 'checked' : ''}>使用示例 API Key（可选）</label>
+   <p>使用虚构文本测试。原型仅模拟认证与返回结果，无需填写真实密钥。</p>
+   <div class="actions config-actions">${btn('connect-test', '测试连接', 'Link')}${btn('schema-test', '测试台账提取', 'FileText', '', M.connected ? '' : 'disabled')}${btn('store-service', '保存配置', 'Check', 'main-btn', M.tested ? '' : 'disabled')}</div>
+   <div class="service-msg" role="status" id="config-status">${esc(M.message || (M.tested ? '样例通过，可保存配置。' : '等待使用示例配置测试。'))}</div>`;
+        }
+        function modelActions(a, b) {
+          switch (a) {
+            case 'settings':
+              showSettings();
+              break;
+            case 'exit-settings':
+              S.settings = false;
+              draw();
+              focusObject();
+              break;
+            case 'service-tab':
+              M.tab = b.dataset.key;
+              M.message = '';
+              draw();
+              break;
+            case 'install':
+              if (M.pkg) return;
+              M.pkg = 'downloading';
+              draw();
+              modelTimer = setTimeout(() => {
+                M.pkg = 'opening';
+                refreshSettings();
+              }, 600);
+              break;
+            case 'finish-install':
+              M.installed = true;
+              M.pkg = '';
+              M.message = '已自动检测到 Ollama，请选择模型。';
+              draw();
+              break;
+            case 'download-model': {
+              const tag = pickTag();
+              if (
+                !/^[a-z0-9][a-z0-9._/-]*:[a-z0-9][a-z0-9._-]*$/i.test(tag) ||
+                /(:|-)cloud($|-)/i.test(tag)
+              ) {
+                M.message = '请输入本机推理模型标签，例如 qwen3:4b。';
+                draw();
+                break;
+              }
+              if (Object.hasOwn(M.models, tag)) {
+                M.selection = tag;
+                M.message = '此模型已在模型目录中。';
+                draw();
+                break;
+              }
+              if (M.download) break;
+              M.download = tag;
+              M.message = '模拟下载 ' + tag + '…';
+              draw();
+              modelTimer = setTimeout(() => {
+                M.models[tag] = 'downloaded';
+                M.download = null;
+                M.selection = tag;
+                M.message = '已下载，等待样例验证。';
+                refreshSettings();
+              }, 1000);
+              break;
+            }
+            case 'cancel-model':
+              clearTimeout(modelTimer);
+              M.download = null;
+              M.message = '已取消下载。';
+              draw();
+              break;
+            case 'verify-model':
+              M.models[pickTag()] = 'verified';
+              M.message = '虚构台账在本机模拟提取成功，返回字段通过校验。';
+              draw();
+              break;
+            case 'select-model':
+              if (M.models[pickTag()] === 'verified') {
+                M.active = pickTag();
+                M.message = '已选用 ' + M.active + '。';
+                draw();
+              }
+              break;
+            case 'connect-test':
+              M.connected = remoteValid();
+              M.tested = false;
+              M.message = M.connected
+                ? '模拟连接成功。请继续测试台账提取。'
+                : '请补全名称、模型与有效的 HTTP(S) 接口地址。';
+              draw();
+              break;
+            case 'schema-test':
+              if (M.connected) {
+                M.tested = true;
+                M.message = '模拟提取成功：示例返回了名称、地址和来源行。';
+                draw();
+              }
+              break;
+            case 'store-service':
+              if (!M.tested) break;
+              if (JSON.stringify(M.saved) !== JSON.stringify(M.draft)) clearPermission();
+              M.saved = { ...M.draft };
+              M.message = '已保存示例连接。可返回文件导入。';
+              draw();
+              break;
+            default:
+              return false;
+          }
+          return true;
+        }
+        function extractionControls() {
+          if (S.fileLoaded)
+            return `<div class="service-block">${icon('CheckCircle')} 本次提取已完成，可返回继续校对。</div>`;
+          const remote = S.provider === 'remote',
+            busy = S.working ? 'disabled' : '';
+          return `<div class="service-block spread"><strong>本次提取服务</strong>${btn('settings', '管理分析模型', 'SlidersHorizontal', 'flat', busy)}</div>
+   <label class="consent"><input id="allow-remote" type="checkbox" ${S.allowRemote ? 'checked' : ''} ${busy}>此文件允许交给指定第三方提取</label>
+   <label class="field">处理位置<select id="provider" ${busy}><option value="local" ${remote ? '' : 'selected'}>仅本机 · ${esc(M.active || 'Ollama 未就绪')}</option><option value="remote" ${remote ? 'selected' : ''} ${S.allowRemote && M.saved ? '' : 'disabled'}>${esc(M.saved ? M.saved.name + ' · ' + M.saved.model : '第三方服务 · 尚未配置')}</option></select></label>
+   <p class="tiny config-gap">${
+     remote
+       ? `本次目的地：${esc(M.saved.endpoint)}。仅模拟发送当前文件的提取片段。已有台账、旧字段值和环境清单留在本机。`
+       : localReady()
+         ? '文件内容在本机处理。'
+         : S.allowRemote && M.saved
+           ? '可以选择上方已配置的第三方服务，或准备本机模型。'
+           : '请准备本机模型；可外发文件也可以使用已配置的第三方服务。'
+   }</p>`;
+        }
+
+        function reset(mode = 'review') {
+          const setupMode = ['setup', 'models'].includes(mode);
+          initModels(mode !== 'models');
+          clearTimeout(timer);
+          clearTimeout(doneTimer);
+          live.textContent = '';
+          S = {
+            rows: model.newRows(),
+            active: 3,
+            step: setupMode ? 1 : 2,
+            filter: 'all',
+            scroll: 0,
+            allPos: null,
+            finishedSubset: false,
+            ext: 'docx',
+            scope: '全部类型',
+            fileLoaded: !setupMode,
+            working: 0,
+            settings: mode === 'models',
+            allowRemote: false,
+            provider: 'local',
+            analysisLabel: '本机模型比对',
+            dirty: false,
+            saved: false,
+            error: null,
+            mobile: setupMode ? 'queue' : 'detail',
+          };
+          if (mode === 'end') {
+            model.sampleAtEnd(S.rows);
+            S.active = S.rows.at(-1).id;
+          }
+          draw();
+          $('.qrow.active')?.scrollIntoView({ block: 'nearest' });
+        }
+        const current = () => S.rows.find((r) => r.id === S.active);
+        const pos = (r) => model.position(r, S.ext);
+        const openStrong = (r) => model.strong(r, S.rows).length > 0;
+        const todo = () => S.rows.filter((r) => !r.reviewed);
+        const filtered = () =>
+          S.rows.filter(
+            (r) => S.filter === 'all' || (S.filter === 'strong' ? openStrong(r) : !r.reviewed),
+          );
+        const info = (s) => {
+          live.textContent = s;
+          clearTimeout(doneTimer);
+          doneTimer = setTimeout(() => (live.textContent = ''), 2700);
+        };
+        function steps() {
+          return `<nav class="steps" aria-label="导入步骤">${[
+            '选文件与分析',
+            '校对候选',
+            '确认保存',
+          ]
+            .map((name, i) => {
+              const n = i + 1,
+                past = n < S.step || S.saved,
+                canGo =
+                  !S.saved &&
+                  !S.working &&
+                  (n === 1 ||
+                    (n === 2 && S.fileLoaded) ||
+                    (n === 3 && S.fileLoaded && !todo().length));
+              return `${i ? '<span class="step-line"></span>' : ''}<button data-do="step" data-n="${n}" class="step ${past ? 'visited' : ''} ${n === S.step ? 'current' : ''}" ${n === S.step ? 'aria-current="step"' : ''} ${!canGo ? 'disabled' : ''}><i>${past ? icon('Check') : n}</i>${name}</button>`;
+            })
+            .join('')}</nav>`;
+        }
+        function draw({ preserve = false, focus = false } = {}) {
+          const oldDetail = preserve ? $('.detail-content')?.scrollTop || 0 : 0;
+          if ($('.rows')?.getClientRects().length) S.scroll = $('.rows').scrollTop;
+          document.body.classList.toggle('review', S.step === 2 && !S.settings);
+          if (S.settings) {
+            app.innerHTML = settingsScreen();
+            return;
+          }
+          const title = S.saved ? '导入结果' : ['', '选文件与分析', '校对候选', '确认保存'][S.step];
+          const meta =
+            S.step === 1
+              ? '在当前系统内模拟一次本地文件导入'
+              : `${esc(model.files[S.ext])} <span>·</span> ${S.rows.length} 条候选 <span>·</span> ${esc(S.analysisLabel)}`;
+          app.innerHTML = `<div class="bar"><div class="breadcrumb"><div class="brand"><span class="brandmark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><strong>Clever Workbench</strong></div><div class="crumb">技术台账 ${icon('CaretRight')} 星港交付系统 ${icon('CaretRight')} 文件导入</div></div><div class="top-actions"><span class="demo-tag">虚构资料 · 交互原型</span><button class="scene" data-do="settings" ${S.working ? 'disabled' : ''}>${icon('Cpu')} 分析模型</button><button class="scene" data-do="scenes">${icon('SlidersHorizontal')} 演示场景</button></div></div>
+      <main><div class="mast"><div><h1>${title}</h1><div class="meta">${icon(S.step === 1 ? 'Stack' : 'FileText')} ${meta}${S.step === 2 ? '<span>·</span><button class="link map-link" data-do="map">批量映射环境</button>' : ''}</div></div>${steps()}</div>${S.step === 1 ? setup() : S.step === 2 ? review() : summary()}</main>`;
+          if ($('.rows')) $('.rows').scrollTop = S.scroll;
+          if ($('.detail-content')) $('.detail-content').scrollTop = oldDetail;
+          if (focus) focusObject();
+        }
+        function focusObject() {
+          const h = $('#object-title') || $('h1');
+          h?.setAttribute('tabindex', '-1');
+          h?.focus({ preventScroll: true });
+        }
+        function setup() {
+          return `<section class="card setup"><div class="pad"><h2>选择导入资料</h2><p class="muted" style="margin-top:7px">使用虚构文件体验匹配、校对和保存，全程在本页模拟。</p>
+      <div class="file-box"><div class="file-icon">${icon('FileText')}</div><label class="field">示例文件<select id="file" ${S.working ? 'disabled' : ''}>${options(Object.entries(model.files), S.ext)}</select></label></div>
+      <div class="fields"><label class="field">目标系统<input readonly value="星港交付系统"></label><label class="field">识别范围<select id="scope" ${S.working ? 'disabled' : ''}>${simple(['全部类型', '访问入口', '其他资源'], S.scope)}</select></label></div>
+      ${extractionControls()}
+      ${S.working ? `<div class="file-box" role="status">${icon('MagnifyingGlass')} ${S.working === 1 ? (S.provider === 'remote' ? '正在模拟向所选服务提取本文件候选…' : '正在模拟本机提取…') : '正在本机比对本批候选与已有台账…'}</div>` : ''}</div>
+      <div class="page-foot"><span class="tiny">仅在最后一步模拟保存</span><div class="actions">${S.working ? btn('cancel', '取消分析') : S.fileLoaded ? btn('again', '重新准备此文件') + btn('resume', '返回本次校对', 'ArrowRight', 'main-btn') : btn('analyze', S.provider === 'remote' && M.saved ? '使用' + M.saved.name + '提取此文件' : '开始模拟分析', 'ArrowRight', 'main-btn', !canAnalyze() ? 'disabled' : '')}</div></div></section>`;
+        }
+        function filterControl(f, label, n) {
+          return `<button class="filter ${S.filter === f ? 'on' : ''}" data-do="filter" data-f="${f}" aria-pressed="${S.filter === f}">${label} ${n}</button>`;
+        }
+        function matchRef(m) {
+          return m.file ? `本文件 · ${pos(m.who)}` : `已有台账 · ${m.who.env}`;
+        }
+        function review() {
+          const r = current(),
+            done = S.rows.length - todo().length,
+            list = filtered();
+          return `<div class="board show-${S.mobile}"><section class="queue" aria-label="候选清单"><div class="queue-head"><div class="section-title"><h2>候选清单 <span class="num">${S.rows.length}</span></h2><span class="tiny">按原文顺序</span></div>
+    <div class="filters" aria-label="筛选候选">${filterControl('all', '全部', S.rows.length)}${filterControl('strong', '疑似重复', S.rows.filter(openStrong).length)}${filterControl('pending', '待核对', todo().length)}</div></div>
+    <div class="rows">${list.map(rowCard).join('') || '<div class="empty">此筛选下暂无候选</div>'}</div>
+    <div class="queue-foot"><span>已校对 <strong>${done}</strong> / ${S.rows.length}</span><progress max="${S.rows.length}" value="${done}" aria-label="校对进度"></progress></div></section>
+    <section class="detail" aria-label="候选详情"><div class="detail-content">
+    ${btn('back-list', '返回候选清单', 'ArrowLeft', 'flat mobile-only')}
+    ${S.finishedSubset ? `<div class="empty"><h2>当前筛选已核对完</h2><p style="margin:12px 0">全批还有 ${todo().length} 条待核对。</p>${btn('continue-all', '返回全部待核对', 'ArrowRight', 'main-btn')}</div>` : r ? detail(r) : '<div class="empty">请选择一条候选</div>'}</div>
+    <div class="detail-foot"><span role="status" class="footer-status ${S.error ? 'error' : ''}">${icon(S.error ? 'WarningCircle' : 'ShieldCheck')}${esc(S.error?.[1] || (r?.reviewed ? '本条已校对，仍可返回修改' : '逐条校对，最后统一保存'))}</span>
+    ${S.finishedSubset || !r ? '' : btn('confirm', todo().filter((p) => p !== r).length ? '确认本条并看下一条' : '确认并查看汇总', 'ArrowRight', 'main-btn')}</div></section></div>`;
+        }
+        function rowCard(r) {
+          const match = model.strong(r, S.rows),
+            m = match[0];
+          const label = r.reviewed ? '已校对' : m ? '待处置' : '待核对';
+          return `<button class="qrow ${r.id === S.active && !S.finishedSubset ? 'active' : ''}" data-do="row" data-id="${r.id}" aria-current="${r.id === S.active && !S.finishedSubset ? 'true' : 'false'}">
+      <span class="ix">${String(r.id).padStart(2, '0')}</span><span><span class="row-line"><span class="qname">${esc(r.name || '未命名候选')}</span>${chip(label, r.reviewed ? 'ok' : m ? 'warn' : '')}</span>
+      <span class="row-sub" style="display:block">${esc(pos(r))} · ${esc(r.env)}${r.reviewed ? ' · ' + actionText[r.action] : ''}</span>
+      ${m ? `<span class="row-match">${icon('Intersect')}<span>${esc(m.who.name || '未命名')}（${esc(matchRef(m))}）${match.length > 1 ? ` · 另有 ${match.length - 1} 条` : ''}</span></span>` : ''}</span></button>`;
+        }
+        function detail(r) {
+          const all = model.matches(r, S.rows),
+            strong = all.filter((m) => !m.weak),
+            weak = all.filter((m) => m.weak);
+          return `<div class="object-head"><span class="object-icon">${icon(r.kind === '访问入口' ? 'Link' : 'HardDrives')}</span><div><div class="eyebrow">${r.kind} · ${esc(pos(r))} · 来源分组 ${esc(r.group)}</div><h2 id="object-title">${esc(r.name || '未命名候选')}</h2></div><button class="link edit" data-do="edit">${icon('PencilSimple')} 编辑字段</button></div>
+    ${strong.length ? `<section class="matches"><header><h3>${icon('Intersect')} 疑似重复对象</h3><span>${strong.length} 个匹配</span></header>${strong.map((m) => matchCard(m, r)).join('')}</section>` : `<div class="seen">${icon('CheckCircle')} 未发现强匹配对象</div>`}
+    ${weak.length ? `<details class="weak"><summary>其他相似项（${weak.length}） · 仅供参考</summary>${weak.map((m) => `<p>${esc(m.who.name)} · ${esc(matchRef(m))} · 名称部分相似</p>`).join('')}</details>` : ''}
+    <section class="decision" id="decision" tabindex="-1"><div class="section-title"><h3>如何处理本条</h3>${r.reviewed ? chip('已确认', 'ok') : ''}</div>
+    <div class="action-options">${[
+      ['new', '保留为新增', 'Plus'],
+      ['update', '更新已有', 'ArrowsLeftRight'],
+      ['skip', '跳过本条', 'SkipForward'],
+    ]
+      .map(([id, title, ic]) => {
+        const on = r.action === id && (r.deliberate || !strong.length),
+          enabled = id !== 'update' || model.old.some((t) => t.kind === r.kind);
+        return `<button class="option ${on ? 'on' : ''}" data-do="action" data-key="${id}" aria-pressed="${on}" ${enabled ? '' : 'disabled'}>${icon(ic)}${title}</button>`;
+      })
+      .join(
+        '',
+      )}</div><p class="fate">${strong.length && !r.deliberate ? '请选择当前候选的处理方式。其他候选保留各自的决定。' : r.action === 'new' ? '本行将新增为独立台账。' : r.action === 'skip' ? '本行仍可预览，保存时跳过。' : '在下方选择目标，并勾选要替换的字段。'}</p></section>
+    ${r.action === 'update' ? updateForm(r) : ''}
+    ${r.action !== 'skip' ? `<div class="inline-field"><label for="env">适用环境</label><select id="env">${simple(model.envs, r.env)}</select><span class="tiny">${r.action === 'update' ? '默认保留目标原环境' : r.manualNew ? '已手动指定环境' : r.env === model.common ? '未匹配环境，默认系统通用' : '本条新增将使用此环境'}</span></div>` : ''}
+    <details class="fold"><summary>查看来源与识别字段</summary><p>${esc(model.files[S.ext])} · ${esc(pos(r))} · ${esc(r.group)}<br>原文名称　${esc(r.source.name)}<br>原文地址　<span class="mono">${esc(r.source.address || '未提供')}</span><br>原文说明　${esc(r.source.notes || '未提供')}</p><p>当前候选地址　<span class="mono">${esc(r.address || '待补充')}</span></p></details>
+    ${r.attachment ? `<details class="fold"><summary>附属资料 · 1 个具名地址，1 个账号</summary><p>${esc(r.attachment.label)}　<span class="mono">${esc(r.attachment.url)}</span><br>账号用途　${esc(r.attachment.role)} · 凭据隐藏</p>${r.action === 'new' ? btn('edit', '编辑附属资料', 'PencilSimple', 'flat') : '<p>本次操作保留已有台账的账号和凭据。</p>'}</details>` : ''}`;
+        }
+        function matchCard(m, r) {
+          const p = m.who,
+            different = p.address !== r.address;
+          const source = m.file ? '本文件' : '已有台账';
+          const location = m.file ? pos(p) : p.kind;
+          return `<div class="match"><div><div class="match-origin">${icon(m.file ? 'FileText' : 'Stack')} ${source} <span>· ${esc(location)}</span></div><strong class="match-name">${esc(p.name || '未命名候选')}</strong></div>
+      <div class="match-evidence"><div class="why">${esc(m.reasons.join('、'))}</div><div class="tiny">${p.env !== r.env ? `本行 ${esc(r.env)}，对方 ${esc(p.env)}` : '适用环境相同'}${different ? ' · 地址不同' : ''}</div>
+      ${m.reasons.includes('地址相同') ? `<span class="mono match-url">${esc(m.commonAddress)}</span>` : ''}</div>
+      <div class="match-tools"><details class="weak"><summary>查看对照</summary><p>当前候选　${esc(r.name)} · <span class="mono">${esc(r.address || '未提供')}</span><br>比对对象　${esc(p.name)} · <span class="mono">${esc(p.address || '未提供')}</span></p></details>
+      ${!m.file && p.kind === r.kind ? `<button class="link target-link" data-do="use-target" data-id="${esc(p.id)}">${r.action === 'update' && r.target === p.id ? '已选为更新目标' : '选为更新目标'} ${icon('ArrowRight')}</button>` : ''}</div></div>`;
+        }
+        function updateForm(r) {
+          const t = model.target(r),
+            changes = model.changes(r);
+          return `<label class="field">更新目标<select id="target">${options(
+            model.old.filter((x) => x.kind === r.kind).map((x) => [x.id, `${x.name} · ${x.env}`]),
+            r.target,
+          )}</select></label>
+    <div class="changes" id="delta" tabindex="-1"><div class="delta-head"><span></span><span>字段</span><span>已有值</span><span>导入值</span></div>
+    ${changes.map((k) => `<label class="delta"><input type="checkbox" data-field="${k}" aria-label="替换${model.fields[k]}" ${r.picks.includes(k) ? 'checked' : ''}><span>${model.fields[k]}</span><span>${esc(t[k] || '空')}</span><span class="new">${esc(r[k])}</span></label>`).join('') || '<p class="empty">普通字段均相同，可按需修改环境。</p>'}</div>`;
+        }
+        function resultText(r) {
+          if (r.action === 'skip') return '跳过此行';
+          if (r.action === 'new')
+            return `新增到${esc(r.env)}${r.attachment ? ' · 附 1 个具名地址和 1 个账号' : ''}`;
+          const t = model.target(r);
+          const changes = r.picks.map(
+            (k) => `${model.fields[k]}：${esc(t[k] || '空')} → ${esc(r[k])}`,
+          );
+          if (r.env !== t.env) changes.push(`适用环境：${esc(t.env)} → ${esc(r.env)}`);
+          return `更新「${esc(t.name)}」${changes.map((v) => `<span class="delta-line" style="display:block">${v}</span>`).join('')}`;
+        }
+        function summary() {
+          const counts = Object.fromEntries(
+            Object.keys(actionText).map((k) => [k, S.rows.filter((r) => r.action === k).length]),
+          );
+          return `<section class="card rollup">${S.saved ? `<div class="result">${icon('CheckCircle')}<h2>模拟保存完成</h2><p class="muted">已按你的决定处理 ${S.rows.length} 条虚构候选。</p>${btn('scenes', '重新体验', 'ArrowCounterClockwise')}</div>` : ''}
+    <div class="summary-stats">${Object.keys(counts)
+      .map((k) => `<span><strong>${counts[k]}</strong> ${actionText[k]}</span>`)
+      .join(
+        '',
+      )}<span class="tiny" style="margin-left:auto">全部 ${S.rows.length} 条已校对</span></div>
+    ${S.rows.map((r) => `<div class="summary-row"><span class="tiny">${String(r.id).padStart(2, '0')}</span><div><strong>${esc(r.name || '未命名候选')}</strong><p>${esc(pos(r))}</p></div><p class="result-text">${resultText(r)}</p>${S.saved ? '' : btn('summary-edit', '修改', '', 'flat', `data-id="${r.id}" aria-label="修改第 ${r.id} 条"`)}</div>`).join('')}</section>
+    ${S.saved ? '' : `<div class="page-foot" style="position:sticky;bottom:0;box-shadow:var(--shadow)"><span class="tiny">确认后模拟整批保存</span><div class="actions">${btn('review-again', '返回校对', 'ArrowLeft')}${btn('save', '确认保存（模拟）', 'Check', 'main-btn', todo().length ? 'disabled' : '')}</div></div>`}`;
+        }
+        function setRow(id) {
+          S.active = id;
+          S.mobile = 'detail';
+          S.finishedSubset = false;
+          S.error = null;
+          draw({ focus: true });
+          $('.qrow.active')?.scrollIntoView({ block: 'nearest' });
+        }
+        function switchFilter(f) {
+          if (f === S.filter) return;
+          if (S.filter === 'all')
+            S.allPos = { id: S.active, scroll: $('.rows')?.scrollTop ?? S.scroll };
+          S.filter = f;
+          S.finishedSubset = false;
+          S.error = null;
+          if (f === 'all' && S.allPos) {
+            S.active = S.allPos.id;
+            const restore = S.allPos.scroll;
+            draw();
+            $('.rows').scrollTop = restore;
+            S.scroll = restore;
+            S.allPos = null;
+            return;
+          }
+          const visible = filtered();
+          if (!visible.some((p) => p.id === S.active)) S.active = visible[0]?.id ?? null;
+          draw();
+          $('.qrow.active')?.scrollIntoView({ block: 'nearest' });
+        }
+        function confirmRow() {
+          const r = current();
+          if (!r) return;
+          const issue = model.problem(r, S.rows);
+          if (issue) {
+            S.error = issue;
+            draw({ preserve: true });
+            if (['address', 'name'].includes(issue[0])) {
+              openEdit(r, issue);
+              return;
+            }
+            const el = document.getElementById(issue[0]);
+            el?.focus();
+            el?.scrollIntoView({ block: 'nearest' });
+            return;
+          }
+          S.error = null;
+          r.reviewed = true;
+          S.dirty = true;
+          if (!todo().length) {
+            S.step = 3;
+            draw();
+            window.scrollTo(0, 0);
+            focusObject();
+            return;
+          }
+          const left = filtered().filter((p) => !p.reviewed);
+          if (!left.length) {
+            S.finishedSubset = true;
+            draw();
+            return;
+          }
+          setRow((left.find((p) => p.id > r.id) || left[0]).id);
+        }
+        function showModal(mode, title, body, foot = '') {
+          if (!modal.open) dialogReturn = document.activeElement;
+
+          modal.innerHTML = `<div class="dialog-head"><h2 id="modal-label">${esc(title)}</h2>${btn('close', '关闭', 'X', 'flat')}</div><div class="dialog-body">${body}</div>${foot ? `<div class="page-foot">${foot}</div>` : ''}`;
+          if (!modal.open) modal.showModal();
+        }
+        function closeModal() {
+          modal.close();
+          if (dialogReturn?.isConnected) dialogReturn.focus({ preventScroll: true });
+        }
+        function scenes() {
+          showModal(
+            'scenes',
+            '选择演示场景',
+            `<p>使用 19 条虚构资料，体验从发现疑似重复到确认保存。开始新场景会重置本次演示。</p>${[
+              [
+                'models',
+                '未装 Ollama 的新设备',
+                '配置兼容网关并返回文件导入；也可以体验安装本机模型。',
+              ],
+              ['setup', '从选文件开始', '选择示例文件，模拟分析并按原文顺序核对。'],
+              ['review', '一条候选，两个匹配对象', '从第 3 条进入，比较本文件的同名行与已有台账。'],
+              ['end', '最后一条待核对', '载入 18 条已确认的示例决定，体验保存前汇总与返回修改。'],
+            ]
+              .map(
+                ([id, title, hint]) =>
+                  `<button class="scene-item" data-do="scenario" data-mode="${id}"><strong>${title}</strong><small>${hint}</small></button>`,
+              )
+              .join('')}`,
+          );
+        }
+        function openEdit(r, issue = null) {
+          showModal(
+            'edit',
+            '编辑候选字段',
+            `<div class="fields">${Object.keys(model.fields)
+              .map(
+                (k) =>
+                  `<label class="field">${model.fields[k]}${k === 'notes' ? `<textarea id="edit-${k}" rows="3">${esc(r[k])}</textarea>` : `<input id="edit-${k}" value="${esc(r[k])}">`}</label>`,
+              )
+              .join(
+                '',
+              )}${r.attachment && r.action === 'new' ? `<details class="fold" ${issue?.[0] === 'extra' ? 'open' : ''}><summary>编辑附属资料</summary><div class="fields"><label class="field">地址名称<input id="extra-label" value="${esc(r.attachment.label)}"></label><label class="field">具名地址<input id="extra-url" value="${esc(r.attachment.url)}"></label><label class="field">账号用途<input id="extra-role" value="${esc(r.attachment.role)}"></label></div></details>` : ''}</div>${issue ? `<p class="error-text" role="alert">${esc(issue[1])}</p>` : ''}`,
+            `<span class="tiny">${esc(pos(r))} · 仅修改当前候选</span>${btn('apply-edit', '应用修改', 'Check', 'main-btn')}`,
+          );
+          $('#edit-' + (issue?.[0] || 'name'))?.focus();
+        }
+        function mapPanel() {
+          mapping = {};
+          showModal(
+            'map',
+            '批量映射环境',
+            `<p>仅调整尚未确认、尚未手动指定环境的新增行。</p>${groups
+              .filter((g) => S.rows.some((r) => r.group === g))
+              .map(
+                (g) =>
+                  `<label class="map-row">${g}<select data-group="${g}">${options([['', '保持当前环境'], ...model.envs.map((v) => [v, v])], '')}</select><span class="tiny">${S.rows.filter((r) => model.mappable(r, g)).length} 条可映射</span></label>`,
+              )
+              .join('')}`,
+            `<span class="map-count" id="impact" role="status">将修改 0 条</span>${btn('apply-map', '应用映射', 'Check', 'main-btn', 'disabled')}`,
+          );
+        }
+        function askReset(next, fn, title = '重新开始此次分析？') {
+          if (!S.dirty) {
+            fn();
+            return;
+          }
+          showModal(
+            'reset',
+            title,
+            `<p>继续将清除当前会话中的校对决定。</p>`,
+            `${btn('close', '保留当前进度')}${btn('reset-ok', next, 'ArrowRight', 'main-btn')}`,
+          );
+          $('[data-do="reset-ok"]').onclick = () => {
+            closeModal();
+            fn();
+          };
+        }
+        function prepare(scope, ext) {
+          S.scope = scope;
+          S.ext = ext;
+          clearPermission();
+          S.fileLoaded = false;
+          S.error = null;
+          S.dirty = false;
+          S.allPos = null;
+          S.scroll = 0;
+          S.finishedSubset = false;
+          S.filter = 'all';
+          S.rows = model.newRows(scope);
+          S.active = S.rows[0].id;
+          draw();
+        }
+        function analyze() {
+          if (!canAnalyze() || S.working || S.fileLoaded) return;
+          const semantic = localReady();
+          S.analysisLabel =
+            (S.provider === 'remote' ? M.saved.name + ' / ' + M.saved.model + ' 提取 · ' : '') +
+            (semantic ? '本机模型比对' : '本机规则比对');
+          for (const row of S.rows) row.semanticReview = semantic;
+          S.working = 1;
+          draw();
+          timer = setTimeout(() => {
+            S.working = 2;
+            draw();
+            timer = setTimeout(() => {
+              S.working = 0;
+              S.fileLoaded = true;
+              S.step = 2;
+              S.active = S.rows[0].id;
+              S.mobile = 'queue';
+              draw();
+              focusObject();
+            }, 650);
+          }, 450);
+        }
+        function go(step) {
+          if (step === S.step || S.saved || S.working) return;
+          if (step === 3 && todo().length) return;
+          S.step = step;
+          S.error = null;
+          draw();
+          window.scrollTo(0, 0);
+        }
+        function click(e) {
+          const b = e.target.closest('[data-do]');
+          if (!b || b.disabled) return;
+          const { do: a, id, key, mode, f, n } = b.dataset,
+            r = current();
+          if (modelActions(a, b)) return;
+          switch (a) {
+            case 'scenes':
+              scenes();
+              break;
+            case 'scenario':
+              closeModal();
+              askReset('开始新场景', () => reset(mode), '切换演示场景？');
+              break;
+            case 'close':
+              closeModal();
+              break;
+            case 'step':
+              go(Number(n));
+              break;
+            case 'again':
+              askReset('重新准备', () => prepare(S.scope, S.ext), '重新准备这个文件？');
+              break;
+            case 'resume':
+              go(2);
+              break;
+            case 'analyze':
+              analyze();
+              break;
+            case 'cancel':
+              clearTimeout(timer);
+              S.working = 0;
+              draw();
+              break;
+
+            case 'row':
+              setRow(Number(id));
+              break;
+            case 'back-list':
+              S.mobile = 'queue';
+              draw();
+              $('.qrow.active')?.focus({ preventScroll: true });
+              break;
+            case 'filter':
+              switchFilter(f);
+              break;
+            case 'continue-all':
+              S.filter = 'all';
+              S.allPos = null;
+              setRow(todo()[0].id);
+              break;
+            case 'use-target':
+              if (r.action !== 'update' || r.target !== id) {
+                model.decide(r, 'update', S.rows);
+                model.chooseTarget(r, id);
+                S.dirty = true;
+                S.error = null;
+                draw({ preserve: true });
+              }
+              $('#target')?.focus();
+              break;
+            case 'action':
+              model.decide(r, key, S.rows);
+              S.dirty = true;
+              S.error = null;
+              draw({ preserve: true });
+              $(`[data-do="action"][data-key="${key}"]`)?.focus({ preventScroll: true });
+              break;
+            case 'confirm':
+              confirmRow();
+              break;
+            case 'edit':
+              openEdit(r);
+              if (b.closest('details') && $('#extra-label')) {
+                $('#extra-label').closest('details').open = true;
+                $('#extra-label').focus();
+              }
+              break;
+            case 'apply-edit': {
+              const v = Object.fromEntries(
+                Object.keys(model.fields).map((k) => [k, $('#edit-' + k).value.trim()]),
+              );
+              if ($('#extra-url')) {
+                const extra = {
+                  label: $('#extra-label').value.trim(),
+                  url: $('#extra-url').value.trim(),
+                  role: $('#extra-role').value.trim(),
+                };
+                if (!extra.label || !extra.role || !/^https?:\/\/[^\s/]+/.test(extra.url)) {
+                  const bad = !extra.label
+                    ? 'extra-label'
+                    : !extra.role
+                      ? 'extra-role'
+                      : 'extra-url';
+                  const field = $('#' + bad);
+                  field.closest('details').open = true;
+                  field.setCustomValidity('请补全具名地址、有效网址和账号用途。');
+                  field.reportValidity();
+                  field.oninput = () => field.setCustomValidity('');
+                  return;
+                }
+                if (Object.keys(extra).some((k) => r.attachment[k] !== extra[k]))
+                  v.attachment = extra;
+              }
+              closeModal();
+              if (Object.keys(v).some((k) => r[k] !== v[k])) {
+                model.edit(r, S.rows, v);
+                S.dirty = true;
+              }
+              S.error = null;
+              if (S.filter !== 'all' && !filtered().includes(r)) {
+                S.filter = 'all';
+                S.allPos = null;
+              }
+              draw();
+              break;
+            }
+            case 'map':
+              mapPanel();
+              break;
+            case 'apply-map': {
+              const count = model.applyMap(S.rows, mapping);
+              S.dirty = true;
+              closeModal();
+              draw({ preserve: true });
+              info(`已调整 ${count} 条新增候选的环境`);
+              break;
+            }
+            case 'summary-edit':
+              S.step = 2;
+              S.filter = 'all';
+              S.allPos = null;
+              setRow(Number(id));
+              break;
+            case 'review-again':
+              S.step = 2;
+              S.finishedSubset = false;
+              S.filter = 'all';
+              S.allPos = null;
+              S.mobile = 'queue';
+              draw();
+              break;
+            case 'save':
+              if (!todo().length) {
+                S.saved = true;
+                S.dirty = false;
+                draw();
+                window.scrollTo(0, 0);
+              }
+              break;
+          }
+        }
+        function change(e) {
+          const el = e.target,
+            r = current();
+          if (el.id === 'pick-tag') {
+            M.selection = el.value;
+            M.message = '';
+            draw();
+            return;
+          }
+          if (el.id === 'allow-remote') {
+            S.allowRemote = el.checked;
+            if (!el.checked) S.provider = 'local';
+            draw();
+            return;
+          }
+          if (el.id === 'provider') {
+            S.provider = el.value === 'remote' && S.allowRemote && M.saved ? 'remote' : 'local';
+            draw();
+            return;
+          }
+          if (el.id === 'file' || el.id === 'scope') {
+            const ext = el.id === 'file' ? el.value : S.ext,
+              scope = el.id === 'scope' ? el.value : S.scope;
+            el.value = el.id === 'file' ? S.ext : S.scope;
+            askReset('重新选择', () => prepare(scope, ext));
+            return;
+          }
+          if (el.id === 'env') {
+            model.setEnv(r, el.value);
+            S.dirty = true;
+            S.error = null;
+            draw({ preserve: true });
+            $('#env')?.focus({ preventScroll: true });
+          } else if (el.id === 'target') {
+            model.chooseTarget(r, el.value);
+            S.dirty = true;
+            S.error = null;
+            draw({ preserve: true });
+            $('#target')?.focus({ preventScroll: true });
+          } else if (el.dataset.field) {
+            const k = el.dataset.field;
+            r.picks = el.checked ? [...r.picks, k] : r.picks.filter((x) => x !== k);
+            r.reviewed = false;
+            S.dirty = true;
+            S.error = null;
+            draw({ preserve: true });
+            $(`[data-field="${k}"]`)?.focus({ preventScroll: true });
+          } else if (el.dataset.group) {
+            mapping[el.dataset.group] = el.value;
+            const count = S.rows.filter(
+              (p) => model.mappable(p, p.group) && mapping[p.group] && p.env !== mapping[p.group],
+            ).length;
+            $('#impact').textContent = `将修改 ${count} 条`;
+            $('[data-do="apply-map"]').disabled = !count;
+          }
+        }
+        document.addEventListener('click', click);
+        document.addEventListener('change', change);
+        document.addEventListener('input', (e) => readModelInput(e.target));
+
+        reset(
+          location.hash === '#models'
+            ? 'models'
+            : location.hash === '#start'
+              ? 'setup'
+              : location.hash === '#summary-demo'
+                ? 'end'
+                : 'review',
+        );
+      }
+      startPrototype();
+    </script>
+  </body>
+</html>

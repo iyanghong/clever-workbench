@@ -19,6 +19,7 @@ import { dateLabel } from '../../domain';
 import { useVault } from '../vault/VaultProvider';
 import { Dialog } from '../../shared/Dialog';
 import { PasswordChange } from './PasswordChange';
+import { AnalysisModels } from './AnalysisModels';
 import { AboutUpdate } from './AppUpdate';
 const message = (cause: unknown) =>
   String(cause).replace(/^Error: Error invoking remote method '[^']+': Error: /, '');
@@ -56,7 +57,7 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
     if (
       !snapshot ||
       !route.section ||
-      !['appearance', 'vault', 'backup', 'about', 'guidance'].includes(route.section)
+      !['appearance', 'vault', 'backup', 'about', 'guidance', 'models'].includes(route.section)
     )
       return;
     setSection(route.section);
@@ -520,6 +521,12 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
                     </p>
                   </Card>
                 ),
+              },
+              {
+                key: 'models',
+                label: '分析模型',
+                disabled: Boolean(busy),
+                children: <AnalysisModels />,
               },
               {
                 key: 'about',

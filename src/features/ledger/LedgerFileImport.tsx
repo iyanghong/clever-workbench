@@ -1,30 +1,28 @@
-import {
-  Alert,
-  Button,
-  Checkbox,
-  Collapse,
-  Empty,
-  Input,
-  Progress,
-  Select,
-  Spin,
-  Table,
-  Tabs,
-  Tag,
-} from 'antd';
+import { Alert, Button, Checkbox, Collapse, Empty, Input, Progress, Select, Spin, Tag } from 'antd';
 import { useEffect, useRef, useState, useMemo } from 'react';
+import {
+  FileArrowUpIcon,
+  FileTextIcon,
+  GearSixIcon,
+  DesktopIcon,
+  ShieldCheckIcon,
+} from '@phosphor-icons/react';
 import { Dialog } from '../../shared/Dialog';
+import { completeCandidateUrls, completeImportUrl } from '../../ledger-import-url';
+import { AnalysisModels } from '../settings/AnalysisModels';
+import { MatchPanel, MappingDialog, ImportSummary, actionLabel } from './ImportReviewPanels';
+import { importMatchScope, reviewMatches } from '../../ledger-import-matches';
+import { environmentsOverlap } from '../../ledger-workspace-types';
+import type { ModelSettings } from '../../ledger-import-types';
 import { useVault } from '../vault/VaultProvider';
 import type { Snapshot } from '../../types';
 import {
   ledgerImportKinds,
   ledgerImportFieldKinds,
-  localImportModels,
   type ImportCandidate,
   type ImportReference,
   type ImportSource,
   type LedgerImportKind,
-  type LocalImportModel,
   type LocalLedgerImportSnapshot,
 } from '../../ledger-import-types';
 import { importTargets, importChanges, matchScore } from '../../ledger-import-matches';
@@ -63,7 +61,36 @@ export function LedgerFileImport({
   const vault = useVault();
   const [state, setState] = useState<LocalLedgerImportSnapshot | null>(null);
   const [kind, setKind] = useState<LedgerImportKind | 'all'>('all');
-  const [model, setModel] = useState<LocalImportModel>('qwen3:8b');
+  const [config, setConfig] = useState<ModelSettings | null>(null),
+    [managing, setManaging] = useState(false);
+  const [permission, setPermission] = useState(''),
+    [remote, setRemote] = useState(false);
+  const [summary, setSummary] = useState(false),
+    [showMap, setShowMap] = useState(false),
+    [mobileDetail, setMobileDetail] = useState(false);
+  const manual = useRef(new Set<string>()),
+    decided = useRef(new Map<string, string>()),
+    queue = useRef<HTMLDivElement>(null),
+    detail = useRef<HTMLDivElement>(null);
+  const newScopes = useRef(new Map<string, string[] | null>());
+  const [finishedSkips, setFinishedSkips] = useState(0);
+  const allPosition = useRef({ id: '', top: 0 });
+  const [filterDone, setFilterDone] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void api()
+      .settings()
+      .then((s) => {
+        if (live) setConfig(s);
+      })
+      .catch((e) => {
+        if (live) setError(String(e));
+      });
+    return () => {
+      live = false;
+    };
+  }, [managing]);
+  const model = config?.localModel ?? 'qwen3:8b';
   const [candidates, setCandidates] = useState<ImportCandidate[]>([]);
   const [passwordEdits, setPasswordEdits] = useState<Record<string, string>>({});
   const [selectedId, setSelectedId] = useState('');
@@ -74,7 +101,7 @@ export function LedgerFileImport({
   const [sources, setSources] = useState<ImportSource[]>([]);
   const [unmatchedSources, setUnmatchedSources] = useState<ImportSource[]>([]);
   const [sourcePage, setSourcePage] = useState(0);
-  const [mapping, setMapping] = useState<Record<string, string>>({});
+
   const [fieldName, setFieldName] = useState('');
   const [fieldValue, setFieldValue] = useState('');
   const draftId = useRef('');
@@ -95,37 +122,130 @@ export function LedgerFileImport({
   const choices = active
     ? targets
         .filter((t) => t.kind === active.kind)
-        .sort((a, b) => matchScore(active, b) - matchScore(active, a))
+        .sort(
+          (a, b) =>
+            matchScore(active, b, candidates, targets) - matchScore(active, a, candidates, targets),
+        )
     : [];
   const currentTarget = choices.find((t) => t.id === active?.update?.targetId);
-  const suggestedTarget = choices.find((t) => t.id === active?.advice?.targetId);
   const differences = active && currentTarget ? importChanges(active, currentTarget) : [];
-  const envLabel = (ids: string[]) =>
-    ids.length
-      ? ids.map((id) => environments.find((e) => e.id === id)?.name ?? '失效环境').join('、')
-      : '系统通用';
-  const originalLabels = (c: ImportCandidate) =>
-    c.environmentNames.length ? c.environmentNames : [c.advice?.section || '未注明环境'];
-  const similarities = useMemo(
-    () =>
-      new Map(
-        candidates.map((c) => [
-          c.id,
-          {
-            peers: candidates.filter((p) => p.id !== c.id && matchScore(c, p) >= 4),
-            old: targets
-              .filter((t) => matchScore(c, t) > 0)
-              .sort((a, b) => matchScore(c, b) - matchScore(c, a)),
-          },
-        ]),
-      ),
-    [candidates, targets],
+  const envLabel = (ids: string[] | null) =>
+    ids === null
+      ? '环境待确认'
+      : ids.length
+        ? ids.map((id) => environments.find((e) => e.id === id)?.name ?? '失效环境').join('、')
+        : '系统通用';
+  const matches = useMemo(
+    () => new Map(candidates.map((r) => [r.id, reviewMatches(r, candidates, targets, snapshot)])),
+    [candidates, targets, snapshot],
   );
-  const problems = importCandidateProblems(snapshot, systemId, job?.kind ?? kind, candidates);
-  const selected = candidates.filter((item) => item.selected);
-  const valid =
-    review && selected.length > 0 && selected.every((item) => !problems[item.id]?.length);
+  const activeMatches = (active && matches.get(active.id)) ?? [];
+  const suggestedTarget = choices.find(
+    (t) =>
+      t.id === active?.advice?.targetId &&
+      activeMatches.some((m) => m.origin === 'ledger' && m.id === t.id),
+  );
+  const strong = (r: ImportCandidate) => matches.get(r.id)?.some((m) => m.strong) ?? false;
+  const signature = (id: string) =>
+    JSON.stringify(
+      matches
+        .get(id)
+        ?.filter((m) => m.strong)
+        .map((m) => [m.origin, m.id, m.name, m.sharedAddress, m.reasons]),
+    );
+  const disposition = (r: ImportCandidate) =>
+    !strong(r) || decided.current.get(r.id) === signature(r.id);
 
+  const problems = importCandidateProblems(snapshot, systemId, job?.kind ?? kind, candidates);
+  const selected = candidates.filter((r) => r.selected);
+  const checkedRow = (r: ImportCandidate) =>
+    r.reviewed && !problems[r.id]?.length && disposition(r);
+  const visible = candidates.filter(
+    (r) => tab === 'all' || (tab === 'duplicates' ? strong(r) : !checkedRow(r)),
+  );
+  const valid = review && candidates.length > 0 && candidates.every(checkedRow);
+  const file = job?.phase === 'cancelled' ? null : job;
+  const binding = file && config?.service ? file.id + ':' + config.service.revision : '';
+  const canRemote = !!binding && permission === binding;
+  const useRemote = remote && canRemote;
+  useEffect(() => {
+    setPermission('');
+    setRemote(false);
+  }, [job?.id, config?.service?.revision]);
+  const openRow = (id: string) => {
+    setSelectedId(id);
+    setFilterDone(false);
+    setMobileDetail(true);
+    setError('');
+    detail.current?.scrollTo(0, 0);
+  };
+  function filterRows(next: string) {
+    if (next === tab) return;
+    if (tab === 'all') allPosition.current = { id: selectedId, top: queue.current?.scrollTop ?? 0 };
+    setTab(next);
+    setFilterDone(false);
+    const list = candidates.filter(
+      (r) => next === 'all' || (next === 'duplicates' ? strong(r) : !checkedRow(r)),
+    );
+    setSelectedId(
+      next === 'all' && allPosition.current.id
+        ? allPosition.current.id
+        : (list.find((r) => r.id === selectedId)?.id ?? list[0]?.id ?? ''),
+    );
+    detail.current?.scrollTo(0, 0);
+    requestAnimationFrame(() =>
+      queue.current?.scrollTo(0, next === 'all' ? allPosition.current.top : 0),
+    );
+  }
+  function confirmRow() {
+    if (!active) return;
+    if (!disposition(active)) {
+      setError('请先在比对对象下选择保留为新增、更新已有或跳过本条。');
+      detail.current?.querySelector<HTMLElement>('.import-decisions button')?.focus();
+      return;
+    }
+    const checked = { ...completeCandidateUrls(active), reviewed: true };
+    const next = candidates.map((r) => (r.id === active.id ? checked : r));
+    const nextProblems = importCandidateProblems(snapshot, systemId, job?.kind ?? kind, next);
+    const issues = nextProblems[active.id];
+    if (issues?.length) {
+      setError(issues[0]);
+      const fields = detail.current?.querySelector<HTMLDetailsElement>('.import-fields');
+      if (fields) fields.open = true;
+      const addressNumber = /^地址 (\d+)：/.exec(issues[0])?.[1];
+      const label = addressNumber
+        ? `地址 ${addressNumber} URL`
+        : issues[0].includes('名称')
+          ? '候选名称'
+          : issues[0].includes('环境')
+            ? '候选适用环境'
+            : issues[0].includes('目标')
+              ? '更新目标'
+              : '';
+      const field = label
+        ? detail.current?.querySelector<HTMLElement>('[aria-label="' + label + '"]')
+        : detail.current?.querySelector<HTMLElement>('.local-import-problems');
+      field?.focus();
+      field?.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+    setCandidates(next);
+    setError('');
+    const pending = next.filter(
+      (r) => !r.reviewed || nextProblems[r.id]?.length || !disposition(r),
+    );
+    if (!pending.length) {
+      setSummary(true);
+      return;
+    }
+    const left = pending.filter((r) => tab !== 'duplicates' || strong(r));
+    if (!left.length) {
+      setFilterDone(true);
+      return;
+    }
+    const i = candidates.indexOf(active);
+    openRow((left.find((r) => next.indexOf(r) > i) ?? left[0]).id);
+  }
   async function refresh() {
     const next = await api().state();
     setState(next);
@@ -134,12 +254,20 @@ export function LedgerFileImport({
       setCandidates(next.job.candidates);
       setSelectedId(next.job.candidates[0]?.id ?? '');
       setPasswordEdits({});
-      setMapping({});
+      manual.current.clear();
+      newScopes.current.clear();
+      setFinishedSkips(0);
+      decided.current.clear();
+      setSummary(false);
+      setFilterDone(false);
+      setMobileDetail(false);
       setTab('all');
       setUnmatchedSources([]);
       setSourcePage(0);
     } else if (!next.job || ['complete', 'cancelled'].includes(next.job.phase)) {
       draftId.current = '';
+      setSummary(false);
+      setFilterDone(false);
       setCandidates([]);
       setPasswordEdits({});
       setSelectedId('');
@@ -181,9 +309,6 @@ export function LedgerFileImport({
     [registerFlush],
   );
   useEffect(() => {
-    if (leaving) continueButton.current?.focus();
-  }, [leaving]);
-  useEffect(() => {
     let live = true;
     setSources([]);
     setFieldName('');
@@ -211,58 +336,103 @@ export function LedgerFileImport({
       setWorking(false);
     }
   }
+  function editRows(edit: (rows: ImportCandidate[]) => ImportCandidate[]) {
+    setCandidates((rows) => {
+      const next = edit(rows);
+      return next.map((r) => {
+        if (decided.current.has(r.id) || !r.advice) return r;
+        if (r.update && r.update.targetId === r.advice.targetId) {
+          const t = targets.find((t) => t.id === r.update!.targetId);
+          if (!environmentsOverlap(r.environmentIds, t?.environmentIds ?? null))
+            return { ...r, update: undefined, reviewed: false };
+        }
+        if (r.selected || r.advice.action !== 'skip') return r;
+        const stillMatches = reviewMatches(r, next, targets, snapshot).some(
+          (m) =>
+            m.strong &&
+            (m.origin === 'file' ? m.id === r.advice?.modelPeerId : m.id === r.advice?.targetId),
+        );
+        return stillMatches ? r : { ...r, selected: true, reviewed: false };
+      });
+    });
+  }
   function change(patch: Partial<ImportCandidate>, id = active?.id, reviewed = false) {
-    setCandidates((items) =>
+    if (patch.addresses && error.startsWith('地址 ')) setError('');
+    editRows((items) =>
       items.map((item) =>
         item.id === id ? { ...item, ...patch, ...(reviewed ? {} : { reviewed: false }) } : item,
       ),
     );
   }
+  function editUrl(row: ImportCandidate, id: string, url: string) {
+    change(
+      {
+        addresses: row.addresses.map((address) =>
+          address.id === id ? { ...address, url } : address,
+        ),
+      },
+      row.id,
+    );
+  }
   function selectUpdate(targetId: string) {
     if (!active) return;
     const t = choices.find((x) => x.id === targetId);
+    decided.current.set(active.id, signature(active.id));
+    if (active.update?.targetId === targetId) {
+      change({ selected: true });
+      return;
+    }
+    if (!active.update) newScopes.current.set(active.id, active.environmentIds);
     const scope = t?.environmentIds ?? [];
     change({
       selected: true,
       update: {
         targetId,
         fields:
-          active.advice?.targetId === targetId
+          suggestedTarget?.id === targetId
             ? (active.advice?.fields ?? []).filter(
                 (k) => t && importChanges(active, t).some((d) => d.key === k),
               )
             : [],
       },
-      environmentIds: [...scope],
+      environmentIds: t ? [...scope] : active.environmentIds,
       confirmDuplicate: false,
     });
   }
   function requestClose() {
     if (working) return;
+    setError('');
     if (job && !['complete', 'cancelled'].includes(job.phase)) setLeaving(true);
     else onClose();
   }
-  function applyMapping(label: string, value: string) {
-    const next = { ...mapping, [label]: value };
-    setMapping(next);
-    setCandidates((items) =>
-      items.map((item) => {
-        const labels = originalLabels(item);
-        if (!labels.includes(label)) return item;
-        const values = [...new Set(labels.map((name) => next[name]).filter(Boolean))];
-        const complete = labels.every((name) => next[name]);
-        return {
-          ...item,
-          reviewed: false,
-          ...(item.update ? { update: { ...item.update, environmentOverride: true } } : {}),
-          environmentIds:
-            !complete || (values.includes('common') && values.length > 1)
-              ? null
-              : values.includes('common')
-                ? []
-                : values,
-        };
-      }),
+  function chooseAction(v: string) {
+    if (!active) return;
+    decided.current.set(active.id, signature(active.id));
+    setError('');
+    if (v === 'update') {
+      const match = activeMatches.find(
+        (m) => m.origin === 'ledger' && m.strong && m.kind === active.kind,
+      );
+      selectUpdate(active.update?.targetId ?? suggestedTarget?.id ?? match?.id ?? '');
+      return;
+    }
+    change(
+      v === 'skip'
+        ? {
+            selected: false,
+            update: undefined,
+            environmentIds: active.update
+              ? (newScopes.current.get(active.id) ?? active.advice?.environmentIds ?? [])
+              : active.environmentIds,
+          }
+        : {
+            selected: true,
+            update: undefined,
+            confirmDuplicate: true,
+            environmentIds: active.update
+              ? (newScopes.current.get(active.id) ?? active.advice?.environmentIds ?? [])
+              : active.environmentIds,
+          },
     );
   }
   function submit() {
@@ -273,6 +443,12 @@ export function LedgerFileImport({
     const revision = lockRevision.current;
     inFlight.current = (async () => {
       try {
+        if (!selected.length) {
+          await api().discard(job.id);
+          setFinishedSkips(candidates.length);
+          setSummary(false);
+          return;
+        }
         const accounts = selected
           .filter((item) => !item.update)
           .flatMap((item) => (item.kind === 'account' ? [item] : item.accounts));
@@ -427,43 +603,209 @@ export function LedgerFileImport({
     );
   }
 
-  return (
-    <Dialog
-      title="文件导入 · 校对后保存"
-      className="modal local-ledger-import-dialog"
-      onClose={requestClose}
-      closeDisabled={working}
-      description={`目标系统：${target?.name ?? '未选择'}。解析和分析在本机完成，逐行校对后统一保存。`}
-      error={error}
-    >
-      {leaving && (
-        <Alert
-          type="warning"
-          showIcon
-          title="本次内容尚未提交"
-          description={
-            <>
-              <p>放弃会取消分析并清除本次原文、候选和密码修改，不影响已有台账。</p>
-              <div className="modal-actions">
-                <Button ref={continueButton} onClick={() => setLeaving(false)}>
-                  继续校对
-                </Button>
-                <Button
-                  danger
-                  onClick={() =>
-                    void perform(async () => {
-                      if (job) await api().discard(job.id);
-                      setPasswordEdits({});
-                      onClose();
-                    })
-                  }
-                >
-                  放弃并关闭
-                </Button>
-              </div>
-            </>
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (
+        e.key === 'Escape' &&
+        !managing &&
+        !showMap &&
+        !leaving &&
+        !document.querySelector('.ant-select-open,.ant-modal-root .ant-modal')
+      )
+        requestClose();
+    };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, [job, working, managing, showMap, leaving]);
+  if (finishedSkips)
+    return (
+      <main className="main import-page">
+        <h1>导入结果</h1>
+        <Alert type="success" title={`已跳过全部 ${finishedSkips} 条候选，本次未写入台账。`} />
+        <Button onClick={onClose}>返回技术台账</Button>
+      </main>
+    );
+  if (managing)
+    return (
+      <main className="main import-page">
+        <AnalysisModels onBack={() => setManaging(false)} />
+      </main>
+    );
+  const modelReady = runtime?.phase === 'ready' && runtime.models.some((m) => m.name === model);
+  const needsModel = runtime?.phase === 'missing' || (runtime?.phase === 'ready' && !modelReady);
+  const runtimeStatus = !runtime
+    ? '正在读取本机服务'
+    : {
+        missing: '尚未安装 Ollama',
+        stopped: 'Ollama 尚未启动',
+        starting: '正在启动 Ollama',
+        failed: 'Ollama 启动失败',
+        downloading: '正在下载本机模型',
+        ready: modelReady ? '本机模型已就绪' : '尚未下载所选模型',
+      }[runtime.phase];
+  function setupAction() {
+    if (running && file)
+      return (
+        <Button disabled={working} onClick={() => void perform(() => api().cancel(file.id))}>
+          取消分析
+        </Button>
+      );
+    if (file?.phase === 'failed' && !file.sourceCount) return null;
+    if (!useRemote && needsModel)
+      return (
+        <Button
+          type={file ? 'primary' : 'default'}
+          disabled={working}
+          onClick={() => setManaging(true)}
+        >
+          {runtime?.phase === 'missing' ? '前往安装 Ollama' : '前往准备模型'}
+        </Button>
+      );
+    if (!useRemote && !modelReady)
+      return (
+        <Button
+          type={file ? 'primary' : 'default'}
+          disabled={
+            !runtime || working || runtime.phase === 'starting' || runtime.phase === 'downloading'
           }
+          onClick={() => void perform(() => api().startOllama())}
+        >
+          启动 Ollama
+        </Button>
+      );
+    if (!file?.sourceCount) return null;
+    return (
+      <Button
+        type="primary"
+        disabled={working}
+        onClick={() =>
+          void perform(() =>
+            useRemote && config?.service
+              ? api().analyzeRemote({
+                  fileId: file.id,
+                  serviceRevision: config.service.revision,
+                  allow: true,
+                })
+              : api().analyze({ id: file.id, model }),
+          )
+        }
+      >
+        {useRemote ? '使用' + config?.service?.name + '提取此文件' : '开始本地分析'}
+      </Button>
+    );
+  }
+  const addressIssue = review && /^地址 (\d+)：(.+)$/.exec(error);
+  const sourceWarnings = job?.warnings.length ? (
+    <Collapse
+      size="small"
+      items={[
+        {
+          key: 'warnings',
+          label: `需要留意的来源内容（${job.warnings.length}）`,
+          children: (
+            <ul>
+              {job.warnings.map((warning, index) => (
+                <li key={index}>{warning}</li>
+              ))}
+            </ul>
+          ),
+        },
+      ]}
+    />
+  ) : null;
+  return (
+    <main
+      className={'main import-page' + (!setupDone ? ' import-preparation' : '')}
+      aria-label="文件导入 · 校对后保存"
+    >
+      <header className="import-page-title">
+        <div>
+          <small>技术台账 / {target?.name}</small>
+          <h1>
+            {job?.phase === 'complete'
+              ? '导入结果'
+              : summary
+                ? '确认保存'
+                : review
+                  ? '校对候选'
+                  : '文件导入'}
+          </h1>
+          {setupDone && (
+            <p>
+              {job?.filename} {review && ' · ' + candidates.length + ' 条候选'}{' '}
+              {job?.analysisLabel && ' · ' + job.analysisLabel}
+            </p>
+          )}
+        </div>
+        <Button disabled={working} onClick={requestClose}>
+          返回技术台账
+        </Button>
+      </header>
+      <nav className="import-steps" aria-label="导入步骤">
+        {['选文件与分析', '校对候选', '确认保存'].map((title, i) => (
+          <span
+            key={title}
+            aria-current={
+              i === (summary || job?.phase === 'complete' ? 2 : review ? 1 : 0) ? 'step' : undefined
+            }
+          >
+            <b aria-hidden="true">{i + 1}</b>
+            {title}
+          </span>
+        ))}
+      </nav>
+      {error && !leaving && !addressIssue && (
+        <Alert role="alert" type="error" title={error} closable onClose={() => setError('')} />
+      )}
+      {showMap && (
+        <MappingDialog
+          rows={candidates}
+          environments={environments}
+          manual={manual.current}
+          close={() => setShowMap(false)}
+          apply={(changes) => {
+            editRows((rows) =>
+              rows.map((r) =>
+                changes.has(r.id) ? { ...r, environmentIds: changes.get(r.id)! } : r,
+              ),
+            );
+            setShowMap(false);
+          }}
         />
+      )}
+      {leaving && (
+        <Dialog
+          title="放弃本次导入？"
+          description="放弃会清除本次文件预览、校对内容和密码修改。"
+          onClose={() => setLeaving(false)}
+          onShown={() => continueButton.current?.focus()}
+          closeDisabled={working}
+          error={error || undefined}
+        >
+          <div className="modal-actions">
+            <Button
+              danger
+              disabled={working}
+              onClick={() =>
+                void perform(async () => {
+                  if (job) await api().discard(job.id);
+                  setPasswordEdits({});
+                  onClose();
+                })
+              }
+            >
+              放弃并关闭
+            </Button>
+            <Button
+              type="primary"
+              ref={continueButton}
+              disabled={working}
+              onClick={() => setLeaving(false)}
+            >
+              继续校对
+            </Button>
+          </div>
+        </Dialog>
       )}
       {job && job.systemId !== systemId ? (
         <Alert
@@ -478,186 +820,176 @@ export function LedgerFileImport({
         />
       ) : (
         <>
-          <Collapse
-            size="small"
-            key={setupDone ? 'review' : 'prepare'}
-            defaultActiveKey={setupDone ? [] : ['prepare']}
-            items={[
-              {
-                key: 'prepare',
-                label: setupDone ? '模型与文件准备（已完成）' : '模型与文件准备',
-                children: (
-                  <section className="local-import-setup" aria-label="本地模型与文件准备">
-                    <div className="local-import-runtime">
-                      <div>
-                        <h3>本地模型</h3>
-                        <p className="muted">
-                          {runtime?.phase === 'missing'
-                            ? '未找到 Ollama，请先从官网安装。'
-                            : runtime?.phase === 'starting'
-                              ? '正在启动 Ollama…'
-                              : runtime?.phase === 'ready' || runtime?.phase === 'downloading'
-                                ? `Ollama ${runtime.version ?? ''} 已在本机运行`
-                                : '启动已安装的 Ollama，准备分析所需的模型。'}
-                        </p>
-                      </div>
-                      <div className="local-import-actions">
-                        {runtime?.phase === 'missing' && (
-                          <Button
-                            onClick={() =>
-                              void window.desktop.openExternal('https://ollama.com/download')
-                            }
-                          >
-                            下载 Ollama
-                          </Button>
-                        )}
-                        <Button
-                          disabled={
-                            working ||
-                            runtime?.phase === 'starting' ||
-                            runtime?.phase === 'downloading' ||
-                            running
-                          }
-                          onClick={() => void perform(() => api().startOllama())}
-                        >
-                          {runtime?.phase === 'ready' ? '检查本地服务' : '启动 Ollama'}
-                        </Button>
-                      </div>
+          {!setupDone && (
+            <section className="import-setup-card" aria-label="导入设置">
+              <section className="import-setup-group" aria-labelledby="import-source-title">
+                <h2 id="import-source-title">导入资料</h2>
+                <div className="import-setup-row">
+                  <label htmlFor={file ? undefined : 'import-kind'}>分析范围</label>
+                  {file ? (
+                    <span>
+                      {file.kind === 'all'
+                        ? '当前系统 · 全部台账类型'
+                        : ledgerImportKinds[file.kind]}
+                    </span>
+                  ) : (
+                    <Select
+                      id="import-kind"
+                      aria-label="文件分析范围"
+                      value={kind}
+                      onChange={setKind}
+                      disabled={working}
+                      options={[
+                        { value: 'all', label: '当前系统 · 全部台账类型' },
+                        ...Object.entries(ledgerImportKinds).map(([value, label]) => ({
+                          value,
+                          label,
+                        })),
+                      ]}
+                    />
+                  )}
+                </div>
+                <div className="import-setup-row">
+                  <span className="import-setup-label">来源文件</span>
+                  <div className="import-file-field">
+                    <span className="import-file-icon" aria-hidden="true">
+                      {file ? <FileTextIcon /> : <FileArrowUpIcon />}
+                    </span>
+                    <div className="import-file-caption">
+                      <strong>{file ? file.filename : 'Excel、Word 或 CSV'}</strong>
+                      <small role="status">
+                        {file
+                          ? file.phase === 'parsing'
+                            ? '正在本机解析…'
+                            : file.sourceCount > 0
+                              ? '已在本机解析'
+                              : file.error
+                                ? '解析失败'
+                                : '没有可分析的内容'
+                          : '.xlsx、.docx、.csv · 最大 20 MB'}
+                      </small>
                     </div>
-                    <div className="local-import-form-grid">
-                      <label>
-                        分析模型
-                        <Select
-                          aria-label="分析模型"
-                          value={model}
-                          disabled={running || working || runtime?.phase === 'downloading'}
-                          onChange={setModel}
-                          options={localImportModels.map((value) => ({
-                            value,
-                            label: value === 'qwen3:8b' ? 'Qwen3 8B' : 'Qwen3 4B',
-                          }))}
-                        />
-                      </label>
-                      <label>
-                        分析范围
-                        <Select
-                          aria-label="文件分析范围"
-                          value={job?.kind ?? kind}
-                          disabled={
-                            Boolean(job && !['complete', 'cancelled'].includes(job.phase)) ||
-                            working
-                          }
-                          onChange={setKind}
-                          options={[
-                            { value: 'all', label: '当前系统 · 全部台账类型' },
-                            ...Object.entries(ledgerImportKinds).map(([value, label]) => ({
-                              value,
-                              label: `仅${label}及其附属资料`,
-                            })),
-                          ]}
-                        />
-                      </label>
-                    </div>
-                    <div className="local-import-actions">
-                      <Button
-                        disabled={working || running || runtime?.phase !== 'ready'}
-                        onClick={() => void perform(() => api().downloadModel(model))}
-                      >
-                        {runtime?.models.some((item) => item.name === model)
-                          ? '校验所选模型'
-                          : '下载所选模型'}
-                      </Button>
-                      {runtime?.phase === 'downloading' && (
-                        <Button onClick={() => void perform(() => api().cancelDownload())}>
-                          取消下载
-                        </Button>
-                      )}
-                      <Button
-                        disabled={
-                          working ||
-                          running ||
-                          Boolean(job && !['complete', 'cancelled'].includes(job.phase))
-                        }
-                        onClick={() => void perform(() => api().chooseFile({ systemId, kind }))}
-                      >
-                        选择 Excel／Word／CSV
-                      </Button>
-                      {job?.phase === 'ready' ||
-                      (job?.phase === 'failed' && job.sourceCount > 0) ? (
+                    {file ? (
+                      !running && (
                         <Button
-                          type="primary"
-                          disabled={
-                            working ||
-                            runtime?.phase !== 'ready' ||
-                            !runtime.models.some((item) => item.name === model)
-                          }
-                          onClick={() => void perform(() => api().analyze({ id: job.id, model }))}
+                          size="small"
+                          disabled={working}
+                          onClick={() => void perform(() => api().discard(file.id))}
                         >
-                          开始本地分析
-                        </Button>
-                      ) : null}
-                      {job && !['complete', 'cancelled'].includes(job.phase) && (
-                        <Button disabled={working} onClick={() => setLeaving(true)}>
                           清空重选
                         </Button>
-                      )}
-                    </div>
-                    {runtime?.download && (
-                      <div role="status">
-                        <Progress
-                          percent={
-                            runtime.download.total
-                              ? Math.floor(
-                                  (runtime.download.completed / runtime.download.total) * 100,
-                                )
-                              : 0
-                          }
-                        />
-                        {runtime.download.message}
+                      )
+                    ) : (
+                      <Button
+                        type="primary"
+                        disabled={working || !state}
+                        onClick={() => void perform(() => api().chooseFile({ systemId, kind }))}
+                      >
+                        选择文件
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {file && sourceWarnings}
+                {file?.error && <Alert type="error" role="alert" showIcon title={file.error} />}
+              </section>
+              <section className="import-setup-group" aria-labelledby="import-provider-title">
+                <header>
+                  <h2 id="import-provider-title">分析模型</h2>
+                  <Button
+                    type="link"
+                    icon={<GearSixIcon />}
+                    disabled={working || running}
+                    onClick={() => setManaging(true)}
+                  >
+                    管理分析模型
+                  </Button>
+                </header>
+                <div className="import-setup-row">
+                  <label htmlFor={config?.service && !running ? 'import-provider' : undefined}>
+                    提取服务
+                  </label>
+                  <div className="import-provider-field">
+                    {file?.phase === 'analyzing' ? (
+                      <strong>{file.analysisLabel}</strong>
+                    ) : config?.service ? (
+                      <Select
+                        id="import-provider"
+                        aria-label="本次提取服务"
+                        value={useRemote ? 'remote' : 'local'}
+                        disabled={running || working}
+                        onChange={(v) => setRemote(v === 'remote')}
+                        options={[
+                          { value: 'local', label: '本机 Ollama · ' + model },
+                          { value: 'remote', label: config.service.name, disabled: !canRemote },
+                        ]}
+                      />
+                    ) : (
+                      <div className="import-local-model">
+                        <DesktopIcon aria-hidden="true" />
+                        <span>本机 Ollama</span>
+                        <code>{model}</code>
                       </div>
                     )}
-                    {runtime?.error && <Alert type="warning" showIcon title={runtime.error} />}
-                  </section>
-                ),
-              },
-            ]}
-          />
-          {job && (
-            <div className="local-import-job" role="status">
-              <strong>{job.filename}</strong>
-              <span>{job.progress.message}</span>
-              {running && (
-                <>
-                  <Spin size="small" />
-                  <Button onClick={() => void perform(() => api().cancel(job.id))}>取消分析</Button>
-                </>
-              )}
-              {job.phase === 'analyzing' && job.progress.total > 1 && (
-                <Progress
-                  percent={Math.floor((job.progress.completed / job.progress.total) * 100)}
-                />
-              )}
-            </div>
+                    {!running && file && config?.service && (
+                      <Checkbox
+                        checked={canRemote}
+                        disabled={working}
+                        onChange={(e) => {
+                          setPermission(e.target.checked ? binding : '');
+                          if (!e.target.checked) setRemote(false);
+                        }}
+                      >
+                        允许本文件交给指定第三方提取
+                      </Checkbox>
+                    )}
+                    {file?.phase !== 'analyzing' && (
+                      <small className="import-privacy">
+                        <ShieldCheckIcon aria-hidden="true" />
+                        <span>
+                          {useRemote
+                            ? '本文件的提取片段将发送至 ' +
+                              config?.service?.endpoint +
+                              '，已有台账仅在本机比对。'
+                            : '文件仅在本机处理。'}
+                        </span>
+                      </small>
+                    )}
+                  </div>
+                </div>
+                {runtime?.error && !useRemote && <Alert title={runtime.error} type="warning" />}
+              </section>
+              <footer className="import-setup-footer">
+                <div className="import-setup-status" role="status">
+                  {running || (!useRemote && runtime?.phase === 'starting') ? (
+                    <Spin size="small" />
+                  ) : (
+                    <i
+                      aria-hidden="true"
+                      className={modelReady || useRemote ? 'ready' : undefined}
+                    />
+                  )}
+                  <span>
+                    {running
+                      ? file?.progress.message
+                      : job?.phase === 'cancelled'
+                        ? job.progress.message
+                        : useRemote
+                          ? '已获本文件外发许可'
+                          : runtimeStatus}
+                  </span>
+                </div>
+                {setupAction()}
+                {file?.phase === 'analyzing' && file.progress.total > 1 && (
+                  <Progress
+                    percent={Math.floor((file.progress.completed / file.progress.total) * 100)}
+                  />
+                )}
+              </footer>
+            </section>
           )}
-          {job?.error && <Alert type="error" showIcon title={job.error} />}
-          {job?.warnings.length ? (
-            <Collapse
-              size="small"
-              items={[
-                {
-                  key: 'warnings',
-                  label: `需要留意的来源内容（${job.warnings.length}）`,
-                  children: (
-                    <ul>
-                      {job.warnings.map((warning, index) => (
-                        <li key={index}>{warning}</li>
-                      ))}
-                    </ul>
-                  ),
-                },
-              ]}
-            />
-          ) : null}
+          {setupDone && job?.error && <Alert type="error" showIcon title={job.error} />}
+          {setupDone && sourceWarnings}
           {job?.phase === 'complete' && (
             <>
               <Alert
@@ -678,7 +1010,21 @@ export function LedgerFileImport({
           {review && !candidates.length && (
             <Empty description="没有识别到候选，请检查来源、选择其他类型或改用另一模型。" />
           )}
-          {review && candidates.length > 0 && (
+          {summary && review && (
+            <ImportSummary
+              rows={candidates}
+              targets={targets}
+              envLabel={envLabel}
+              working={working}
+              submit={submit}
+              edit={(id) => {
+                setSummary(false);
+                setTab('all');
+                openRow(id);
+              }}
+            />
+          )}
+          {review && !summary && candidates.length > 0 && (
             <>
               {job.unmatchedSourceIds.length > 0 && (
                 <Collapse
@@ -722,302 +1068,224 @@ export function LedgerFileImport({
                   ]}
                 />
               )}
-              <Collapse
-                size="small"
-                items={[
-                  {
-                    key: 'environments',
-                    label: '映射来源环境',
-                    children: (
-                      <div className="local-import-form-grid">
-                        {[...new Set(candidates.flatMap((item) => originalLabels(item)))].map(
-                          (label) => (
-                            <label key={label}>
-                              {label}
-                              <Select
-                                aria-label={`来源环境 ${label}`}
-                                placeholder="明确选择本系统环境或通用"
-                                value={mapping[label]}
-                                onChange={(value) => applyMapping(label, value)}
-                                options={[
-                                  { value: 'common', label: '系统通用' },
-                                  ...environments.map((item) => ({
-                                    value: item.id,
-                                    label: item.name,
-                                  })),
-                                ]}
-                              />
-                            </label>
-                          ),
-                        )}
-                      </div>
-                    ),
-                  },
-                ]}
-              />
-              <Tabs
-                activeKey={tab}
-                onChange={setTab}
-                items={[
-                  { key: 'all', label: `全部（${candidates.length}）` },
-                  ...Object.entries(ledgerImportKinds)
-                    .filter(([kind]) => candidates.some((item) => item.kind === kind))
-                    .map(([key, label]) => ({
-                      key,
-                      label: `${label}（${candidates.filter((item) => item.kind === key).length}）`,
-                    })),
-                ]}
-              />
-              <div className="local-import-review">
+              <div
+                className={'local-import-review ' + (mobileDetail ? 'detail-mode' : 'list-mode')}
+              >
                 <section className="local-import-list" aria-label="台账导入候选清单">
-                  <Table<ImportCandidate>
-                    size="small"
-                    pagination={false}
-                    rowKey="id"
-                    dataSource={candidates.filter((item) => tab === 'all' || item.kind === tab)}
-                    onRow={(item) => ({
-                      'aria-current': item.id === selectedId ? true : undefined,
-                      onClick: () => setSelectedId(item.id),
-                    })}
-                    columns={[
-                      {
-                        title: '导入',
-                        width: 50,
-                        render: (_, item) => (
-                          <span onClick={(event) => event.stopPropagation()}>
-                            <Checkbox
-                              aria-label={`导入候选 ${item.name}`}
-                              checked={item.selected}
-                              onChange={(event) =>
-                                change({ selected: event.target.checked }, item.id)
-                              }
-                            />
+                  <header>
+                    <h3>候选清单 · {candidates.length}</h3>
+                    <div className="import-filters">
+                      {[
+                        ['all', '全部', candidates.length],
+                        ['duplicates', '疑似重复', candidates.filter(strong).length],
+                        ['pending', '待核对', candidates.filter((r) => !checkedRow(r)).length],
+                      ].map(([key, label, count]) => (
+                        <Button
+                          key={key}
+                          size="small"
+                          type={tab === key ? 'primary' : 'text'}
+                          onClick={() => filterRows(String(key))}
+                        >
+                          {label} {count}
+                        </Button>
+                      ))}
+                    </div>
+                  </header>
+                  <div className="import-queue" ref={queue}>
+                    {visible.map((r) => {
+                      const sm = (matches.get(r.id) ?? []).filter((m) => m.strong),
+                        m = sm[0];
+                      return (
+                        <button
+                          key={r.id}
+                          className="import-row"
+                          aria-label={'编辑候选 ' + (r.name || '未命名')}
+                          aria-current={selectedId === r.id && !filterDone ? 'true' : undefined}
+                          onClick={() => openRow(r.id)}
+                        >
+                          <small>{String(candidates.indexOf(r) + 1).padStart(2, '0')}</small>
+                          <span>
+                            <b>{r.name || '未命名'}</b>
+                            <small>
+                              {r.advice?.location} ·{' '}
+                              {envLabel(importMatchScope(r, candidates, targets))} ·{' '}
+                              {actionLabel(r)}
+                            </small>
+                            {m && (
+                              <em>
+                                {m.name}（
+                                {m.origin === 'file'
+                                  ? '本文件 · ' + m.location
+                                  : '已有台账 · ' + envLabel(m.environmentIds)}
+                                ）{sm.length > 1 ? ' · 另有 ' + (sm.length - 1) + ' 条' : ''}
+                              </em>
+                            )}
                           </span>
-                        ),
-                      },
-                      {
-                        title: '候选资料',
-                        render: (_, item) => (
-                          <>
-                            <Button
-                              type="link"
-                              className="local-import-name"
-                              aria-label={`编辑候选 ${item.name || '未命名'}`}
-                            >
-                              {item.name || '未命名'}
-                            </Button>
-                            <div>
-                              {item.advice?.location} {item.advice?.section}
-                            </div>
-                            <div>
-                              {item.selected ? (item.update ? '更新已有' : '新增') : '跳过'}
-                              {similarities.get(item.id)?.peers.length ||
-                              similarities.get(item.id)?.old.length
-                                ? ' · 疑似重复'
-                                : ''}
-                            </div>
-                            <div className="muted">
-                              {ledgerImportKinds[item.kind]} ·{' '}
-                              {item.environmentIds === null
-                                ? '环境待确认'
-                                : item.environmentIds.length
-                                  ? item.environmentIds
-                                      .map(
-                                        (id) =>
-                                          environments.find((environment) => environment.id === id)
-                                            ?.name ?? '失效环境',
-                                      )
-                                      .join('、')
-                                  : '系统通用'}
-                            </div>
-                          </>
-                        ),
-                      },
-                      {
-                        title: '校对',
-                        width: 72,
-                        render: (_, item) =>
-                          !item.selected ? (
-                            <Tag>跳过</Tag>
-                          ) : (
-                            <Tag color={problems[item.id]?.length ? 'orange' : 'green'}>
-                              {problems[item.id]?.length ? '待校对' : '已确认'}
-                            </Tag>
-                          ),
-                      },
-                    ]}
-                  />
+                          <Tag color={checkedRow(r) ? 'green' : m ? 'orange' : undefined}>
+                            {checkedRow(r) ? '已校对' : m ? '待处置' : '待核对'}
+                          </Tag>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <footer>
+                    已校对 {candidates.filter(checkedRow).length} / {candidates.length}
+                    <Button type="link" onClick={() => setShowMap(true)}>
+                      批量映射环境
+                    </Button>
+                  </footer>
                 </section>
                 <section className="local-import-detail" aria-label="候选详情">
-                  {active ? (
-                    <fieldset disabled={working}>
-                      <div className="local-import-section">
-                        <strong>
-                          {active.advice?.location} {active.advice?.section}
-                        </strong>
-                        <p>
-                          {active.advice?.environmentReason} · {active.advice?.evidence}
-                        </p>
-                        {(similarities.get(active.id)?.peers ?? []).map((p) => (
-                          <div key={p.id}>
-                            {active.advice?.modelPeerId === p.id ||
-                            p.advice?.modelPeerId === active.id
-                              ? '模型标记疑似重复'
-                              : '本文件相似行'}{' '}
-                            · {p.advice?.location} {p.advice?.section} · {p.name}（
-                            {envLabel(p.environmentIds ?? [])}）
+                  <Button className="import-back-list" onClick={() => setMobileDetail(false)}>
+                    返回候选清单
+                  </Button>
+                  <div className="import-scroll" ref={detail}>
+                    {filterDone ? (
+                      <div>
+                        <h3>当前筛选已核对完</h3>
+                        <Button
+                          onClick={() => {
+                            setTab('all');
+                            openRow(candidates.find((r) => !checkedRow(r))?.id ?? candidates[0].id);
+                          }}
+                        >
+                          返回全部待核对
+                        </Button>
+                      </div>
+                    ) : active ? (
+                      <fieldset disabled={working}>
+                        <small>
+                          {ledgerImportKinds[active.kind]} · {active.advice?.location} ·{' '}
+                          {active.advice?.section}
+                        </small>
+                        <h2>{active.name || '未命名候选'}</h2>
+                        <MatchPanel
+                          row={active}
+                          matches={activeMatches}
+                          scope={importMatchScope(active, candidates, targets)}
+                          envLabel={envLabel}
+                          onTarget={(id) => {
+                            selectUpdate(id);
+                            setError('');
+                          }}
+                        />
+                        <div className="local-import-section">
+                          <h3>如何处理本条</h3>
+                          <div className="import-decisions">
+                            {[
+                              ['new', '保留为新增'],
+                              ['update', '更新已有'],
+                              ['skip', '跳过本条'],
+                            ].map(([v, label]) => (
+                              <Button
+                                key={v}
+                                disabled={v === 'update' && !choices.length}
+                                type={
+                                  disposition(active) &&
+                                  v ===
+                                    (!active.selected ? 'skip' : active.update ? 'update' : 'new')
+                                    ? 'primary'
+                                    : 'default'
+                                }
+                                onClick={() => chooseAction(v)}
+                              >
+                                {label}
+                              </Button>
+                            ))}
                           </div>
-                        ))}
-                        {(similarities.get(active.id)?.old ?? []).slice(0, 8).map((t) => (
-                          <div key={t.id}>
-                            已有台账相似 · {t.name}（{envLabel(t.environmentIds)}）
+                          {activeMatches.some((m) =>
+                            m.origin === 'ledger'
+                              ? active.advice?.existingIds.includes(m.id)
+                              : active.advice?.peerIds.includes(m.id),
+                          ) && <p>{active.advice?.evidence}</p>}
+                          <div className="local-import-form-grid">
+                            {active.update && (
+                              <label>
+                                更新目标
+                                <Select
+                                  aria-label="更新目标"
+                                  showSearch
+                                  optionFilterProp="label"
+                                  placeholder="选择同类型已有台账"
+                                  value={active.update.targetId || undefined}
+                                  options={choices.map((t) => ({
+                                    value: t.id,
+                                    label: `${t.name}（${envLabel(t.environmentIds)}）`,
+                                  }))}
+                                  onChange={(id) => selectUpdate(id)}
+                                />
+                              </label>
+                            )}
                           </div>
-                        ))}
-                        <div className="local-import-form-grid">
-                          <label>
-                            本行操作
-                            <Select
-                              aria-label="本行操作"
-                              value={!active.selected ? 'skip' : active.update ? 'update' : 'new'}
-                              options={[
-                                { value: 'new', label: '新增独立记录' },
-                                { value: 'skip', label: '跳过此行' },
-                                {
-                                  value: 'update',
-                                  label: '更新已有记录',
-                                  disabled: !choices.length,
-                                },
-                              ]}
-                              onChange={(v) =>
-                                v === 'skip'
-                                  ? change({ selected: false })
-                                  : v === 'new'
-                                    ? change({
-                                        selected: true,
-                                        update: undefined,
-                                        environmentIds: [...(active.advice?.environmentIds ?? [])],
-                                        confirmDuplicate: true,
-                                      })
-                                    : selectUpdate(active.advice?.targetId ?? '')
-                              }
-                            />
-                          </label>
-                          {active.update && (
-                            <label>
-                              更新目标
-                              <Select
-                                aria-label="更新目标"
-                                showSearch
-                                optionFilterProp="label"
-                                placeholder="选择同类型已有台账"
-                                value={active.update.targetId || undefined}
-                                options={choices.map((t) => ({
-                                  value: t.id,
-                                  label: `${t.name}（${envLabel(t.environmentIds)}）`,
-                                }))}
-                                onChange={(id) => selectUpdate(id)}
-                              />
-                            </label>
-                          )}
-                        </div>
-                        {!active.update && active.advice?.targetId && suggestedTarget && (
-                          <p>
-                            可能对应“{suggestedTarget.name}”。
-                            {importChanges(active, suggestedTarget)
-                              .filter((d) => active.advice?.fields.includes(d.key))
-                              .map((d) => d.label)
-                              .join('、') || '暂无模型建议替换字段'}
-                            <Button type="link" onClick={() => selectUpdate(suggestedTarget.id)}>
-                              比较并选择字段
-                            </Button>
-                          </p>
-                        )}
-                        {currentTarget && active.update && (
-                          <>
+                          {!active.update && active.advice?.targetId && suggestedTarget && (
                             <p>
-                              原环境：{envLabel(currentTarget.environmentIds)}
-                              。仅更新勾选字段和确认的环境，原有账号及凭据保留。
+                              可能对应“{suggestedTarget.name}”。
+                              {importChanges(active, suggestedTarget)
+                                .filter((d) => active.advice?.fields.includes(d.key))
+                                .map((d) => d.label)
+                                .join('、') || '暂无模型建议替换字段'}
+                              <Button type="link" onClick={() => selectUpdate(suggestedTarget.id)}>
+                                比较并选择字段
+                              </Button>
                             </p>
-                            {currentTarget.environmentIds.length > 0 &&
-                              !!active.advice?.environmentIds.length &&
-                              !['job', 'backup', 'node', 'account'].includes(active.kind) && (
-                                <Button
-                                  onClick={() =>
-                                    change({
-                                      update: { ...active.update!, environmentOverride: true },
-                                      environmentIds: [
-                                        ...new Set([
-                                          ...currentTarget.environmentIds,
-                                          ...(active.advice?.environmentIds ?? []),
-                                        ]),
-                                      ],
-                                    })
-                                  }
-                                >
-                                  追加来源环境
-                                </Button>
-                              )}
-                            {differences.length === 0 ? (
-                              <p>普通字段一致，可调整环境或跳过。</p>
-                            ) : (
-                              differences.map((d) => (
-                                <div key={d.key}>
-                                  <Checkbox
-                                    aria-label={`替换 ${d.label}`}
-                                    checked={active.update!.fields.includes(d.key)}
-                                    onChange={(e) =>
+                          )}
+                          {currentTarget && active.update && (
+                            <>
+                              <p>
+                                原环境：{envLabel(currentTarget.environmentIds)}
+                                。仅更新勾选字段和确认的环境，原有账号及凭据保留。
+                              </p>
+                              {currentTarget.environmentIds.length > 0 &&
+                                !!active.advice?.environmentIds.length &&
+                                !['job', 'backup', 'node', 'account'].includes(active.kind) && (
+                                  <Button
+                                    onClick={() =>
                                       change({
-                                        update: {
-                                          ...active.update!,
-                                          targetId: currentTarget.id,
-                                          fields: e.target.checked
-                                            ? [...active.update!.fields, d.key]
-                                            : active.update!.fields.filter((k) => k !== d.key),
-                                        },
+                                        update: { ...active.update!, environmentOverride: true },
+                                        environmentIds: [
+                                          ...new Set([
+                                            ...currentTarget.environmentIds,
+                                            ...(active.advice?.environmentIds ?? []),
+                                          ]),
+                                        ],
                                       })
                                     }
                                   >
-                                    {d.label} · {d.before || '空'} → {d.after}{' '}
-                                    {active.advice?.targetId === currentTarget.id &&
-                                    active.advice.fields.includes(d.key)
-                                      ? '（模型建议）'
-                                      : ''}
-                                  </Checkbox>
-                                </div>
-                              ))
-                            )}
-                          </>
-                        )}
-                      </div>
-                      <div className="local-import-form-grid">
-                        <label>
-                          台账类型
-                          <Select
-                            aria-label="候选台账类型"
-                            value={active.kind}
-                            disabled={job.kind !== 'all'}
-                            options={Object.entries(ledgerImportKinds).map(([value, label]) => ({
-                              value,
-                              label,
-                            }))}
-                            onChange={(value) =>
-                              change({
-                                kind: value,
-                                update: undefined,
-                                confirmDuplicate: false,
-                                environmentIds: [...(active.advice?.environmentIds ?? [])],
-                              })
-                            }
-                          />
-                        </label>
-                        <label>
-                          名称
-                          <Input
-                            aria-label="候选名称"
-                            value={active.name}
-                            onChange={(event) => change({ name: event.target.value })}
-                          />
-                        </label>
+                                    追加来源环境
+                                  </Button>
+                                )}
+                              {differences.length === 0 ? (
+                                <p>普通字段一致，可调整环境或跳过。</p>
+                              ) : (
+                                differences.map((d) => (
+                                  <div key={d.key}>
+                                    <Checkbox
+                                      aria-label={`替换 ${d.label}`}
+                                      checked={active.update!.fields.includes(d.key)}
+                                      onChange={(e) =>
+                                        change({
+                                          update: {
+                                            ...active.update!,
+                                            targetId: currentTarget.id,
+                                            fields: e.target.checked
+                                              ? [...active.update!.fields, d.key]
+                                              : active.update!.fields.filter((k) => k !== d.key),
+                                          },
+                                        })
+                                      }
+                                    >
+                                      {d.label} · {d.before || '空'} → {d.after}{' '}
+                                      {suggestedTarget?.id === currentTarget.id &&
+                                      active.advice?.fields.includes(d.key)
+                                        ? '（模型建议）'
+                                        : ''}
+                                    </Checkbox>
+                                  </div>
+                                ))
+                              )}
+                            </>
+                          )}
+                        </div>
                         <label className="local-import-wide">
                           适用环境
                           <Select
@@ -1035,7 +1303,8 @@ export function LedgerFileImport({
                               { value: 'common', label: '系统通用' },
                               ...environments.map((item) => ({ value: item.id, label: item.name })),
                             ]}
-                            onChange={(values) =>
+                            onChange={(values) => {
+                              if (!active.update) manual.current.add(active.id);
                               change({
                                 ...(active.update
                                   ? { update: { ...active.update, environmentOverride: true } }
@@ -1045,570 +1314,633 @@ export function LedgerFileImport({
                                   values[values.length - 1] === 'common'
                                     ? []
                                     : values.filter((id) => id !== 'common'),
-                              })
-                            }
+                              });
+                            }}
                           />
                         </label>
-                        {['server', 'node'].includes(active.kind) && (
-                          <>
+                        <details className="import-fields" key={active.id}>
+                          <summary>编辑候选字段与附属资料</summary>
+                          <div className="local-import-form-grid">
                             <label>
-                              地址／IP
-                              <Input
-                                aria-label="候选地址／IP"
-                                value={active.address}
-                                onChange={(event) => change({ address: event.target.value })}
-                              />
-                            </label>
-                            <label>
-                              端口
-                              <Input
-                                aria-label="候选端口"
-                                value={active.port}
-                                onChange={(event) => change({ port: event.target.value })}
-                              />
-                            </label>
-                          </>
-                        )}
-                        {active.kind === 'service' && (
-                          <label className="local-import-wide">
-                            代码仓库
-                            <Input
-                              aria-label="候选代码仓库"
-                              value={active.repository}
-                              onChange={(event) => change({ repository: event.target.value })}
-                            />
-                          </label>
-                        )}
-                        {active.kind === 'node' && (
-                          <>
-                            {referenceSelect(
-                              '节点所属服务',
-                              active.service,
-                              ['service'],
-                              (service) => change({ service }),
-                            )}
-                            {referenceSelect(
-                              '节点关联服务器',
-                              active.server,
-                              ['server'],
-                              (server) => change({ server }),
-                            )}
-                            <label>
-                              运行方式
+                              台账类型
                               <Select
-                                aria-label="候选运行方式"
-                                value={active.mode}
-                                options={[
-                                  { value: 'fixed', label: '固定' },
-                                  { value: 'scheduled', label: '按需' },
-                                ]}
-                                onChange={(mode) =>
-                                  change({
-                                    mode,
-                                    observed: [...new Set([...(active.observed ?? []), 'mode'])],
-                                  })
-                                }
-                              />
-                            </label>
-                            <label>
-                              节点规模
-                              <Input
-                                aria-label="候选节点规模"
-                                value={active.count}
-                                onChange={(event) => change({ count: event.target.value })}
-                              />
-                            </label>
-                          </>
-                        )}
-                        {!active.update && active.kind === 'account' && (
-                          <>
-                            {referenceSelect(
-                              '账号所属对象',
-                              active.owner,
-                              ['server', 'database', 'redis', 'other', 'access'],
-                              (owner) => change({ owner }),
-                            )}
-                            <label>
-                              用户名
-                              <Input
-                                aria-label="候选用户名"
-                                value={active.username}
-                                onChange={(event) => change({ username: event.target.value })}
-                              />
-                            </label>
-                          </>
-                        )}
-                        {['job', 'backup'].includes(active.kind) && (
-                          <>
-                            <label>
-                              频率
-                              <Input
-                                aria-label="候选频率"
-                                value={active.frequency}
-                                onChange={(event) => change({ frequency: event.target.value })}
-                              />
-                            </label>
-                            <label>
-                              状态
-                              <Select
-                                aria-label="候选运行状态"
-                                value={active.status}
-                                options={[
-                                  { value: 'unverified', label: '待确认' },
-                                  { value: 'active', label: '在用' },
-                                  { value: 'inactive', label: '停用' },
-                                ]}
-                                onChange={(status) =>
-                                  change({
-                                    status,
-                                    observed: [...new Set([...(active.observed ?? []), 'status'])],
-                                  })
-                                }
-                              />
-                            </label>
-                            {referenceSelect(
-                              '运维关联服务',
-                              active.service,
-                              ['service'],
-                              (service) => change({ service }),
-                            )}
-                            {referenceSelect(
-                              '运维关联资源',
-                              active.owner,
-                              ['server', 'database', 'redis', 'other'],
-                              (owner) => change({ owner }),
-                            )}
-                          </>
-                        )}
-                        <label className="local-import-wide">
-                          说明
-                          <Input.TextArea
-                            aria-label="候选说明"
-                            autoSize={{ minRows: 2, maxRows: 5 }}
-                            value={active.notes}
-                            onChange={(event) => change({ notes: event.target.value })}
-                          />
-                        </label>
-                        {(!['account', 'node'].includes(active.kind) || active.tags.length > 0) && (
-                          <label className="local-import-wide">
-                            标签
-                            <Select
-                              aria-label="候选标签"
-                              disabled={!!active.update}
-                              mode="tags"
-                              value={active.tags}
-                              onChange={(tags) => change({ tags })}
-                            />
-                          </label>
-                        )}
-                      </div>
-                      {!active.update &&
-                        active.kind === 'account' &&
-                        passwordEditor(active, '独立账号', (passwordRef) =>
-                          change({ passwordRef }),
-                        )}
-                      {!active.update &&
-                        (resourceKinds.includes(active.kind) || active.accounts.length > 0) && (
-                          <section className="local-import-section">
-                            <h4>账号（{active.accounts.length}）</h4>
-                            {active.accounts.map((account, index) => (
-                              <div className="local-import-entry" key={account.id}>
-                                <div className="local-import-form-grid">
-                                  <label>
-                                    用途／角色
-                                    <Input
-                                      aria-label={`账号 ${index + 1} 用途`}
-                                      value={account.name}
-                                      onChange={(event) =>
-                                        change({
-                                          accounts: active.accounts.map((item) =>
-                                            item.id === account.id
-                                              ? { ...item, name: event.target.value }
-                                              : item,
-                                          ),
-                                        })
-                                      }
-                                    />
-                                  </label>
-                                  <label>
-                                    用户名
-                                    <Input
-                                      aria-label={`账号 ${index + 1} 用户名`}
-                                      value={account.username}
-                                      onChange={(event) =>
-                                        change({
-                                          accounts: active.accounts.map((item) =>
-                                            item.id === account.id
-                                              ? { ...item, username: event.target.value }
-                                              : item,
-                                          ),
-                                        })
-                                      }
-                                    />
-                                  </label>
-                                  <label className="local-import-wide">
-                                    账号说明
-                                    <Input.TextArea
-                                      aria-label={`账号 ${index + 1} 说明`}
-                                      value={account.notes}
-                                      onChange={(event) =>
-                                        change({
-                                          accounts: active.accounts.map((item) =>
-                                            item.id === account.id
-                                              ? { ...item, notes: event.target.value }
-                                              : item,
-                                          ),
-                                        })
-                                      }
-                                    />
-                                  </label>
-                                </div>
-                                {passwordEditor(account, `账号 ${index + 1}`, (passwordRef) =>
-                                  change({
-                                    accounts: active.accounts.map((item) =>
-                                      item.id === account.id ? { ...item, passwordRef } : item,
-                                    ),
+                                aria-label="候选台账类型"
+                                value={active.kind}
+                                disabled={job.kind !== 'all'}
+                                options={Object.entries(ledgerImportKinds).map(
+                                  ([value, label]) => ({
+                                    value,
+                                    label,
                                   }),
                                 )}
-                                <Button
-                                  size="small"
-                                  danger
-                                  onClick={() =>
-                                    change({
-                                      accounts: active.accounts.filter(
-                                        (item) => item.id !== account.id,
-                                      ),
-                                    })
-                                  }
-                                >
-                                  移除账号 {index + 1}
-                                </Button>
-                              </div>
-                            ))}
-                            <Button
-                              onClick={() =>
-                                change({
-                                  accounts: [
-                                    ...active.accounts,
-                                    {
-                                      id: newId(active.id),
-                                      name: `账号 ${active.accounts.length + 1}`,
-                                      username: '',
-                                      notes: '',
-                                      passwordRef: null,
-                                    },
-                                  ],
-                                })
-                              }
-                            >
-                              增加账号
-                            </Button>
-                          </section>
-                        )}
-                      {(active.kind === 'access' || active.addresses.length > 0) && (
-                        <section className="local-import-section">
-                          <h4>访问地址</h4>
-                          {active.addresses.map((address, index) => (
-                            <div className="local-import-entry" key={address.id}>
-                              <label>
-                                地址名称
-                                <Input
-                                  aria-label={`地址 ${index + 1} 名称`}
-                                  value={address.label}
-                                  onChange={(event) =>
-                                    change({
-                                      addresses: active.addresses.map((item) =>
-                                        item.id === address.id
-                                          ? { ...item, label: event.target.value }
-                                          : item,
-                                      ),
-                                    })
-                                  }
-                                />
-                              </label>
-                              <label>
-                                HTTP(S) 地址
-                                <Input
-                                  aria-label={`地址 ${index + 1} URL`}
-                                  value={address.url}
-                                  onChange={(event) =>
-                                    change({
-                                      addresses: active.addresses.map((item) =>
-                                        item.id === address.id
-                                          ? { ...item, url: event.target.value }
-                                          : item,
-                                      ),
-                                    })
-                                  }
-                                />
-                              </label>
-                              <Button
-                                size="small"
-                                danger
-                                onClick={() =>
+                                onChange={(value) =>
                                   change({
-                                    addresses: active.addresses.filter(
-                                      (item) => item.id !== address.id,
-                                    ),
+                                    kind: value,
+                                    update: undefined,
+                                    confirmDuplicate: false,
+                                    environmentIds: [...(active.advice?.environmentIds ?? [])],
                                   })
                                 }
-                              >
-                                移除地址 {index + 1}
-                              </Button>
-                            </div>
-                          ))}
-                          <Button
-                            onClick={() =>
-                              change({
-                                addresses: [
-                                  ...active.addresses,
-                                  {
-                                    id: newId(active.id),
-                                    label: `地址 ${active.addresses.length + 1}`,
-                                    url: '',
-                                  },
-                                ],
-                              })
-                            }
-                          >
-                            增加地址
-                          </Button>
-                        </section>
-                      )}
-                      {(['database', 'redis', 'other'].includes(active.kind) ||
-                        active.connections.length > 0) && (
-                        <section className="local-import-section">
-                          <h4>资源连接</h4>
-                          {active.connections.map((connection, index) => (
-                            <div className="local-import-entry" key={connection.id}>
-                              <div className="local-import-form-grid">
-                                {(['label', 'address', 'port', 'role'] as const).map((field) => (
-                                  <label key={field}>
-                                    {
-                                      {
-                                        label: '连接名称',
-                                        address: '地址',
-                                        port: '端口',
-                                        role: '用途／角色',
-                                      }[field]
+                              />
+                            </label>
+                            <label>
+                              名称
+                              <Input
+                                aria-label="候选名称"
+                                value={active.name}
+                                onChange={(event) => change({ name: event.target.value })}
+                              />
+                            </label>
+                            {['server', 'node'].includes(active.kind) && (
+                              <>
+                                <label>
+                                  地址／IP
+                                  <Input
+                                    aria-label="候选地址／IP"
+                                    value={active.address}
+                                    onChange={(event) => change({ address: event.target.value })}
+                                  />
+                                </label>
+                                <label>
+                                  端口
+                                  <Input
+                                    aria-label="候选端口"
+                                    value={active.port}
+                                    onChange={(event) => change({ port: event.target.value })}
+                                  />
+                                </label>
+                              </>
+                            )}
+                            {active.kind === 'service' && (
+                              <label className="local-import-wide">
+                                代码仓库
+                                <Input
+                                  aria-label="候选代码仓库"
+                                  value={active.repository}
+                                  onChange={(event) => change({ repository: event.target.value })}
+                                />
+                              </label>
+                            )}
+                            {active.kind === 'node' && (
+                              <>
+                                {referenceSelect(
+                                  '节点所属服务',
+                                  active.service,
+                                  ['service'],
+                                  (service) => change({ service }),
+                                )}
+                                {referenceSelect(
+                                  '节点关联服务器',
+                                  active.server,
+                                  ['server'],
+                                  (server) => change({ server }),
+                                )}
+                                <label>
+                                  运行方式
+                                  <Select
+                                    aria-label="候选运行方式"
+                                    value={active.mode}
+                                    options={[
+                                      { value: 'fixed', label: '固定' },
+                                      { value: 'scheduled', label: '按需' },
+                                    ]}
+                                    onChange={(mode) =>
+                                      change({
+                                        mode,
+                                        observed: [
+                                          ...new Set([...(active.observed ?? []), 'mode']),
+                                        ],
+                                      })
                                     }
-                                    <Input
-                                      aria-label={`连接 ${index + 1} ${field}`}
-                                      value={connection[field]}
-                                      onChange={(event) =>
+                                  />
+                                </label>
+                                <label>
+                                  节点规模
+                                  <Input
+                                    aria-label="候选节点规模"
+                                    value={active.count}
+                                    onChange={(event) => change({ count: event.target.value })}
+                                  />
+                                </label>
+                              </>
+                            )}
+                            {!active.update && active.kind === 'account' && (
+                              <>
+                                {referenceSelect(
+                                  '账号所属对象',
+                                  active.owner,
+                                  ['server', 'database', 'redis', 'other', 'access'],
+                                  (owner) => change({ owner }),
+                                )}
+                                <label>
+                                  用户名
+                                  <Input
+                                    aria-label="候选用户名"
+                                    value={active.username}
+                                    onChange={(event) => change({ username: event.target.value })}
+                                  />
+                                </label>
+                              </>
+                            )}
+                            {['job', 'backup'].includes(active.kind) && (
+                              <>
+                                <label>
+                                  频率
+                                  <Input
+                                    aria-label="候选频率"
+                                    value={active.frequency}
+                                    onChange={(event) => change({ frequency: event.target.value })}
+                                  />
+                                </label>
+                                <label>
+                                  状态
+                                  <Select
+                                    aria-label="候选运行状态"
+                                    value={active.status}
+                                    options={[
+                                      { value: 'unverified', label: '待确认' },
+                                      { value: 'active', label: '在用' },
+                                      { value: 'inactive', label: '停用' },
+                                    ]}
+                                    onChange={(status) =>
+                                      change({
+                                        status,
+                                        observed: [
+                                          ...new Set([...(active.observed ?? []), 'status']),
+                                        ],
+                                      })
+                                    }
+                                  />
+                                </label>
+                                {referenceSelect(
+                                  '运维关联服务',
+                                  active.service,
+                                  ['service'],
+                                  (service) => change({ service }),
+                                )}
+                                {referenceSelect(
+                                  '运维关联资源',
+                                  active.owner,
+                                  ['server', 'database', 'redis', 'other'],
+                                  (owner) => change({ owner }),
+                                )}
+                              </>
+                            )}
+                            <label className="local-import-wide">
+                              说明
+                              <Input.TextArea
+                                aria-label="候选说明"
+                                autoSize={{ minRows: 2, maxRows: 5 }}
+                                value={active.notes}
+                                onChange={(event) => change({ notes: event.target.value })}
+                              />
+                            </label>
+                            {(!['account', 'node'].includes(active.kind) ||
+                              active.tags.length > 0) && (
+                              <label className="local-import-wide">
+                                标签
+                                <Select
+                                  aria-label="候选标签"
+                                  disabled={!!active.update}
+                                  mode="tags"
+                                  value={active.tags}
+                                  onChange={(tags) => change({ tags })}
+                                />
+                              </label>
+                            )}
+                          </div>
+                          {!active.update &&
+                            active.kind === 'account' &&
+                            passwordEditor(active, '独立账号', (passwordRef) =>
+                              change({ passwordRef }),
+                            )}
+                          {!active.update &&
+                            (resourceKinds.includes(active.kind) || active.accounts.length > 0) && (
+                              <section className="local-import-section">
+                                <header className="import-section-heading">
+                                  <h4>账号（{active.accounts.length}）</h4>
+                                  <Button
+                                    size="small"
+                                    onClick={() =>
+                                      change({
+                                        accounts: [
+                                          ...active.accounts,
+                                          {
+                                            id: newId(active.id),
+                                            name: `账号 ${active.accounts.length + 1}`,
+                                            username: '',
+                                            notes: '',
+                                            passwordRef: null,
+                                          },
+                                        ],
+                                      })
+                                    }
+                                  >
+                                    增加账号
+                                  </Button>
+                                </header>
+                                {active.accounts.map((account, index) => (
+                                  <div className="local-import-entry" key={account.id}>
+                                    <div className="local-import-form-grid">
+                                      <label>
+                                        用途／角色
+                                        <Input
+                                          aria-label={`账号 ${index + 1} 用途`}
+                                          value={account.name}
+                                          onChange={(event) =>
+                                            change({
+                                              accounts: active.accounts.map((item) =>
+                                                item.id === account.id
+                                                  ? { ...item, name: event.target.value }
+                                                  : item,
+                                              ),
+                                            })
+                                          }
+                                        />
+                                      </label>
+                                      <label>
+                                        用户名
+                                        <Input
+                                          aria-label={`账号 ${index + 1} 用户名`}
+                                          value={account.username}
+                                          onChange={(event) =>
+                                            change({
+                                              accounts: active.accounts.map((item) =>
+                                                item.id === account.id
+                                                  ? { ...item, username: event.target.value }
+                                                  : item,
+                                              ),
+                                            })
+                                          }
+                                        />
+                                      </label>
+                                      <label className="local-import-wide">
+                                        账号说明
+                                        <Input.TextArea
+                                          aria-label={`账号 ${index + 1} 说明`}
+                                          value={account.notes}
+                                          onChange={(event) =>
+                                            change({
+                                              accounts: active.accounts.map((item) =>
+                                                item.id === account.id
+                                                  ? { ...item, notes: event.target.value }
+                                                  : item,
+                                              ),
+                                            })
+                                          }
+                                        />
+                                      </label>
+                                    </div>
+                                    {passwordEditor(account, `账号 ${index + 1}`, (passwordRef) =>
+                                      change({
+                                        accounts: active.accounts.map((item) =>
+                                          item.id === account.id ? { ...item, passwordRef } : item,
+                                        ),
+                                      }),
+                                    )}
+                                    <Button
+                                      size="small"
+                                      danger
+                                      onClick={() =>
                                         change({
-                                          connections: active.connections.map((item) =>
-                                            item.id === connection.id
-                                              ? { ...item, [field]: event.target.value }
-                                              : item,
+                                          accounts: active.accounts.filter(
+                                            (item) => item.id !== account.id,
                                           ),
                                         })
                                       }
-                                    />
-                                  </label>
-                                ))}
-                                {referenceSelect(
-                                  `连接 ${index + 1} 服务器`,
-                                  connection.server,
-                                  ['server'],
-                                  (server) =>
-                                    change({
-                                      connections: active.connections.map((item) =>
-                                        item.id === connection.id ? { ...item, server } : item,
-                                      ),
-                                    }),
-                                )}
-                              </div>
-                              <Button
-                                size="small"
-                                danger
-                                onClick={() =>
-                                  change({
-                                    connections: active.connections.filter(
-                                      (item) => item.id !== connection.id,
-                                    ),
-                                  })
-                                }
-                              >
-                                移除连接 {index + 1}
-                              </Button>
-                            </div>
-                          ))}
-                          <Button
-                            onClick={() =>
-                              change({
-                                connections: [
-                                  ...active.connections,
-                                  {
-                                    id: newId(active.id),
-                                    label: `连接 ${active.connections.length + 1}`,
-                                    address: '',
-                                    port: '',
-                                    role: '',
-                                    server: null,
-                                  },
-                                ],
-                              })
-                            }
-                          >
-                            增加连接
-                          </Button>
-                        </section>
-                      )}
-                      <Collapse
-                        size="small"
-                        items={[
-                          {
-                            key: 'sources',
-                            label: `核对原文位置（${active.sourceIds.length}）`,
-                            children: sources.length ? (
-                              <>
-                                {active.sourceIds.length > 50 && (
-                                  <p>这里只显示前 50 处来源的短预览，其余内容请结合原文件核对。</p>
-                                )}
-                                <ul className="local-import-sources">
-                                  {sources.map((source) => (
-                                    <li key={source.id}>
-                                      <strong>{source.location}</strong>
-                                      <pre>{source.text}</pre>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </>
-                            ) : (
-                              <p>暂无可核对的来源，请结合原文件检查。</p>
-                            ),
-                          },
-                          {
-                            key: 'fields',
-                            label: '附加资料',
-                            children: (
-                              <>
-                                {Object.entries(active.fields).map(([key, value]) => (
-                                  <div key={key} className="local-import-extra">
-                                    <label>
-                                      {key}
-                                      <Input.TextArea
-                                        aria-label={`附加资料 ${key}`}
-                                        value={value}
-                                        onChange={(event) =>
-                                          change({
-                                            fields: { ...active.fields, [key]: event.target.value },
-                                          })
-                                        }
-                                      />
-                                    </label>
-                                    <Button
-                                      danger
-                                      onClick={() => {
-                                        const fields = { ...active.fields };
-                                        delete fields[key];
-                                        change({ fields });
-                                      }}
                                     >
-                                      移除
+                                      移除账号 {index + 1}
                                     </Button>
                                   </div>
                                 ))}
-                                <div className="local-import-form-grid">
-                                  <Input
-                                    aria-label="导入附加资料名称"
-                                    placeholder="字段名称"
-                                    value={fieldName}
-                                    onChange={(event) => setFieldName(event.target.value)}
-                                  />
-                                  <Input
-                                    aria-label="导入附加资料内容"
-                                    placeholder="普通资料内容"
-                                    value={fieldValue}
-                                    onChange={(event) => setFieldValue(event.target.value)}
-                                  />
-                                </div>
+                              </section>
+                            )}
+                          {(active.kind === 'access' || active.addresses.length > 0) && (
+                            <section className="local-import-section">
+                              <header className="import-section-heading">
+                                <h4>访问地址</h4>
                                 <Button
-                                  disabled={
-                                    !ledgerImportFieldKinds.includes(active.kind) ||
-                                    !fieldName.trim() ||
-                                    Object.hasOwn(active.fields, fieldName.trim())
-                                  }
-                                  onClick={() => {
+                                  size="small"
+                                  onClick={() =>
                                     change({
-                                      fields: { ...active.fields, [fieldName.trim()]: fieldValue },
-                                    });
-                                    setFieldName('');
-                                    setFieldValue('');
-                                  }}
+                                      addresses: [
+                                        ...active.addresses,
+                                        {
+                                          id: newId(active.id),
+                                          label: `地址 ${active.addresses.length + 1}`,
+                                          url: '',
+                                        },
+                                      ],
+                                    })
+                                  }
                                 >
-                                  添加附加资料
+                                  增加地址
                                 </Button>
-                              </>
-                            ),
-                          },
-                        ]}
-                      />
-                      {active.warnings.length > 0 && (
-                        <Alert
-                          type="warning"
-                          title="识别时发现待核对内容"
-                          description={
-                            <ul>
-                              {active.warnings.map((warning, index) => (
-                                <li key={index}>{warning}</li>
+                              </header>
+                              {active.addresses.map((address, index) => (
+                                <div
+                                  className="local-import-entry import-address-row"
+                                  key={address.id}
+                                >
+                                  <label>
+                                    地址名称
+                                    <Input
+                                      aria-label={`地址 ${index + 1} 名称`}
+                                      value={address.label}
+                                      onChange={(event) =>
+                                        change({
+                                          addresses: active.addresses.map((item) =>
+                                            item.id === address.id
+                                              ? { ...item, label: event.target.value }
+                                              : item,
+                                          ),
+                                        })
+                                      }
+                                    />
+                                  </label>
+                                  <label>
+                                    HTTP(S) 地址
+                                    <Input
+                                      aria-label={`地址 ${index + 1} URL`}
+                                      value={address.url}
+                                      status={
+                                        addressIssue && Number(addressIssue[1]) === index + 1
+                                          ? 'error'
+                                          : undefined
+                                      }
+                                      aria-invalid={
+                                        !!addressIssue && Number(addressIssue[1]) === index + 1
+                                      }
+                                      aria-describedby={
+                                        addressIssue && Number(addressIssue[1]) === index + 1
+                                          ? 'import-url-error'
+                                          : undefined
+                                      }
+                                      onChange={(event) =>
+                                        editUrl(active, address.id, event.target.value)
+                                      }
+                                      onBlur={(event) => {
+                                        const url = completeImportUrl(event.target.value);
+                                        if (url !== address.url) editUrl(active, address.id, url);
+                                      }}
+                                    />
+                                  </label>
+                                  <Button
+                                    size="small"
+                                    danger
+                                    onClick={() =>
+                                      change({
+                                        addresses: active.addresses.filter(
+                                          (item) => item.id !== address.id,
+                                        ),
+                                      })
+                                    }
+                                  >
+                                    移除地址 {index + 1}
+                                  </Button>
+                                  {addressIssue && Number(addressIssue[1]) === index + 1 && (
+                                    <small
+                                      role="alert"
+                                      id="import-url-error"
+                                      className="import-url-error"
+                                    >
+                                      {addressIssue[2]}
+                                    </small>
+                                  )}
+                                </div>
                               ))}
-                            </ul>
-                          }
-                        />
-                      )}
-                      {problems[active.id]?.length > 0 && (
-                        <ul className="local-import-problems" aria-label="候选待处理问题">
-                          {problems[active.id].map((problem, index) => (
-                            <li key={index}>{problem}</li>
-                          ))}
-                        </ul>
-                      )}
-                      <div className="local-import-checks">
-                        <Checkbox
-                          disabled={!!active.update}
-                          checked={active.confirmDuplicate}
-                          onChange={(event) => change({ confirmDuplicate: event.target.checked })}
-                        >
-                          疑似重复时，仍新增为独立记录
-                        </Checkbox>
-                        <Checkbox
-                          checked={active.reviewed}
-                          onChange={(event) =>
-                            change({ reviewed: event.target.checked }, active.id, true)
-                          }
-                        >
-                          我已核对本条来源、环境和关联
-                        </Checkbox>
-                      </div>
-                    </fieldset>
-                  ) : (
-                    <Empty description="选择左侧候选，核对后再导入" />
+                            </section>
+                          )}
+                          {(['database', 'redis', 'other'].includes(active.kind) ||
+                            active.connections.length > 0) && (
+                            <section className="local-import-section">
+                              <header className="import-section-heading">
+                                <h4>资源连接</h4>
+                                <Button
+                                  size="small"
+                                  onClick={() =>
+                                    change({
+                                      connections: [
+                                        ...active.connections,
+                                        {
+                                          id: newId(active.id),
+                                          label: `连接 ${active.connections.length + 1}`,
+                                          address: '',
+                                          port: '',
+                                          role: '',
+                                          server: null,
+                                        },
+                                      ],
+                                    })
+                                  }
+                                >
+                                  增加连接
+                                </Button>
+                              </header>
+                              {active.connections.map((connection, index) => (
+                                <div className="local-import-entry" key={connection.id}>
+                                  <div className="local-import-form-grid">
+                                    {(['label', 'address', 'port', 'role'] as const).map(
+                                      (field) => (
+                                        <label key={field}>
+                                          {
+                                            {
+                                              label: '连接名称',
+                                              address: '地址',
+                                              port: '端口',
+                                              role: '用途／角色',
+                                            }[field]
+                                          }
+                                          <Input
+                                            aria-label={`连接 ${index + 1} ${field}`}
+                                            value={connection[field]}
+                                            onChange={(event) =>
+                                              change({
+                                                connections: active.connections.map((item) =>
+                                                  item.id === connection.id
+                                                    ? { ...item, [field]: event.target.value }
+                                                    : item,
+                                                ),
+                                              })
+                                            }
+                                          />
+                                        </label>
+                                      ),
+                                    )}
+                                    {referenceSelect(
+                                      `连接 ${index + 1} 服务器`,
+                                      connection.server,
+                                      ['server'],
+                                      (server) =>
+                                        change({
+                                          connections: active.connections.map((item) =>
+                                            item.id === connection.id ? { ...item, server } : item,
+                                          ),
+                                        }),
+                                    )}
+                                  </div>
+                                  <Button
+                                    size="small"
+                                    danger
+                                    onClick={() =>
+                                      change({
+                                        connections: active.connections.filter(
+                                          (item) => item.id !== connection.id,
+                                        ),
+                                      })
+                                    }
+                                  >
+                                    移除连接 {index + 1}
+                                  </Button>
+                                </div>
+                              ))}
+                            </section>
+                          )}
+                          <Collapse
+                            size="small"
+                            items={[
+                              {
+                                key: 'sources',
+                                label: `核对原文位置（${active.sourceIds.length}）`,
+                                children: sources.length ? (
+                                  <>
+                                    {active.sourceIds.length > 50 && (
+                                      <p>
+                                        这里只显示前 50 处来源的短预览，其余内容请结合原文件核对。
+                                      </p>
+                                    )}
+                                    <ul className="local-import-sources">
+                                      {sources.map((source) => (
+                                        <li key={source.id}>
+                                          <strong>{source.location}</strong>
+                                          <pre>{source.text}</pre>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </>
+                                ) : (
+                                  <p>暂无可核对的来源，请结合原文件检查。</p>
+                                ),
+                              },
+                              {
+                                key: 'fields',
+                                label: '附加资料',
+                                children: (
+                                  <>
+                                    {Object.entries(active.fields).map(([key, value]) => (
+                                      <div key={key} className="local-import-extra">
+                                        <label>
+                                          {key}
+                                          <Input.TextArea
+                                            aria-label={`附加资料 ${key}`}
+                                            value={value}
+                                            onChange={(event) =>
+                                              change({
+                                                fields: {
+                                                  ...active.fields,
+                                                  [key]: event.target.value,
+                                                },
+                                              })
+                                            }
+                                          />
+                                        </label>
+                                        <Button
+                                          danger
+                                          onClick={() => {
+                                            const fields = { ...active.fields };
+                                            delete fields[key];
+                                            change({ fields });
+                                          }}
+                                        >
+                                          移除
+                                        </Button>
+                                      </div>
+                                    ))}
+                                    <div className="local-import-form-grid">
+                                      <Input
+                                        aria-label="导入附加资料名称"
+                                        placeholder="字段名称"
+                                        value={fieldName}
+                                        onChange={(event) => setFieldName(event.target.value)}
+                                      />
+                                      <Input
+                                        aria-label="导入附加资料内容"
+                                        placeholder="普通资料内容"
+                                        value={fieldValue}
+                                        onChange={(event) => setFieldValue(event.target.value)}
+                                      />
+                                    </div>
+                                    <Button
+                                      disabled={
+                                        !ledgerImportFieldKinds.includes(active.kind) ||
+                                        !fieldName.trim() ||
+                                        Object.hasOwn(active.fields, fieldName.trim())
+                                      }
+                                      onClick={() => {
+                                        change({
+                                          fields: {
+                                            ...active.fields,
+                                            [fieldName.trim()]: fieldValue,
+                                          },
+                                        });
+                                        setFieldName('');
+                                        setFieldValue('');
+                                      }}
+                                    >
+                                      添加附加资料
+                                    </Button>
+                                  </>
+                                ),
+                              },
+                            ]}
+                          />
+                        </details>
+                        {active.warnings.length > 0 && (
+                          <Alert
+                            type="warning"
+                            title="识别时发现待核对内容"
+                            description={
+                              <ul>
+                                {active.warnings.map((warning, index) => (
+                                  <li key={index}>{warning}</li>
+                                ))}
+                              </ul>
+                            }
+                          />
+                        )}
+                        {problems[active.id]?.length > 0 && (
+                          <ul
+                            className="local-import-problems"
+                            tabIndex={-1}
+                            aria-label="候选待处理问题"
+                          >
+                            {problems[active.id].map((problem, index) => (
+                              <li key={index}>{problem}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </fieldset>
+                    ) : (
+                      <Empty description="选择候选查看详情" />
+                    )}
+                  </div>
+                  {active && !filterDone && (
+                    <footer className="local-import-footer">
+                      <small>逐条校对，最后统一保存</small>
+                      <Button type="primary" disabled={working} onClick={confirmRow}>
+                        {candidates.some((r) => r.id !== active.id && !r.reviewed)
+                          ? '确认本条并看下一条'
+                          : '确认并查看汇总'}
+                      </Button>
+                    </footer>
                   )}
                 </section>
-              </div>
-              <div className="local-import-footer">
-                <p>
-                  已选 {selected.length} 条，
-                  {selected.filter((item) => !problems[item.id]?.length).length}{' '}
-                  条完成校对。来源密码保持隐藏。
-                </p>
-                <Button
-                  type="primary"
-                  aria-label="确认保存所选台账"
-                  disabled={!valid || working}
-                  loading={working}
-                  onClick={submit}
-                >
-                  确认保存所选台账
-                </Button>
               </div>
             </>
           )}
           {!state && <Spin tip="正在读取本地任务" />}
         </>
       )}
-    </Dialog>
+    </main>
   );
 }

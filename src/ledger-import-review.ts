@@ -1,5 +1,11 @@
-import { importTargets, importChanges, sameEnvironment } from './ledger-import-matches';
+import {
+  importTargets,
+  importChanges,
+  sameEnvironment,
+  reviewMatches,
+} from './ledger-import-matches';
 import type { Snapshot } from './types';
+import { importUrlProblem } from './ledger-import-url';
 import {
   ledgerImportKinds,
   ledgerImportFieldKinds,
@@ -35,48 +41,8 @@ export function importCandidateProblems(
   candidates: ImportCandidate[],
 ) {
   const result: Record<string, string[]> = {};
-  const targets = new Map(importTargets(snapshot, systemId).map((t) => [t.id, t]));
-  const existing = [
-    ...snapshot.resources
-      .filter((item) => item.systemId === systemId)
-      .map((item) => ({
-        id: item.id,
-        kind: item.kind,
-        name: item.name,
-        addresses: [
-          item.address,
-          ...(item.connections ?? []).map(
-            (connection) =>
-              connection.address ||
-              snapshot.resources.find((server) => server.id === connection.serverId)?.address ||
-              '',
-          ),
-        ],
-      })),
-    ...snapshot.accessEntries
-      .filter((item) => item.systemId === systemId)
-      .map((item) => ({
-        id: item.id,
-        kind: 'access',
-        name: item.name,
-        addresses: item.addresses.map((address) => address.url),
-      })),
-    ...candidates
-      .filter(
-        (item) =>
-          item.selected && ['server', 'database', 'redis', 'other', 'access'].includes(item.kind),
-      )
-      .map((item) => ({
-        id: item.id,
-        kind: item.kind,
-        name: item.name,
-        addresses: [
-          item.address,
-          ...item.addresses.map((address) => address.url),
-          ...item.connections.map((connection) => connection.address),
-        ],
-      })),
-  ];
+  const allTargets = importTargets(snapshot, systemId);
+  const targets = new Map(allTargets.map((t) => [t.id, t]));
   for (const candidate of candidates) {
     const errors: string[] = [];
     result[candidate.id] = errors;
@@ -103,6 +69,11 @@ export function importCandidateProblems(
         errors.push('此类型只能选择一个环境');
       if (candidate.kind === 'node' && effectiveEnvironments.length !== 1)
         errors.push('部署节点需要明确环境');
+    }
+    for (const [index, address] of candidate.addresses.entries()) {
+      if (candidate.update && !candidate.update.fields.includes('url:' + address.id)) continue;
+      const problem = importUrlProblem(address.url);
+      if (problem) errors.push(`地址 ${index + 1}：${problem}`);
     }
     if (candidate.update) {
       const t = targets.get(candidate.update.targetId);
@@ -200,16 +171,9 @@ export function importCandidateProblems(
       candidate.accounts.length
     )
       errors.push('同一对象的账号用途不能重复');
-    const own = existing.find((item) => item.id === candidate.id);
     if (
-      own &&
       !candidate.confirmDuplicate &&
-      existing.some(
-        (item) =>
-          item.id !== own.id &&
-          (item.name.toLowerCase() === own.name.trim().toLowerCase() ||
-            own.addresses.some((address) => address && item.addresses.includes(address))),
-      )
+      reviewMatches(candidate, candidates, allTargets, snapshot).some((m) => m.strong)
     )
       errors.push('疑似重复，请跳过或确认新增独立记录');
     if (!Object.hasOwn(ledgerImportKinds, candidate.kind)) errors.push('台账类型无效');

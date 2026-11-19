@@ -1,4 +1,9 @@
-import { importChanges, importTargets } from '../src/ledger-import-matches';
+import {
+  importChanges,
+  importTargets,
+  matchScore,
+  reviewMatches,
+} from '../src/ledger-import-matches';
 import { adviseImport, targetRevision } from '../electron/ledger-import-advice';
 import { afterEach, expect, test } from 'vitest';
 import fs from 'node:fs';
@@ -195,8 +200,10 @@ test('a later invalid address rolls back objects and encrypted passwords and lea
   expect(store.snapshot().accounts).toHaveLength(0);
   expect(store.db.prepare('SELECT * FROM secrets').all()).toHaveLength(0);
   expect(store.db.prepare('SELECT * FROM ledger_batches').all()).toHaveLength(0);
-  entry.addresses[0].url = 'https://entry.example.invalid';
-  expect(vault.captureImport(input).snapshot.resources).toHaveLength(1);
+  entry.addresses[0].url = '192.0.2.15:8080/app/login.html';
+  const saved = vault.captureImport(input).snapshot;
+  expect(saved.resources).toHaveLength(1);
+  expect(saved.accessEntries[0].addresses[0].url).toBe('http://192.0.2.15:8080/app/login.html');
 });
 
 test('existing parents are referenced without overwriting them, common parent scope is inherited, and cross-system references fail', () => {
@@ -351,6 +358,138 @@ test('reviewed fields update the existing identity and only its selected URL, pr
       .captureImport({ ...batch(systemId, [second]), targetRevisions: fresh })
       .snapshot.scopes.find((s) => s.ownerId === t.id)?.environmentIds,
   ).toEqual([env2]);
+});
+
+test('同名同地址仅在共同适用环境内查重，手动改环境后重新计算，保存与预览一致', async () => {
+  const { store, vault, systemId, environmentId } = setup();
+  const simulation = store.mutate({ type: 'environment.save', systemId, name: '仿真' }).createdId!;
+  const portal = (id: string, env: string) => ({
+    ...candidate(id, 'access', [env]),
+    name: '平台入口',
+    addresses: [{ id: id + '-url', label: '访问', url: 'https://portal.example.invalid' }],
+  });
+  const prod = portal('prod', environmentId);
+  const sim = portal('sim', simulation);
+  const snapshot = vault.captureImport(batch(systemId, [prod])).snapshot;
+  const targets = importTargets(snapshot, systemId);
+  const matches = () => reviewMatches(sim, [prod, sim], targets, snapshot);
+  expect(matchScore(sim, prod, [sim, prod], targets)).toBe(0);
+  expect(matches()).toEqual([]);
+  sim.environmentIds = [simulation, environmentId];
+  expect(matches().map((m) => [m.origin, m.strong])).toEqual([
+    ['file', true],
+    ['ledger', true],
+  ]);
+  expect(() => vault.captureImport(batch(systemId, [sim]))).toThrow('疑似重复');
+  sim.environmentIds = [];
+  expect(matches()).toHaveLength(2);
+  sim.environmentIds = [simulation];
+  expect(reviewMatches(sim, [], [{ ...targets[0], environmentIds: [] }], snapshot)).toHaveLength(1);
+  expect(
+    reviewMatches(sim, [{ ...prod, name: '平台入口说明', addresses: [] }], [], snapshot),
+  ).toEqual([]);
+  sim.environmentIds = null;
+  expect(matches()).toEqual([]);
+  sim.environmentIds = [simulation];
+  const file = { filename: 'sample.csv', sources: [], blocks: [], warnings: [] };
+  sim.environmentNames = ['仿真'];
+  prod.environmentNames = ['生产'];
+  let calls = 0;
+  await adviseImport(
+    {
+      chat: async () => {
+        calls++;
+        throw Error('意外的跨环境比对');
+      },
+    },
+    'qwen3:8b',
+    file,
+    [sim, prod],
+    [],
+    snapshot.environments,
+    new AbortController().signal,
+    () => {},
+  );
+  expect(calls).toBe(0);
+  expect(sim.advice).toMatchObject({ peerIds: [], existingIds: [], action: 'new' });
+  sim.advice!.modelTargetId = targets[0].id;
+  prod.advice!.modelPeerId = sim.id;
+  expect(matches()).toEqual([]);
+  expect(
+    vault
+      .captureImport(batch(systemId, [sim]))
+      .snapshot.accessEntries.map((e) => e.environmentId)
+      .sort(),
+  ).toEqual([environmentId, simulation].sort());
+});
+
+test('附属账号按所属对象的全部适用环境查重，另一个环境的独立账号不参与', () => {
+  const { store, vault, systemId, environmentId } = setup();
+  const sim = store.mutate({ type: 'environment.save', systemId, name: '仿真' }).createdId!;
+  const testEnv = store.mutate({ type: 'environment.save', systemId, name: '测试' }).createdId!;
+  const parent = candidate('共享机器', 'server', [environmentId, sim]);
+  parent.accounts = [
+    { id: 'child', name: '维护', username: 'fixture', notes: '', passwordRef: null },
+  ];
+  const s = vault.captureImport(batch(systemId, [parent])).snapshot;
+  const targets = importTargets(s, systemId);
+  const standalone = { ...candidate('incoming', 'account', [sim]), name: '维护' };
+  expect(reviewMatches(standalone, [], targets, s).map((m) => m.id)).toEqual([s.accounts[0].id]);
+  standalone.environmentIds = [testEnv];
+  expect(reviewMatches(standalone, [], targets, s)).toEqual([]);
+  standalone.owner = { existing: s.resources[0].id };
+  expect(reviewMatches(standalone, [], targets, s).map((m) => m.id)).toEqual([s.accounts[0].id]);
+});
+
+test('模型最终选定的环境不同，先前提供的同名候选和替换目标都应撤销', async () => {
+  const { store, systemId, environmentId } = setup();
+  const simId = store.mutate({ type: 'environment.save', systemId, name: '仿真' }).createdId!;
+  store.mutate({
+    type: 'resource.save',
+    systemId,
+    kind: 'server',
+    environmentId,
+    name: '样例平台',
+    address: '192.0.2.30',
+  });
+  const rows = ['one', 'two'].map((id) => ({
+    ...candidate(id, 'server'),
+    name: '样例平台',
+    address: '192.0.2.10',
+    environmentNames: ['生产或仿真'],
+    notes: '替换地址',
+  }));
+  const s = store.snapshot();
+  await adviseImport(
+    {
+      chat: async (...args) => {
+        const ctx = JSON.parse(args[1][1].content);
+        const env = (r: typeof ctx.r0, name: string) =>
+          r.environments.find((e: { name: string }) => e.name === name).id;
+        return {
+          content: JSON.stringify({
+            r0: { env: env(ctx.r0, '生产'), peer: 2, action: 'new', target: 0, fields: [] },
+            r1: { env: env(ctx.r1, '仿真'), peer: 1, action: 'update', target: 1, fields: [1] },
+          }),
+          seconds: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+        };
+      },
+    },
+    'qwen3:8b',
+    { filename: 'example.csv', sources: [], blocks: [], warnings: [] },
+    rows,
+    importTargets(s, systemId),
+    s.environments,
+    new AbortController().signal,
+    () => {},
+  );
+  expect(rows[1].environmentIds).toEqual([simId]);
+  expect(rows[1].advice).toMatchObject({ action: 'new', peerIds: [], existingIds: [], fields: [] });
+  expect(rows[1].update).toBeUndefined();
+  expect(rows[1].advice?.targetId).toBeUndefined();
+  expect(rows.every((r) => r.selected && !r.advice?.modelPeerId)).toBe(true);
 });
 
 test('local advice uses source rows, sibling rows, nearby existing objects and field differences without account values', async () => {

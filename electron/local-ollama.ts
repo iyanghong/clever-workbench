@@ -6,7 +6,7 @@ import net from 'node:net';
 import http from 'node:http';
 import { spawn, type ChildProcess } from 'node:child_process';
 import {
-  localImportModels,
+  validLocalModel,
   type LocalImportModel,
   type OllamaState,
 } from '../src/ledger-import-types';
@@ -51,6 +51,9 @@ export class LocalOllama {
   snapshot(): OllamaState {
     return structuredClone(this.value);
   }
+  installerProgress(installer: OllamaState['installer']) {
+    this.update({ installer });
+  }
   get downloading() {
     return this.downloadController !== null;
   }
@@ -82,8 +85,10 @@ export class LocalOllama {
     return null;
   }
   async detect() {
-    if (!this.child && !this.starting)
-      this.update({ phase: (await this.binary()) ? 'stopped' : 'missing' });
+    if (!this.child && !this.starting) {
+      const phase = (await this.binary()) ? 'stopped' : 'missing';
+      if (!this.child && !this.starting && this.value.phase !== phase) this.update({ phase });
+    }
     return this.snapshot();
   }
   async start(mode: 'prepare' | 'analysis' = 'prepare') {
@@ -279,19 +284,15 @@ export class LocalOllama {
     }
   }
   private model(model: unknown): asserts model is LocalImportModel {
-    if (!localImportModels.includes(model as LocalImportModel))
-      throw new Error('请选择列表中的本地模型。');
+    if (!validLocalModel(model)) throw new Error('请输入有效的本地模型名与标签。');
   }
   async refreshModels() {
     const response = await this.json('GET', '/api/tags');
     this.update({
       models: Array.isArray(response.models)
         ? response.models
-            .filter(
-              (item: any) =>
-                localImportModels.includes(item.name) && Number.isSafeInteger(item.size),
-            )
-            .map((item: any) => ({ name: item.name, size: item.size }))
+            .filter((item: any) => validLocalModel(item.name) && Number.isSafeInteger(item.size))
+            .map((item: any) => ({ name: item.name, size: item.size, digest: item.digest }))
         : [],
     });
   }
@@ -396,6 +397,9 @@ export class LocalOllama {
     await this.start('analysis');
     if (this.value.phase !== 'ready' || !this.value.models.some((item) => item.name === model))
       throw new Error('请先准备好所选本地模型。');
+    const details = await this.json('POST', '/api/show', { model }, signal);
+    if (details.remote_model || details.remote_host)
+      throw new Error('此模型需要云推理，请选择本机模型。');
     const response = await this.json(
       'POST',
       '/api/chat',

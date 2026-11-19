@@ -724,6 +724,21 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
       </div>
     ));
   }
+  if (capture === 'file-import' && system)
+    return (
+      <LedgerFileImport
+        snapshot={snapshot}
+        systemId={systemId}
+        registerFlush={saves.register}
+        onClose={() => {
+          setCapture(null);
+          requestAnimationFrame(() =>
+            document.querySelector<HTMLButtonElement>('[data-file-import-trigger]')?.focus(),
+          );
+        }}
+        onSaved={setSnapshot}
+      />
+    );
   const content = (
     <main className="main ledger-workspace">
       <div className="ledger-page-heading">
@@ -801,6 +816,7 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
             <div className="workspace-category-actions">
               <Button
                 htmlType="button"
+                data-file-import-trigger
                 onClick={() => void transition(() => setCapture('file-import'))}
               >
                 文件导入
@@ -1895,15 +1911,6 @@ export function LedgerWorkspace({ route, navigate, registerFlush, setContext }: 
               setEditing(false);
             }
           }}
-        />
-      )}
-      {capture === 'file-import' && system && (
-        <LedgerFileImport
-          snapshot={snapshot}
-          systemId={systemId}
-          registerFlush={saves.register}
-          onClose={() => setCapture(null)}
-          onSaved={setSnapshot}
         />
       )}
       {node && service && (

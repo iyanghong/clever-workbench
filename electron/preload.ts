@@ -36,6 +36,14 @@ const call = async (channel: string, ...args: unknown[]) => {
 const api: DesktopAPI = {
   localLedgerImport: {
     state: () => call('local-ledger-state'),
+    settings: () => call('analysis-model-settings'),
+    installOllama: () => call('analysis-model-install'),
+    detectOllama: () => call('analysis-model-detect'),
+    selectModel: (model) => call('analysis-model-select', model),
+    testService: (draft, stage) => call('analysis-service-test', draft, stage),
+    saveService: (draft) => call('analysis-service-save', draft),
+    removeService: () => call('analysis-service-remove'),
+    analyzeRemote: (permission) => call('analysis-remote-file', permission),
     sources: (id, sourceIds) => call('local-ledger-sources', id, sourceIds),
     startOllama: () => call('local-ollama-start'),
     downloadModel: (model) => call('local-ollama-download', model),

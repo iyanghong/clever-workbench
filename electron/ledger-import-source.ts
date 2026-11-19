@@ -107,3 +107,23 @@ export function publicImportSources(
       };
     });
 }
+
+/** Only file-derived context is eligible for remote extraction. Keep secret references local. */
+export function remoteImportFile(file: ParsedLedgerFile): ParsedLedgerFile {
+  const secrets = [
+    ...new Set(file.sources.filter((s) => s.hidden && s.text).map((s) => s.text)),
+  ].sort((a, b) => b.length - a.length);
+  const mask = (value: string) =>
+    secrets.reduce((text, secret) => text.split(secret).join('〔隐藏〕'), value);
+  return {
+    ...file,
+    warnings: [],
+    filename: mask(file.filename),
+    blocks: file.blocks.map((block) => ({ ...block, location: mask(block.location) })),
+    sources: file.sources.map((s) => ({
+      ...s,
+      location: mask(s.location),
+      text: s.hidden ? '' : mask(s.text),
+    })),
+  };
+}

@@ -1,3 +1,4 @@
+import { completeImportUrl, importUrlProblem } from '../src/ledger-import-url';
 import { expect, test } from 'vitest';
 import { normalizeImportCandidates } from '../electron/ledger-import-model';
 import type { ParsedLedgerFile } from '../electron/ledger-import-source';
@@ -140,4 +141,37 @@ test('an operation reference uses the explicit target kind rather than a mistake
   ).candidates;
   expect(candidates[1].service).toBeNull();
   expect(candidates[1].owner).toEqual({ candidate: candidates[0].id });
+});
+
+test('访问地址补 HTTP 时保留端口、路径、参数、片段和显式 HTTPS', () => {
+  for (const [raw, expected] of [
+    [
+      ' 192.0.2.15:8080/a/login.html?next=%2Fdocs#start ',
+      'http://192.0.2.15:8080/a/login.html?next=%2Fdocs#start',
+    ],
+    ['portal.example.invalid', 'http://portal.example.invalid'],
+    ['intranet:9090/login', 'http://intranet:9090/login'],
+    ['localhost', 'http://localhost'],
+    ['//[2001:db8::1]:8081/path', 'http://[2001:db8::1]:8081/path'],
+    ['HTTPS://portal.example.invalid/a', 'HTTPS://portal.example.invalid/a'],
+  ]) {
+    expect(completeImportUrl(raw)).toBe(expected);
+    expect(completeImportUrl(expected)).toBe(expected);
+    expect(importUrlProblem(raw)).toBeNull();
+  }
+  for (const raw of [
+    '',
+    '/relative',
+    '../login',
+    'ftp://host/login',
+    'javascript:alert(1)',
+    'data:text/plain,hello',
+    'http:/wrong',
+    'portal.example.invalid:99999',
+    'user:pw@host/path',
+    'https://user:pw@host/path',
+  ]) {
+    expect(completeImportUrl(raw)).toBe(raw);
+    expect(importUrlProblem(raw)).toBeTruthy();
+  }
 });

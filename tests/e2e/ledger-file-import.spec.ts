@@ -101,17 +101,25 @@ test.describe('真实 Ollama 文件导入', () => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     const open = () => page.getByRole('button', { name: '文件导入', exact: true }).click();
-    const dialog = () => page.getByRole('dialog', { name: '文件导入 · 校对后保存', exact: true });
+    const dialog = () => page.getByRole('main', { name: '文件导入 · 校对后保存', exact: true });
     await open();
     await dialog().getByRole('button', { name: '启动 Ollama', exact: true }).click();
-    await expect(dialog().getByText(/Ollama .+ 已在本机运行/)).toBeVisible({ timeout: 30_000 });
-    await dialog().getByRole('button', { name: '选择 Excel／Word／CSV', exact: true }).click();
+    await expect
+      .poll(
+        async () =>
+          (await page.evaluate(() => window.desktop.localLedgerImport.state())).runtime.phase,
+      )
+      .toBe('ready');
+    await dialog().getByRole('button', { name: '选择文件', exact: true }).click();
     await expect(dialog().getByRole('button', { name: '开始本地分析', exact: true })).toBeEnabled({
       timeout: 20_000,
     });
     await page.keyboard.press('Escape');
-    await expect(dialog().getByRole('button', { name: '继续校对', exact: true })).toBeFocused();
-    await dialog().getByRole('button', { name: '继续校对', exact: true }).click();
+    const leave = page.getByRole('dialog', { name: '放弃本次导入？' });
+    await expect(leave.getByRole('button', { name: '继续校对', exact: true })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(leave).toHaveCount(0);
+    await expect(dialog().getByRole('button', { name: '开始本地分析', exact: true })).toBeEnabled();
     await dialog().getByRole('button', { name: '开始本地分析', exact: true }).click();
     await expect(dialog().getByRole('button', { name: '取消分析', exact: true })).toBeVisible();
     const session = await page.evaluate(() => window.desktop.localLedgerImport.state());
@@ -130,53 +138,42 @@ test.describe('真实 Ollama 文件导入', () => {
     expect(prepared.job?.id).toBe(session.job?.id);
     expect(prepared.job?.candidates).toHaveLength(2);
     expect(JSON.stringify(prepared)).not.toContain('fixture-');
-    await dialog().getByText('映射来源环境', { exact: true }).click();
-    await selectChoice(dialog().getByLabel('来源环境 生产', { exact: true }), { label: '生产' });
-    await dialog().getByRole('button', { name: '编辑候选 跳板机', exact: true }).click();
-    const candidateName = dialog().getByLabel('候选名称', { exact: true });
-    const repoRow = dialog().getByRole('row', { name: /制品仓库/ });
-    await repoRow.getByText('待校对', { exact: true }).click();
-    await expect(candidateName).toHaveValue('制品仓库');
-    const serverCheck = dialog().getByRole('checkbox', { name: '导入候选 跳板机', exact: true });
-    await serverCheck.uncheck();
-    await expect(candidateName).toHaveValue('制品仓库');
-    const serverRow = dialog().getByRole('row', { name: /跳板机/ });
-    await serverRow
-      .getByRole('cell')
-      .first()
-      .click({ position: { x: 2, y: 2 } });
-    await expect(candidateName).toHaveValue('跳板机');
-    await expect(serverCheck).not.toBeChecked();
-    await serverCheck.check();
-    await repoRow.getByRole('button').press('Space');
-    await expect(candidateName).toHaveValue('制品仓库');
+    await dialog().getByRole('button', { name: '批量映射环境' }).click();
+    const mapping = page.getByRole('dialog', { name: '批量映射环境' });
+    await selectChoice(mapping.getByLabel('来源环境 生产', { exact: true }), { label: '生产' });
+    if (await mapping.getByRole('button', { name: '应用映射' }).isEnabled())
+      await mapping.getByRole('button', { name: '应用映射' }).click();
+    else await page.keyboard.press('Escape');
+    const repoRow = dialog().getByRole('button', { name: '编辑候选 制品仓库', exact: true });
+    await repoRow.click({ position: { x: 3, y: 3 } });
+    await expect(dialog().getByRole('heading', { name: '制品仓库', exact: true })).toBeVisible();
     await expect(repoRow).toHaveAttribute('aria-current', 'true');
     await dialog().getByRole('button', { name: '编辑候选 跳板机', exact: true }).press('Enter');
-    await expect(dialog().getByLabel('候选名称', { exact: true })).toHaveValue('跳板机');
+    await dialog().getByText('编辑候选字段与附属资料', { exact: true }).click();
     await expect(dialog().getByLabel('候选地址／IP', { exact: true })).toHaveValue('192.0.2.10');
     await expect(dialog().getByLabel('账号 1 用户名', { exact: true })).toHaveValue('000123');
     await expect(dialog().getByLabel('账号 1 密码（加密保存）', { exact: true })).toHaveAttribute(
       'type',
       'password',
     );
-    await dialog()
-      .getByRole('checkbox', { name: '我已核对本条来源、环境和关联', exact: true })
-      .check();
-    await dialog().getByRole('button', { name: '编辑候选 制品仓库', exact: true }).click();
+    await dialog().getByRole('button', { name: '确认本条并看下一条' }).click();
+    await expect(dialog().getByRole('heading', { name: '制品仓库', exact: true })).toBeVisible();
+    await dialog().getByText('编辑候选字段与附属资料', { exact: true }).click();
     await dialog().getByLabel('地址 1 URL', { exact: true }).fill('javascript:alert(1)');
-    await dialog()
-      .getByRole('checkbox', { name: '我已核对本条来源、环境和关联', exact: true })
-      .check();
-    await dialog().getByRole('button', { name: '确认保存所选台账', exact: true }).click();
-    await expect(dialog().getByText(/地址仅支持 HTTP|完整的 HTTP/)).toBeVisible();
+    await dialog().getByRole('button', { name: '确认并查看汇总' }).click();
+    await expect(
+      dialog()
+        .getByRole('alert')
+        .filter({ hasText: /地址仅支持 HTTP|完整的 HTTP/ }),
+    ).toBeVisible();
     const rollback = await page.evaluate(() => window.desktop.snapshot());
     expect(rollback.resources).toHaveLength(0);
     expect(rollback.accounts).toHaveLength(0);
     expect(rollback.accessEntries).toHaveLength(0);
-    await dialog().getByLabel('地址 1 URL', { exact: true }).fill('https://repo.example.invalid');
     await dialog()
-      .getByRole('checkbox', { name: '我已核对本条来源、环境和关联', exact: true })
-      .check();
+      .getByLabel('地址 1 URL', { exact: true })
+      .fill('192.0.2.101:8080/docs/login.html');
+    await dialog().getByRole('button', { name: '确认并查看汇总' }).click();
     await expect(
       dialog().getByRole('button', { name: '确认保存所选台账', exact: true }),
     ).toBeEnabled();
@@ -206,6 +203,9 @@ test.describe('真实 Ollama 文件导入', () => {
     });
     expect(saved.snapshot.resources).toHaveLength(1);
     expect(saved.snapshot.accessEntries).toHaveLength(1);
+    expect(saved.snapshot.accessEntries[0].addresses[0].url).toBe(
+      'http://192.0.2.101:8080/docs/login.html',
+    );
     expect(saved.snapshot.resources[0].environmentId).toBe(environmentId);
     expect(saved.snapshot.accessEntries[0].environmentId).toBe(environmentId);
     expect(saved.password).toBe('fixture-ssh!23');
@@ -238,9 +238,9 @@ test.describe('真实 Ollama 文件导入', () => {
     await page.reload();
     await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await page.getByRole('button', { name: '文件导入', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: '文件导入 · 校对后保存' });
+    const dialog = page.getByRole('main', { name: '文件导入 · 校对后保存' });
     await dialog.getByRole('button', { name: '启动 Ollama', exact: true }).click();
-    await dialog.getByRole('button', { name: '选择 Excel／Word／CSV', exact: true }).click();
+    await dialog.getByRole('button', { name: '选择文件', exact: true }).click();
     await dialog.getByRole('button', { name: '开始本地分析', exact: true }).click();
     await expect(
       dialog.getByRole('button', { name: '编辑候选 合成文档门户', exact: true }),
@@ -255,13 +255,11 @@ test.describe('真实 Ollama 文件导入', () => {
     expect(
       (await page.evaluate(() => window.desktop.snapshot())).accessEntries[0].addresses[0].url,
     ).toBe('https://old.example.invalid');
-    if (!c.update) await dialog.getByRole('button', { name: '比较并选择字段' }).click();
+    await dialog.getByRole('button', { name: '更新已有', exact: true }).click();
     await expect(dialog.getByLabel('替换 访问地址', { exact: true })).toBeChecked();
     for (const box of await dialog.getByRole('checkbox', { name: '替换 说明', exact: true }).all())
       await box.uncheck();
-    await dialog
-      .getByRole('checkbox', { name: '我已核对本条来源、环境和关联', exact: true })
-      .check();
+    await dialog.getByRole('button', { name: '确认并查看汇总' }).click();
     await dialog.getByRole('button', { name: '确认保存所选台账', exact: true }).click();
     await expect(dialog.getByText(/已新增 0 条、更新 1 条/)).toBeVisible();
     const saved = (await page.evaluate(() => window.desktop.snapshot())).accessEntries;

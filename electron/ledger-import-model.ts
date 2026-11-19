@@ -14,6 +14,7 @@ import {
   type ParsedLedgerFile,
 } from './ledger-import-source';
 import type { LocalOllama } from './local-ollama';
+import { completeCandidateUrls } from '../src/ledger-import-url';
 
 const valueDefinition = {
   type: 'object',
@@ -493,7 +494,7 @@ export function normalizeImportCandidates(
       });
     }
     candidate.sourceIds = [...sourceIds];
-    candidates.push(candidate);
+    candidates.push(completeCandidateUrls(candidate));
   }
   return {
     candidates,
@@ -616,8 +617,9 @@ export async function extractLedgerCandidates(
   systemName: string,
   signal: AbortSignal,
   report: (completed: number, total: number, activity?: string) => void = () => {},
+  transportFile: ParsedLedgerFile = file,
 ) {
-  const parts = chunks(file).flatMap((group) => {
+  const parts = chunks(transportFile).flatMap((group) => {
     const rows: DirectoryRow[] = [];
     const general = group.filter((block) => {
       const directory =
@@ -696,7 +698,7 @@ ${kind === 'all' ? '识别当前系统资料内的各种台账。' : `只返回 
               previousCandidates: candidates.map((item) => ({
                 key: item.id,
                 kind: item.kind,
-                name: item.name,
+                ...(transportFile === file ? { name: item.name } : {}),
               })),
               blocks: part.blocks.map((block) => {
                 const sources = new Map(block.sources.map((source) => [source.id, source]));
@@ -746,8 +748,6 @@ ${kind === 'all' ? '识别当前系统资料内的各种台账。' : `只返回 
         const row = c.sourceIds.map((id) => byName.get(id)).find(Boolean);
         if (row?.heading && !row.heading.hidden && !c.sourceIds.includes(row.heading.id))
           c.sourceIds.push(row.heading.id);
-        if (c.kind === 'access' && c.address && !/^https?:\/\//i.test(c.address))
-          c.warnings.push('原文地址未注明 HTTP(S) 协议，请核实并补全访问地址。');
         if (
           c.kind === 'server' ||
           c.kind === 'database' ||

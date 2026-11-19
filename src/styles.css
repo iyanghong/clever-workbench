@@ -4330,6 +4330,11 @@
   color: var(--text);
   outline: none;
 }
+/* Keep the placeholder out of Chromium's editable line box, including after deleting the last character. */
+.editor-wrap .vditor-ir pre.vditor-reset:empty::before {
+  position: absolute;
+  pointer-events: none;
+}
 .editor-wrap .vditor-reset h1 {
   font-size: 26px;
 }

@@ -84,6 +84,7 @@ export type LedgerImportState = {
   filename: string;
   phase: 'parsing' | 'ready' | 'analyzing' | 'review' | 'failed' | 'cancelled' | 'complete';
   progress: { completed: number; total: number; message: string };
+  analysisLabel?: string;
   sourceCount: number;
   passwordSources: { id: string; location: string }[];
   unmatchedSourceIds: string[];
@@ -94,11 +95,35 @@ export type LedgerImportState = {
   updated?: number;
 };
 export const localImportModels = ['qwen3:4b', 'qwen3:8b'] as const;
-export type LocalImportModel = (typeof localImportModels)[number];
+export type LocalImportModel = string;
+export function validLocalModel(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length <= 120 &&
+    /^(?:[a-z0-9][a-z0-9_-]*\/)?[a-z0-9][a-z0-9._-]*:[a-z0-9][a-z0-9._-]*$/i.test(value) &&
+    !/(?:-|:)cloud(?:$|[-.])/i.test(value)
+  );
+}
+export type RemoteServiceDraft = { name: string; endpoint: string; model: string; apiKey?: string };
+export type ModelSettings = {
+  warning?: string;
+  localModel: string;
+  verified: Record<string, string>;
+  service: null | {
+    name: string;
+    endpoint: string;
+    model: string;
+    revision: string;
+    hasKey: boolean;
+  };
+};
+export type RemoteFilePermission = { fileId: string; serviceRevision: string; allow: true };
+
 export type OllamaState = {
+  installer?: { phase: 'download' | 'verify'; received: number; total: number };
   phase: 'missing' | 'stopped' | 'starting' | 'ready' | 'downloading' | 'failed';
   version: string | null;
-  models: { name: LocalImportModel; size: number }[];
+  models: { name: LocalImportModel; size: number; digest?: string }[];
   download: { model: LocalImportModel; completed: number; total: number; message: string } | null;
   error: string | null;
 };
@@ -111,6 +136,14 @@ export type LedgerImportCommit = {
 export interface LocalLedgerImportAPI {
   state(): Promise<LocalLedgerImportSnapshot>;
   sources(id: string, sourceIds: string[]): Promise<ImportSource[]>;
+  settings(): Promise<ModelSettings>;
+  installOllama(): Promise<void>;
+  detectOllama(): Promise<OllamaState>;
+  selectModel(model: string): Promise<ModelSettings>;
+  testService(draft: RemoteServiceDraft, stage: 'connect' | 'extract'): Promise<void>;
+  saveService(draft: RemoteServiceDraft): Promise<ModelSettings>;
+  removeService(): Promise<ModelSettings>;
+  analyzeRemote(permission: RemoteFilePermission): Promise<LocalLedgerImportSnapshot>;
   startOllama(): Promise<LocalLedgerImportSnapshot>;
   downloadModel(model: LocalImportModel): Promise<LocalLedgerImportSnapshot>;
   cancelDownload(): Promise<LocalLedgerImportSnapshot>;
@@ -132,6 +165,7 @@ export type ImportAdvice = {
   environmentReason: string;
   peerIds: string[];
   modelPeerId?: string;
+  modelTargetId?: string;
   existingIds: string[];
   action: 'new' | 'skip' | 'update' | 'append';
   targetId?: string;

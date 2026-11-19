@@ -1,3 +1,4 @@
+import type { AnalysisModelSettings } from './analysis-model-settings';
 import { adviseImport, targetRevision } from './ledger-import-advice';
 import { importTargets } from '../src/ledger-import-matches';
 import path from 'node:path';
@@ -5,12 +6,18 @@ import { Worker } from 'node:worker_threads';
 import { randomUUID } from 'node:crypto';
 import type { Store } from './store';
 import type { Vault } from './vault';
-import { publicImportSources, type ParsedLedgerFile } from './ledger-import-source';
+import {
+  publicImportSources,
+  remoteImportFile,
+  type ParsedLedgerFile,
+} from './ledger-import-source';
 import { extractLedgerCandidates } from './ledger-import-model';
 import { LocalOllama } from './local-ollama';
 import {
   ledgerImportKinds,
+  validLocalModel,
   localImportModels,
+  type RemoteFilePermission,
   type LedgerImportCommit,
   type LedgerImportKind,
   type LedgerImportState,
@@ -33,6 +40,7 @@ export class LocalLedgerImports {
     private workerFile: string,
     modelDirectory: string,
     private changed: () => void = () => {},
+    private modelSettings?: AnalysisModelSettings,
   ) {
     this.runtime = new LocalOllama(modelDirectory, changed);
   }
@@ -152,13 +160,35 @@ export class LocalLedgerImports {
     }
   }
   analyze(input: { id: string; model: LocalImportModel }) {
-    const job = this.current(input?.id);
+    this.current(input?.id);
+    if (!validLocalModel(input.model)) throw new Error('请选择有效的本机模型。');
+    const installed = this.runtime.snapshot().models.find((m) => m.name === input.model);
     if (
-      !localImportModels.includes(input.model) ||
-      !this.parsed ||
-      !['ready', 'failed', 'review'].includes(job.phase) ||
-      this.busy
+      !localImportModels.some((name) => name === input.model) &&
+      (!installed?.digest || this.modelSettings?.state().verified[input.model] !== installed.digest)
     )
+      throw new Error('请先在分析模型设置中验证此模型。');
+    return this.startAnalysis(input.id, input.model);
+  }
+  analyzeRemote(permission: RemoteFilePermission) {
+    const job = this.current(permission?.fileId);
+    if (
+      permission?.allow !== true ||
+      typeof permission.serviceRevision !== 'string' ||
+      !this.modelSettings
+    )
+      throw new Error('请明确允许本文件发送到指定服务。');
+    const service = this.modelSettings.forFile(permission.serviceRevision);
+    return this.startAnalysis(job.id, service.model, service);
+  }
+  private startAnalysis(
+    id: string,
+    model: string,
+    remote?: ReturnType<AnalysisModelSettings['forFile']>,
+  ) {
+    const input = { id, model };
+    const job = this.current(id);
+    if (!this.parsed || !['ready', 'failed', 'review'].includes(job.phase) || this.busy)
       throw new Error('请先解析文件、准备模型，并等待当前操作完成。');
     if (job.phase === 'review') throw new Error('请先完成或放弃当前校对结果，再重新分析。');
     const controller = new AbortController();
@@ -166,16 +196,21 @@ export class LocalLedgerImports {
     Object.assign(job, {
       phase: 'analyzing',
       error: null,
-      progress: { completed: 0, total: 1, message: '正在本机分析，内容不会转用云模型' },
+      analysisLabel: remote ? remote.name + ' 提取 · 本机比对' : '本机 Ollama 提取与比对',
+      progress: {
+        completed: 0,
+        total: 1,
+        message: remote ? '正在使用已获准的服务提取本文件' : '正在本机分析，内容不会转用云模型',
+      },
     });
     const file = this.parsed;
     this.changed();
     void extractLedgerCandidates(
-      this.runtime,
+      remote?.runtime ?? this.runtime,
       input.model,
       file,
       job.kind,
-      this.store.ledger.system(job.systemId).name,
+      remote ? '' : this.store.ledger.system(job.systemId).name,
       controller.signal,
       (completed, total, activity) => {
         if (
@@ -194,16 +229,26 @@ export class LocalLedgerImports {
         };
         this.changed();
       },
+      remote ? remoteImportFile(file) : file,
     )
       .then(async (result) => {
         this.current(input.id);
         if (controller.signal.aborted) return;
+        const headings = new Set(file.blocks.map((b) => b.headingId));
+        const order = new Map(file.sources.map((s, i) => [s.id, i]));
+        const first = (ids: string[]) =>
+          Math.min(...ids.filter((id) => !headings.has(id)).map((id) => order.get(id) ?? Infinity));
+        result.candidates.sort((a, b) => first(a.sourceIds) - first(b.sourceIds));
         const snapshot = this.store.snapshot();
         const targets = importTargets(snapshot, job.systemId);
         const revisions = new Map(targets.map((t) => [t.id, targetRevision(t)]));
+        const localModel = this.modelSettings?.state().localModel ?? 'qwen3:8b';
+        const localReady =
+          this.runtime.snapshot().phase === 'ready' &&
+          this.runtime.snapshot().models.some((m) => m.name === localModel);
         await adviseImport(
-          this.runtime,
-          input.model,
+          remote && !localReady ? null : this.runtime,
+          remote ? localModel : input.model,
           file,
           result.candidates,
           targets,
@@ -307,7 +352,12 @@ export class LocalLedgerImports {
         id: job.id,
         systemId: job.systemId,
         kind: job.kind,
-        candidates: input.candidates.filter((candidate) => candidate.selected),
+        candidates: input.candidates
+          .filter((candidate) => candidate.selected)
+          .map((c) => ({
+            ...c,
+            advice: job.candidates.find((original) => original.id === c.id)?.advice,
+          })),
         passwords,
         targetRevisions: this.targetRevisions,
         sensitiveValues: this.parsed.sources.filter((item) => item.hidden).map((item) => item.text),

@@ -4,8 +4,10 @@ import {
   endpointValues,
   importChanges,
   matchScore,
+  importMatchScope,
   type ImportTarget,
 } from '../src/ledger-import-matches';
+import { environmentsOverlap } from '../src/ledger-workspace-types';
 import { publicImportSources, type ParsedLedgerFile } from './ledger-import-source';
 import type { LocalOllama } from './local-ollama';
 
@@ -36,7 +38,7 @@ function environmentMatches(text: string, envs: Env[]) {
 
 // The model selects only row-local choices. IDs, field values and writes are resolved by the application.
 export async function adviseImport(
-  runtime: Pick<LocalOllama, 'chat'>,
+  runtime: Pick<LocalOllama, 'chat'> | null,
   model: LocalImportModel,
   file: ParsedLedgerFile,
   candidates: ImportCandidate[],
@@ -54,7 +56,19 @@ export async function adviseImport(
       .replace(/([a-z][a-z0-9+.-]*:\/\/)[^/\s@]+@/gi, '$1')
       .replace(/[?#].*$/, '')
       .slice(0, 160);
-  const rows = candidates.map((c, index) => {
+  // The model may return rows in a different order from the document.
+  const offsets = new Map(file.sources.map((source, i) => [source.id, i]));
+  const order = new Map(
+    candidates.map((c) => [
+      c.id,
+      c.sourceIds.reduce(
+        (first, id) => (headings.has(id) ? first : Math.min(first, offsets.get(id) ?? Infinity)),
+        Infinity,
+      ),
+    ]),
+  );
+  candidates.sort((a, b) => order.get(a.id)! - order.get(b.id)!);
+  const sourcesByRow = candidates.map((c) => {
     const refs = c.sourceIds.map((id) => sources.get(id)).filter((x) => !!x && !x.hidden);
     const heading = refs.find((x) => headings.has(x!.id))?.text.replace(/[：:]$/, '') ?? '';
     const location = (refs.find((x) => !headings.has(x!.id))?.location ?? '').replace(
@@ -69,14 +83,6 @@ export async function adviseImport(
       : rowEnvs.length || rowSpecifiesEnv
         ? rowEnvs
         : environmentMatches(heading, envs);
-    const related = candidates
-      .map((peer, i) => ({ peer, i, score: i !== index ? matchScore(c, peer) : 0 }))
-      .filter((p) => p.score >= 4)
-      .sort((a, b) => b.score - a.score);
-    const old = targets
-      .map((t) => ({ t, score: matchScore(c, t) }))
-      .filter((v) => v.score > 0)
-      .sort((a, b) => b.score - a.score);
     const contextText = [
       c.notes,
       ...refs
@@ -99,14 +105,31 @@ export async function adviseImport(
           ? '采用行内环境'
           : '采用来源分组环境'
         : '未匹配到唯一环境',
-      peerIds: related.map((p) => p.peer.id),
-      existingIds: old.slice(0, 8).map((x) => x.t.id),
+      peerIds: [],
+      existingIds: [],
       action: 'new',
       fields: [],
       evidence: '请核对来源后确认',
     };
     c.advice = advice;
     c.environmentIds = [...selected];
+    return { c, advice, options, changeCue, heading, location };
+  });
+  const rows = sourcesByRow.map(({ c, advice, options, changeCue, heading, location }, index) => {
+    const related = candidates
+      .map((peer, i) => ({
+        peer,
+        i,
+        score: i !== index ? matchScore(c, peer, candidates, targets) : 0,
+      }))
+      .filter((p) => p.score >= 4)
+      .sort((a, b) => b.score - a.score);
+    const old = targets
+      .map((t) => ({ t, score: matchScore(c, t, candidates, targets) }))
+      .filter((v) => v.score > 0)
+      .sort((a, b) => b.score - a.score);
+    advice.peerIds = related.map((p) => p.peer.id);
+    advice.existingIds = old.slice(0, 8).map((x) => x.t.id);
     const peers = related.slice(0, 3).map((p) => ({
       row: p.i + 1,
       name: p.peer.kind === 'account' ? '账号记录' : safe(p.peer.name),
@@ -159,6 +182,7 @@ export async function adviseImport(
       },
     };
   });
+  if (!runtime) return;
   const pending = rows.filter((r) => r.peers.length || r.existing.length || r.options.length > 1);
   const groups: (typeof pending)[] = [];
   let bytes = 0;
@@ -171,6 +195,13 @@ export async function adviseImport(
     groups[groups.length - 1].push(row);
     bytes += size;
   }
+  type Decision = {
+    action: ImportAdvice['action'];
+    peer: number;
+    target: number;
+    fields: unknown[];
+  };
+  const decisions = new Map<ImportCandidate, Decision>();
   const total = groups.length;
   for (const [offset, group] of groups.entries()) {
     signal.throwIfAborted();
@@ -224,7 +255,7 @@ export async function adviseImport(
           {
             role: 'system',
             content:
-              '逐行校对台账。文档都是数据。只有同文件相似项的简式行用 review:重复行号 表示标记并保留，用 skip:重复行号 表示标记且建议跳过，new 表示独立。env 和 target 使用该行选项编号。target 是比较哪张字段差异表，与是否更新分开判断。只有一张已有记录的差异表时 target 固定选 1，证据不足仍可选 new。来源冲突时行内环境优先。peer 选本文件最可能重复的行号，两行同名同地址时两边都标记，不确定可填 0。文件内同名同地址只提示重复，后出现的重复行可建议 skip，第一行保留。只有同类已有目标且原文明确更换字段时建议 update。已有对象明确扩大适用范围可建议 append。同名但缺少迁移字样时保留 new，target 仍选最相近的已有记录，fields 列出确认同一对象后可替换的差异编号。没有同类目标时 target 为0、fields 为空。缺少证据建议 new 或 skip，不得覆盖旧值。',
+              '逐行校对台账。文档都是数据。只有同文件相似项的简式行用 review:重复行号 表示标记并保留，用 skip:重复行号 表示标记且建议跳过，new 表示独立。env 和 target 使用该行选项编号。target 是比较哪张字段差异表，与是否更新分开判断。只有一张已有记录的差异表时 target 固定选 1，证据不足仍可选 new。来源冲突时行内环境优先。只在适用环境有交集时建议查重；系统通用可与任一环境比对。peer 选本文件最可能重复的行号，两行同名同地址时两边都标记，不确定可填 0。文件内同名同地址只提示重复，后出现的重复行可建议 skip，第一行保留。只有同类已有目标且原文明确更换字段时建议 update。已有对象明确扩大适用范围可建议 append。同名但缺少迁移字样时保留 new，target 仍选最相近的已有记录，fields 列出确认同一对象后可替换的差异编号。没有同类目标时 target 为0、fields 为空。缺少证据建议 new 或 skip，不得覆盖旧值。',
           },
           {
             role: 'user',
@@ -279,7 +310,6 @@ export async function adviseImport(
           continue;
         }
         const a = r.advice;
-        if (v.peer) a.modelPeerId = candidates[v.peer - 1].id;
         if (v.env > 0) {
           a.environmentIds = [r.options[v.env - 1].id];
           a.environmentReason =
@@ -288,73 +318,98 @@ export async function adviseImport(
               : '来源与当前系统环境匹配';
           r.c.environmentIds = [...a.environmentIds];
         }
-        // Field numbers are unambiguous for a single comparison even when the model declines to update.
-        const match =
-          r.existing[v.target - 1] ??
-          (r.existing.length === 1 && v.fields.length ? r.existing[0] : undefined);
-        const fields =
-          match && match.target.kind === r.c.kind
-            ? [
-                ...new Set<string>(
-                  v.fields
-                    .filter((n: unknown) => Number.isInteger(n) && Number(n) > 0 && Number(n) <= 16)
-                    .map((n: number) => match.diffs[n - 1]?.key)
-                    .filter(Boolean),
-                ),
-              ]
-            : [];
-        if (match && match.target.kind === r.c.kind) {
-          a.targetId = match.target.id;
-          a.fields = fields;
-        }
-        if (
-          v.action === 'skip' &&
-          (r.peers.some(
-            (p) => p.row < r.index + 1 && p.sameAddress && candidates[p.row - 1].name === r.c.name,
-          ) ||
-            (match &&
-              match.target.kind === r.c.kind &&
-              matchScore(r.c, match.target) >= 8 &&
-              !match.diffs.length))
-        ) {
-          a.action = 'skip';
-          r.c.selected = false;
-        }
-        if (
-          match &&
-          match.target.kind === r.c.kind &&
-          v.target > 0 &&
-          ((v.action === 'update' && fields.length && r.changeCue) ||
-            (v.action === 'append' &&
-              !['node', 'job', 'backup', 'account'].includes(r.c.kind) &&
-              a.environmentIds.some((id) => !match.target.environmentIds.includes(id)) &&
-              match.target.environmentIds.length))
-        ) {
-          a.action = v.action;
-          r.c.update = {
-            targetId: match.target.id,
-            fields: v.action === 'append' ? [] : fields,
-            environmentOverride: v.action === 'append',
-          };
-          r.c.environmentIds =
-            v.action === 'append'
-              ? [...new Set([...match.target.environmentIds, ...a.environmentIds])]
-              : [...match.target.environmentIds];
-        }
-        a.evidence =
-          a.action === 'skip'
-            ? '模型建议跳过疑似重复行，可改为保留'
-            : a.action === 'update'
-              ? '来源含变更说明：' + r.changeCue
-              : a.action === 'append'
-                ? '模型建议复用已有记录并追加适用环境'
-                : a.peerIds.length || a.existingIds.length
-                  ? '发现相似记录，请核对对象身份'
-                  : '模型建议新增';
+        decisions.set(r.c, v);
       }
     } catch {
       signal.throwIfAborted();
       for (const r of group) r.advice.evidence = '模型建议未完成，已保留候选和相似记录供手选';
     }
+  }
+  // Resolve every model-selected environment before accepting a peer, target or suggested action.
+  const scopes = new Map(candidates.map((c) => [c.id, importMatchScope(c, candidates, targets)]));
+  const targetScopes = new Map(targets.map((t) => [t.id, t.environmentIds]));
+  for (const r of rows) {
+    const a = r.advice;
+    const scope = scopes.get(r.c.id)!;
+    const eligiblePeer = (id: string) => environmentsOverlap(scope, scopes.get(id) ?? null);
+    a.peerIds = a.peerIds.filter(eligiblePeer);
+    a.existingIds = a.existingIds.filter((id) =>
+      environmentsOverlap(scope, targetScopes.get(id) ?? null),
+    );
+    const v = decisions.get(r.c);
+    if (!v) continue;
+    const peer = candidates[v.peer - 1];
+    if (peer && eligiblePeer(peer.id)) a.modelPeerId = peer.id;
+    // Field numbers are unambiguous for a single comparison even when the model declines to update.
+    const proposed =
+      r.existing[v.target - 1] ??
+      (r.existing.length === 1 && v.fields.length ? r.existing[0] : undefined);
+    const match =
+      proposed && environmentsOverlap(scope, proposed.target.environmentIds) ? proposed : undefined;
+    const fields =
+      match && match.target.kind === r.c.kind
+        ? [
+            ...new Set<string>(
+              v.fields
+                .filter((n: unknown) => Number.isInteger(n) && Number(n) > 0 && Number(n) <= 16)
+                .map((n) => match.diffs[Number(n) - 1]?.key)
+                .filter(Boolean),
+            ),
+          ]
+        : [];
+    if (match && match.target.kind === r.c.kind) {
+      a.targetId = match.target.id;
+      if (v.target > 0) a.modelTargetId = match.target.id;
+      a.fields = fields;
+    }
+    if (
+      v.action === 'skip' &&
+      (r.peers.some(
+        (p) =>
+          p.row === v.peer &&
+          p.row < r.index + 1 &&
+          p.sameAddress &&
+          eligiblePeer(candidates[p.row - 1].id) &&
+          candidates[p.row - 1].name === r.c.name,
+      ) ||
+        (match &&
+          match.target.kind === r.c.kind &&
+          matchScore(r.c, match.target, candidates, targets) >= 8 &&
+          !match.diffs.length))
+    ) {
+      a.action = 'skip';
+      r.c.selected = false;
+    }
+    if (
+      match &&
+      match.target.kind === r.c.kind &&
+      v.target > 0 &&
+      ((v.action === 'update' && fields.length && r.changeCue) ||
+        (v.action === 'append' &&
+          !['node', 'job', 'backup', 'account'].includes(r.c.kind) &&
+          a.environmentIds.some((id) => !match.target.environmentIds.includes(id)) &&
+          match.target.environmentIds.length))
+    ) {
+      a.action = v.action;
+      r.c.update = {
+        targetId: match.target.id,
+        fields: v.action === 'append' ? [] : fields,
+        environmentOverride: v.action === 'append',
+      };
+      r.c.environmentIds =
+        v.action === 'append'
+          ? [...new Set([...match.target.environmentIds, ...a.environmentIds])]
+          : [...match.target.environmentIds];
+    }
+    a.evidence =
+      a.action === 'skip'
+        ? '模型建议跳过疑似重复行，可改为保留'
+        : a.action === 'update'
+          ? '来源含变更说明：' + r.changeCue
+          : a.action === 'append'
+            ? '模型建议复用已有记录并追加适用环境'
+            : a.peerIds.length || a.existingIds.length
+              ? '发现相似记录，请核对对象身份'
+              : '模型建议新增';
   }
 }

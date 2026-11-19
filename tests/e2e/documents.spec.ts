@@ -122,6 +122,43 @@ test('居中稿纸可切换专注编辑，退出后保留标题、正文与文�
     await page.getByRole('button', { name: '新建文档', exact: true }).click();
     await expect(page.locator('.documents-index')).toBeVisible();
     await expect(page.locator('.documents-layout')).not.toHaveClass(/focused/);
+    const body = page.getByRole('textbox', { name: '工作内容', exact: true });
+    await body.click({ position: { x: 4, y: 26 } });
+    await page.keyboard.insertText('写');
+    await body.press('Backspace');
+    await expect(body).toBeEmpty();
+    // A collapsed DOM Range is empty here; measure the caret Chromium actually paints.
+    await body.evaluate((el) => {
+      el.style.caretColor = '#ff00ff';
+      el.style.setProperty('caret-animation', 'manual');
+    });
+    const box = (await body.boundingBox())!;
+    const clip = { x: Math.floor(box.x), y: Math.floor(box.y), width: 4, height: 72 };
+    const image = await page.screenshot({ clip, scale: 'css', caret: 'initial' });
+    const caretCenter = await app.evaluate(({ nativeImage }, png) => {
+      const image = nativeImage.createFromDataURL('data:image/png;base64,' + png);
+      const { width } = image.getSize(),
+        pixels = image.toBitmap();
+      const rows: number[] = [];
+      for (let i = 0; i < pixels.length; i += 4) {
+        if (pixels[i] > 180 && pixels[i + 1] < 100 && pixels[i + 2] > 180)
+          rows.push(Math.floor(i / (4 * width)));
+      }
+      return rows.length ? (rows[0] + rows[rows.length - 1] + 1) / 2 : null;
+    }, image.toString('base64'));
+    expect(caretCenter).not.toBeNull();
+    await page.keyboard.insertText('写');
+    const textCenter = await body.evaluate(() => {
+      const range = window.getSelection()!.getRangeAt(0).getBoundingClientRect();
+      return range.top + range.height / 2;
+    });
+    expect(Math.abs(clip.y + caretCenter! - textCenter)).toBeLessThanOrEqual(2);
+    await body.press('Backspace');
+    await expect(body).toBeEmpty();
+    await body.evaluate((el) => {
+      el.style.removeProperty('caret-color');
+      el.style.removeProperty('caret-animation');
+    });
     await page.getByRole('button', { name: '专注编辑', exact: true }).click();
     await expect(page.locator('.documents-index')).toBeHidden();
     await expect(page.locator('.document-metadata')).toBeHidden();

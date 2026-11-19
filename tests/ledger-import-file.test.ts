@@ -326,7 +326,7 @@ test('Word address lists keep each row, section, original address and matching p
       c.environmentIds,
     ]),
   ).toEqual([
-    ['示例门户', 'one.example.invalid/path', '000123', 'fake-secret-0', ['测试环境'], null],
+    ['示例门户', 'http://one.example.invalid/path', '000123', 'fake-secret-0', ['测试环境'], null],
     ['示例门户', 'https://two.example.invalid', '000123', 'fake-secret-1', ['生产环境'], null],
   ]);
   expect(all.find((c) => c.kind === 'server')).toMatchObject({ address: '192.0.2.8', port: '22' });

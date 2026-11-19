@@ -90,6 +90,10 @@ export function scopeFor(
     }
   );
 }
+export function environmentsOverlap(a: string[] | null, b: string[] | null) {
+  if (a === null || b === null) return false;
+  return !a.length || !b.length || a.some((id) => b.includes(id));
+}
 export function inEnvironment(scope: ScopeInput, filter: string) {
   return (
     filter === 'all' ||

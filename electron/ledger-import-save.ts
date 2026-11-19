@@ -1,4 +1,5 @@
 import { importTargets } from '../src/ledger-import-matches';
+import { completeCandidateUrls } from '../src/ledger-import-url';
 import { targetRevision } from './ledger-import-advice';
 import { updateFromCandidate } from './ledger-import-update';
 import { randomUUID } from 'node:crypto';
@@ -216,10 +217,11 @@ export function saveLedgerImport(
   input: PreparedLedgerImport,
   writePassword: (id: string, password: string) => void,
 ) {
-  const selected = input.candidates.filter((candidate) => candidate.selected);
+  const candidates = input.candidates.map(completeCandidateUrls);
+  const selected = candidates.filter((candidate) => candidate.selected);
   const snapshot = store.snapshot();
   store.ledger.system(input.systemId);
-  const problems = importCandidateProblems(snapshot, input.systemId, input.kind, input.candidates);
+  const problems = importCandidateProblems(snapshot, input.systemId, input.kind, candidates);
   const invalid = selected.find((candidate) => problems[candidate.id]?.length);
   if (invalid) throw new Error(`请完成候选校对：${problems[invalid.id].join('；')}。`);
   const targets = new Map(importTargets(snapshot, input.systemId).map((t) => [t.id, t]));
