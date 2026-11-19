@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "kind": "release",
+  "operationChange": "changed",
+  "summary": "台账文件导入分为选文件与分析、校对候选、确认保存三步。可管理本机 Ollama 或逐文件授权兼容服务提取，已有台账始终在本机查重。",
+  "changes": [
+    {
+      "id": "model-management",
+      "summary": "在“分析模型”中安装或启动 Ollama、下载并选用模型。使用 OpenAI 兼容服务时，先测试连接与提取，再为本次文件单独授权。",
+      "guideIds": [
+        "ledger-file-import"
+      ]
+    },
+    {
+      "id": "review-and-save",
+      "summary": "按原文顺序预览全部候选，点击疑似重复项可看对方名称、来源和匹配依据。逐条选择新增、跳过或更新指定字段，最后统一确认保存。",
+      "guideIds": [
+        "ledger-file-import"
+      ]
+    },
+    {
+      "id": "environment-matching",
+      "summary": "可手动修改适用环境，也可批量映射来源环境。两条记录至少有一个共同环境才参与查重；系统通用与每个环境比对。",
+      "guideIds": [
+        "ledger-file-import"
+      ]
+    },
+    {
+      "id": "web-addresses",
+      "summary": "访问入口自动为缺少协议的地址补上 http://。在“访问地址”右侧增加地址，使用对应行的按钮移除。",
+      "guideIds": [
+        "ledger-file-import"
+      ]
+    },
+    {
+      "id": "empty-editor-caret",
+      "summary": "在空文档中直接输入，光标与首行文字对齐。清空正文后也能在原位置继续输入。",
+      "guideIds": [
+        "documents-and-editor"
+      ]
+    }
+  ],
+  "review": {
+    "status": "completed-with-gaps",
+    "reviewer": "Codex（本机回归验证）",
+    "checkedAt": "2026-11-19T21:34:22+08:00",
+    "source": "0ca2fc84e90acddb1b7ce5297f7f1e785c0d89e8",
+    "environment": "macOS Apple Silicon 安装版，隔离资料目录，本机 Ollama 与回环兼容服务。",
+    "checks": [
+      {
+        "guideId": "ledger-file-import",
+        "stepIds": [
+          "prepare-model",
+          "choose-file",
+          "analyze"
+        ],
+        "result": "passed",
+        "evidence": "已验证本机模型运行、选用和文件分析，以及逐文件授权后经回环兼容服务提取；取消授权时不会发送文件。"
+      },
+      {
+        "guideId": "ledger-file-import",
+        "stepIds": [
+          "review-source",
+          "map-environments",
+          "review-details",
+          "commit",
+          "discard"
+        ],
+        "result": "passed",
+        "evidence": "已检查 19 条候选预览、变更环境后的查重、访问地址补全和退出确认，并以合成资料验证选择字段后保存及失败回滚。"
+      },
+      {
+        "guideId": "documents-and-editor",
+        "stepIds": [
+          "write",
+          "focus"
+        ],
+        "result": "passed",
+        "evidence": "在普通和专注模式下比较了空文档光标与首字的位置，并测试清空后重输。"
+      }
+    ],
+    "knownGaps": [
+      "本次发行提供 macOS Apple Silicon 安装包。兼容服务使用合成资料和回环接口验收。"
+    ]
+  },
+  "version": "0.1.34",
+  "tag": "v0.1.34",
+  "sourceSha": "43295d6b299e08f9a4827423016ce948d1c7f8e6",
+  "publication": "pending"
+}
