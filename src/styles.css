@@ -3673,6 +3673,9 @@
 .workspace-config {
   width: min(680px, 90vw);
 }
+.system-configuration {
+  container: system-configuration / inline-size;
+}
 .workspace-management-row {
   display: flex;
   align-items: center;
@@ -3682,6 +3685,10 @@
 .workspace-management-row > span,
 .workspace-management-row > input {
   flex: 1;
+  min-width: 0;
+}
+.workspace-management-row > textarea {
+  flex: 1.5;
   min-width: 0;
 }
 .system-picker-list {
@@ -3967,11 +3974,16 @@
     grid-column: 1 !important;
     grid-row: auto !important;
   }
-  .config-panel .workspace-management-row {
+}
+@container system-configuration (max-width: 520px) {
+  .workspace-management-row {
     flex-wrap: wrap;
   }
-  .config-panel .workspace-management-row > span {
+  .workspace-management-row > :is(input, textarea) {
     flex-basis: 100%;
+  }
+  .config-panel .workspace-management-row .save-indicator {
+    margin-left: auto;
   }
 }
 .account-list-heading {

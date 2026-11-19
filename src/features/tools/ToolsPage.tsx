@@ -71,35 +71,35 @@ export function ToolsPage({ route, navigate, setContext, registerFlush }: Module
           </Suspense>
         ) : (
           <>
-            <PageHeading
-              title="工具"
-              eyebrow="本地工具"
-              description="完成手边的操作，把常用工具放到工作台。"
-            />
+            <PageHeading title="工具" description="点击星标，可从工作台快速打开常用工具。" />
             {route.objectId && <p role="alert">这个工具已不可用，请从工具目录重新选择。</p>}
             <div className="tool-directory">
               {registeredTools.map((tool) => (
                 <Card role="article" className="tool-card" key={tool.id}>
-                  <div className="tool-card-top">
-                    <tool.Icon size={30} weight="duotone" />
+                  <span className="tool-card-icon" aria-hidden="true">
+                    <tool.Icon size={24} weight="duotone" />
+                  </span>
+                  <h2>
+                    <Button
+                      type="link"
+                      className="tool-card-open"
+                      aria-describedby={`tool-description-${tool.id}`}
+                      onClick={() => void navigate({ module: 'tools', objectId: tool.id })}
+                    >
+                      {tool.title}
+                      <ArrowRightIcon size={15} aria-hidden="true" />
+                    </Button>
+                  </h2>
+                  <p id={`tool-description-${tool.id}`}>{tool.description}</p>
+                  <div className="tool-card-actions">
+                    {tool.guidance && (
+                      <GuidanceButton
+                        placement={tool.guidance}
+                        accessibleLabel={`${tool.title}使用指引`}
+                      />
+                    )}
                     {favorite(tool.id)}
                   </div>
-                  <h2>{tool.title}</h2>
-                  <p>{tool.description}</p>
-                  <Button
-                    htmlType="submit"
-                    type="text"
-                    className="text-button"
-                    onClick={() => void navigate({ module: 'tools', objectId: tool.id })}
-                  >
-                    打开工具 <ArrowRightIcon size={16} />
-                  </Button>
-                  {tool.guidance && (
-                    <GuidanceButton
-                      placement={tool.guidance}
-                      accessibleLabel={`${tool.title}使用指引`}
-                    />
-                  )}
                 </Card>
               ))}
             </div>

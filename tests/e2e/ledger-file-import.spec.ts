@@ -133,6 +133,25 @@ test.describe('真实 Ollama 文件导入', () => {
     await dialog().getByText('映射来源环境', { exact: true }).click();
     await selectChoice(dialog().getByLabel('来源环境 生产', { exact: true }), { label: '生产' });
     await dialog().getByRole('button', { name: '编辑候选 跳板机', exact: true }).click();
+    const candidateName = dialog().getByLabel('候选名称', { exact: true });
+    const repoRow = dialog().getByRole('row', { name: /制品仓库/ });
+    await repoRow.getByText('待校对', { exact: true }).click();
+    await expect(candidateName).toHaveValue('制品仓库');
+    const serverCheck = dialog().getByRole('checkbox', { name: '导入候选 跳板机', exact: true });
+    await serverCheck.uncheck();
+    await expect(candidateName).toHaveValue('制品仓库');
+    const serverRow = dialog().getByRole('row', { name: /跳板机/ });
+    await serverRow
+      .getByRole('cell')
+      .first()
+      .click({ position: { x: 2, y: 2 } });
+    await expect(candidateName).toHaveValue('跳板机');
+    await expect(serverCheck).not.toBeChecked();
+    await serverCheck.check();
+    await repoRow.getByRole('button').press('Space');
+    await expect(candidateName).toHaveValue('制品仓库');
+    await expect(repoRow).toHaveAttribute('aria-current', 'true');
+    await dialog().getByRole('button', { name: '编辑候选 跳板机', exact: true }).press('Enter');
     await expect(dialog().getByLabel('候选名称', { exact: true })).toHaveValue('跳板机');
     await expect(dialog().getByLabel('候选地址／IP', { exact: true })).toHaveValue('192.0.2.10');
     await expect(dialog().getByLabel('账号 1 用户名', { exact: true })).toHaveValue('000123');

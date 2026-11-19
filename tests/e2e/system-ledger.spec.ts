@@ -1,27 +1,26 @@
 import { selectChoice, expectSelectValue } from './antd-controls';
-import { openLedgerRecord } from './ledger-actions';
+import { openLedgerRecord, openSystemLedger } from './ledger-actions';
 import { test, expect } from '@playwright/test';
 import { electron } from './launch';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { sharedDesktopTests } from './shared-desktop';
+
+const sharedTest = sharedDesktopTests('system-ledger');
 
 for (const kind of ['access', 'server'] as const)
   for (const scope of ['all', 'common'])
-    test(`${kind} 在 ${scope} 范围修改后编辑账号不丢输入`, async () => {
-      const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-scope-edit-'));
-      const env: Record<string, string> = { ...process.env, CLEVER_WORKBENCH_DATA_DIR: directory };
-      delete env.ELECTRON_RUN_AS_NODE;
-      const app = await electron.launch({ args: ['.'], env });
-      try {
-        const page = await app.firstWindow();
-        await page.setViewportSize({ width: 1000, height: 760 });
-        const production = await page.evaluate(async (kind) => {
+    sharedTest(`${kind} 在 ${scope} 范围修改后编辑账号不丢输入`, async ({ page }) => {
+      await page.setViewportSize({ width: 1000, height: 760 });
+      const systemName = `订单平台 ${kind}-${scope}`;
+      const { production, accountId } = await page.evaluate(
+        async ({ kind, systemName }) => {
           const api = window.desktop,
-            systemId = (await api.mutate({ type: 'system.save', name: '订单平台' })).createdId!,
+            systemId = (await api.mutate({ type: 'system.save', name: systemName })).createdId!,
             production = (await api.mutate({ type: 'environment.save', systemId, name: '生产' }))
               .createdId!;
-          await api.captureLedger({
+          const { snapshot } = await api.captureLedger({
             kind,
             systemId,
             environmentId: null,
@@ -35,44 +34,45 @@ for (const kind of ['access', 'server'] as const)
             name: '其他通用记录',
             username: 'fallback',
           });
-          return production;
-        }, kind);
-        await page.getByRole('menuitem', { name: '台账', exact: true }).click();
-        const label = kind === 'access' ? '访问入口' : '服务器';
-        await page.getByRole('tab', { name: label, exact: true }).click();
-        await selectChoice(page.getByLabel('台账环境筛选'), scope);
-        await openLedgerRecord(page, label, '待调整记录', true);
-        await page.getByRole('checkbox', { name: '生产', exact: true }).check();
-        await page.getByRole('button', { name: '完成编辑', exact: true }).click();
-        await page.getByRole('button', { name: '编辑账号', exact: true }).click();
-        await page.getByLabel('账号用户名', { exact: true }).fill('after-unsaved');
-        await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
-        await page.getByRole('menuitem', { name: '台账', exact: true }).click();
-        await selectChoice(page.getByLabel('台账环境筛选'), 'all');
-        await openLedgerRecord(page, '账号', '默认账号', true);
-        await expect(page.getByLabel('账号用户名', { exact: true })).toHaveValue('after-unsaved');
-        const account = (await page.evaluate(() => window.desktop.snapshot())).accounts.find(
-          (a) => a.username === 'after-unsaved',
-        );
-        expect(account?.environmentId).toBe(production);
-        await openLedgerRecord(page, label, '待调整记录', true);
-        await page.getByRole('checkbox', { name: '生产', exact: true }).uncheck();
-        await page.getByRole('button', { name: '完成编辑', exact: true }).click();
-        await expect
-          .poll(
-            async () =>
-              (await page.evaluate(() => window.desktop.snapshot())).accounts.find(
-                (a) => a.username === 'after-unsaved',
-              )?.environmentId,
-          )
-          .toBeNull();
-        await page.getByRole('button', { name: '返回清单', exact: true }).click();
-        await selectChoice(page.getByLabel('台账环境筛选'), 'common');
-        await expect(page.locator('.workspace-list')).toContainText('其他通用记录');
-      } finally {
-        await app.close();
-        await fs.rm(directory, { recursive: true, force: true });
-      }
+          const account = snapshot.accounts.find(
+            (a) => a.systemId === systemId && a.username === 'before',
+          )!;
+          return { production, accountId: account.id };
+        },
+        { kind, systemName },
+      );
+      await openSystemLedger(page, systemName);
+      const label = kind === 'access' ? '访问入口' : '服务器';
+      await page.getByRole('tab', { name: label, exact: true }).click();
+      await selectChoice(page.getByLabel('台账环境筛选'), scope);
+      await openLedgerRecord(page, label, '待调整记录', true);
+      await page.getByRole('checkbox', { name: '生产', exact: true }).check();
+      await page.getByRole('button', { name: '完成编辑', exact: true }).click();
+      await page.getByRole('button', { name: '编辑账号', exact: true }).click();
+      await page.getByLabel('账号用户名', { exact: true }).fill('after-unsaved');
+      await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
+      await page.getByRole('menuitem', { name: '台账', exact: true }).click();
+      await selectChoice(page.getByLabel('台账环境筛选'), 'all');
+      await openLedgerRecord(page, '账号', '默认账号', true);
+      await expect(page.getByLabel('账号用户名', { exact: true })).toHaveValue('after-unsaved');
+      const account = (await page.evaluate(() => window.desktop.snapshot())).accounts.find(
+        (a) => a.id === accountId,
+      );
+      expect(account).toMatchObject({ username: 'after-unsaved', environmentId: production });
+      await openLedgerRecord(page, label, '待调整记录', true);
+      await page.getByRole('checkbox', { name: '生产', exact: true }).uncheck();
+      await page.getByRole('button', { name: '完成编辑', exact: true }).click();
+      await expect
+        .poll(
+          async () =>
+            (await page.evaluate(() => window.desktop.snapshot())).accounts.find(
+              (a) => a.id === accountId,
+            )?.environmentId,
+        )
+        .toBeNull();
+      await page.getByRole('button', { name: '返回清单', exact: true }).click();
+      await selectChoice(page.getByLabel('台账环境筛选'), 'common');
+      await expect(page.locator('.workspace-list')).toContainText('其他通用记录');
     });
 
 test('系统通用入口同屏录入地址与密码，服务器可一次保存端口、账号和密码', async ({}, testInfo) => {

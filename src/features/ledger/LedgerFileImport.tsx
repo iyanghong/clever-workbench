@@ -775,18 +775,24 @@ export function LedgerFileImport({
                     pagination={false}
                     rowKey="id"
                     dataSource={candidates.filter((item) => tab === 'all' || item.kind === tab)}
+                    onRow={(item) => ({
+                      'aria-current': item.id === selectedId ? true : undefined,
+                      onClick: () => setSelectedId(item.id),
+                    })}
                     columns={[
                       {
                         title: '导入',
                         width: 50,
                         render: (_, item) => (
-                          <Checkbox
-                            aria-label={`导入候选 ${item.name}`}
-                            checked={item.selected}
-                            onChange={(event) =>
-                              change({ selected: event.target.checked }, item.id)
-                            }
-                          />
+                          <span onClick={(event) => event.stopPropagation()}>
+                            <Checkbox
+                              aria-label={`导入候选 ${item.name}`}
+                              checked={item.selected}
+                              onChange={(event) =>
+                                change({ selected: event.target.checked }, item.id)
+                              }
+                            />
+                          </span>
                         ),
                       },
                       {
@@ -796,7 +802,6 @@ export function LedgerFileImport({
                             <Button
                               type="link"
                               className="local-import-name"
-                              onClick={() => setSelectedId(item.id)}
                               aria-label={`编辑候选 ${item.name || '未命名'}`}
                             >
                               {item.name || '未命名'}

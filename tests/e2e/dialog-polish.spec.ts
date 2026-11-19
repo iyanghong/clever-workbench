@@ -24,7 +24,7 @@ test('台账弹窗有固定关闭入口，表单统一且退出保留保存与�
       const systemId = (
         await window.desktop.mutate({ type: 'system.save', name: '协作平台', projectId })
       ).createdId!;
-      await window.desktop.mutate({ type: 'environment.save', systemId, name: '生产' });
+      await window.desktop.mutate({ type: 'environment.save', systemId, name: '研发（测试）内网' });
     });
     await page.getByRole('menuitem', { name: '台账', exact: true }).click();
     await openSystemAction(page, '系统信息');
@@ -49,11 +49,24 @@ test('台账弹窗有固定关闭入口，表单统一且退出保留保存与�
     await expect(system.getByLabel('系统名称', { exact: true })).toHaveValue('');
     await system.getByLabel('系统名称', { exact: true }).fill('协作平台');
     await system.getByRole('tab', { name: '环境管理', exact: true }).click();
-    await expect(system.getByLabel('环境名称 生产', { exact: true })).toBeVisible();
-    await page.screenshot({
-      animations: 'disabled',
-      path: info.outputPath('system-environments.png'),
-    });
+    const environmentName = system.getByLabel('环境名称 研发（测试）内网', { exact: true });
+    await expect(environmentName).toHaveValue('研发（测试）内网');
+    for (const width of [1380, 540]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.emulateMedia({ colorScheme: width === 540 ? 'dark' : 'light' });
+      expect(
+        await environmentName.evaluate((el) => el.scrollWidth - el.clientWidth),
+      ).toBeLessThanOrEqual(1);
+      expect(await system.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+      await page.screenshot({
+        animations: 'disabled',
+        path: info.outputPath(
+          width === 540 ? 'system-environments-narrow.png' : 'system-environments.png',
+        ),
+      });
+    }
+    await page.setViewportSize({ width: 1380, height: 800 });
+    await page.emulateMedia({ colorScheme: 'light' });
     await system.getByRole('tab', { name: '项目档案', exact: true }).click();
     await expect(system.getByLabel('项目名称', { exact: true })).toBeVisible();
     await page.screenshot({ animations: 'disabled', path: info.outputPath('system-projects.png') });

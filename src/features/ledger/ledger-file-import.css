@@ -63,6 +63,12 @@
   max-height: 50vh;
   overflow: auto;
 }
+.local-import-list .ant-table-row {
+  cursor: pointer;
+}
+.local-import-list .ant-table-row[aria-current='true'] > td {
+  background: var(--selected);
+}
 .local-import-detail {
   border-left: 1px solid var(--line);
   padding-left: 18px;

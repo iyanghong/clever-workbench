@@ -8,6 +8,9 @@ import {
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { sharedDesktopTests } from './shared-desktop';
+
+const sharedTest = sharedDesktopTests('maintenance-guidance');
 
 async function start() {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workbench-maintenance-guide-'));
@@ -188,118 +191,104 @@ test('秘密保护指引只导航，启用解锁与更改关闭可取消且保�
   }
 });
 
-test('任务回收站指引只导航，恢复、单条删除和清空均保留各自边界', async () => {
-  const fixture = await start();
-  const { app, page } = fixture;
-  try {
-    await page.getByRole('menuitem', { name: '回收站', exact: true }).click();
-    const opened = await openDirect(app, page, '任务回收站使用指引', 'recycle-tasks');
-    if (opened) {
-      await opened.dialog.getByRole('button', { name: '前往功能', exact: true }).click();
-      await expectGuidanceDestination(page, opened.feature);
-    }
-    await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
-    for (const title of ['恢复示例', '永久删除示例', '清空示例']) {
-      await page.getByLabel('快速新增任务').fill(title);
-      await page.getByLabel('快速新增任务').press('Enter');
-      await expect(page.getByRole('button', { name: `完成 ${title}`, exact: true })).toBeVisible();
-    }
-    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
-    for (const title of ['恢复示例', '永久删除示例', '清空示例']) {
-      await page.locator('.task-open').filter({ hasText: title }).click();
-      await page.getByRole('button', { name: '删除任务', exact: true }).click();
-    }
-    await page.getByRole('menuitem', { name: '回收站', exact: true }).click();
-    await page.locator('.task-open').filter({ hasText: '恢复示例' }).click();
-    await expect(page.getByLabel('任务标题', { exact: true })).toBeDisabled();
-    await page.getByRole('button', { name: '恢复任务', exact: true }).click();
-    await expect(page.locator('.task-open').filter({ hasText: '恢复示例' })).toHaveCount(0);
-    await page.getByRole('button', { name: '彻底删除 永久删除示例', exact: true }).click();
-    const confirmation = page.getByRole('dialog', { name: '彻底删除后无法撤销', exact: true });
-    await expect(confirmation).toBeVisible();
-    await confirmation.getByRole('button', { name: '取消', exact: true }).click();
-    await expect(page.locator('.task-open').filter({ hasText: '永久删除示例' })).toBeVisible();
-    await page.getByRole('button', { name: '彻底删除 永久删除示例', exact: true }).click();
-    await confirmation.getByRole('button', { name: '彻底删除', exact: true }).click();
-    await expect(page.locator('.task-open').filter({ hasText: '永久删除示例' })).toHaveCount(0);
-    await page.getByRole('button', { name: '清空回收站', exact: true }).click();
-    await confirmation.getByRole('button', { name: '取消', exact: true }).click();
-    await expect(page.locator('.task-open').filter({ hasText: '清空示例' })).toBeVisible();
-    await page.getByRole('button', { name: '清空回收站', exact: true }).click();
-    await confirmation.getByRole('button', { name: '彻底删除', exact: true }).click();
-    await expect(page.locator('.task-open')).toHaveCount(0);
-    await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
-    await expect(page.locator('.task-open').filter({ hasText: '恢复示例' })).toBeVisible();
-    await expect(page.locator('.task-open')).toHaveCount(1);
-  } finally {
-    await fixture.close();
+sharedTest('任务回收站指引只导航，恢复、单条删除和清空均保留各自边界', async ({ app, page }) => {
+  await page.getByRole('menuitem', { name: '回收站', exact: true }).click();
+  const opened = await openDirect(app, page, '任务回收站使用指引', 'recycle-tasks');
+  if (opened) {
+    await opened.dialog.getByRole('button', { name: '前往功能', exact: true }).click();
+    await expectGuidanceDestination(page, opened.feature);
   }
+  await page.getByRole('menuitem', { name: '工作台', exact: true }).click();
+  for (const title of ['恢复示例', '永久删除示例', '清空示例']) {
+    await page.getByLabel('快速新增任务').fill(title);
+    await page.getByLabel('快速新增任务').press('Enter');
+    await expect(page.getByRole('button', { name: `完成 ${title}`, exact: true })).toBeVisible();
+  }
+  await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
+  for (const title of ['恢复示例', '永久删除示例', '清空示例']) {
+    await page.locator('.task-open').filter({ hasText: title }).click();
+    await page.getByRole('button', { name: '删除任务', exact: true }).click();
+  }
+  await page.getByRole('menuitem', { name: '回收站', exact: true }).click();
+  await page.locator('.task-open').filter({ hasText: '恢复示例' }).click();
+  await expect(page.getByLabel('任务标题', { exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: '恢复任务', exact: true }).click();
+  await expect(page.locator('.task-open').filter({ hasText: '恢复示例' })).toHaveCount(0);
+  await page.getByRole('button', { name: '彻底删除 永久删除示例', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: '彻底删除后无法撤销', exact: true });
+  await expect(confirmation).toBeVisible();
+  await confirmation.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(page.locator('.task-open').filter({ hasText: '永久删除示例' })).toBeVisible();
+  await page.getByRole('button', { name: '彻底删除 永久删除示例', exact: true }).click();
+  await confirmation.getByRole('button', { name: '彻底删除', exact: true }).click();
+  await expect(page.locator('.task-open').filter({ hasText: '永久删除示例' })).toHaveCount(0);
+  await page.getByRole('button', { name: '清空回收站', exact: true }).click();
+  await confirmation.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(page.locator('.task-open').filter({ hasText: '清空示例' })).toBeVisible();
+  await page.getByRole('button', { name: '清空回收站', exact: true }).click();
+  await confirmation.getByRole('button', { name: '彻底删除', exact: true }).click();
+  await expect(page.locator('.task-open')).toHaveCount(0);
+  await page.getByRole('menuitem', { name: '工作任务', exact: true }).click();
+  await expect(page.locator('.task-open').filter({ hasText: '恢复示例' })).toBeVisible();
+  await expect(page.locator('.task-open')).toHaveCount(1);
 });
 
-test('文档回收站指引可集中到达，逐篇恢复和删除确认不提供批量清空', async () => {
-  const fixture = await start();
-  const { app, page } = fixture;
-  try {
-    await page.getByRole('menuitem', { name: '文档', exact: true }).click();
-    await page.getByRole('button', { name: '文档回收站', exact: true }).click();
-    const opened = await openDirect(app, page, '文档回收站使用指引', 'recycle-documents');
-    if (opened) {
-      await page.keyboard.press('Escape');
-      await page.getByRole('menuitem', { name: '设置', exact: true }).click();
-      await page.getByRole('tab', { name: '使用指引', exact: true }).click();
-      await page.getByRole('tab', { name: '使用指引', exact: true }).click();
-      await page.getByRole('button', { name: '查看全部使用指引', exact: true }).click();
-      await page
-        .getByRole('dialog', { name: '使用指引', exact: true })
-        .getByRole('button', { name: opened.feature.title, exact: true })
-        .click();
-      await page
-        .getByRole('dialog', { name: opened.feature.title, exact: true })
-        .getByRole('button', { name: '前往功能', exact: true })
-        .click();
-      await expectGuidanceDestination(page, opened.feature);
-      if (opened.feature.entry.target === 'documents-trash')
-        await expect(page.getByRole('button', { name: '文档回收站', exact: true })).toHaveAttribute(
-          'aria-pressed',
-          'true',
-        );
-    }
-    await page.getByRole('menuitem', { name: '文档', exact: true }).click();
-    await page.getByRole('button', { name: '全部文档', exact: true }).click();
-    for (const title of ['恢复文档示例', '彻底删除文档示例']) {
-      await page.getByRole('button', { name: '新建文档', exact: true }).click();
-      await page.getByLabel('文档标题', { exact: true }).fill(title);
-      await page
-        .getByRole('textbox', { name: '工作内容', exact: true })
-        .fill('只含演示内容的回收站核对。');
-      await page.getByRole('button', { name: '删除文档', exact: true }).click();
-    }
-    await page.getByRole('button', { name: '文档回收站', exact: true }).click();
-    await expect(page.getByRole('button', { name: '清空回收站', exact: true })).toHaveCount(0);
-    await page.getByRole('button', { name: '文档 恢复文档示例', exact: true }).click();
-    await expect(page.getByLabel('文档标题', { exact: true })).toBeDisabled();
-    await page.getByRole('button', { name: '恢复文档', exact: true }).click();
-    await expect(page.getByRole('button', { name: '文档 恢复文档示例', exact: true })).toHaveCount(
-      0,
-    );
-    await page.getByRole('button', { name: '文档 彻底删除文档示例', exact: true }).click();
-    await page.getByRole('button', { name: '彻底删除', exact: true }).click();
-    const confirmation = page.getByRole('dialog', { name: '彻底删除文档', exact: true });
-    await expect(confirmation).toContainText('将无法从回收站恢复');
-    await confirmation.getByRole('button', { name: '取消', exact: true }).click();
-    await expect(page.getByLabel('文档标题', { exact: true })).toHaveValue('彻底删除文档示例');
-    await page.getByRole('button', { name: '彻底删除', exact: true }).click();
-    await confirmation.getByRole('button', { name: '彻底删除', exact: true }).click();
-    await expect(
-      page.getByRole('button', { name: '文档 彻底删除文档示例', exact: true }),
-    ).toHaveCount(0);
-    await page.getByRole('button', { name: '全部文档', exact: true }).click();
-    await page.getByRole('button', { name: '文档 恢复文档示例', exact: true }).click();
-    await expect(page.getByRole('textbox', { name: '工作内容', exact: true })).toContainText(
-      '只含演示内容',
-    );
-    await expect(page.getByLabel('文档标题', { exact: true })).toBeEnabled();
-  } finally {
-    await fixture.close();
+sharedTest('文档回收站指引可集中到达，逐篇恢复和删除确认不提供批量清空', async ({ app, page }) => {
+  await page.getByRole('menuitem', { name: '文档', exact: true }).click();
+  await page.getByRole('button', { name: '文档回收站', exact: true }).click();
+  const opened = await openDirect(app, page, '文档回收站使用指引', 'recycle-documents');
+  if (opened) {
+    await page.keyboard.press('Escape');
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click();
+    await page.getByRole('tab', { name: '使用指引', exact: true }).click();
+    await page.getByRole('tab', { name: '使用指引', exact: true }).click();
+    await page.getByRole('button', { name: '查看全部使用指引', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: '使用指引', exact: true })
+      .getByRole('button', { name: opened.feature.title, exact: true })
+      .click();
+    await page
+      .getByRole('dialog', { name: opened.feature.title, exact: true })
+      .getByRole('button', { name: '前往功能', exact: true })
+      .click();
+    await expectGuidanceDestination(page, opened.feature);
+    if (opened.feature.entry.target === 'documents-trash')
+      await expect(page.getByRole('button', { name: '文档回收站', exact: true })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
   }
+  await page.getByRole('menuitem', { name: '文档', exact: true }).click();
+  await page.getByRole('button', { name: '全部文档', exact: true }).click();
+  for (const title of ['恢复文档示例', '彻底删除文档示例']) {
+    await page.getByRole('button', { name: '新建文档', exact: true }).click();
+    await page.getByLabel('文档标题', { exact: true }).fill(title);
+    await page
+      .getByRole('textbox', { name: '工作内容', exact: true })
+      .fill('只含演示内容的回收站核对。');
+    await page.getByRole('button', { name: '删除文档', exact: true }).click();
+  }
+  await page.getByRole('button', { name: '文档回收站', exact: true }).click();
+  await expect(page.getByRole('button', { name: '清空回收站', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: '文档 恢复文档示例', exact: true }).click();
+  await expect(page.getByLabel('文档标题', { exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: '恢复文档', exact: true }).click();
+  await expect(page.getByRole('button', { name: '文档 恢复文档示例', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: '文档 彻底删除文档示例', exact: true }).click();
+  await page.getByRole('button', { name: '彻底删除', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: '彻底删除文档', exact: true });
+  await expect(confirmation).toContainText('将无法从回收站恢复');
+  await confirmation.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(page.getByLabel('文档标题', { exact: true })).toHaveValue('彻底删除文档示例');
+  await page.getByRole('button', { name: '彻底删除', exact: true }).click();
+  await confirmation.getByRole('button', { name: '彻底删除', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: '文档 彻底删除文档示例', exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole('button', { name: '全部文档', exact: true }).click();
+  await page.getByRole('button', { name: '文档 恢复文档示例', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: '工作内容', exact: true })).toContainText(
+    '只含演示内容',
+  );
+  await expect(page.getByLabel('文档标题', { exact: true })).toBeEnabled();
 });

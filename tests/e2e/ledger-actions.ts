@@ -1,4 +1,14 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
+export async function openSystemLedger(page: Page, systemName: string) {
+  await page.getByRole('menuitem', { name: '台账', exact: true }).click();
+  const switcher = page.getByRole('button', { name: '切换系统', exact: true });
+  await switcher.click();
+  const picker = page.getByRole('dialog', { name: '切换系统', exact: true });
+  await picker.getByRole('button', { name: systemName }).click();
+  await expect(picker).toBeHidden();
+  await expect(switcher).toHaveText(systemName);
+}
+
 export async function openLedgerRecord(page: Page, category: string, name?: string, edit = false) {
   const detail = page.getByRole('complementary', { name: '台账详情' });
   if (await detail.count())

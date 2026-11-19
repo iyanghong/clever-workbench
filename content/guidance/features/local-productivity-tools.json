@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "feature",
   "id": "local-productivity-tools",
-  "revision": 1,
+  "revision": 2,
   "title": "使用本地效率工具处理配置与数据",
   "platforms": ["darwin", "win32"],
   "placements": ["tools"],
@@ -19,7 +19,7 @@
     {
       "id": "open",
       "title": "打开所需工具",
-      "action": "进入“工具”，在配置对比、数据格式助手、时间与 Cron、批量文本处理或表格数据转换卡片中点击“打开工具”。",
+      "action": "进入“工具”，点击所需的工具卡片。也可以用 Tab 聚焦工具名称，再按回车打开。",
       "expectedResult": "进入对应操作页面；工具卡片星标可将其加入工作台首页常用入口。"
     },
     {

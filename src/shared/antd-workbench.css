@@ -744,23 +744,6 @@ label > .ant-select {
 .task-list .ant-checkbox-wrapper {
   margin-inline-end: 0;
 }
-.tool-card.ant-card {
-  display: block;
-  padding: 0;
-}
-.tool-card .ant-card-body {
-  padding: 20px;
-}
-.tool-card h2 {
-  margin: 18px 0 10px;
-  font-size: 16px;
-}
-.tool-card p {
-  min-height: 42px;
-  line-height: 1.8;
-  color: var(--secondary);
-  font-size: 12px;
-}
 .ledger-workspace .workspace-list .ledger-object-table,
 .ledger-workspace .workspace-list .account-table {
   border: 0;
