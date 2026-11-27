@@ -2,85 +2,66 @@
   "schemaVersion": 1,
   "kind": "release-draft",
   "operationChange": "changed",
-  "summary": "台账文件导入分为选文件与分析、校对候选、确认保存三步。可管理本机 Ollama 或逐文件授权兼容服务提取，已有台账始终在本机查重。",
+  "summary": "主密码的闲置锁定时间可以自己设置。解锁弹窗打开后即可输入密码，聚焦时只显示一圈圆角边框。",
   "changes": [
     {
-      "id": "model-management",
-      "summary": "在“分析模型”中安装或启动 Ollama、下载并选用模型。使用 OpenAI 兼容服务时，先测试连接与提取，再为本次文件单独授权。",
+      "id": "vault-idle-time",
+      "summary": "在“设置 → 凭据保护 → 闲置后自动锁定”中选择 5、15、30 分钟或 1、4、8 小时，默认 15 分钟。从最后一次使用工作台起计时，锁屏、休眠或退出时立即锁定。",
       "guideIds": [
-        "ledger-file-import"
+        "secret-protection"
       ]
     },
     {
-      "id": "review-and-save",
-      "summary": "按原文顺序预览全部候选，点击疑似重复项可看对方名称、来源和匹配依据。逐条选择新增、跳过或更新指定字段，最后统一确认保存。",
+      "id": "unlock-password-field",
+      "summary": "打开“解锁秘密”后可直接输入主密码。按 Tab 切到显示或隐藏密码按钮时，焦点会移到按钮上。",
       "guideIds": [
-        "ledger-file-import"
+        "secret-protection"
       ]
     },
     {
-      "id": "environment-matching",
-      "summary": "可手动修改适用环境，也可批量映射来源环境。两条记录至少有一个共同环境才参与查重；系统通用与每个环境比对。",
+      "id": "keep-unlocked-after-cancel",
+      "summary": "已解锁时，打开备份密码设置后直接取消，可继续查看凭据，无需再输一次主密码。",
       "guideIds": [
-        "ledger-file-import"
-      ]
-    },
-    {
-      "id": "web-addresses",
-      "summary": "访问入口自动为缺少协议的地址补上 http://。在“访问地址”右侧增加地址，使用对应行的按钮移除。",
-      "guideIds": [
-        "ledger-file-import"
-      ]
-    },
-    {
-      "id": "empty-editor-caret",
-      "summary": "在空文档中直接输入，光标与首行文字对齐。清空正文后也能在原位置继续输入。",
-      "guideIds": [
-        "documents-and-editor"
+        "secret-protection"
       ]
     }
   ],
   "review": {
     "status": "completed-with-gaps",
-    "reviewer": "Codex（本机回归验证）",
-    "checkedAt": "2026-11-19T21:34:22+08:00",
-    "source": "0ca2fc84e90acddb1b7ce5297f7f1e785c0d89e8",
-    "environment": "macOS Apple Silicon 安装版，隔离资料目录，本机 Ollama 与回环兼容服务。",
+    "reviewer": "Codex（本机桌面回归与界面核对）",
+    "checkedAt": "2026-11-27T23:11:06+08:00",
+    "source": "c949927472fe7db16fde6ac70cd4f5fa0b3641f3",
+    "environment": "macOS Apple Silicon，使用隔离资料目录核对固定功能提交的生产构建与 Electron 窗口。",
     "checks": [
       {
-        "guideId": "ledger-file-import",
+        "guideId": "secret-protection",
         "stepIds": [
-          "prepare-model",
-          "choose-file",
-          "analyze"
+          "system",
+          "enable",
+          "unlock"
         ],
         "result": "passed",
-        "evidence": "已验证本机模型运行、选用和文件分析，以及逐文件授权后经回环兼容服务提取；取消授权时不会发送文件。"
+        "evidence": "验证了启用主密码、密码错误后重试、取消备份密码设置及重启后按需解锁。深浅主题、窄窗口、增强对比和键盘显示或隐藏密码均已核对。"
       },
       {
-        "guideId": "ledger-file-import",
+        "guideId": "secret-protection",
         "stepIds": [
-          "review-source",
-          "map-environments",
-          "review-details",
-          "commit",
-          "discard"
+          "lock"
         ],
         "result": "passed",
-        "evidence": "已检查 19 条候选预览、变更环境后的查重、访问地址补全和退出确认，并以合成资料验证选择字段后保存及失败回滚。"
+        "evidence": "已验证时长保存与重启持久化、鼠标活动续期、到期后禁止恢复旧会话，以及休眠和锁屏事件触发锁定。"
       },
       {
-        "guideId": "documents-and-editor",
+        "guideId": "secret-protection",
         "stepIds": [
-          "write",
-          "focus"
+          "hide-copy"
         ],
-        "result": "passed",
-        "evidence": "在普通和专注模式下比较了空文档光标与首字的位置，并测试清空后重输。"
+        "result": "not-verified",
+        "evidence": "本机验证了密码显示、锁定后隐藏及模拟剪贴板的清理时机，本次未在本机系统剪贴板重验整个复制流程。"
       }
     ],
     "knownGaps": [
-      "本次发行提供 macOS Apple Silicon 安装包。兼容服务使用合成资料和回环接口验收。"
+      "本次发布提供 macOS Apple Silicon 安装包。Windows 桌面端未在本机实机验收。"
     ]
   }
 }
