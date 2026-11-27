@@ -111,7 +111,7 @@ const api: DesktopAPI = {
     return () => ipcRenderer.removeListener('data-restored', listener);
   },
   vaultStatus: () => call('vault-status'),
-  vaultActivity: () => call('vault-activity'),
+  vaultActivity: (occurredAt) => call('vault-activity', occurredAt),
   copySecret: (id, kind) => call('secret-copy', id, kind),
   copyAccountText: (id) => call('account-copy-text', id),
   previewLedgerCopy: (selection) => call('ledger-copy-preview', selection),

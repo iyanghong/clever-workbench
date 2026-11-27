@@ -3162,7 +3162,8 @@
   transition: none !important;
   scroll-behavior: auto !important;
 }
-:focus-visible {
+/* The outlined password field shows focus on its wrapper, including the visibility toggle. */
+:focus-visible:not(:where(.ant-input-password.ant-input-outlined > input)) {
   outline: 2px solid var(--accent) !important;
   outline-offset: 3px;
 }

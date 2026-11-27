@@ -732,6 +732,19 @@ label > .ant-select {
 .shared-dialog .field-label {
   margin-block: 14px;
 }
+.ant-input-password.ant-input-outlined > input.ant-input {
+  min-height: 0;
+}
+:root[data-high-contrast='true'] .ant-input-password.ant-input-outlined:has(> input:focus-visible) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+@media (forced-colors: active) {
+  .ant-input-password.ant-input-outlined:has(> input:focus-visible) {
+    outline: 2px solid Highlight;
+    outline-offset: 0;
+  }
+}
 .record-fields .ant-select,
 .record-fields .ant-input {
   width: 100%;
@@ -821,6 +834,9 @@ label > .ant-select {
 }
 .settings-tab-panel .setting-row {
   padding-block: 20px;
+}
+.settings-tab-panel .vault-idle-select {
+  flex: 0 0 108px;
 }
 .settings-tab-panel .setting-row p {
   margin-top: 5px;

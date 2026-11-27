@@ -5,6 +5,7 @@ import path from 'node:path';
 import { Store } from '../electron/store';
 import { Vault } from '../electron/vault';
 import { SecretClipboard } from '../electron/secret-clipboard';
+import type { VaultIdleMinutes } from '../src/vault-types';
 let store: Store | undefined, vault: Vault | undefined, clipboard: SecretClipboard | undefined;
 async function setup() {
   store = new Store(fs.mkdtempSync(path.join(os.tmpdir(), 'workbench-session-')));
@@ -56,6 +57,36 @@ test('闲置 15 分钟撤销访问，正常活动延续会话，过期后活动�
   vault!.touch();
   expect(vault!.status().unlocked).toBe(false);
   expect(() => vault!.read(accountId, 'password')).toThrow('解锁');
+});
+
+test('主密码按所选闲置时间锁定，活动从最后一次操作重新计时', async () => {
+  const { accountId } = await setup();
+  store!.mutate({ type: 'settings', vaultIdleMinutes: 60 });
+  vi.useFakeTimers();
+  vault!.touch();
+  vi.advanceTimersByTime(59 * 60_000);
+  expect(vault!.status().unlocked).toBe(true);
+  vault!.touch();
+  expect(() => vault!.touch(NaN)).toThrow('活动时间');
+  vault!.touch(Date.now() + 60_000);
+  vault!.touch(Date.now() - 60_000);
+  vi.advanceTimersByTime(60 * 60_000 - 1);
+  expect(vault!.status().unlocked).toBe(true);
+  vi.advanceTimersByTime(1);
+  vault!.touch();
+  expect(() => vault!.read(accountId, 'password')).toThrow('解锁');
+});
+
+test('旧资料默认闲置 15 分钟锁定，非法时长不能覆盖已选时间', async () => {
+  await setup();
+  expect(store!.settings().vaultIdleMinutes).toBe(15);
+  store!.mutate({ type: 'settings', vaultIdleMinutes: 5 });
+  for (const invalid of [0, -1, 1.5, '60', 99999, null]) {
+    expect(() =>
+      store!.mutate({ type: 'settings', vaultIdleMinutes: invalid as VaultIdleMinutes }),
+    ).toThrow('锁定时间');
+  }
+  expect(store!.snapshot().settings.vaultIdleMinutes).toBe(5);
 });
 
 test('剪贴板只清理本次仍持有的秘密，后续普通复制和重复秘密复制各自保持正确计时', async () => {

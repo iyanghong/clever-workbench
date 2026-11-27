@@ -129,6 +129,7 @@ async function fixture() {
   store.mutate({
     type: 'settings',
     theme: 'dark',
+    vaultIdleMinutes: 240,
     autoBackup: false,
     reduceMotion: true,
     highContrast: true,
@@ -155,6 +156,7 @@ test(
       vault = protect(store),
       oldId = store.mutate({ type: 'task.create', draft: draft('新设备原有记录') }).createdId!;
     const backupDir = store.settings().backupDir;
+    store.mutate({ type: 'settings', vaultIdleMinutes: 5 });
     const info = await backups.inspect(source.filename, password);
     expect(store.task(oldId).title).toBe('新设备原有记录');
     // Confirmation uses the verified staging copy even if the selected file is replaced later.
@@ -185,6 +187,7 @@ test(
     expect(store.document(source.document.id)).toEqual(source.document);
     expect(store.settings()).toMatchObject({
       theme: 'dark',
+      vaultIdleMinutes: 5,
       backupDir,
       lastBackupAt: null,
       reduceMotion: true,
@@ -277,16 +280,21 @@ test('恢复前副本写入失败保留当前记录、秘密和预检结果，�
   expect(source.vault.read(source.accountId, 'password')).toBe('fictional-resource-secret');
 });
 
-test('即使认证成功，缺失引用图片或不支持的数据库版本也不能进入恢复确认', async () => {
+test('即使认证成功，缺失图片、非法锁定时间或不兼容的数据库也不能进入恢复确认', async () => {
   const source = await fixture(),
     before = source.store.snapshot(),
     temporary = directory(),
     database = path.join(temporary, 'database.sqlite');
   await backup(source.store.db, database);
-  for (const invalid of ['missing-image', 'future-version']) {
-    if (invalid === 'future-version') {
+  for (const [invalid, expectedError] of [
+    ['missing-image', '图片'],
+    ['invalid-lock-time', '备份设置'],
+    ['future-version', '数据库'],
+  ]) {
+    if (invalid !== 'missing-image') {
       const db = new DatabaseSync(database);
-      db.exec('PRAGMA user_version=999');
+      if (invalid === 'future-version') db.exec('PRAGMA user_version=999');
+      else db.prepare("UPDATE preferences SET value=? WHERE key='vaultIdleMinutes'").run('0');
       db.close();
     }
     const bytes = fs.readFileSync(database),
@@ -319,9 +327,7 @@ test('即使认证成功，缺失引用图片或不支持的数据库版本也�
     archive.addBuffer(bytes, 'database.sqlite');
     archive.end();
     await writing;
-    await expect(source.backups.inspect(filename, password)).rejects.toThrow(
-      invalid === 'missing-image' ? '图片' : '数据库',
-    );
+    await expect(source.backups.inspect(filename, password)).rejects.toThrow(expectedError);
     expect(source.store.snapshot()).toEqual(before);
     expect(source.backups.prepared.size).toBe(0);
     expect(fs.readdirSync(path.join(source.store.root, 'restore-staging'))).toHaveLength(0);

@@ -6,6 +6,7 @@ import type { Store } from './store';
 import type { LedgerCapture } from '../src/ledger-types';
 import type { LedgerBatch } from '../src/ledger-workspace-types';
 import { WorkspaceLedger } from './ledger-workspace';
+import { defaultVaultIdleMinutes } from '../src/vault-types';
 import {
   saveLedgerImport,
   validateLedgerImport,
@@ -192,17 +193,20 @@ export class Vault {
     if (this.store.db.isOpen) this.onStatus(this.status());
   }
   checkIdle() {
+    if (!this.key) return;
+    const minutes = this.initialized ? this.store.vaultIdleMinutes() : defaultVaultIdleMinutes;
     if (
-      this.key &&
-      (Date.now() - this.lastActivity >= 15 * 60_000 ||
-        this.dataGeneration !== this.store.generation ||
-        this.protectionId !== this.currentProtectionId())
+      Date.now() - this.lastActivity >= minutes * 60_000 ||
+      this.dataGeneration !== this.store.generation ||
+      this.protectionId !== this.currentProtectionId()
     )
       this.lock();
   }
-  touch() {
+  touch(occurredAt: unknown = Date.now()) {
+    if (typeof occurredAt !== 'number' || !Number.isSafeInteger(occurredAt) || occurredAt < 0)
+      throw new Error('活动时间无效。');
     this.checkIdle();
-    if (this.key) this.lastActivity = Date.now();
+    if (this.key) this.lastActivity = Math.max(this.lastActivity, Math.min(occurredAt, Date.now()));
   }
   private requireKey() {
     this.checkIdle();

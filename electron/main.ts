@@ -704,7 +704,7 @@ app
         return new Response('Not found', { status: 404 });
       return net.fetch(pathToFileURL(path.join(store.directory, 'assets', filename)).href);
     });
-    secureHandler('vault-activity', () => vault.touch());
+    secureHandler('vault-activity', (occurredAt) => vault.touch(occurredAt));
     secureHandler('secret-copy', (id, kind) => {
       writable();
       return secretClipboard.copy(id, kind);
@@ -815,7 +815,12 @@ app
     secureHandler('search', (query) => store.search(query));
     secureHandler('mutate', (command) => {
       writable();
+      const changesLockTime =
+        command?.type === 'settings' && command.vaultIdleMinutes !== undefined;
+      // Expire under the old policy before extending it, and enforce a shorter one immediately.
+      if (changesLockTime) vault.checkIdle();
       const result = store.mutate(command);
+      if (changesLockTime) vault.checkIdle();
       applyTheme();
       if (command.type === 'settings')
         window?.webContents.send('settings-changed', result.snapshot.settings);

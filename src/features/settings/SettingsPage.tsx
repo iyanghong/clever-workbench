@@ -1,4 +1,4 @@
-import { Button, Card, Input, Switch, Tabs } from 'antd';
+import { Button, Card, Input, Select, Switch, Tabs } from 'antd';
 import { GuidanceButton, SettingsGuidance } from '../guidance/Guidance';
 import { PageHeading, SegmentedControl } from '../../shared/WorkspaceUI';
 import { useEffect, useRef, useState } from 'react';
@@ -15,6 +15,7 @@ import {
 } from '@phosphor-icons/react';
 import type { ModuleProps } from '../../app/modules';
 import type { BackupInfo, BackupSelection, Command, Snapshot } from '../../types';
+import { vaultIdleOptions } from '../../vault-types';
 import { dateLabel } from '../../domain';
 import { useVault } from '../vault/VaultProvider';
 import { Dialog } from '../../shared/Dialog';
@@ -339,6 +340,31 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
                         </Button>
                       )}
                     </div>
+
+                    {vault.status.initialized && (
+                      <div className="setting-row">
+                        <div>
+                          <strong id="vault-idle-label">闲置后自动锁定</strong>
+                          <p id="vault-idle-help">
+                            在工作台内操作会重新计时。锁屏、休眠或退出时立即锁定。
+                          </p>
+                        </div>
+                        <Select
+                          aria-labelledby="vault-idle-label"
+                          aria-describedby="vault-idle-help"
+                          className="vault-idle-select"
+                          disabled={Boolean(busy)}
+                          value={snapshot.settings.vaultIdleMinutes}
+                          options={vaultIdleOptions.map((minutes) => ({
+                            value: minutes,
+                            label: minutes < 60 ? `${minutes} 分钟` : `${minutes / 60} 小时`,
+                          }))}
+                          onChange={(vaultIdleMinutes) =>
+                            void update({ type: 'settings', vaultIdleMinutes })
+                          }
+                        />
+                      </div>
+                    )}
 
                     {vault.status.initialized && (
                       <div className="setting-row">

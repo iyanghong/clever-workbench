@@ -15,6 +15,7 @@ import type { SystemExportOptions, SystemExportResult } from './export-types';
 import type { SearchHit } from './search-types';
 import type {
   SecretKind,
+  VaultIdleMinutes,
   VaultStatus,
   AccountCopyTarget,
   ResourceCopyTarget,
@@ -68,6 +69,7 @@ export type Draft = {
 };
 export type Settings = {
   theme: 'system' | 'light' | 'dark';
+  vaultIdleMinutes: VaultIdleMinutes;
   reduceTransparency: boolean;
   highContrast: boolean;
   reduceMotion: boolean;
@@ -137,6 +139,7 @@ export type Command =
   | {
       type: 'settings';
       theme?: Settings['theme'];
+      vaultIdleMinutes?: VaultIdleMinutes;
       autoBackup?: boolean;
       reduceTransparency?: boolean;
       highContrast?: boolean;
@@ -183,7 +186,7 @@ export interface DesktopAPI {
   copyAccessWithSecrets(id: string, target: AccessCopyTarget): Promise<MutationResult>;
   platform: string;
   vaultStatus(): Promise<VaultStatus>;
-  vaultActivity(): Promise<void>;
+  vaultActivity(occurredAt?: number): Promise<void>;
   copySecret(accountId: string, kind: SecretKind): Promise<void>;
   copyAccountText(accountId: string): Promise<void>;
   previewLedgerCopy(selection: LedgerCopySelection): Promise<LedgerCopyPreview>;

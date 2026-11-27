@@ -1,4 +1,4 @@
-import { Button, Input } from 'antd';
+import { Button, Input, type InputRef } from 'antd';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { LockKeyIcon, LockKeyOpenIcon } from '@phosphor-icons/react';
 import type { VaultStatus } from '../../vault-types';
@@ -38,6 +38,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     resolve: (value: boolean) => void;
   } | null>(null);
   const backupAttempt = useRef(0);
+  const masterInput = useRef<InputRef>(null);
   function finish(value: boolean) {
     request.current?.resolve(value);
     request.current = null;
@@ -72,19 +73,30 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     });
   }, []);
   useEffect(() => {
-    let last = 0;
+    if (!status.unlocked) return;
+    const events = ['pointerdown', 'pointermove', 'keydown', 'wheel', 'focus'] as const;
+    let lastReport = 0;
+    let lastActivity = 0;
+    let pending: number | undefined;
+    const report = () => {
+      window.clearTimeout(pending);
+      pending = undefined;
+      lastReport = Date.now();
+      void window.desktop.vaultActivity(lastActivity).catch(() => {});
+    };
     const activity = () => {
-      if (Date.now() - last < 10_000) return;
-      last = Date.now();
-      void window.desktop.vaultActivity().catch(() => {});
+      lastActivity = Date.now();
+      const remaining = lastReport + 10_000 - lastActivity;
+      if (remaining <= 0) report();
+      else if (pending === undefined) pending = window.setTimeout(report, remaining);
     };
-    for (const event of ['pointerdown', 'keydown', 'wheel', 'focus'])
-      window.addEventListener(event, activity, { passive: true });
+    for (const event of events)
+      window.addEventListener(event, activity, { passive: true, capture: event !== 'focus' });
     return () => {
-      for (const event of ['pointerdown', 'keydown', 'wheel', 'focus'])
-        window.removeEventListener(event, activity);
+      window.clearTimeout(pending);
+      for (const event of events) window.removeEventListener(event, activity, event !== 'focus');
     };
-  }, []);
+  }, [status.unlocked]);
   async function ensureUnlocked() {
     const current = await window.desktop.vaultStatus();
     setStatus(current);
@@ -132,7 +144,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     backupAttempt.current++;
     finishBackup(false);
     setBackupBusy(false);
-    await window.desktop.lockVault();
+    if (backupBusy) await window.desktop.lockVault();
   }
   async function saveBackupPassword() {
     if (backupBusy) return;
@@ -159,7 +171,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     attempt.current++;
     finish(false);
     setBusy(false);
-    await window.desktop.lockVault();
+    if (busy) await window.desktop.lockVault();
   }
   async function unlock() {
     if (busy) return;
@@ -197,6 +209,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         <Dialog
           title={status.initialized ? '解锁秘密' : '设置主密码'}
           onClose={() => void cancel()}
+          onShown={() => masterInput.current?.focus({ preventScroll: true })}
           error={error}
         >
           <p>
@@ -208,7 +221,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
             主密码
             <Input.Password
               aria-label="主密码"
-              autoFocus
+              ref={masterInput}
               autoComplete={status.initialized ? 'current-password' : 'new-password'}
               value={password}
               onChange={(event) => setPassword(event.target.value)}

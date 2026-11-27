@@ -2,6 +2,7 @@ import { migrateLedgerDetails, validateDocumentRefs } from './ledger-details';
 import { WorkspaceLedger } from './ledger-workspace';
 import { migrateWorkbench } from './workbench-migration';
 import { migrateTaskPlanning } from './task-migration';
+import { isVaultIdleMinutes } from '../src/vault-types';
 import { TaskTags } from './task-tags';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
@@ -409,6 +410,7 @@ export class Backups {
             .run(JSON.stringify(prepared.legacyRestore));
         for (const [key, value] of Object.entries({
           backupDir: deviceSettings.backupDir,
+          vaultIdleMinutes: deviceSettings.vaultIdleMinutes,
           lastBackupAt: null,
           lastBackupError: null,
           lastBackupRevision: -1,
@@ -576,6 +578,7 @@ async function validateDatabase(
       validateToolPreferences(row.key as string, value);
       if (
         (row.key === 'theme' && !['system', 'light', 'dark'].includes(value)) ||
+        (row.key === 'vaultIdleMinutes' && !isVaultIdleMinutes(value)) ||
         (['autoBackup', 'reduceTransparency', 'highContrast', 'reduceMotion'].includes(
           String(row.key),
         ) &&

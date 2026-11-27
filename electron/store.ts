@@ -26,6 +26,7 @@ import { validateFavorites } from './favorites';
 import { toolCatalog } from '../src/tool-types';
 import { searchWorkspace } from './search';
 import { initializeVault } from './vault';
+import { defaultVaultIdleMinutes, isVaultIdleMinutes } from '../src/vault-types';
 import { Documents, initializeDocuments } from './documents';
 import { Ledger, initializeLedger } from './ledger';
 import { migrateSystemLedger } from './ledger-migration';
@@ -216,9 +217,14 @@ export class Store {
       )
       .run(key, JSON.stringify(value));
   }
+  vaultIdleMinutes() {
+    const value = this.get<unknown>('vaultIdleMinutes', defaultVaultIdleMinutes);
+    return isVaultIdleMinutes(value) ? value : defaultVaultIdleMinutes;
+  }
   settings(): Settings {
     return {
       theme: this.get('theme', 'system'),
+      vaultIdleMinutes: this.vaultIdleMinutes(),
       autoBackup: this.get('autoBackup', true),
       reduceTransparency: this.get('reduceTransparency', false),
       highContrast: this.get('highContrast', false),
@@ -686,6 +692,11 @@ export class Store {
           break;
         }
         case 'settings': {
+          if (command.vaultIdleMinutes !== undefined) {
+            if (!isVaultIdleMinutes(command.vaultIdleMinutes))
+              throw new Error('自动锁定时间无效。');
+            this.set('vaultIdleMinutes', command.vaultIdleMinutes);
+          }
           for (const key of ['reduceTransparency', 'highContrast', 'reduceMotion'] as const) {
             if (command[key] !== undefined) {
               if (typeof command[key] !== 'boolean') throw new Error('外观偏好无效。');
