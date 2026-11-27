@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "kind": "release",
+  "operationChange": "changed",
+  "summary": "主密码的闲置锁定时间可以自己设置。解锁弹窗打开后即可输入密码，聚焦时只显示一圈圆角边框。",
+  "changes": [
+    {
+      "id": "vault-idle-time",
+      "summary": "在“设置 → 凭据保护 → 闲置后自动锁定”中选择 5、15、30 分钟或 1、4、8 小时，默认 15 分钟。从最后一次使用工作台起计时，锁屏、休眠或退出时立即锁定。",
+      "guideIds": [
+        "secret-protection"
+      ]
+    },
+    {
+      "id": "unlock-password-field",
+      "summary": "打开“解锁秘密”后可直接输入主密码。按 Tab 切到显示或隐藏密码按钮时，焦点会移到按钮上。",
+      "guideIds": [
+        "secret-protection"
+      ]
+    },
+    {
+      "id": "keep-unlocked-after-cancel",
+      "summary": "已解锁时，打开备份密码设置后直接取消，可继续查看凭据，无需再输一次主密码。",
+      "guideIds": [
+        "secret-protection"
+      ]
+    }
+  ],
+  "review": {
+    "status": "completed-with-gaps",
+    "reviewer": "Codex（本机桌面回归与界面核对）",
+    "checkedAt": "2026-11-27T23:11:06+08:00",
+    "source": "c949927472fe7db16fde6ac70cd4f5fa0b3641f3",
+    "environment": "macOS Apple Silicon，使用隔离资料目录核对固定功能提交的生产构建与 Electron 窗口。",
+    "checks": [
+      {
+        "guideId": "secret-protection",
+        "stepIds": [
+          "system",
+          "enable",
+          "unlock"
+        ],
+        "result": "passed",
+        "evidence": "验证了启用主密码、密码错误后重试、取消备份密码设置及重启后按需解锁。深浅主题、窄窗口、增强对比和键盘显示或隐藏密码均已核对。"
+      },
+      {
+        "guideId": "secret-protection",
+        "stepIds": [
+          "lock"
+        ],
+        "result": "passed",
+        "evidence": "已验证时长保存与重启持久化、鼠标活动续期、到期后禁止恢复旧会话，以及休眠和锁屏事件触发锁定。"
+      },
+      {
+        "guideId": "secret-protection",
+        "stepIds": [
+          "hide-copy"
+        ],
+        "result": "not-verified",
+        "evidence": "本机验证了密码显示、锁定后隐藏及模拟剪贴板的清理时机，本次未在本机系统剪贴板重验整个复制流程。"
+      }
+    ],
+    "knownGaps": [
+      "本次发布提供 macOS Apple Silicon 安装包。Windows 桌面端未在本机实机验收。"
+    ]
+  },
+  "version": "0.1.35",
+  "tag": "v0.1.35",
+  "sourceSha": "55e2519f80309664acebd511c227ce036c01ed9b",
+  "publication": "pending"
+}
