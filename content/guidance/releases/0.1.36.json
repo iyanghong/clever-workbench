@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "kind": "release",
+  "operationChange": "changed",
+  "summary": "点击侧栏“秘密已锁定”后，可以用 Touch ID 或这台 Mac 的登录密码解锁凭据。",
+  "changes": [
+    {
+      "id": "enable-mac-unlock",
+      "summary": "首次点击“秘密已锁定”，勾选“启用指纹或 Mac 登录密码解锁”，输入工作台主密码后点“解锁并启用”，按系统提示完成授权。也可在“设置 → 凭据保护”中启用。",
+      "guideIds": [
+        "secret-protection"
+      ]
+    },
+    {
+      "id": "choose-mac-authentication",
+      "summary": "再次解锁时，在 macOS 面板按指纹或选择使用 Mac 登录密码。取消系统验证后仍可输入工作台主密码。",
+      "guideIds": [
+        "secret-protection"
+      ]
+    },
+    {
+      "id": "manage-mac-enrollment",
+      "summary": "可在“凭据保护”中关闭本机授权。用过仅指纹预览版的用户可在同一处添加 Mac 登录密码。更改工作台主密码或恢复备份后需要重新启用。",
+      "guideIds": [
+        "secret-protection"
+      ]
+    }
+  ],
+  "review": {
+    "status": "completed-with-gaps",
+    "reviewer": "Codex（本机桌面回归，使用者配合系统身份验证）",
+    "checkedAt": "2026-11-28T17:03:42+08:00",
+    "source": "73ed218e33251e5323c1d644ce637ed84e33232c",
+    "environment": "macOS Apple Silicon，隔离资料目录，固定功能源码的签名打包版和本机真实系统验证。",
+    "checks": [
+      {
+        "guideId": "secret-protection",
+        "stepIds": [
+          "system",
+          "enable",
+          "unlock"
+        ],
+        "result": "passed",
+        "evidence": "从侧栏直接首次启用并验证工作台主密码。重新锁定后选择 Mac 登录密码解锁，重启后再用指纹解锁，两次均读回原凭据。已复核取消系统验证后改用工作台主密码以及从设置启停授权。"
+      },
+      {
+        "guideId": "secret-protection",
+        "stepIds": [
+          "lock"
+        ],
+        "result": "passed",
+        "evidence": "验证了手动锁定、闲置时间、休眠及锁屏通知、取消迟到的验证结果，以及资料恢复和主密码变更后原授权失效。"
+      },
+      {
+        "guideId": "secret-protection",
+        "stepIds": [
+          "hide-copy"
+        ],
+        "result": "not-verified",
+        "evidence": "验证了查看凭据和锁定后隐藏，模拟剪贴板的清理逻辑有单元测试覆盖。本次本机实测未操作真实系统剪贴板。"
+      }
+    ],
+    "knownGaps": [
+      "本次发布提供 macOS Apple Silicon 安装包。无指纹硬件的 Mac 和 Intel Mac 未在本机实测。"
+    ]
+  },
+  "version": "0.1.36",
+  "tag": "v0.1.36",
+  "sourceSha": "27f4bb08b95d01abd4756ff767a4fc0de223b01e",
+  "publication": "pending"
+}
