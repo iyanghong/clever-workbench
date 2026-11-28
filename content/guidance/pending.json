@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "kind": "release-draft",
   "operationChange": "changed",
-  "summary": "主密码的闲置锁定时间可以自己设置。解锁弹窗打开后即可输入密码，聚焦时只显示一圈圆角边框。",
+  "summary": "点击侧栏“秘密已锁定”后，可以用 Touch ID 或这台 Mac 的登录密码解锁凭据。",
   "changes": [
     {
-      "id": "vault-idle-time",
-      "summary": "在“设置 → 凭据保护 → 闲置后自动锁定”中选择 5、15、30 分钟或 1、4、8 小时，默认 15 分钟。从最后一次使用工作台起计时，锁屏、休眠或退出时立即锁定。",
+      "id": "enable-mac-unlock",
+      "summary": "首次点击“秘密已锁定”，勾选“启用指纹或 Mac 登录密码解锁”，输入工作台主密码后点“解锁并启用”，按系统提示完成授权。也可在“设置 → 凭据保护”中启用。",
       "guideIds": [
         "secret-protection"
       ]
     },
     {
-      "id": "unlock-password-field",
-      "summary": "打开“解锁秘密”后可直接输入主密码。按 Tab 切到显示或隐藏密码按钮时，焦点会移到按钮上。",
+      "id": "choose-mac-authentication",
+      "summary": "再次解锁时，在 macOS 面板按指纹或选择使用 Mac 登录密码。取消系统验证后仍可输入工作台主密码。",
       "guideIds": [
         "secret-protection"
       ]
     },
     {
-      "id": "keep-unlocked-after-cancel",
-      "summary": "已解锁时，打开备份密码设置后直接取消，可继续查看凭据，无需再输一次主密码。",
+      "id": "manage-mac-enrollment",
+      "summary": "可在“凭据保护”中关闭本机授权。用过仅指纹预览版的用户可在同一处添加 Mac 登录密码。更改工作台主密码或恢复备份后需要重新启用。",
       "guideIds": [
         "secret-protection"
       ]
@@ -28,10 +28,10 @@
   ],
   "review": {
     "status": "completed-with-gaps",
-    "reviewer": "Codex（本机桌面回归与界面核对）",
-    "checkedAt": "2026-11-27T23:11:06+08:00",
-    "source": "c949927472fe7db16fde6ac70cd4f5fa0b3641f3",
-    "environment": "macOS Apple Silicon，使用隔离资料目录核对固定功能提交的生产构建与 Electron 窗口。",
+    "reviewer": "Codex（本机桌面回归，使用者配合系统身份验证）",
+    "checkedAt": "2026-11-28T17:03:42+08:00",
+    "source": "73ed218e33251e5323c1d644ce637ed84e33232c",
+    "environment": "macOS Apple Silicon，隔离资料目录，固定功能源码的签名打包版和本机真实系统验证。",
     "checks": [
       {
         "guideId": "secret-protection",
@@ -41,7 +41,7 @@
           "unlock"
         ],
         "result": "passed",
-        "evidence": "验证了启用主密码、密码错误后重试、取消备份密码设置及重启后按需解锁。深浅主题、窄窗口、增强对比和键盘显示或隐藏密码均已核对。"
+        "evidence": "从侧栏直接首次启用并验证工作台主密码。重新锁定后选择 Mac 登录密码解锁，重启后再用指纹解锁，两次均读回原凭据。已复核取消系统验证后改用工作台主密码以及从设置启停授权。"
       },
       {
         "guideId": "secret-protection",
@@ -49,7 +49,7 @@
           "lock"
         ],
         "result": "passed",
-        "evidence": "已验证时长保存与重启持久化、鼠标活动续期、到期后禁止恢复旧会话，以及休眠和锁屏事件触发锁定。"
+        "evidence": "验证了手动锁定、闲置时间、休眠及锁屏通知、取消迟到的验证结果，以及资料恢复和主密码变更后原授权失效。"
       },
       {
         "guideId": "secret-protection",
@@ -57,11 +57,11 @@
           "hide-copy"
         ],
         "result": "not-verified",
-        "evidence": "本机验证了密码显示、锁定后隐藏及模拟剪贴板的清理时机，本次未在本机系统剪贴板重验整个复制流程。"
+        "evidence": "验证了查看凭据和锁定后隐藏，模拟剪贴板的清理逻辑有单元测试覆盖。本次本机实测未操作真实系统剪贴板。"
       }
     ],
     "knownGaps": [
-      "本次发布提供 macOS Apple Silicon 安装包。Windows 桌面端未在本机实机验收。"
+      "本次发布提供 macOS Apple Silicon 安装包。无指纹硬件的 Mac 和 Intel Mac 未在本机实测。"
     ]
   }
 }
