@@ -120,6 +120,11 @@ const api: DesktopAPI = {
   copyResourceWithSecrets: (id, target) => call('resource-copy-secrets', id, target),
   initializeVault: (password) => call('vault-initialize', password),
   unlockVault: (password) => call('vault-unlock', password),
+  canUseMacUnlock: () => call('vault-mac-unlock-available'),
+  enableMacUnlock: (password, unlockAfter = false) =>
+    call('vault-mac-unlock-enable', password, unlockAfter),
+  disableMacUnlock: () => call('vault-mac-unlock-disable'),
+  unlockWithMac: () => call('vault-unlock-with-mac'),
   unlockSystemVault: () => call('vault-system-unlock'),
   configureBackup: (password) => call('backup-configure', password),
   rotateVault: (current, next) => call('vault-rotate', current, next),

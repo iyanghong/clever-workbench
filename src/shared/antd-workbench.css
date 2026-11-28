@@ -915,6 +915,12 @@ label > .ant-select {
 .shared-dialog .modal-actions > span {
   margin-right: auto;
 }
+.shared-dialog .vault-mac-unlock {
+  margin-inline-end: auto;
+}
+.shared-dialog .mac-unlock-opt-in {
+  margin-block-start: var(--space-3);
+}
 .shared-dialog :is(input, textarea, button, .ant-select, .ant-picker) {
   app-region: no-drag;
   -webkit-app-region: no-drag;

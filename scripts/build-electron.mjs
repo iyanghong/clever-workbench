@@ -1,5 +1,7 @@
 import { build } from 'esbuild';
-import { copyFile, mkdir, readdir, rm } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { copyFile, mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 // Copy raw documents; malformed or missing guidance must not become a build gate.
 await rm('dist-electron/guidance', { recursive: true, force: true });
@@ -54,6 +56,40 @@ await build({
   sourcemap: true,
 });
 await copyFile('scripts/macos-update-helper.sh', 'dist-electron/macos-update-helper.sh');
+if (process.platform === 'darwin') {
+  const temporary = await mkdtemp(path.join(os.tmpdir(), 'cwb-build-mac-unlock-'));
+  try {
+    const slices = ['arm64', 'x86_64'].map((arch) => {
+      const output = path.join(temporary, arch);
+      execFileSync(
+        'xcrun',
+        [
+          '--sdk',
+          'macosx',
+          'swiftc',
+          '-parse-as-library',
+          '-O',
+          '-target',
+          `${arch}-apple-macos13.0`,
+          'electron/native/mac-unlock.swift',
+          '-o',
+          output,
+        ],
+        { stdio: 'inherit' },
+      );
+      return output;
+    });
+    execFileSync('xcrun', [
+      'lipo',
+      '-create',
+      ...slices,
+      '-output',
+      'dist-electron/cwb-mac-unlock',
+    ]);
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+}
 await build({
   entryPoints: ['electron/preload.ts'],
   outfile: 'dist-electron/preload.cjs',

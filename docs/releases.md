@@ -52,6 +52,8 @@ Electron 的 `net.fetch` 在手动重定向时会报 `Redirect was cancelled`，
 
 使用 Node.js 24 LTS，在 macOS Apple Silicon 上执行。先更新应用和 lockfile 版本（例如 `npm version 0.2.0 --no-git-tag-version`），提交审阅后再发布对应 tag。
 
+macOS 构建使用 Xcode 命令行工具中的 `swiftc` 和 `lipo` 编译系统解锁辅助程序，打包到应用的 `Contents/Helpers` 目录。安装版运行时使用 macOS 自带的身份验证和安全隔区框架。Windows 构建跳过这个组件。
+
 ```sh
 npm ci
 npm run setup:electron

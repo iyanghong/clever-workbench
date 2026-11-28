@@ -22,6 +22,7 @@ import { Store, assetName, text } from './store';
 import { checkEncryptedArchive } from './encrypted-archive';
 import { SecretClipboard } from './secret-clipboard';
 import { Vault } from './vault';
+import { macUnlockDevice } from './mac-unlock';
 import { Backups } from './backup';
 import { backupProtection } from './backup-crypto';
 import { SystemExports } from './system-export';
@@ -455,6 +456,7 @@ app
       flush: flushRenderer,
       freeze: (value) => {
         updateFrozen = value;
+        if (value) vault?.cancelMacUnlockRequest();
       },
       idle: async () => {
         let timer: ReturnType<typeof setTimeout> | undefined;
@@ -568,6 +570,13 @@ app
         encrypt: (value) => safeStorage.encryptString(value),
         decrypt: (value) => safeStorage.decryptString(value),
       },
+      process.platform === 'darwin'
+        ? macUnlockDevice(
+            app.isPackaged
+              ? path.join(process.resourcesPath, '..', 'Helpers', 'Clever Workbench Mac Unlock')
+              : path.join(__dirname, 'cwb-mac-unlock'),
+          )
+        : undefined,
     );
     secretClipboard = new SecretClipboard(vault, clipboard);
     systemExports = new SystemExports(store, vault, renderExportDocument);
@@ -735,6 +744,19 @@ app
       return vault.copyResource(id, target);
     });
     secureHandler('vault-status', () => vault.status());
+    secureHandler('vault-mac-unlock-available', () => vault.canUseMacUnlock());
+    secureHandler('vault-mac-unlock-enable', (password, unlockAfter) =>
+      changeProtection(() => vault.enableMacUnlock(password, unlockAfter)),
+    );
+    secureHandler('vault-mac-unlock-disable', () => {
+      writable();
+      vault.disableMacUnlock();
+    });
+    secureHandler('vault-unlock-with-mac', () => {
+      const generation = store.generation;
+      writable(generation);
+      return vault.unlockWithMac(() => writable(generation));
+    });
     secureHandler('vault-initialize', (password) =>
       changeProtection(async () => {
         await vault.initialize(password);

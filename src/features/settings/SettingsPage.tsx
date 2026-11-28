@@ -18,8 +18,13 @@ import type { BackupInfo, BackupSelection, Command, Snapshot } from '../../types
 import { vaultIdleOptions } from '../../vault-types';
 import { dateLabel } from '../../domain';
 import { useVault } from '../vault/VaultProvider';
+import { useMacUnlockAvailable } from '../vault/useMacUnlockAvailable';
 import { Dialog } from '../../shared/Dialog';
-import { PasswordChange } from './PasswordChange';
+import {
+  MasterPasswordDialog,
+  masterPasswordActions,
+  type MasterPasswordAction,
+} from './MasterPasswordDialog';
 import { AnalysisModels } from './AnalysisModels';
 import { AboutUpdate } from './AppUpdate';
 const message = (cause: unknown) =>
@@ -30,7 +35,7 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
     [busy, setBusy] = useState('');
-  const [changingPassword, setChangingPassword] = useState<'change' | 'disable' | null>(null);
+  const [changingPassword, setChangingPassword] = useState<MasterPasswordAction | null>(null);
   const [selection, setSelection] = useState<BackupSelection | null>(null),
     [password, setPassword] = useState(''),
     [preview, setPreview] = useState<BackupInfo | null>(null),
@@ -38,6 +43,8 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
   const activeTokens = useRef(new Set<string>()),
     working = useRef(false),
     vault = useVault();
+  const macUnlockMode = vault.status.macUnlockMode ?? 'off';
+  const macUnlockAvailable = useMacUnlockAvailable(section === 'vault' && vault.status.initialized);
   useEffect(() => {
     setContext({});
     const unsubscribe = window.desktop.onSettingsChange((settings) => {
@@ -341,6 +348,46 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
                       )}
                     </div>
 
+                    {vault.status.initialized && window.desktop.platform === 'darwin' && (
+                      <div className="setting-row">
+                        <div>
+                          <strong>Mac 系统解锁</strong>
+                          <p>
+                            {macUnlockAvailable === false
+                              ? '这台 Mac 当前无法使用系统验证，可继续使用工作台主密码。'
+                              : macUnlockMode === 'touchID'
+                                ? '已启用仅指纹解锁。验证工作台主密码后可添加 Mac 登录密码。'
+                                : '点击侧栏“秘密已锁定”后，可按指纹，也可在系统面板中选择使用 Mac 登录密码。'}
+                          </p>
+                        </div>
+                        <div className="setting-actions">
+                          {macUnlockMode !== 'system' && (
+                            <Button
+                              disabled={Boolean(busy) || !macUnlockAvailable}
+                              onClick={() => setChangingPassword('macUnlock')}
+                            >
+                              {macUnlockMode === 'touchID'
+                                ? '添加 Mac 登录密码'
+                                : '启用 Mac 系统解锁'}
+                            </Button>
+                          )}
+                          {macUnlockMode !== 'off' && (
+                            <Button
+                              disabled={Boolean(busy)}
+                              onClick={() =>
+                                void run('正在关闭 Mac 系统解锁…', async () => {
+                                  await window.desktop.disableMacUnlock();
+                                  setNotice('已关闭 Mac 系统解锁。');
+                                })
+                              }
+                            >
+                              关闭 Mac 系统解锁
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {vault.status.initialized && (
                       <div className="setting-row">
                         <div>
@@ -581,16 +628,12 @@ export function SettingsPage({ setContext, route }: ModuleProps) {
         )}
       </section>
       {changingPassword && (
-        <PasswordChange
-          disable={changingPassword === 'disable'}
+        <MasterPasswordDialog
+          action={changingPassword}
           onClose={() => setChangingPassword(null)}
           onSuccess={() => {
             setChangingPassword(null);
-            setNotice(
-              changingPassword === 'disable'
-                ? '主密码已关闭，凭据由系统加密保护。'
-                : '主密码已更改，秘密已锁定。备份密码保持不变。',
-            );
+            setNotice(masterPasswordActions[changingPassword].success);
           }}
         />
       )}

@@ -199,6 +199,10 @@ export interface DesktopAPI {
   copyResourceWithSecrets(id: string, target: ResourceCopyTarget): Promise<MutationResult>;
   initializeVault(password: string): Promise<void>;
   unlockVault(password: string): Promise<void>;
+  canUseMacUnlock(): Promise<boolean>;
+  enableMacUnlock(password: string, unlockAfter?: boolean): Promise<void>;
+  disableMacUnlock(): Promise<void>;
+  unlockWithMac(): Promise<void>;
   unlockSystemVault(): Promise<void>;
   configureBackup(password: string): Promise<void>;
   lockVault(): Promise<void>;

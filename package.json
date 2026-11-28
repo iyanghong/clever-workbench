@@ -34,6 +34,7 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
+      "!dist-electron/cwb-mac-unlock",
       "package.json",
       "!node_modules/**/*"
     ],
@@ -45,6 +46,12 @@
       ],
       "category": "public.app-category.productivity",
       "minimumSystemVersion": "13.0",
+      "extraFiles": [
+        {
+          "from": "dist-electron/cwb-mac-unlock",
+          "to": "Helpers/Clever Workbench Mac Unlock"
+        }
+      ],
       "identity": "-",
       "icon": "build/icon.icns"
     },

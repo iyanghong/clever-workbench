@@ -1,8 +1,17 @@
 import { ledgerFields } from './ledger-details';
 import { randomBytes } from 'node:crypto';
+import fs from 'node:fs';
 import { isDeepStrictEqual } from 'node:util';
 import type { DatabaseSync } from 'node:sqlite';
-import type { Store } from './store';
+import { atomicWrite, type Store } from './store';
+import {
+  maxMacUnlockEnvelope,
+  readMacUnlockEnvelope,
+  macUnlockFallback,
+  macUnlockFile,
+  savedMacUnlockMode,
+  type MacUnlockDevice,
+} from './mac-unlock';
 import type { LedgerCapture } from '../src/ledger-types';
 import type { LedgerBatch } from '../src/ledger-workspace-types';
 import { WorkspaceLedger } from './ledger-workspace';
@@ -53,6 +62,21 @@ export type RestoreProtection = {
   ) => { key: Buffer; backup: BackupConfig };
   dispose: () => void;
 };
+
+function passwordDataKey(
+  config: VaultConfig,
+  wrapping: Buffer,
+  error = '主密码错误或保护材料损坏。',
+) {
+  try {
+    const key = unseal(config.key, wrapping, keyAad(config), 32);
+    if (key.length === 32) return key;
+    key.fill(0);
+  } catch {
+    // Neither an invalid password nor an invalid device enrollment grants a session.
+  }
+  throw new Error(error);
+}
 
 export function initializeVault(db: DatabaseSync) {
   db.exec(`CREATE TABLE IF NOT EXISTS secrets(
@@ -134,12 +158,14 @@ export class Vault {
   private protectionId: string | null = null;
   private generation = 0;
   private busy = false;
+  private macUnlockRequest?: AbortController;
   private initialized = false;
   private lastActivity = Date.now();
   constructor(
     private store: Store,
     private onStatus: (status: VaultStatus) => void = () => {},
     private system?: SystemKeyStore,
+    private macUnlock?: MacUnlockDevice,
   ) {
     this.initialized = store.get('vaultConfig', null) !== null;
     if (!store.get('localProtectionVersion', null)) {
@@ -160,12 +186,17 @@ export class Vault {
   }
   status(): VaultStatus {
     this.checkIdle();
-    this.initialized = this.store.get('vaultConfig', null) !== null;
+    const config = this.store.get<VaultConfig | null>('vaultConfig', null);
+    this.initialized = config !== null;
     return {
       initialized: this.initialized,
       unlocked: this.key !== null,
       mode: this.mode(),
       backupConfigured: backupProtection(this.store.db) !== null,
+      macUnlockMode:
+        this.macUnlock && config && /^[a-f0-9-]{36}$/.test(config.id)
+          ? savedMacUnlockMode(this.store.directory, config.id)
+          : 'off',
     };
   }
   private mode(): NonNullable<VaultStatus['mode']> {
@@ -184,7 +215,11 @@ export class Vault {
     validateConfig(config);
     return config;
   }
+  cancelMacUnlockRequest() {
+    this.macUnlockRequest?.abort();
+  }
   lock() {
+    this.cancelMacUnlockRequest();
     this.generation++;
     this.key?.fill(0);
     this.key = null;
@@ -421,6 +456,7 @@ export class Vault {
           this.store.db.exec('ROLLBACK');
           throw cause;
         }
+        this.forgetSupersededMacUnlock(current.id);
         this.lock();
       } finally {
         wrapping.fill(0);
@@ -433,26 +469,119 @@ export class Vault {
     return this.exclusive(async (assertCurrent) => {
       const config = this.config(),
         wrapping = await derive(password, config.kdf);
-      let key: Buffer | undefined;
       try {
-        try {
-          key = unseal(config.key, wrapping, keyAad(config), 32);
-        } catch {
-          throw new Error('主密码错误或保护材料损坏。');
-        }
-        if (key.length !== 32) throw new Error('主密码保护材料无效。');
         assertCurrent();
-        this.key?.fill(0);
-        this.key = Buffer.from(key);
-        this.dataGeneration = this.store.generation;
-        this.protectionId = config.id;
-        this.lastActivity = Date.now();
-        this.onStatus(this.status());
+        this.acceptMasterKey(config, passwordDataKey(config, wrapping));
       } finally {
         wrapping.fill(0);
-        key?.fill(0);
       }
     });
+  }
+  private acceptMasterKey(config: VaultConfig, key: Buffer) {
+    this.key?.fill(0);
+    this.key = key;
+    this.dataGeneration = this.store.generation;
+    this.protectionId = config.id;
+    this.lastActivity = Date.now();
+    this.onStatus(this.status());
+  }
+  async canUseMacUnlock() {
+    return (await this.macUnlock?.available().catch(() => false)) ?? false;
+  }
+  private async withMacUnlock(
+    operation: (
+      device: MacUnlockDevice,
+      config: VaultConfig,
+      signal: AbortSignal,
+      check: () => void,
+    ) => Promise<void>,
+  ) {
+    const device = this.macUnlock;
+    if (!device) throw new Error('当前设备不支持 Mac 系统解锁。');
+    await this.exclusive(async (assertCurrent) => {
+      const config = this.config();
+      const request = new AbortController();
+      this.macUnlockRequest = request;
+      const check = () => {
+        this.checkIdle();
+        if (request.signal.aborted) throw new Error('已取消 Mac 系统验证。');
+        assertCurrent();
+      };
+      try {
+        await operation(device, config, request.signal, check);
+      } finally {
+        this.macUnlockRequest = undefined;
+      }
+    });
+  }
+  async enableMacUnlock(password: unknown, unlockAfter: boolean = false) {
+    if (typeof unlockAfter !== 'boolean') throw new Error('解锁选项无效。');
+    await this.withMacUnlock(async (device, config, signal, check) => {
+      const wrapping = await derive(password, config.kdf);
+      try {
+        passwordDataKey(config, wrapping).fill(0);
+        check();
+        const envelope = await device.seal(
+          `${this.store.generation}/${config.id}`,
+          wrapping,
+          signal,
+        );
+        check();
+        if (!envelope.length || envelope.length > maxMacUnlockEnvelope)
+          throw new Error(macUnlockFallback);
+        try {
+          atomicWrite(macUnlockFile(this.store.directory, config.id), envelope);
+        } catch {
+          throw new Error('无法保存本机解锁授权，请检查资料目录的写入权限后重试。');
+        }
+        this.forgetSupersededMacUnlock(config.id, 'touchID');
+        if (unlockAfter) this.acceptMasterKey(config, passwordDataKey(config, wrapping));
+        else this.onStatus(this.status());
+      } finally {
+        wrapping.fill(0);
+      }
+    });
+  }
+  async unlockWithMac(assertWritable: () => void = () => {}) {
+    await this.withMacUnlock(async (device, config, signal, check) => {
+      const mode = savedMacUnlockMode(this.store.directory, config.id);
+      if (mode === 'off') throw new Error('请先使用工作台主密码启用 Mac 系统解锁。');
+      const envelope = readMacUnlockEnvelope(macUnlockFile(this.store.directory, config.id, mode));
+      const wrapping = await device.open(
+        `${this.store.generation}/${config.id}`,
+        envelope,
+        signal,
+        mode,
+      );
+      try {
+        check();
+        assertWritable();
+        this.acceptMasterKey(config, passwordDataKey(config, wrapping, macUnlockFallback));
+      } finally {
+        wrapping.fill(0);
+      }
+    });
+  }
+  disableMacUnlock() {
+    if (!this.macUnlock) throw new Error('当前设备不支持 Mac 系统解锁。');
+    this.cancelMacUnlockRequest();
+    const id = this.config().id;
+    try {
+      fs.rmSync(macUnlockFile(this.store.directory, id, 'touchID'), { force: true });
+      fs.rmSync(macUnlockFile(this.store.directory, id), { force: true });
+    } catch {
+      throw new Error('无法移除本机解锁授权，请检查资料目录的写入权限后重试。');
+    }
+    this.onStatus(this.status());
+  }
+  private forgetSupersededMacUnlock(id: string, onlyLegacy?: 'touchID') {
+    if (!this.macUnlock) return;
+    try {
+      fs.rmSync(macUnlockFile(this.store.directory, id, 'touchID'), { force: true });
+      if (!onlyLegacy) fs.rmSync(macUnlockFile(this.store.directory, id), { force: true });
+    } catch {
+      // The new enrollment or protection ID already supersedes these files.
+    }
   }
   async rotate(currentPassword: unknown, nextPassword: unknown) {
     return this.exclusive(async (assertCurrent) => {
@@ -483,6 +612,7 @@ export class Vault {
           throw cause;
         }
         this.initialized = true;
+        this.forgetSupersededMacUnlock(current.id);
         this.lock();
       } finally {
         wrapping.fill(0);

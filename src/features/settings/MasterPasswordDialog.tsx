@@ -1,21 +1,47 @@
-import { Button, Input } from 'antd';
+import { Button, Input, type InputRef } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { Dialog } from '../../shared/Dialog';
-export function PasswordChange({
+export const masterPasswordActions = {
+  change: {
+    title: '更改主密码',
+    description: '只更改本机凭据的解锁密码。成功后需重新解锁，备份密码保持不变。',
+    submit: '保存新主密码',
+    success: '主密码已更改，秘密已锁定。备份密码保持不变。',
+  },
+  disable: {
+    title: '关闭主密码',
+    description:
+      '验证当前主密码后，凭据改由系统账户加密保管，日常无需应用主密码。备份密码保持不变。',
+    submit: '验证并关闭主密码',
+    success: '主密码已关闭，凭据由系统加密保护。',
+  },
+  macUnlock: {
+    title: '启用 Mac 系统解锁',
+    description:
+      '先输入工作台主密码，再按 macOS 提示验证指纹或 Mac 登录密码。授权仅在这台 Mac 生效。',
+    submit: '继续系统验证',
+    success: '已启用 Mac 系统解锁。',
+  },
+} as const;
+export type MasterPasswordAction = keyof typeof masterPasswordActions;
+export function MasterPasswordDialog({
   onClose,
   onSuccess,
-  disable = false,
+  action,
 }: {
   onClose: () => void;
   onSuccess: () => void;
-  disable?: boolean;
+  action: MasterPasswordAction;
 }) {
+  const changing = action === 'change';
+  const labels = masterPasswordActions[action];
   const [current, setCurrent] = useState(''),
     [next, setNext] = useState(''),
     [confirmation, setConfirmation] = useState(''),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const working = useRef(false);
+  const currentInput = useRef<InputRef>(null);
   const clear = () => {
     setCurrent('');
     setNext('');
@@ -36,11 +62,11 @@ export function PasswordChange({
   }
   async function submit() {
     if (working.current) return;
-    if (!disable && next !== confirmation) {
+    if (changing && next !== confirmation) {
       setError('两次输入的新主密码不一致。');
       return;
     }
-    if (!disable && (next.length < 6 || next.length > 1024)) {
+    if (changing && (next.length < 6 || next.length > 1024)) {
       setError('新主密码需为 6 到 1024 个字符。');
       return;
     }
@@ -48,8 +74,9 @@ export function PasswordChange({
     setBusy(true);
     setError('');
     try {
-      if (disable) await window.desktop.disableMasterPassword(current);
-      else await window.desktop.rotateVault(current, next);
+      if (changing) await window.desktop.rotateVault(current, next);
+      else if (action === 'macUnlock') await window.desktop.enableMacUnlock(current);
+      else await window.desktop.disableMasterPassword(current);
       clear();
       onSuccess();
     } catch (cause) {
@@ -60,13 +87,14 @@ export function PasswordChange({
     }
   }
   return (
-    <Dialog title={disable ? '关闭主密码' : '更改主密码'} onClose={close} error={error}>
-      <p>
-        {disable
-          ? '验证当前主密码后，凭据改由系统账户加密保管，日常无需应用主密码。'
-          : '更改本机凭据的解锁密码，成功后需重新解锁。'}
-        备份密码保持不变。
-      </p>
+    <Dialog
+      title={labels.title}
+      onClose={close}
+      closeDisabled={busy}
+      error={error}
+      onShown={() => currentInput.current?.focus({ preventScroll: true })}
+    >
+      <p>{labels.description}</p>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -77,7 +105,7 @@ export function PasswordChange({
           当前主密码
           <Input.Password
             aria-label="当前主密码"
-            autoFocus
+            ref={currentInput}
             autoComplete="off"
             required
             maxLength={1024}
@@ -86,7 +114,7 @@ export function PasswordChange({
             disabled={busy}
           />
         </label>
-        {!disable && (
+        {changing && (
           <>
             <label>
               新主密码
@@ -131,9 +159,13 @@ export function PasswordChange({
             type="primary"
             htmlType="submit"
             className="primary-button"
-            disabled={busy || !current || (!disable && (!next || !confirmation))}
+            disabled={busy || !current || (changing && (!next || !confirmation))}
           >
-            {busy ? '正在转换保护方式…' : disable ? '验证并关闭主密码' : '保存新主密码'}
+            {busy
+              ? action === 'macUnlock'
+                ? '等待系统验证…'
+                : '正在转换保护方式…'
+              : labels.submit}
           </Button>
         </div>
       </form>

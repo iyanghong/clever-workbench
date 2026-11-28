@@ -143,6 +143,9 @@ test('解锁框在明暗主题下只有外层焦点，显示按钮支持键盘�
       await trigger.click();
       const dialog = page.getByRole('dialog', { name: '解锁秘密' });
       const input = dialog.getByLabel('主密码', { exact: true });
+      const enrollment = dialog.getByRole('checkbox', { name: '启用指纹或 Mac 登录密码解锁' });
+      const canEnroll = await page.evaluate(() => window.desktop.canUseMacUnlock());
+      if (canEnroll) await expect(enrollment).toBeVisible();
       await expect(input).toBeFocused();
       await expect(input).toHaveCSS('outline-style', 'none');
       const field = dialog.locator('.ant-input-password');
@@ -166,6 +169,10 @@ test('解锁框在明暗主题下只有外层焦点，显示按钮支持键盘�
       await page.keyboard.press('Space');
       await expect(input).toHaveAttribute('type', 'password');
       await page.keyboard.press('Tab');
+      if (canEnroll) {
+        await expect(enrollment).toBeFocused();
+        await page.keyboard.press('Tab');
+      }
       await expect(dialog.getByRole('button', { name: '取消', exact: true })).toBeFocused();
       await expect(field).not.toHaveCSS('border-color', activeBorder);
       await page.keyboard.press('Escape');

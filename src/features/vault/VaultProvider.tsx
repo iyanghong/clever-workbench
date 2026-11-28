@@ -1,8 +1,9 @@
-import { Button, Input, type InputRef } from 'antd';
+import { Button, Checkbox, Input, type InputRef } from 'antd';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { LockKeyIcon, LockKeyOpenIcon } from '@phosphor-icons/react';
+import { FingerprintIcon, LockKeyIcon, LockKeyOpenIcon } from '@phosphor-icons/react';
 import type { VaultStatus } from '../../vault-types';
 import { Dialog } from '../../shared/Dialog';
+import { useMacUnlockAvailable } from './useMacUnlockAvailable';
 type VaultContextValue = {
   status: VaultStatus;
   ensureUnlocked: () => Promise<boolean>;
@@ -23,7 +24,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     [password, setPassword] = useState(''),
     [confirmation, setConfirmation] = useState(''),
     [error, setError] = useState(''),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState<'password' | 'macUnlock' | null>(null);
   const [backupOpen, setBackupOpen] = useState(false),
     [backupPassword, setBackupPassword] = useState(''),
     [backupConfirmation, setBackupConfirmation] = useState(''),
@@ -39,6 +40,11 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   } | null>(null);
   const backupAttempt = useRef(0);
   const masterInput = useRef<InputRef>(null);
+  const unlocking = useRef(false);
+  const [macUnlockNotice, setMacUnlockNotice] = useState('');
+  const [enrollMac, setEnrollMac] = useState(false);
+  const macMode = status.macUnlockMode ?? 'off';
+  const canEnrollMac = useMacUnlockAvailable(open && status.initialized && macMode !== 'system');
   function finish(value: boolean) {
     request.current?.resolve(value);
     request.current = null;
@@ -46,6 +52,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     setPassword('');
     setConfirmation('');
     setError('');
+    setMacUnlockNotice('');
+    setEnrollMac(false);
   }
   function finishBackup(value: boolean) {
     backupRequest.current?.resolve(value);
@@ -65,7 +73,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       if (!next.unlocked) {
         attempt.current++;
         finish(false);
-        setBusy(false);
+        unlocking.current = false;
+        setBusy(null);
         backupAttempt.current++;
         finishBackup(false);
         setBackupBusy(false);
@@ -168,30 +177,47 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     }
   }
   async function cancel() {
+    const pending = unlocking.current;
+    unlocking.current = false;
     attempt.current++;
     finish(false);
-    setBusy(false);
-    if (busy) await window.desktop.lockVault();
+    setBusy(null);
+    if (pending) await window.desktop.lockVault();
   }
-  async function unlock() {
-    if (busy) return;
+  async function unlock(method: 'password' | 'macUnlock' = 'password') {
+    if (unlocking.current || !request.current) return;
     if (!status.initialized && password !== confirmation) {
       setError('两次主密码不一致。');
       return;
     }
     const generation = ++attempt.current;
-    setBusy(true);
+    unlocking.current = true;
+    setBusy(method);
     setError('');
+    setMacUnlockNotice('');
     try {
-      if (status.initialized) await window.desktop.unlockVault(password);
+      if (method === 'macUnlock') await window.desktop.unlockWithMac();
+      else if (status.initialized && enrollMac)
+        await window.desktop.enableMacUnlock(password, true);
+      else if (status.initialized) await window.desktop.unlockVault(password);
       else await window.desktop.initializeVault(password);
       if (generation !== attempt.current) return;
-      setStatus(await window.desktop.vaultStatus());
-      finish(true);
+      const next = await window.desktop.vaultStatus();
+      if (generation !== attempt.current) return;
+      setStatus(next);
+      finish(next.unlocked);
     } catch (cause) {
-      if (generation === attempt.current) setError(String(cause).replace(/^Error:.*?Error: /, ''));
+      if (generation === attempt.current) {
+        const message = String(cause).replace(/^Error:.*?Error: /, '');
+        if (method === 'macUnlock') setMacUnlockNotice(message);
+        else setError(message);
+        masterInput.current?.focus({ preventScroll: true });
+      }
     } finally {
-      if (generation === attempt.current) setBusy(false);
+      if (generation === attempt.current) {
+        unlocking.current = false;
+        setBusy(null);
+      }
     }
   }
   return (
@@ -209,12 +235,18 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         <Dialog
           title={status.initialized ? '解锁秘密' : '设置主密码'}
           onClose={() => void cancel()}
-          onShown={() => masterInput.current?.focus({ preventScroll: true })}
+          onShown={() => {
+            masterInput.current?.focus({ preventScroll: true });
+            if (status.initialized && macMode !== 'off') void unlock('macUnlock');
+          }}
           error={error}
         >
-          <p>
+          <p role={macUnlockNotice ? 'status' : undefined}>
             {status.initialized
-              ? '解锁后可以访问秘密。普通台账与文档始终可用。'
+              ? macUnlockNotice ||
+                (macMode === 'system'
+                  ? '在 macOS 面板中按指纹或选择使用 Mac 登录密码，也可在此输入工作台主密码。'
+                  : '解锁后可以访问秘密。普通台账与文档始终可用。')
               : '主密码用于本机凭据解锁，至少 6 个字符。备份密码单独管理。忘记主密码时可用完整备份恢复凭据。'}
           </p>
           <label>
@@ -244,7 +276,32 @@ export function VaultProvider({ children }: { children: ReactNode }) {
               />
             </label>
           )}
+          {(canEnrollMac || enrollMac) && macMode !== 'system' && (
+            <Checkbox
+              className="mac-unlock-opt-in"
+              checked={enrollMac}
+              disabled={Boolean(busy)}
+              onChange={(event) => setEnrollMac(event.target.checked)}
+            >
+              启用指纹或 Mac 登录密码解锁
+            </Checkbox>
+          )}
           <div className="modal-actions">
+            {macMode !== 'off' && (
+              <Button
+                htmlType="button"
+                className="vault-mac-unlock"
+                icon={<FingerprintIcon size={16} />}
+                disabled={Boolean(busy)}
+                onClick={() => void unlock('macUnlock')}
+              >
+                {busy === 'macUnlock'
+                  ? '等待系统验证…'
+                  : macMode === 'touchID'
+                    ? '使用 Touch ID'
+                    : '使用 Mac 系统验证'}
+              </Button>
+            )}
             <Button
               htmlType="submit"
               type="default"
@@ -257,10 +314,18 @@ export function VaultProvider({ children }: { children: ReactNode }) {
               htmlType="submit"
               type="primary"
               className="primary-button"
-              disabled={busy || !password || (!status.initialized && password.length < 6)}
+              disabled={Boolean(busy) || !password || (!status.initialized && password.length < 6)}
               onClick={() => void unlock()}
             >
-              {busy ? '处理中…' : status.initialized ? '解锁' : '设置并解锁'}
+              {busy === 'password'
+                ? enrollMac
+                  ? '等待系统验证…'
+                  : '处理中…'
+                : enrollMac
+                  ? '解锁并启用'
+                  : status.initialized
+                    ? '解锁'
+                    : '设置并解锁'}
             </Button>
           </div>
         </Dialog>
